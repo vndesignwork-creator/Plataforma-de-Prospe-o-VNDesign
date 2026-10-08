@@ -13,7 +13,9 @@
   "scripts": {
     "dev": "npm run dev -w @vndesign/web",
     "build": "npm run build -w @vndesign/web",
+    "build:standalone": "node scripts/build-standalone.mjs",
     "start": "npm run start -w @vndesign/web",
+    "start:standalone": "node apps/web/.next/standalone/apps/web/server.js",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",

@@ -23,18 +23,15 @@ COPY . .
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY \
-    NEXT_TELEMETRY_DISABLED=1 \
-    BUILD_STANDALONE=1
-RUN npm run build -w @vndesign/web
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+# Gera apps/web/.next/standalone (já com os ficheiros estáticos copiados)
+RUN npm run build:standalone
 
 FROM ${NODE_IMAGE} AS run
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
 RUN addgroup -S app && adduser -S app -G app
 COPY --from=build --chown=app:app /app/apps/web/.next/standalone ./
-COPY --from=build --chown=app:app /app/apps/web/.next/static ./apps/web/.next/static
-COPY --from=build --chown=app:app /app/apps/web/public ./apps/web/public
 USER app
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s CMD wget -qO- http://127.0.0.1:3000/login >/dev/null || exit 1

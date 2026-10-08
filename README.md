@@ -155,6 +155,34 @@ Invoke-RestMethod "http://localhost:3000/api/v1/leads?status=contactado&due=over
    - acrescenta `https://<o-teu-domínio>/auth/callback` aos *Redirect URLs*.
 5. Migrações: corre `npx supabase db push` (ou automatiza no CI) antes de cada deploy que as altere.
 
+### Hostinger (plano Business ou Cloud — Node.js Apps)
+
+O projeto tem um build "standalone" pensado para isto (`npm run build:standalone`).
+A base de dados fica no **Supabase na nuvem** (ver Opção A acima).
+
+1. hPanel → **Websites → Adicionar website → Node.js Apps** → ligar o **GitHub** e escolher
+   este repositório e o ramo a publicar.
+2. **Definições de build** (se a Hostinger detetar `apps/web` como pasta, muda para a raiz):
+
+   | Campo | Valor |
+   |---|---|
+   | Framework | Other (ou Express/Node, se não houver "Other") |
+   | Root directory | `/` (raiz do repositório — **não** `apps/web`) |
+   | Node.js | 24.x (ou 22.x) |
+   | Build script | `build:standalone` |
+   | Output directory | `apps/web/.next/standalone` |
+   | Entry file | `apps/web/.next/standalone/apps/web/server.js` |
+
+3. **Variáveis de ambiente:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+   `SUPABASE_SECRET_KEY` e `HOSTNAME=0.0.0.0`. A Hostinger injeta-as no build e na execução;
+   cada alteração precisa de um novo deploy.
+4. Associa o domínio (ex.: `leads.vndesign.pt`) e confirma que o SSL está ativo.
+5. No Supabase (*Authentication → URL Configuration*): *Site URL* = `https://leads.vndesign.pt`
+   e acrescenta `https://leads.vndesign.pt/auth/callback` aos *Redirect URLs*.
+
+O root directory tem de ser a raiz porque a web usa o pacote interno `packages/core`;
+com `apps/web` sozinho a instalação falha.
+
 ### Coolify (Docker)
 
 O `Dockerfile` na raiz gera uma imagem Node "standalone".
