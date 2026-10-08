@@ -11,6 +11,7 @@ import {
   LEAD_STATUSES,
   MANUAL_ACTIVITY_TYPES,
   MOBILE_STATUSES,
+  TEMPLATE_KINDS,
 } from './enums';
 import { ensureUrlProtocol } from './normalize';
 
@@ -388,8 +389,27 @@ export const WorkspaceSettingsSchema = z
     currency: z.string().default('EUR'),
     follow_up_days: z.int().min(1).max(60).default(3),
     opt_out_line: z.string().default(''),
+    daily_digest: z
+      .object({
+        enabled: z.boolean().default(false),
+        recipient: z.string().nullable().default(null),
+      })
+      .default({ enabled: false, recipient: null }),
   })
   .meta({ id: 'WorkspaceSettings' });
+export type WorkspaceSettings = z.infer<typeof WorkspaceSettingsSchema>;
+
+export const WorkspaceSettingsUpdateSchema = z
+  .object({
+    follow_up_days: z.int({ error: 'Indica um número de dias.' }).min(1, { error: 'Mínimo 1 dia.' }).max(60, { error: 'Máximo 60 dias.' }),
+    opt_out_line: z.string().trim().max(300),
+    daily_digest: z.object({
+      enabled: z.boolean(),
+      recipient: nullableEmail,
+    }),
+  })
+  .partial()
+  .meta({ id: 'WorkspaceSettingsUpdate' });
 
 export const MeSchema = z
   .object({
@@ -462,3 +482,108 @@ export const TodaySchema = z
   })
   .meta({ id: 'Today' });
 export type Today = z.infer<typeof TodaySchema>;
+
+// -----------------------------------------------------------------------------
+// Modelos de contacto, assinatura e follow-up (Fase C)
+// -----------------------------------------------------------------------------
+export const TemplateKindSchema = z.enum(TEMPLATE_KINDS).meta({ id: 'TemplateKind' });
+
+export const ContactTemplateSchema = z
+  .object({
+    id: z.uuid(),
+    kind: TemplateKindSchema,
+    name: z.string(),
+    subject: z.string().nullable(),
+    body: z.string(),
+    sector_id: z.uuid().nullable(),
+    is_default: z.boolean(),
+    sort_order: z.int(),
+    updated_at: z.string(),
+  })
+  .meta({ id: 'ContactTemplate' });
+export type ContactTemplate = z.infer<typeof ContactTemplateSchema>;
+
+const templateFields = {
+  kind: TemplateKindSchema,
+  name: z.string().trim().min(1, { error: 'Indica o nome do modelo.' }).max(120),
+  subject: nullableText(300),
+  body: z.string().max(20_000, { error: 'Texto demasiado longo.' }),
+  sector_id: z.uuid().nullable(),
+  is_default: z.boolean(),
+  sort_order: z.int().min(0).max(9999),
+};
+
+export const ContactTemplateCreateSchema = z
+  .object(templateFields)
+  .partial()
+  .required({ kind: true, name: true, body: true })
+  .meta({ id: 'ContactTemplateCreate' });
+export type ContactTemplateCreateInput = z.input<typeof ContactTemplateCreateSchema>;
+
+export const ContactTemplateUpdateSchema = z.object(templateFields).partial().meta({ id: 'ContactTemplateUpdate' });
+
+export const SignatureSchema = z
+  .object({
+    full_name: z.string(),
+    role_title: z.string().nullable(),
+    company: z.string().nullable(),
+    phone: z.string().nullable(),
+    email: z.string().nullable(),
+    website: z.string().nullable(),
+    portfolio_url: z.string().nullable(),
+    project_links: z.array(z.string()),
+  })
+  .meta({ id: 'Signature' });
+export type Signature = z.infer<typeof SignatureSchema>;
+
+export const SignatureUpdateSchema = z
+  .object({
+    full_name: z.string().trim().min(1, { error: 'Indica o teu nome.' }).max(120),
+    role_title: nullableText(120),
+    company: nullableText(120),
+    phone: nullableText(40),
+    email: nullableEmail,
+    website: nullableUrl,
+    portfolio_url: nullableUrl,
+    project_links: z
+      .array(z.string().trim().max(500))
+      .max(10)
+      .transform((links) => links.filter(Boolean))
+      .pipe(z.array(z.url({ protocol: /^https?$/, error: 'Link inválido.' }))),
+  })
+  .partial()
+  .meta({ id: 'SignatureUpdate' });
+
+export const RenderTemplateRequestSchema = z
+  .object({
+    template_id: z.uuid().optional(),
+    subject: z.string().max(300).optional(),
+    body: z.string().max(20_000).optional(),
+  })
+  .refine((v) => v.template_id || v.body !== undefined, { error: 'Indica template_id ou body.' })
+  .meta({ id: 'RenderTemplateRequest' });
+
+export const RenderedTemplateSchema = z
+  .object({
+    template_id: z.uuid().nullable(),
+    subject: z.string(),
+    body: z.string(),
+    missing: z.array(z.string()),
+    unknown: z.array(z.string()),
+  })
+  .meta({ id: 'RenderedTemplate' });
+export type RenderedTemplate = z.infer<typeof RenderedTemplateSchema>;
+
+export const FollowUpSchema = z
+  .object({
+    action: z.enum(['done', 'snooze']).meta({ description: 'done = follow-up feito; snooze = adiar a próxima ação' }),
+    days: z
+      .int()
+      .min(1)
+      .max(60)
+      .nullish()
+      .meta({ description: 'Dias até à próxima ação (done: agenda nova; snooze: adia). Vazio em "done" = sem próxima ação.' }),
+    note: nullableText(2000).optional(),
+  })
+  .meta({ id: 'FollowUp' });
+export type FollowUpInput = z.infer<typeof FollowUpSchema>;

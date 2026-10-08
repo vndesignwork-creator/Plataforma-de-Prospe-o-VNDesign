@@ -14,6 +14,7 @@ import type { ReactNode } from 'react';
 import { BarList, Dot } from '@/components/charts/bar-list';
 import { ColumnChart } from '@/components/charts/column-chart';
 import { StatTile } from '@/components/charts/stat-tile';
+import { FollowUpActions } from '@/components/follow-up/follow-up-actions';
 import { StatusBadge } from '@/components/leads/badges';
 import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
 import { errorMessage } from '@/lib/api-client';
@@ -31,8 +32,8 @@ function TodayGroup({ title, icon, leads, tone }: { title: string; icon: ReactNo
       </h3>
       <ul className="divide-y divide-border">
         {leads.map((l) => (
-          <li key={l.id}>
-            <Link href={`/leads/${l.id}`} className="flex items-center justify-between gap-3 rounded-md px-2 py-2 hover:bg-surface-2">
+          <li key={l.id} className="flex items-center gap-1">
+            <Link href={`/leads/${l.id}`} className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-md px-2 py-2 hover:bg-surface-2">
               <span className="min-w-0">
                 <span className="block truncate text-sm font-medium">
                   <span className="text-muted tabular">#{l.number}</span> {l.company_name}
@@ -46,6 +47,7 @@ function TodayGroup({ title, icon, leads, tone }: { title: string; icon: ReactNo
                 <StatusBadge status={l.status} />
               </span>
             </Link>
+            <FollowUpActions lead={l} compact />
           </li>
         ))}
       </ul>

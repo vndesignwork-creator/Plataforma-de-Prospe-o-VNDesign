@@ -4,8 +4,9 @@ Plataforma de prospeção de clientes da **VNDesign** (vndesign.pt). Substitui a
 "Leads_Prospeccao_VNDesign": pipeline de leads, deteção de duplicados, linha do tempo,
 dashboard, scripts de contacto e mais. Interface em português europeu (DD/MM/AAAA, €).
 
-> **Estado:** Fases A e B concluídas — leads com deteção de duplicados, Kanban,
-> dashboard e importação/exportação CSV/XLSX. Ver [Plano por fases](#plano-por-fases).
+> **Estado:** Fases A, B e C concluídas — leads com deteção de duplicados, Kanban,
+> dashboard, importação/exportação, scripts de contacto, assinatura e lembretes de
+> follow-up. Ver [Plano por fases](#plano-por-fases).
 
 ## Stack
 
@@ -105,6 +106,48 @@ npm run dev        # http://localhost:3000
 
 Na lista de leads, **Exportar** gera um `.xlsx` ou um `.csv` (separador “;”, para o Excel em
 português) com as mesmas colunas — pode ser reimportado sem mapear nada.
+
+---
+
+## Scripts de contacto e lembretes
+
+- **Scripts** (menu): biblioteca de modelos com variáveis — `{{empresa}}`, `{{contacto}}`,
+  `{{setor}}`, `{{cidade}}`, `{{problema}}`, `{{angulo}}`, `{{website}}`, `{{argumentos}}`,
+  `{{data}}`, `{{hoje}}`, `{{meu_nome}}`, `{{meu_cargo}}`, `{{meu_telefone}}`, `{{meu_email}}`,
+  `{{meu_site}}`, `{{portfolio}}`, `{{projetos}}`, `{{assinatura}}`, `{{opt_out}}`.
+  `{{contacto|equipa}}` usa “equipa” quando o lead não tem contacto.
+- **Ficha do lead → Scripts de contacto:** escolhe o modelo, edita, copia, abre no email,
+  guarda como email de prospeção ou marca como enviado (passa a “Contactado” e agenda o follow-up).
+- **Follow-up:** na ficha e na lista “Hoje” — *Feito* (com ou sem nova data) ou *Adiar*.
+  Os dias até ao follow-up configuram-se em **Definições → Follow-up e lembretes**.
+- **Notificações no browser:** Definições → ativar (uma vez por dia, ao abrir a plataforma).
+- **Resumo diário por email** (opcional): precisa de SMTP e de um cron.
+
+### Configurar o email (resumo diário)
+
+Em `apps/web/.env.local` (ou nas variáveis da Hostinger/Vercel):
+
+```
+SMTP_HOST=smtp.hostinger.com     # email @vndesign.pt da Hostinger
+SMTP_PORT=465
+SMTP_USER=leads@vndesign.pt
+SMTP_PASS=<palavra-passe da caixa de email>
+SMTP_FROM=VNDesign Leads <leads@vndesign.pt>
+APP_URL=https://leads.vndesign.pt
+CRON_SECRET=<um texto aleatório longo>
+```
+
+Em desenvolvimento, o Supabase local inclui o **Mailpit**: usa `SMTP_HOST=127.0.0.1` e
+`SMTP_PORT=54325` e vê os emails em http://127.0.0.1:54324. Testa em **Definições →
+Enviar um resumo de teste agora**.
+
+**Agendar o envio** (todas as manhãs) — chamar `GET /api/v1/cron/daily-digest` com
+`Authorization: Bearer <CRON_SECRET>`:
+
+- **Vercel:** já configurado em `apps/web/vercel.json` (06:45 UTC); define `CRON_SECRET` no projeto.
+- **Hostinger** (hPanel → Avançado → Cron Jobs), comando:
+  `curl -s -H "Authorization: Bearer <CRON_SECRET>" https://leads.vndesign.pt/api/v1/cron/daily-digest`
+- **Coolify:** *Scheduled Tasks* com o mesmo `curl`.
 
 ---
 
@@ -224,6 +267,6 @@ docker run -p 3000:3000 --env-file apps/web/.env.local vndesign-leads
 |---|---|---|
 | A | Projeto, autenticação, modelo de dados + RLS, CRUD de leads, tabela + ficha, duplicados, "não contactar", RGPD | ✅ |
 | B | Kanban, dashboard, importação/exportação CSV/XLSX (com a folha atual) | ✅ |
-| C | Scripts de contacto com variáveis, assinatura, lembretes de follow-up | ⏳ |
+| C | Scripts de contacto com variáveis, assinatura, lembretes de follow-up | ✅ |
 | D | Auditor de sites, API de integração com token, PWA | ⏳ |
 | E | Email com IA, propostas em PDF, mapa | ⏳ |

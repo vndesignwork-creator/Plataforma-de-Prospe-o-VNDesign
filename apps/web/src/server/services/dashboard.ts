@@ -1,4 +1,5 @@
 import { addDays, todayIso, type Dashboard, type Lead, type Today } from '@vndesign/core';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ApiContext } from '../context';
 import { fromPostgrest } from '../http';
 import { LEAD_SELECT } from './leads';
@@ -23,13 +24,13 @@ export async function getDashboard(ctx: ApiContext): Promise<Dashboard> {
   };
 }
 
-/** Lista "Hoje": follow-ups em atraso, para hoje e nos próximos 7 dias. */
-export async function getToday(ctx: ApiContext): Promise<Today> {
+/** Lista "Hoje" para um workspace (aceita o cliente do utilizador ou o de serviço). */
+export async function fetchToday(client: SupabaseClient, workspaceId: string): Promise<Today> {
   const today = todayIso();
-  const { data, error } = await ctx.supabase
+  const { data, error } = await client
     .from('leads')
     .select(LEAD_SELECT)
-    .eq('workspace_id', ctx.workspaceId)
+    .eq('workspace_id', workspaceId)
     .is('anonymized_at', null)
     .not('status', 'in', '(cliente,sem_interesse)')
     .not('next_action_on', 'is', null)
@@ -45,4 +46,9 @@ export async function getToday(ctx: ApiContext): Promise<Today> {
     due_today: leads.filter((l) => l.next_action_on === today),
     upcoming: leads.filter((l) => l.next_action_on! > today),
   };
+}
+
+/** Lista "Hoje": follow-ups em atraso, para hoje e nos próximos 7 dias. */
+export function getToday(ctx: ApiContext): Promise<Today> {
+  return fetchToday(ctx.supabase, ctx.workspaceId);
 }

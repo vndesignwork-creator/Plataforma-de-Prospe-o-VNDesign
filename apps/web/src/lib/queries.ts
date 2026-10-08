@@ -13,6 +13,9 @@ import {
 import type {
   Activity,
   BoardColumn,
+  ContactTemplate,
+  Signature,
+  WorkspaceSettings,
   Dashboard,
   ImportJob,
   Today,
@@ -162,4 +165,34 @@ export function useToday() {
 
 export function useImports() {
   return useQuery({ queryKey: ['imports'], queryFn: () => api<{ data: ImportJob[] }>('/imports').then((r) => r.data) });
+}
+
+// -----------------------------------------------------------------------------
+// Fase C: modelos, assinatura, definições e follow-up
+// -----------------------------------------------------------------------------
+export type SettingsWithMail = WorkspaceSettings & { mail_configured: boolean };
+
+export function useTemplates() {
+  return useQuery({
+    queryKey: ['templates'],
+    queryFn: () => api<{ data: ContactTemplate[] }>('/templates').then((r) => r.data),
+    staleTime: 60_000,
+  });
+}
+
+export function useSignature() {
+  return useQuery({ queryKey: ['signature'], queryFn: () => api<{ data: Signature }>('/signature').then((r) => r.data) });
+}
+
+export function useSettings() {
+  return useQuery({ queryKey: ['settings'], queryFn: () => api<{ data: SettingsWithMail }>('/settings').then((r) => r.data) });
+}
+
+export function useFollowUp(id: string) {
+  const invalidate = useInvalidateLead();
+  return useMutation({
+    mutationFn: (body: { action: 'done' | 'snooze'; days?: number | null; note?: string }) =>
+      api<{ data: Lead }>(`/leads/${id}/follow-up`, { method: 'POST', body }).then((r) => r.data),
+    onSuccess: () => invalidate(id),
+  });
 }

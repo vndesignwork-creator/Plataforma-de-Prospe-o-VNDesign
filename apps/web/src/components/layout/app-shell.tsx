@@ -1,10 +1,11 @@
 'use client';
 
 import * as RadixDialog from '@radix-ui/react-dialog';
-import { BookOpen, Columns3, FileUp, LayoutDashboard, LogOut, Menu, Moon, Plus, Settings, Sun, Users, X } from 'lucide-react';
+import { BookOpen, Columns3, FileUp, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Plus, Settings, Sun, Users, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
+import { FollowUpNotifier } from '@/components/follow-up/follow-up-notifier';
 import { cn } from '@/lib/utils';
 import { Logo } from './logo';
 import { useTheme } from './theme';
@@ -13,6 +14,7 @@ const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, match: (p: string) => p.startsWith('/dashboard') },
   { href: '/leads', label: 'Leads', icon: Users, match: (p: string) => p === '/leads' || /^\/leads\/(?!novo)/.test(p) },
   { href: '/kanban', label: 'Kanban', icon: Columns3, match: (p: string) => p.startsWith('/kanban') },
+  { href: '/scripts', label: 'Scripts', icon: MessageSquareText, match: (p: string) => p.startsWith('/scripts') },
   { href: '/leads/novo', label: 'Novo lead', icon: Plus, match: (p: string) => p === '/leads/novo' },
   { href: '/importar', label: 'Importar', icon: FileUp, match: (p: string) => p.startsWith('/importar') },
   { href: '/definicoes', label: 'Definições', icon: Settings, match: (p: string) => p.startsWith('/definicoes') },
@@ -136,6 +138,7 @@ export function AppShell({ email, children }: { email: string | null; children: 
       <main id="conteudo" className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
         {children}
       </main>
+      <FollowUpNotifier />
     </div>
   );
 }

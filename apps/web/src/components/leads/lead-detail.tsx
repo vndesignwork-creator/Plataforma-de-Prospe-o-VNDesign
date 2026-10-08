@@ -25,6 +25,8 @@ import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useDebouncedValue } from '@/lib/hooks';
 import { useInvalidateLead, useLead, useLeads, useLogActivity, useMe, useUpdateLead } from '@/lib/queries';
 import { cn, displayHost } from '@/lib/utils';
+import { FollowUpActions } from '@/components/follow-up/follow-up-actions';
+import { ContactScriptsCard } from '@/components/scripts/contact-scripts-card';
 import { ActivityTimeline } from './activity-timeline';
 import { ChannelLabel, MobileLabel, PageSpeedScore } from './badges';
 
@@ -193,7 +195,12 @@ export function LeadDetail({ id }: { id: string }) {
       <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
         <div className="flex flex-col gap-5">
           <Card>
-            <CardHeader title="Pipeline" />
+            <CardHeader
+              title="Pipeline"
+              actions={
+                (lead.next_action_on || lead.next_action_text) && !lead.anonymized_at ? <FollowUpActions lead={lead} /> : null
+              }
+            />
             <dl className="grid px-4 py-2 md:grid-cols-2 md:gap-x-6">
               <Row label="Próxima ação">
                 {lead.next_action_text || lead.next_action_on ? (
@@ -269,6 +276,8 @@ export function LeadDetail({ id }: { id: string }) {
               </Row>
             </dl>
           </Card>
+
+          {!lead.anonymized_at ? <ContactScriptsCard lead={lead} /> : null}
 
           <Card>
             <CardHeader

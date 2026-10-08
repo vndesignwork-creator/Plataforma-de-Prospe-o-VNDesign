@@ -79,6 +79,7 @@ export const ACTIVITY_TYPES = [
   'imported',
   'merged',
   'follow_up_scheduled',
+  'follow_up_done',
   'anonymized',
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
@@ -103,13 +104,14 @@ export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
   email_mailto: 'Email aberto no cliente de email',
   email_sent: 'Email enviado',
   call_logged: 'Chamada registada',
-  template_used: 'Modelo usado',
+  template_used: 'Mensagem enviada',
   audit_run: 'Site analisado',
   ai_email_generated: 'Email gerado com IA',
   proposal_generated: 'Proposta gerada',
   imported: 'Importado',
   merged: 'Duplicados juntados',
   follow_up_scheduled: 'Follow-up agendado',
+  follow_up_done: 'Follow-up feito',
   anonymized: 'Dados anonimizados',
 };
 

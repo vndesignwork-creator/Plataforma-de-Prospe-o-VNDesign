@@ -11,6 +11,7 @@ import {
 } from '@vndesign/core';
 import {
   CalendarClock,
+  CheckCircle2,
   Copy,
   Edit3,
   GitMerge,
@@ -43,6 +44,8 @@ const ICONS: Partial<Record<Activity['type'], LucideIcon>> = {
   call_logged: Phone,
   merged: GitMerge,
   follow_up_scheduled: CalendarClock,
+  follow_up_done: CheckCircle2,
+  template_used: MessageSquare,
   anonymized: ShieldOff,
 };
 
@@ -57,7 +60,7 @@ function describe(a: Activity): string | null {
     case 'updated':
       return Array.isArray(p.fields) ? p.fields.map((f) => fieldLabel(String(f))).join(', ') : null;
     case 'follow_up_scheduled':
-      return `${p.text ?? 'Follow-up'} para ${formatDate(String(p.on))}`;
+      return `${p.snoozed ? 'Adiado: ' : ''}${p.text ?? 'Follow-up'} para ${formatDate(String(p.on))}`;
     case 'merged': {
       const numbers = Array.isArray(p.merged_numbers) ? p.merged_numbers : [];
       return numbers.length ? `Juntou ${numbers.map((n) => `#${n}`).join(', ')}` : 'Dados de um novo registo';
@@ -65,7 +68,16 @@ function describe(a: Activity): string | null {
     case 'created':
       return p.source ? `Origem: ${String(p.source)}` : null;
     case 'email_copied':
-      return p.part === 'subject' ? 'Assunto' : p.part === 'body' ? 'Corpo do email' : null;
+      return p.template ? `Modelo: ${String(p.template)}` : p.part === 'subject' ? 'Assunto' : p.part === 'body' ? 'Corpo do email' : null;
+    case 'email_mailto':
+    case 'email_sent':
+    case 'call_logged':
+    case 'template_used':
+      return p.template ? `Modelo: ${String(p.template)}` : null;
+    case 'follow_up_done':
+      return [p.done_text ? `${String(p.done_text)} ✓` : null, p.on ? `Próximo: ${formatDate(String(p.on))}` : 'Sem próxima ação']
+        .filter(Boolean)
+        .join(' · ');
     case 'anonymized':
       return p.added_to_do_not_contact ? 'Acrescentado à lista "não contactar"' : null;
     default:

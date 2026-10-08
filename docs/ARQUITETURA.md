@@ -158,6 +158,27 @@ deteta o cabeçalho, sugere o mapeamento e converte cada linha (testado com o fo
 `find_import_duplicates` e `check_import_do_not_contact` verificam todas as linhas numa só
 chamada; `import_leads` grava tudo numa transação (criar ou juntar preenchendo campos vazios).
 
+### Endpoints da Fase C
+
+| Método | Rota |
+|---|---|
+| GET / POST | `/templates` |
+| GET / PATCH / DELETE | `/templates/{id}` |
+| POST | `/leads/{id}/render-template` (`{ template_id }` ou `{ subject, body }`) |
+| POST | `/leads/{id}/follow-up` (`{ action: done\|snooze, days?, note? }`) |
+| GET / PUT | `/signature` |
+| GET / PATCH | `/settings` (dias de follow-up, opt-out, resumo diário) |
+| POST | `/settings/test-digest` |
+| GET / POST | `/cron/daily-digest` (`Authorization: Bearer CRON_SECRET`) |
+
+**Modelos:** `packages/core/src/templates.ts` (`renderTemplate`, `buildTemplateContext`) é usado
+na pré-visualização no browser e na API — o mesmo resultado nos dois lados. Variáveis vazias
+desaparecem e a pontuação é arrumada (“Olá {{contacto}},” → “Olá,”).
+
+**Follow-up:** `complete_follow_up()` (SQL) regista “Follow-up feito” ou “Adiado” sem gerar também
+um “Lead editado”. O resumo diário usa a chave de serviço só no servidor
+(`digest_recipients()`, acessível apenas a `service_role`).
+
 ### Planeado: `POST /api/v1/leads/import` (Fase D)
 
 Para a tarefa semanal de prospeção com o Claude. Autenticação por token

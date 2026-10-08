@@ -56,6 +56,10 @@ jobs:
             echo "NEXT_PUBLIC_SUPABASE_URL=$URL"
             echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$PUB"
             echo "SUPABASE_SECRET_KEY=$SEC"
+            echo "SMTP_HOST=127.0.0.1"
+            echo "SMTP_PORT=54325"
+            echo "CRON_SECRET=ci-cron-secret"
+            echo "MAILPIT_URL=http://127.0.0.1:54324"
           } > apps/web/.env.local
           echo "SUPABASE_URL=$URL" >> "$GITHUB_ENV"
           echo "SUPABASE_KEY=$PUB" >> "$GITHUB_ENV"

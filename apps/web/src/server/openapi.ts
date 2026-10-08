@@ -5,6 +5,16 @@
  */
 import {
   ActivityCreateSchema,
+  ContactTemplateCreateSchema,
+  ContactTemplateSchema,
+  ContactTemplateUpdateSchema,
+  FollowUpSchema,
+  RenderTemplateRequestSchema,
+  RenderedTemplateSchema,
+  SignatureSchema,
+  SignatureUpdateSchema,
+  WorkspaceSettingsSchema,
+  WorkspaceSettingsUpdateSchema,
   BoardColumnSchema,
   DashboardSchema,
   ImportAnalysisSchema,
@@ -92,6 +102,7 @@ export function getOpenApiDocument() {
       { name: 'Conta' },
       { name: 'Leads' },
       { name: 'Kanban' },
+      { name: 'Scripts e follow-up' },
       { name: 'Dashboard' },
       { name: 'Importação e exportação' },
       { name: 'Atividade' },
@@ -256,6 +267,77 @@ export function getOpenApiDocument() {
           summary: 'Gravar a importação (criar / juntar / ignorar por linha)',
           requestBody: body(ImportCommitSchema),
           responses: { '201': ok(data(ImportJobSchema), 'Importado'), ...common },
+        }),
+      },
+      '/templates': {
+        get: op({ tags: ['Scripts e follow-up'], summary: 'Modelos de contacto', responses: { '200': ok(data(z.array(ContactTemplateSchema))), ...common } }),
+        post: op({
+          tags: ['Scripts e follow-up'],
+          summary: 'Criar modelo',
+          requestBody: body(ContactTemplateCreateSchema),
+          responses: { '201': ok(data(ContactTemplateSchema), 'Criado'), ...common },
+        }),
+      },
+      '/templates/{id}': {
+        get: op({ tags: ['Scripts e follow-up'], summary: 'Modelo', requestParams: { path: idParam }, responses: { '200': ok(data(ContactTemplateSchema)), ...withNotFound } }),
+        patch: op({
+          tags: ['Scripts e follow-up'],
+          summary: 'Editar modelo',
+          requestParams: { path: idParam },
+          requestBody: body(ContactTemplateUpdateSchema),
+          responses: { '200': ok(data(ContactTemplateSchema)), ...withNotFound },
+        }),
+        delete: op({ tags: ['Scripts e follow-up'], summary: 'Apagar modelo', requestParams: { path: idParam }, responses: { '204': { description: 'Apagado' }, ...withNotFound } }),
+      },
+      '/leads/{id}/render-template': {
+        post: op({
+          tags: ['Scripts e follow-up'],
+          summary: 'Preencher um modelo (ou texto) com os dados do lead e a assinatura',
+          requestParams: { path: leadId },
+          requestBody: body(RenderTemplateRequestSchema),
+          responses: { '200': ok(data(RenderedTemplateSchema)), ...withNotFound },
+        }),
+      },
+      '/leads/{id}/follow-up': {
+        post: op({
+          tags: ['Scripts e follow-up'],
+          summary: 'Follow-up feito (com nova data opcional) ou adiar',
+          requestParams: { path: leadId },
+          requestBody: body(FollowUpSchema),
+          responses: { '200': ok(data(LeadSchema)), ...withNotFound },
+        }),
+      },
+      '/signature': {
+        get: op({ tags: ['Conta'], summary: 'Assinatura do utilizador', responses: { '200': ok(data(SignatureSchema)), ...common } }),
+        put: op({ tags: ['Conta'], summary: 'Atualizar assinatura', requestBody: body(SignatureUpdateSchema), responses: { '200': ok(data(SignatureSchema)), ...common } }),
+      },
+      '/settings': {
+        get: op({
+          tags: ['Conta'],
+          summary: 'Definições do workspace (+ mail_configured)',
+          responses: { '200': ok(data(WorkspaceSettingsSchema.extend({ mail_configured: z.boolean() }))), ...common },
+        }),
+        patch: op({
+          tags: ['Conta'],
+          summary: 'Atualizar definições (dono/admin)',
+          requestBody: body(WorkspaceSettingsUpdateSchema),
+          responses: { '200': ok(data(WorkspaceSettingsSchema.extend({ mail_configured: z.boolean() }))), ...common, '403': problem('Sem permissão') },
+        }),
+      },
+      '/settings/test-digest': {
+        post: op({
+          tags: ['Conta'],
+          summary: 'Enviar já um resumo diário de teste',
+          responses: { '200': ok(data(z.object({ sent_to: z.string(), subject: z.string() }))), ...common, '422': problem('Email por configurar') },
+        }),
+      },
+      '/cron/daily-digest': {
+        get: op({
+          tags: ['Scripts e follow-up'],
+          summary: 'Enviar o resumo diário (cron). Authorization: Bearer CRON_SECRET',
+          security: [],
+          requestParams: { query: z.object({ dry_run: z.enum(['true', 'false']).optional() }) },
+          responses: { '200': ok(z.object({ data: z.array(z.record(z.string(), z.unknown())) })), '401': problem('CRON_SECRET inválido') },
         }),
       },
       '/leads/{id}/merge': {

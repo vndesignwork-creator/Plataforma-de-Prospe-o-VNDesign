@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 // Lê E2E_* de apps/web/.env.local (se existir) para não ter de as exportar à mão.
 if (existsSync('apps/web/.env.local')) {
   for (const line of readFileSync('apps/web/.env.local', 'utf8').split(/\r?\n/)) {
-    const m = line.match(/^\s*(E2E_[A-Z_]+)\s*=\s*(.*)\s*$/);
+    const m = line.match(/^\s*(E2E_[A-Z_]+|MAILPIT_URL|CRON_SECRET)\s*=\s*(.*)\s*$/);
     if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
   }
 }
