@@ -12,6 +12,10 @@ import {
 } from '@tanstack/react-query';
 import type {
   Activity,
+  BoardColumn,
+  Dashboard,
+  ImportJob,
+  Today,
   DoNotContact,
   DuplicateCheckResult,
   Lead,
@@ -89,6 +93,9 @@ export function useInvalidateLead() {
   return (id?: string) => {
     void qc.invalidateQueries({ queryKey: ['leads'] });
     void qc.invalidateQueries({ queryKey: ['sectors'] });
+    void qc.invalidateQueries({ queryKey: ['board'] });
+    void qc.invalidateQueries({ queryKey: ['dashboard'] });
+    void qc.invalidateQueries({ queryKey: ['today'] });
     if (id) {
       void qc.invalidateQueries({ queryKey: qk.lead(id) });
       void qc.invalidateQueries({ queryKey: qk.activities(id) });
@@ -132,4 +139,27 @@ export function useSetPreference<T>(key: string) {
     mutationFn: (value: T) => api(`/preferences/${key}`, { method: 'PUT', body: { value } }),
     onMutate: (value) => qc.setQueryData(qk.pref(key), value),
   });
+}
+
+// -----------------------------------------------------------------------------
+// Fase B: Kanban, dashboard e importação
+// -----------------------------------------------------------------------------
+export function useBoard(query: Record<string, string | string[] | undefined>) {
+  return useQuery<BoardColumn[]>({
+    queryKey: ['board', query],
+    queryFn: ({ signal }) => api<{ data: BoardColumn[] }>('/board', { query, signal }).then((r) => r.data),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useDashboard() {
+  return useQuery({ queryKey: ['dashboard'], queryFn: () => api<{ data: Dashboard }>('/dashboard').then((r) => r.data) });
+}
+
+export function useToday() {
+  return useQuery({ queryKey: ['today'], queryFn: () => api<{ data: Today }>('/dashboard/today').then((r) => r.data) });
+}
+
+export function useImports() {
+  return useQuery({ queryKey: ['imports'], queryFn: () => api<{ data: ImportJob[] }>('/imports').then((r) => r.data) });
 }

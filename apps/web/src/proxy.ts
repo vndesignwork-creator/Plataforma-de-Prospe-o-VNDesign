@@ -44,7 +44,7 @@ export async function proxy(request: NextRequest) {
   }
   if (user && pathname === '/login') {
     const url = request.nextUrl.clone();
-    url.pathname = '/leads';
+    url.pathname = '/dashboard';
     url.search = '';
     return NextResponse.redirect(url);
   }

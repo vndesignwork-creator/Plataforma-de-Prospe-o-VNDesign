@@ -4,8 +4,8 @@ Plataforma de prospeção de clientes da **VNDesign** (vndesign.pt). Substitui a
 "Leads_Prospeccao_VNDesign": pipeline de leads, deteção de duplicados, linha do tempo,
 dashboard, scripts de contacto e mais. Interface em português europeu (DD/MM/AAAA, €).
 
-> **Estado:** Fase A concluída (projeto, autenticação, modelo de dados, CRUD de leads,
-> tabela + ficha, deteção de duplicados). Ver [Plano por fases](#plano-por-fases).
+> **Estado:** Fases A e B concluídas — leads com deteção de duplicados, Kanban,
+> dashboard e importação/exportação CSV/XLSX. Ver [Plano por fases](#plano-por-fases).
 
 ## Stack
 
@@ -90,6 +90,21 @@ os modelos de contacto e as ferramentas da folha.
 ```powershell
 npm run dev        # http://localhost:3000
 ```
+
+---
+
+## Importar a folha atual
+
+1. No Google Sheets (“Leads_Prospeccao_VNDesign”): **Ficheiro → Transferir → Microsoft Excel (.xlsx)**.
+2. Na plataforma: **Importar** → escolhe o ficheiro. A folha “🎯 Pipeline de Leads”, o cabeçalho
+   (linha 2) e as colunas são detetados automaticamente; valores como “🔍 Identificado”,
+   “✅ Sim”, “--”, “08/10/2026” ou “1.250,00 €” são convertidos.
+3. Revê: linhas repetidas no ficheiro, leads que já existem (podes **juntar** — só preenche
+   campos vazios — ou ignorar) e empresas na lista “não contactar” (bloqueadas).
+4. Confirma. O “#” da folha é mantido quando está livre e fica um relatório em “Importações anteriores”.
+
+Na lista de leads, **Exportar** gera um `.xlsx` ou um `.csv` (separador “;”, para o Excel em
+português) com as mesmas colunas — pode ser reimportado sem mapear nada.
 
 ---
 
@@ -208,7 +223,7 @@ docker run -p 3000:3000 --env-file apps/web/.env.local vndesign-leads
 | Fase | Conteúdo | Estado |
 |---|---|---|
 | A | Projeto, autenticação, modelo de dados + RLS, CRUD de leads, tabela + ficha, duplicados, "não contactar", RGPD | ✅ |
-| B | Kanban, dashboard, importação/exportação CSV/XLSX (com a folha atual) | ⏳ |
+| B | Kanban, dashboard, importação/exportação CSV/XLSX (com a folha atual) | ✅ |
 | C | Scripts de contacto com variáveis, assinatura, lembretes de follow-up | ⏳ |
 | D | Auditor de sites, API de integração com token, PWA | ⏳ |
 | E | Email com IA, propostas em PDF, mapa | ⏳ |

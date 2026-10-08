@@ -18,7 +18,7 @@ import {
   type Lead,
   type LeadSortField,
 } from '@vndesign/core';
-import { ArrowDown, ArrowUp, ArrowUpDown, Columns3, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Columns3, Download, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -34,7 +34,7 @@ import {
   DropdownTrigger,
 } from '@/components/ui/dropdown';
 import { Input, Select } from '@/components/ui/input';
-import { errorMessage } from '@/lib/api-client';
+import { errorMessage, toQueryString } from '@/lib/api-client';
 import { useDebouncedValue } from '@/lib/hooks';
 import { usePreference, useLeads, useSectors, useSetPreference } from '@/lib/queries';
 import { cn, displayHost } from '@/lib/utils';
@@ -272,6 +272,16 @@ export function LeadsTable() {
     else setParams({ sort: field, order: field === 'company_name' || field === 'city' ? 'asc' : 'desc' });
   }
 
+  /** Descarrega o ficheiro com os filtros atuais (a API devolve-o como anexo). */
+  function download(format: 'csv' | 'xlsx') {
+    const a = document.createElement('a');
+    a.href = `/api/v1/leads/export${toQueryString({ ...query, page: undefined, limit: undefined, format })}`;
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
   function clearFilters() {
     setSearch('');
     setCity('');
@@ -333,6 +343,17 @@ export function LeadsTable() {
             <DropdownSeparator />
             <DropdownItem onSelect={() => saveTablePref.mutate({ hidden: DEFAULT_HIDDEN })}>Repor colunas</DropdownItem>
             <DropdownItem onSelect={() => saveTablePref.mutate({ hidden: [] })}>Mostrar todas</DropdownItem>
+          </DropdownContent>
+        </DropdownRoot>
+        <DropdownRoot>
+          <DropdownTrigger className={buttonClasses('outline', 'md')} aria-label="Exportar leads">
+            <Download className="h-4 w-4" aria-hidden />
+            <span className="hidden sm:inline">Exportar</span>
+          </DropdownTrigger>
+          <DropdownContent>
+            <DropdownLabel>{activeFilters ? 'Exportar leads filtrados' : 'Exportar todos os leads'}</DropdownLabel>
+            <DropdownItem onSelect={() => download('xlsx')}>Excel (.xlsx)</DropdownItem>
+            <DropdownItem onSelect={() => download('csv')}>CSV (Excel em português)</DropdownItem>
           </DropdownContent>
         </DropdownRoot>
         <Link href="/leads/novo" className={buttonClasses('primary')}>

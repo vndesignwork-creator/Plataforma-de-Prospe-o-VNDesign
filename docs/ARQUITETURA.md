@@ -133,6 +133,31 @@ aplica os dados de um registo novo a um lead existente.
 | GET / PUT | `/preferences/{key}` |
 | GET | `/openapi.json` (documentação em `/docs/api`) |
 
+### Endpoints da Fase B
+
+| Método | Rota |
+|---|---|
+| GET | `/board` (colunas do Kanban; aceita os filtros de `/leads`) |
+| POST | `/leads/{id}/move` (`{ status, position }`) |
+| GET | `/dashboard` (resumo, por setor/estado/canal, funil, semanas) |
+| GET | `/dashboard/today` (em atraso, hoje e próximos 7 dias) |
+| GET | `/leads/export?format=csv\|xlsx` (+ filtros) |
+| POST | `/imports/analyze` (multipart: `file`, `sheet`) |
+| POST | `/imports/preview` (`{ rows, mapping }`) |
+| GET / POST | `/imports` (histórico / gravar `{ items: [{ action: create\|merge\|skip }] }`) |
+
+**Kanban:** `kanban_position` (double) — menor = mais acima; o cliente calcula a posição entre
+os vizinhos. Novos leads e mudanças de estado sem posição vão para o topo (trigger).
+
+**Dashboard** (`dashboard_summary`): ativos = Identificado…Proposta enviada; conversão =
+clientes ÷ total e clientes ÷ contactados; o funil usa a etapa mais alta alguma vez atingida
+(histórico `status_changed`); a evolução semanal usa “Sugerido em” (ou a data de criação).
+
+**Importação:** o ficheiro é lido no servidor (exceljs/papaparse); `packages/core/src/import.ts`
+deteta o cabeçalho, sugere o mapeamento e converte cada linha (testado com o formato da folha).
+`find_import_duplicates` e `check_import_do_not_contact` verificam todas as linhas numa só
+chamada; `import_leads` grava tudo numa transação (criar ou juntar preenchendo campos vazios).
+
 ### Planeado: `POST /api/v1/leads/import` (Fase D)
 
 Para a tarefa semanal de prospeção com o Claude. Autenticação por token

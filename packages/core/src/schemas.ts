@@ -173,6 +173,7 @@ export type Lead = z.infer<typeof LeadSchema>;
 
 export const LEAD_SORT_FIELDS = [
   'number',
+  'kanban_position',
   'company_name',
   'city',
   'status',
@@ -398,3 +399,66 @@ export const MeSchema = z
   })
   .meta({ id: 'Me' });
 export type Me = z.infer<typeof MeSchema>;
+
+// -----------------------------------------------------------------------------
+// Kanban
+// -----------------------------------------------------------------------------
+export const LeadMoveSchema = z
+  .object({
+    status: LeadStatusSchema,
+    position: z
+      .number()
+      .finite()
+      .meta({ description: 'Posição na coluna (menor = mais acima). Calcula-se a partir dos vizinhos.' }),
+  })
+  .meta({ id: 'LeadMove' });
+export type LeadMove = z.infer<typeof LeadMoveSchema>;
+
+export const BoardColumnSchema = z
+  .object({
+    status: LeadStatusSchema,
+    total: z.int(),
+    value: z.number(),
+    leads: z.array(LeadSchema),
+  })
+  .meta({ id: 'BoardColumn' });
+export type BoardColumn = z.infer<typeof BoardColumnSchema>;
+
+// -----------------------------------------------------------------------------
+// Dashboard
+// -----------------------------------------------------------------------------
+export const DashboardSchema = z
+  .object({
+    totals: z.object({
+      total: z.int(),
+      active: z.int().meta({ description: 'Identificado + Contactado + Respondeu + Reunião + Proposta enviada' }),
+      won: z.int(),
+      lost: z.int(),
+      paused: z.int(),
+      contacted: z.int().meta({ description: 'Leads que já saíram de "Identificado"' }),
+      conversion_rate: z.number().meta({ description: 'Clientes ÷ total' }),
+      conversion_rate_contacted: z.number().meta({ description: 'Clientes ÷ contactados' }),
+      value_total: z.number(),
+      value_won: z.number(),
+      value_pipeline: z.number(),
+    }),
+    by_sector: z.array(
+      z.object({ id: z.uuid().nullable(), name: z.string(), emoji: z.string().nullable(), count: z.int(), value: z.number() }),
+    ),
+    by_status: z.array(z.object({ status: LeadStatusSchema, count: z.int() })),
+    by_channel: z.array(z.object({ channel: LeadChannelSchema.nullable(), count: z.int() })),
+    funnel: z.array(z.object({ stage: LeadStatusSchema, count: z.int() })),
+    weekly: z.array(z.object({ week_start: z.string(), count: z.int() })),
+  })
+  .meta({ id: 'Dashboard' });
+export type Dashboard = z.infer<typeof DashboardSchema>;
+
+export const TodaySchema = z
+  .object({
+    today: z.string(),
+    overdue: z.array(LeadSchema),
+    due_today: z.array(LeadSchema),
+    upcoming: z.array(LeadSchema).meta({ description: 'Próximos 7 dias' }),
+  })
+  .meta({ id: 'Today' });
+export type Today = z.infer<typeof TodaySchema>;

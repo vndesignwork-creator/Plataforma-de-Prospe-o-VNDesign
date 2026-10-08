@@ -9,6 +9,6 @@ setup('iniciar sessão', async ({ page }) => {
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Palavra-passe').fill(password);
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await expect(page.getByRole('heading', { name: 'Pipeline de leads' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
   await page.context().storageState({ path: 'e2e/.auth/user.json' });
 });

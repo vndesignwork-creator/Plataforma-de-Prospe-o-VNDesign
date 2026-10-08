@@ -1,7 +1,7 @@
 'use client';
 
 import * as RadixDialog from '@radix-ui/react-dialog';
-import { BookOpen, LogOut, Menu, Moon, Plus, Settings, Sun, Users, X } from 'lucide-react';
+import { BookOpen, Columns3, FileUp, LayoutDashboard, LogOut, Menu, Moon, Plus, Settings, Sun, Users, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
@@ -10,8 +10,11 @@ import { Logo } from './logo';
 import { useTheme } from './theme';
 
 const NAV = [
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, match: (p: string) => p.startsWith('/dashboard') },
   { href: '/leads', label: 'Leads', icon: Users, match: (p: string) => p === '/leads' || /^\/leads\/(?!novo)/.test(p) },
+  { href: '/kanban', label: 'Kanban', icon: Columns3, match: (p: string) => p.startsWith('/kanban') },
   { href: '/leads/novo', label: 'Novo lead', icon: Plus, match: (p: string) => p === '/leads/novo' },
+  { href: '/importar', label: 'Importar', icon: FileUp, match: (p: string) => p.startsWith('/importar') },
   { href: '/definicoes', label: 'Definições', icon: Settings, match: (p: string) => p.startsWith('/definicoes') },
 ];
 
@@ -93,7 +96,7 @@ export function AppShell({ email, children }: { email: string | null; children: 
 
       {/* Barra lateral (computador) */}
       <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r border-border bg-surface px-3 py-5 lg:flex">
-        <Link href="/leads" className="px-3">
+        <Link href="/dashboard" className="px-3">
           <Logo />
         </Link>
         <nav aria-label="Principal" className="flex-1">
@@ -104,7 +107,7 @@ export function AppShell({ email, children }: { email: string | null; children: 
 
       {/* Barra superior (telemóvel/tablet) */}
       <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-surface/95 px-4 backdrop-blur lg:hidden">
-        <Link href="/leads">
+        <Link href="/dashboard">
           <Logo />
         </Link>
         <RadixDialog.Root open={open} onOpenChange={setOpen}>

@@ -44,7 +44,7 @@ export function LoginForm() {
       return;
     }
     const next = params.get('next');
-    router.replace(next && next.startsWith('/') && !next.startsWith('//') ? next : '/leads');
+    router.replace(next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard');
     router.refresh();
   });
 

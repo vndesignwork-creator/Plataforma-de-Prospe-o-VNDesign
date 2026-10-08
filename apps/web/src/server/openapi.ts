@@ -5,6 +5,15 @@
  */
 import {
   ActivityCreateSchema,
+  BoardColumnSchema,
+  DashboardSchema,
+  ImportAnalysisSchema,
+  ImportCommitSchema,
+  ImportJobSchema,
+  ImportPreviewRequestSchema,
+  ImportPreviewSchema,
+  LeadMoveSchema,
+  TodaySchema,
   ActivitySchema,
   DoNotContactCreateSchema,
   DoNotContactSchema,
@@ -82,6 +91,9 @@ export function getOpenApiDocument() {
     tags: [
       { name: 'Conta' },
       { name: 'Leads' },
+      { name: 'Kanban' },
+      { name: 'Dashboard' },
+      { name: 'Importação e exportação' },
       { name: 'Atividade' },
       { name: 'Setores' },
       { name: 'Não contactar' },
@@ -158,6 +170,92 @@ export function getOpenApiDocument() {
             }),
           },
           responses: { '204': { description: 'Apagado' }, ...withNotFound },
+        }),
+      },
+      '/leads/{id}/move': {
+        post: op({
+          tags: ['Kanban'],
+          summary: 'Mover no Kanban (estado e posição)',
+          requestParams: { path: leadId },
+          requestBody: body(LeadMoveSchema),
+          responses: { '200': ok(data(LeadSchema)), ...withNotFound },
+        }),
+      },
+      '/board': {
+        get: op({
+          tags: ['Kanban'],
+          summary: 'Colunas do Kanban (aceita os filtros de /leads)',
+          requestParams: { query: LeadListQuerySchema },
+          responses: { '200': ok(data(z.array(BoardColumnSchema))), ...common },
+        }),
+      },
+      '/dashboard': {
+        get: op({
+          tags: ['Dashboard'],
+          summary: 'Resumo, contagens por setor/estado/canal, funil e evolução semanal',
+          responses: { '200': ok(data(DashboardSchema)), ...common },
+        }),
+      },
+      '/dashboard/today': {
+        get: op({
+          tags: ['Dashboard'],
+          summary: 'Follow-ups em atraso, para hoje e próximos 7 dias',
+          responses: { '200': ok(data(TodaySchema)), ...common },
+        }),
+      },
+      '/leads/export': {
+        get: op({
+          tags: ['Importação e exportação'],
+          summary: 'Exportar leads (CSV para Excel pt-PT ou XLSX); aceita os filtros de /leads',
+          requestParams: { query: z.object({ format: z.enum(['csv', 'xlsx']).default('xlsx') }) },
+          responses: {
+            '200': {
+              description: 'Ficheiro',
+              content: {
+                'text/csv': { schema: z.string() },
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: z.string() },
+              },
+            },
+            ...common,
+          },
+        }),
+      },
+      '/imports/analyze': {
+        post: op({
+          tags: ['Importação e exportação'],
+          summary: 'Ler um ficheiro CSV/XLSX: cabeçalho, linhas e mapeamento sugerido',
+          requestBody: {
+            content: {
+              'multipart/form-data': {
+                schema: z.object({
+                  file: z.string().meta({ format: 'binary' }),
+                  sheet: z.string().optional().meta({ description: 'Nome da folha (XLSX)' }),
+                }),
+              },
+            },
+          },
+          responses: { '200': ok(data(ImportAnalysisSchema)), ...common, '413': problem('Ficheiro demasiado grande'), '415': problem('Formato não suportado') },
+        }),
+      },
+      '/imports/preview': {
+        post: op({
+          tags: ['Importação e exportação'],
+          summary: 'Validar linhas e detetar duplicados (não grava)',
+          requestBody: body(ImportPreviewRequestSchema),
+          responses: { '200': ok(data(ImportPreviewSchema)), ...common },
+        }),
+      },
+      '/imports': {
+        get: op({
+          tags: ['Importação e exportação'],
+          summary: 'Histórico de importações',
+          responses: { '200': ok(data(z.array(ImportJobSchema))), ...common },
+        }),
+        post: op({
+          tags: ['Importação e exportação'],
+          summary: 'Gravar a importação (criar / juntar / ignorar por linha)',
+          requestBody: body(ImportCommitSchema),
+          responses: { '201': ok(data(ImportJobSchema), 'Importado'), ...common },
         }),
       },
       '/leads/{id}/merge': {

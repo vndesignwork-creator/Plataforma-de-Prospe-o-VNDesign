@@ -35,12 +35,20 @@ function likeEscape(value: string): string {
   return value.replace(/[\\%_]/g, (c) => `\\${c}`);
 }
 
-export async function listLeads(ctx: ApiContext, query: LeadListQuery) {
-  let q = ctx.supabase
+function baseLeadQuery(ctx: ApiContext) {
+  return ctx.supabase
     .from('leads')
     .select(LEAD_SELECT, { count: 'exact' })
     .eq('workspace_id', ctx.workspaceId);
+}
+type LeadQueryBuilder = ReturnType<typeof baseLeadQuery>;
 
+/** Filtros comuns à lista, ao Kanban e à exportação. */
+export type LeadFilters = Partial<
+  Pick<LeadListQuery, 'q' | 'sector' | 'status' | 'channel' | 'city' | 'suggested_from' | 'suggested_to' | 'due' | 'include_anonymized'>
+>;
+
+function applyLeadFilters(q: LeadQueryBuilder, query: LeadFilters): LeadQueryBuilder {
   if (query.include_anonymized !== 'true') q = q.is('anonymized_at', null);
 
   if (query.q) {
@@ -74,6 +82,11 @@ export async function listLeads(ctx: ApiContext, query: LeadListQuery) {
     if (query.due === 'today') q = q.eq('next_action_on', today);
     if (query.due === 'week') q = q.gte('next_action_on', today).lte('next_action_on', addDays(today, 7));
   }
+  return q;
+}
+
+export async function listLeads(ctx: ApiContext, query: LeadListQuery) {
+  let q = applyLeadFilters(baseLeadQuery(ctx), query);
 
   const ascending = query.order === 'asc';
   q = q.order(query.sort, { ascending, nullsFirst: false });
@@ -233,4 +246,40 @@ export async function mergeLeads(
   });
   if (error) throw fromPostgrest(error, NOT_FOUND);
   return getLead(ctx, primaryId);
+}
+
+/** Todos os leads que respeitam os filtros (em blocos de 1000), para exportar. */
+export async function listAllLeads(
+  ctx: ApiContext,
+  filters: LeadFilters,
+  order: { sort: string; ascending: boolean } = { sort: 'number', ascending: true },
+): Promise<Lead[]> {
+  const all: Lead[] = [];
+  const pageSize = 1000;
+  for (let from = 0; from < 50_000; from += pageSize) {
+    const { data, error } = await applyLeadFilters(baseLeadQuery(ctx), filters)
+      .order(order.sort, { ascending: order.ascending, nullsFirst: false })
+      .order('id')
+      .range(from, from + pageSize - 1);
+    if (error) throw fromPostgrest(error);
+    all.push(...((data ?? []) as unknown as Lead[]));
+    if (!data || data.length < pageSize) break;
+  }
+  return all;
+}
+
+/** Kanban: muda de coluna (estado) e/ou de posição. As regras de estado aplicam-se. */
+export async function moveLead(
+  ctx: ApiContext,
+  id: string,
+  move: { status: Lead['status']; position: number },
+): Promise<Lead> {
+  const result = await ctx.supabase
+    .from('leads')
+    .update({ status: move.status, kanban_position: move.position })
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('id', id)
+    .select(LEAD_SELECT)
+    .maybeSingle();
+  return unwrap(result, NOT_FOUND) as unknown as Lead;
 }
