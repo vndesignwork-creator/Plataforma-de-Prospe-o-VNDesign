@@ -1,0 +1,236 @@
+/**
+ * Serviço de leads — usado pelos route handlers da API (e, mais tarde, pela
+ * importação e pela API de integração). Toda a lógica de duplicados e da lista
+ * "não contactar" vive aqui e nas funções SQL.
+ */
+import {
+  addDays,
+  normalizeText,
+  todayIso,
+  type DoNotContact,
+  type DuplicateCheckResult,
+  type DuplicateMatch,
+  type Lead,
+  type LeadCreate,
+  type LeadListQuery,
+  type LeadUpdate,
+} from '@vndesign/core';
+import type { ApiContext } from '../context';
+import { ApiError, fromPostgrest, unwrap } from '../http';
+
+export const LEAD_SELECT = [
+  'id', 'number', 'company_name', 'sector_id', 'sector:sectors(id, name, slug, emoji)',
+  'website', 'city', 'address', 'latitude', 'longitude', 'problems', 'pagespeed', 'mobile',
+  'email', 'phone', 'contact_name', 'status', 'channel', 'first_contact_on', 'last_follow_up_on',
+  'next_action_text', 'next_action_on', 'estimated_value', 'notes', 'approach_angle', 'source_url',
+  'suggested_on', 'email_subject', 'email_body', 'kanban_position', 'status_changed_at',
+  'anonymized_at', 'created_by', 'created_at', 'updated_at',
+].join(', ');
+
+const NOT_FOUND = 'Lead não encontrado';
+const CLOSED_STATUSES = '(cliente,sem_interesse)';
+
+/** Escapa os caracteres especiais do LIKE. */
+function likeEscape(value: string): string {
+  return value.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
+export async function listLeads(ctx: ApiContext, query: LeadListQuery) {
+  let q = ctx.supabase
+    .from('leads')
+    .select(LEAD_SELECT, { count: 'exact' })
+    .eq('workspace_id', ctx.workspaceId);
+
+  if (query.include_anonymized !== 'true') q = q.is('anonymized_at', null);
+
+  if (query.q) {
+    const term = normalizeText(query.q);
+    if (term) q = q.ilike('search_text', `%${likeEscape(term)}%`);
+  }
+  if (query.sector?.length) {
+    const ids = query.sector.filter((s) => s !== 'none');
+    const parts = [
+      ...(ids.length ? [`sector_id.in.(${ids.join(',')})`] : []),
+      ...(query.sector.includes('none') ? ['sector_id.is.null'] : []),
+    ];
+    q = q.or(parts.join(','));
+  }
+  if (query.status?.length) q = q.in('status', query.status);
+  if (query.channel?.length) {
+    const channels = query.channel.filter((c) => c !== 'none');
+    const parts = [
+      ...(channels.length ? [`channel.in.(${channels.join(',')})`] : []),
+      ...(query.channel.includes('none') ? ['channel.is.null'] : []),
+    ];
+    q = q.or(parts.join(','));
+  }
+  if (query.city) q = q.ilike('city', `%${likeEscape(query.city)}%`);
+  if (query.suggested_from) q = q.gte('suggested_on', query.suggested_from);
+  if (query.suggested_to) q = q.lte('suggested_on', query.suggested_to);
+  if (query.due) {
+    const today = todayIso();
+    q = q.not('status', 'in', CLOSED_STATUSES).not('next_action_on', 'is', null);
+    if (query.due === 'overdue') q = q.lt('next_action_on', today);
+    if (query.due === 'today') q = q.eq('next_action_on', today);
+    if (query.due === 'week') q = q.gte('next_action_on', today).lte('next_action_on', addDays(today, 7));
+  }
+
+  const ascending = query.order === 'asc';
+  q = q.order(query.sort, { ascending, nullsFirst: false });
+  if (query.sort !== 'number') q = q.order('number', { ascending: false });
+
+  const from = (query.page - 1) * query.limit;
+  const { data, error, count } = await q.range(from, from + query.limit - 1);
+  if (error) {
+    // Página para lá do fim → lista vazia (em vez de erro 416).
+    if (error.code === 'PGRST103') return { data: [] as Lead[], total: count ?? 0 };
+    throw fromPostgrest(error);
+  }
+  return { data: (data ?? []) as unknown as Lead[], total: count ?? 0 };
+}
+
+export async function getLead(ctx: ApiContext, id: string): Promise<Lead> {
+  const result = await ctx.supabase
+    .from('leads')
+    .select(LEAD_SELECT)
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('id', id)
+    .maybeSingle();
+  return unwrap(result, NOT_FOUND) as unknown as Lead;
+}
+
+export async function checkDuplicates(
+  ctx: ApiContext,
+  input: { company_name?: string | null; website?: string | null; email?: string | null; exclude_id?: string | null },
+): Promise<DuplicateCheckResult> {
+  const args = {
+    p_workspace_id: ctx.workspaceId,
+    p_company_name: input.company_name ?? null,
+    p_website: input.website ?? null,
+    p_email: input.email ?? null,
+  };
+  const [dups, dnc] = await Promise.all([
+    ctx.supabase.rpc('find_lead_duplicates', { ...args, p_exclude_id: input.exclude_id ?? null }),
+    ctx.supabase.rpc('check_do_not_contact', args),
+  ]);
+  if (dups.error) throw fromPostgrest(dups.error);
+  if (dnc.error) throw fromPostgrest(dnc.error);
+  return {
+    duplicates: (dups.data ?? []) as DuplicateMatch[],
+    do_not_contact: ((dnc.data ?? []) as DoNotContact[]).map(pickDoNotContact),
+  };
+}
+
+export function pickDoNotContact(d: DoNotContact): DoNotContact {
+  return {
+    id: d.id,
+    company_name: d.company_name,
+    website: d.website,
+    email: d.email,
+    reason: d.reason,
+    created_at: d.created_at,
+  };
+}
+
+export async function createLead(
+  ctx: ApiContext,
+  input: LeadCreate,
+  options: { force?: boolean } = {},
+): Promise<Lead> {
+  const check = await checkDuplicates(ctx, input);
+
+  // A lista "não contactar" bloqueia sempre (não há "criar mesmo assim").
+  if (check.do_not_contact.length) {
+    throw new ApiError(
+      422,
+      'Empresa na lista "não contactar"',
+      'Esta empresa pediu para não ser contactada. Remove-a da lista nas Definições se tiveres a certeza.',
+      { do_not_contact: check.do_not_contact },
+    );
+  }
+  // Só os duplicados "fortes" (mesmo nome normalizado, website ou email) bloqueiam;
+  // nomes apenas parecidos aparecem como aviso no formulário.
+  const strong = check.duplicates.filter((d) => d.strength === 'strong');
+  if (!options.force && strong.length) {
+    throw new ApiError(
+      409,
+      'Possível duplicado',
+      'Já existe um lead com o mesmo nome, website ou email. Junta-os ou cria mesmo assim com force=true.',
+      { duplicates: check.duplicates },
+    );
+  }
+
+  const result = await ctx.supabase
+    .from('leads')
+    .insert({ ...input, workspace_id: ctx.workspaceId, created_by: ctx.user.id })
+    .select(LEAD_SELECT)
+    .single();
+  return unwrap(result) as unknown as Lead;
+}
+
+export async function updateLead(ctx: ApiContext, id: string, patch: LeadUpdate): Promise<Lead> {
+  if (Object.keys(patch).length === 0) return getLead(ctx, id);
+  const result = await ctx.supabase
+    .from('leads')
+    .update(patch)
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('id', id)
+    .select(LEAD_SELECT)
+    .maybeSingle();
+  return unwrap(result, NOT_FOUND) as unknown as Lead;
+}
+
+export async function deleteLead(
+  ctx: ApiContext,
+  id: string,
+  options: { addToDoNotContact?: boolean; reason?: string | null } = {},
+): Promise<void> {
+  const lead = await getLead(ctx, id);
+  if (options.addToDoNotContact) {
+    const insert = await ctx.supabase.from('do_not_contact').insert({
+      workspace_id: ctx.workspaceId,
+      company_name: lead.company_name,
+      website: lead.website,
+      email: lead.email,
+      reason: options.reason ?? 'Pedido de remoção (RGPD)',
+      created_by: ctx.user.id,
+    });
+    if (insert.error) throw fromPostgrest(insert.error);
+  }
+  const { error } = await ctx.supabase
+    .from('leads')
+    .delete()
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('id', id);
+  if (error) throw fromPostgrest(error, NOT_FOUND);
+}
+
+export async function anonymizeLead(
+  ctx: ApiContext,
+  id: string,
+  options: { add_to_do_not_contact: boolean; reason?: string | null },
+): Promise<Lead> {
+  await getLead(ctx, id);
+  const { error } = await ctx.supabase.rpc('anonymize_lead', {
+    p_lead_id: id,
+    p_add_to_do_not_contact: options.add_to_do_not_contact,
+    p_reason: options.reason ?? null,
+  });
+  if (error) throw fromPostgrest(error, NOT_FOUND);
+  return getLead(ctx, id);
+}
+
+export async function mergeLeads(
+  ctx: ApiContext,
+  primaryId: string,
+  input: { duplicate_ids: string[]; values: LeadUpdate },
+): Promise<Lead> {
+  await getLead(ctx, primaryId);
+  const { error } = await ctx.supabase.rpc('merge_leads', {
+    p_primary_id: primaryId,
+    p_duplicate_ids: input.duplicate_ids,
+    p_values: input.values,
+  });
+  if (error) throw fromPostgrest(error, NOT_FOUND);
+  return getLead(ctx, primaryId);
+}

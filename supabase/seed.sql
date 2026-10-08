@@ -1,0 +1,3 @@
+-- Os dados iniciais (setores, modelos, ferramentas) são criados por workspace
+-- pela função seed_workspace_defaults() quando o utilizador é criado.
+-- Cria o teu utilizador com: npm run create-user

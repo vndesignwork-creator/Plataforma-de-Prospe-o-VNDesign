@@ -1,0 +1,32 @@
+{
+  "name": "vndesign-leads",
+  "private": true,
+  "version": "0.1.0",
+  "description": "VNDesign Leads — plataforma de prospeção de clientes da VNDesign",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "npm run dev -w @vndesign/web",
+    "build": "npm run build -w @vndesign/web",
+    "start": "npm run start -w @vndesign/web",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "playwright test",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:push": "supabase db push",
+    "create-user": "node scripts/create-user.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "supabase": "^2.120.0",
+    "typescript": "~5.9.3"
+  }
+}

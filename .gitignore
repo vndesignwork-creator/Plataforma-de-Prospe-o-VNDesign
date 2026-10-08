@@ -1,0 +1,21 @@
+node_modules/
+.next/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+!.env.example
+# Playwright
+test-results/
+playwright-report/
+e2e/.auth/
+# Supabase
+supabase/.branches/
+supabase/.temp/
+# SO
+.DS_Store
+Thumbs.db
+next-env.d.ts

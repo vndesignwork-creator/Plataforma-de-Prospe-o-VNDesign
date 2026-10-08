@@ -1,0 +1,119 @@
+@import 'tailwindcss';
+
+/* Variante "dark:" ligada ao atributo data-theme (o tema escuro é o padrão) */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* -----------------------------------------------------------------------------
+   Tokens da identidade VNDesign
+   Escuro (padrão): fundo #0d0d0d, acento #EF5C32, texto off-white.
+   Contraste verificado para WCAG 2.1 AA (texto normal ≥ 4,5:1).
+   ----------------------------------------------------------------------------- */
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0d0d0d;
+  --surface: #151515;
+  --surface-2: #1c1c1c;
+  --surface-3: #242424;
+  --border: #2b2b2b;
+  --border-strong: #3a3a3a;
+  --fg: #f4f1ea;
+  --muted: #a9a59c; /* 7,9:1 sobre #0d0d0d */
+  --accent: #ef5c32; /* 6,1:1 sobre #0d0d0d */
+  --accent-hover: #ff6d43;
+  --accent-fg: #0d0d0d; /* texto sobre botão laranja: 6,1:1 */
+  --accent-text: #f2734f;
+  --accent-soft: rgb(239 92 50 / 0.14);
+  --danger: #ff6b6b;
+  --danger-soft: rgb(255 107 107 / 0.12);
+  --success: #4cc38a;
+  --warning: #f0b94a;
+  --warning-soft: rgb(240 185 74 / 0.12);
+  --focus: #ff8a65;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 24px rgb(0 0 0 / 0.35);
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f6f4f0;
+  --surface: #ffffff;
+  --surface-2: #f1eee8;
+  --surface-3: #e7e3db;
+  --border: #e2ddd3;
+  --border-strong: #cbc5b9;
+  --fg: #141414;
+  --muted: #5f5b53; /* 6,3:1 sobre #f6f4f0 */
+  --accent: #ef5c32;
+  --accent-hover: #d94b22;
+  --accent-fg: #0d0d0d;
+  --accent-text: #b2390f; /* laranja escuro para texto: 5,6:1 */
+  --accent-soft: rgb(239 92 50 / 0.12);
+  --danger: #c22a2a;
+  --danger-soft: rgb(194 42 42 / 0.08);
+  --success: #1e7d4f;
+  --warning: #8a5a00;
+  --warning-soft: rgb(240 185 74 / 0.18);
+  --focus: #b2390f;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 24px rgb(0 0 0 / 0.08);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-syne), var(--font-jakarta), ui-sans-serif, sans-serif;
+  --shadow-card: var(--shadow);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-feature-settings: 'tnum' 0;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--accent-soft);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
