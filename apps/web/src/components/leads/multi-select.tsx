@@ -37,7 +37,7 @@ export function MultiSelectFilter({
       <DropdownTrigger
         className={cn(
           'inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm transition-colors hover:border-border-strong',
-          count ? 'border-accent/60 bg-accent-soft text-fg' : 'border-border bg-surface-2 text-fg',
+          count ? 'border-accent/60 bg-accent-soft text-fg' : 'border-border-input bg-surface-2 text-fg',
         )}
         aria-label={count ? `${label}: ${count} selecionado(s)` : label}
       >

@@ -29,6 +29,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input, Select, Textarea } from '@/components/ui/input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
+import { cn } from '@/lib/utils';
 import { useAudits, useInvalidateLead, useLead, useLogActivity, usePackages, useProposal } from '@/lib/queries';
 import { PROPOSAL_TONES } from './proposals-card';
 
@@ -388,7 +389,7 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
 
         <aside className="flex flex-col gap-4 lg:sticky lg:top-4 lg:self-start" aria-label="Resumo da proposta">
           <Card>
-            <CardHeader title="Total" as="h2" />
+            <CardHeader title="Resumo" as="h2" />
             <dl className="flex flex-col gap-1.5 p-4 text-sm">
               {totals.discount > 0 ? (
                 <>
@@ -402,7 +403,7 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
                   </div>
                 </>
               ) : null}
-              <div className="flex justify-between border-t border-border pt-2 text-base font-semibold">
+              <div className={cn('flex justify-between text-base font-semibold', totals.discount > 0 && 'border-t border-border pt-2')}>
                 <dt>Total</dt>
                 <dd className="tabular text-accent-text" data-testid="proposal-total">
                   {formatCurrency(totals.total)}

@@ -2,8 +2,8 @@ import { forwardRef, type InputHTMLAttributes, type SelectHTMLAttributes, type T
 import { cn } from '@/lib/utils';
 
 const control =
-  'w-full rounded-lg border border-border bg-surface-2 px-3 text-sm text-fg placeholder:text-muted ' +
-  'transition-colors hover:border-border-strong focus-visible:border-accent focus-visible:outline-none ' +
+  'w-full rounded-lg border border-border-input bg-surface-2 px-3 text-sm text-fg placeholder:text-muted ' +
+  'transition-colors hover:border-muted focus-visible:border-accent focus-visible:outline-none ' +
   'focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-60 aria-[invalid=true]:border-danger';
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input(

@@ -64,14 +64,20 @@ function defaultChoice(row: ImportPreviewRow): Choice {
   return row.suggested_action === 'create' ? 'create' : 'skip';
 }
 
+/** "1 criado", "2 criados". */
+const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+const HISTORY_SHOWN = 10;
+
 function ImportHistory() {
   const { data } = useImports();
+  const [all, setAll] = useState(false);
   if (!data?.length) return null;
+  const jobs = all ? data : data.slice(0, HISTORY_SHOWN);
   return (
     <Card className="mt-5">
       <CardHeader title="Importações anteriores" />
       <ul className="divide-y divide-border">
-        {data.map((job) => (
+        {jobs.map((job) => (
           <li key={job.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm">
             <span className="flex items-center gap-2">
               <FileSpreadsheet className="h-4 w-4 text-muted" aria-hidden />
@@ -79,12 +85,20 @@ function ImportHistory() {
               <span className="text-muted">· {formatDateTime(job.created_at)}</span>
             </span>
             <span className="text-muted">
-              {job.stats.created} criados · {job.stats.merged} juntados · {job.stats.skipped} ignorados
-              {job.stats.blocked ? ` · ${job.stats.blocked} bloqueados` : ''}
+              {count(job.stats.created, 'criado', 'criados')} · {count(job.stats.merged, 'juntado', 'juntados')} ·{' '}
+              {count(job.stats.skipped, 'ignorado', 'ignorados')}
+              {job.stats.blocked ? ` · ${count(job.stats.blocked, 'bloqueado', 'bloqueados')}` : ''}
             </span>
           </li>
         ))}
       </ul>
+      {data.length > HISTORY_SHOWN ? (
+        <div className="border-t border-border px-4 py-2">
+          <Button size="sm" variant="ghost" onClick={() => setAll((v) => !v)}>
+            {all ? 'Mostrar só as últimas' : `Ver todas (${data.length})`}
+          </Button>
+        </div>
+      ) : null}
     </Card>
   );
 }
@@ -171,7 +185,7 @@ export function ImportWizard() {
       setStep('done');
       invalidate();
       void qc.invalidateQueries({ queryKey: ['imports'] });
-      toast.success(`${data.stats.created} leads criados, ${data.stats.merged} juntados.`);
+      toast.success(`${count(data.stats.created, 'lead criado', 'leads criados')}, ${count(data.stats.merged, 'juntado', 'juntados')}.`);
     } catch (e) {
       setError(errorMessage(e));
     } finally {

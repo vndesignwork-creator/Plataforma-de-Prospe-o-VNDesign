@@ -274,6 +274,14 @@ export function TemplateLibrary() {
   const { data: templates, isLoading } = useTemplates();
   const { data: sectors } = useSectors(true);
   const [selected, setSelected] = useState<string | 'new' | null>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
+  // No telemóvel/tablet o editor fica por baixo da lista: ao escolher, desce até ele.
+  function choose(id: string | 'new') {
+    setSelected(id);
+    if (window.matchMedia('(max-width: 1023px)').matches) {
+      requestAnimationFrame(() => editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    }
+  }
   const current = useMemo(
     () => (selected === 'new' ? null : (templates?.find((t) => t.id === selected) ?? templates?.[0] ?? null)),
     [templates, selected],
@@ -284,7 +292,7 @@ export function TemplateLibrary() {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
       <nav aria-label="Modelos" className="flex flex-col gap-4">
-        <Button onClick={() => setSelected('new')} variant={selected === 'new' ? 'primary' : 'outline'}>
+        <Button onClick={() => choose('new')} variant={selected === 'new' ? 'primary' : 'outline'}>
           <Plus className="h-4 w-4" aria-hidden /> Novo modelo
         </Button>
         {TEMPLATE_KINDS.map((kind: TemplateKind) => {
@@ -301,7 +309,7 @@ export function TemplateLibrary() {
                     <li key={t.id}>
                       <button
                         type="button"
-                        onClick={() => setSelected(t.id)}
+                        onClick={() => choose(t.id)}
                         aria-current={active ? 'true' : undefined}
                         className={cn(
                           'w-full rounded-lg px-2 py-1.5 text-left text-sm',
@@ -324,12 +332,14 @@ export function TemplateLibrary() {
           );
         })}
       </nav>
-      <Editor
-        key={current?.id ?? 'new'}
-        template={selected === 'new' ? null : current}
-        onSaved={(t) => setSelected(t.id)}
-        onDeleted={() => setSelected(null)}
-      />
+      <div ref={editorRef} className="min-w-0 scroll-mt-20">
+        <Editor
+          key={current?.id ?? 'new'}
+          template={selected === 'new' ? null : current}
+          onSaved={(t) => setSelected(t.id)}
+          onDeleted={() => setSelected(null)}
+        />
+      </div>
     </div>
   );
 }

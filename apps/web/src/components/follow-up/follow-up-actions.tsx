@@ -38,7 +38,7 @@ export function FollowUpActions({ lead, compact }: { lead: Lead; compact?: boole
         <Button
           size="icon"
           variant="ghost"
-          className="h-8 w-8"
+          className="h-8 w-8 pointer-coarse:h-10 pointer-coarse:w-10"
           onClick={() => run('done', null)}
           disabled={followUp.isPending}
           aria-label={`Marcar como feito: #${lead.number} ${lead.company_name}`}
@@ -49,7 +49,7 @@ export function FollowUpActions({ lead, compact }: { lead: Lead; compact?: boole
         <Button
           size="icon"
           variant="ghost"
-          className="h-8 w-8"
+          className="h-8 w-8 pointer-coarse:h-10 pointer-coarse:w-10"
           onClick={() => run('snooze', days)}
           disabled={followUp.isPending}
           aria-label={`Adiar ${days} dias: #${lead.number} ${lead.company_name}`}

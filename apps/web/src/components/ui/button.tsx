@@ -11,10 +11,11 @@ const variants: Record<ButtonVariant, string> = {
   ghost: 'bg-transparent text-fg hover:bg-surface-2',
   danger: 'bg-danger text-white hover:opacity-90 font-semibold dark:text-[#0d0d0d]',
 };
+// Em ecrãs tácteis (pointer-coarse) os botões pequenos crescem para ≥ 40 px, para acertar com o dedo.
 const sizes: Record<ButtonSize, string> = {
-  sm: 'min-h-8 px-3 py-1 text-sm gap-1.5',
+  sm: 'min-h-8 px-3 py-1 text-sm gap-1.5 pointer-coarse:min-h-10',
   md: 'min-h-10 px-4 py-1.5 text-sm gap-2',
-  icon: 'h-9 w-9 justify-center',
+  icon: 'h-9 w-9 justify-center pointer-coarse:h-10 pointer-coarse:w-10',
 };
 
 /** Classes de botão (também para <Link> com aspeto de botão). */

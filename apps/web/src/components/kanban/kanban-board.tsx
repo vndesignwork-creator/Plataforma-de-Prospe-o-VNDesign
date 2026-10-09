@@ -31,7 +31,7 @@ import {
 } from '@vndesign/core';
 import { GripVertical, Search } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { MultiSelectFilter } from '@/components/leads/multi-select';
 import { Skeleton } from '@/components/ui/card';
@@ -66,7 +66,18 @@ function positionAt(list: Lead[], index: number): number {
   return (prev + next) / 2;
 }
 
-function LeadCard({ lead, today, dragging }: { lead: Lead; today: string; dragging?: boolean }) {
+function LeadCard({
+  lead,
+  today,
+  dragging,
+  handle,
+}: {
+  lead: Lead;
+  today: string;
+  dragging?: boolean;
+  /** Pega para arrastar (botão focável); no cartão fantasma é só o ícone. */
+  handle?: ReactNode;
+}) {
   const overdue = lead.next_action_on !== null && lead.next_action_on < today;
   return (
     <div
@@ -76,7 +87,7 @@ function LeadCard({ lead, today, dragging }: { lead: Lead; today: string; draggi
       )}
     >
       <div className="flex items-start gap-2">
-        <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden />
+        {handle ?? <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden />}
         <div className="min-w-0 flex-1">
           <Link
             href={`/leads/${lead.id}`}
@@ -111,18 +122,34 @@ function LeadCard({ lead, today, dragging }: { lead: Lead; today: string; draggi
 }
 
 function SortableCard({ lead, today }: { lead: Lead; today: string }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lead.id });
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+    id: lead.id,
+  });
+  // Com o rato/dedo arrasta-se o cartão inteiro; com o teclado, a partir da pega.
+  // O <li> continua a ser um item de lista (a pega e o link são os únicos controlos).
   return (
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn('touch-manipulation', isDragging && 'opacity-40')}
-      {...attributes}
       {...listeners}
-      aria-roledescription="cartão arrastável"
-      aria-label={`#${lead.number} ${lead.company_name}, ${LEAD_STATUS_META[lead.status].label}`}
     >
-      <LeadCard lead={lead} today={today} />
+      <LeadCard
+        lead={lead}
+        today={today}
+        handle={
+          <button
+            type="button"
+            ref={setActivatorNodeRef}
+            {...attributes}
+            aria-roledescription="cartão arrastável"
+            aria-label={`Mover #${lead.number} ${lead.company_name}, ${LEAD_STATUS_META[lead.status].label}`}
+            className="-m-1 shrink-0 cursor-grab rounded p-1 text-muted hover:bg-surface-3 hover:text-fg"
+          >
+            <GripVertical className="h-4 w-4" aria-hidden />
+          </button>
+        }
+      />
     </li>
   );
 }
@@ -135,7 +162,7 @@ function Column({ status, leads, today }: { status: LeadStatus; leads: Lead[]; t
     <section
       aria-labelledby={`col-${status}`}
       className={cn(
-        'flex w-72 shrink-0 flex-col rounded-xl border border-border bg-surface-2/60',
+        'flex min-h-0 w-64 shrink-0 flex-col rounded-xl border border-border bg-surface-2/60 xl:w-72',
         isOver && 'border-accent',
       )}
     >
@@ -148,7 +175,7 @@ function Column({ status, leads, today }: { status: LeadStatus; leads: Lead[]; t
         {value > 0 ? <span className="text-xs text-muted tabular">{formatCurrency(value, { decimals: false })}</span> : null}
       </header>
       <SortableContext id={status} items={leads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
-        <ul ref={setNodeRef} className="flex min-h-24 flex-1 flex-col gap-2 overflow-y-auto p-2" aria-label={`Leads em ${meta.label}`}>
+        <ul ref={setNodeRef} className="flex min-h-24 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain p-2" aria-label={`Leads em ${meta.label}`}>
           {leads.map((lead) => (
             <SortableCard key={lead.id} lead={lead} today={today} />
           ))}
@@ -335,7 +362,8 @@ export function KanbanBoard() {
             },
           }}
         >
-          <div className="-mx-4 flex min-h-[60dvh] gap-3 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+          {/* Altura fixa: cada coluna tem o seu scroll e a barra horizontal fica à vista, logo abaixo do quadro. */}
+          <div className="-mx-4 flex h-[calc(100dvh-15rem)] min-h-96 gap-3 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
             {(Object.keys(columns) as LeadStatus[]).map((status) => (
               <Column key={status} status={status} leads={columns[status]} today={today} />
             ))}

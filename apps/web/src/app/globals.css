@@ -17,6 +17,7 @@
   --surface-3: #242424;
   --border: #2b2b2b;
   --border-strong: #3a3a3a;
+  --border-input: #686868; /* contorno dos campos: ≥ 3:1 sobre os fundos (WCAG 1.4.11) */
   --fg: #f4f1ea;
   --muted: #a9a59c; /* 7,9:1 sobre #0d0d0d */
   --accent: #ef5c32; /* 6,1:1 sobre #0d0d0d */
@@ -41,6 +42,7 @@
   --surface-3: #e7e3db;
   --border: #e2ddd3;
   --border-strong: #cbc5b9;
+  --border-input: #8f897d; /* contorno dos campos: ≥ 3:1 sobre branco e sobre o fundo */
   --fg: #141414;
   --muted: #5f5b53; /* 6,3:1 sobre #f6f4f0 */
   --accent: #ef5c32;
@@ -50,7 +52,7 @@
   --accent-soft: rgb(239 92 50 / 0.12);
   --danger: #c22a2a;
   --danger-soft: rgb(194 42 42 / 0.08);
-  --success: #1e7d4f;
+  --success: #17663f; /* 5,4:1 sobre #e7e3db (etiquetas) */
   --warning: #8a5a00;
   --warning-soft: rgb(240 185 74 / 0.18);
   --focus: #b2390f;
@@ -64,6 +66,7 @@
   --color-surface-3: var(--surface-3);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
+  --color-border-input: var(--border-input);
   --color-fg: var(--fg);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
@@ -103,6 +106,18 @@
   }
   ::selection {
     background: var(--accent-soft);
+  }
+  /* Caixas de seleção: na cor da marca e, em ecrãs tácteis, maiores (mais fáceis de acertar). */
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: var(--accent);
+  }
+  @media (pointer: coarse) {
+    input[type='checkbox'],
+    input[type='radio'] {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
   }
   @media (prefers-reduced-motion: reduce) {
     *,

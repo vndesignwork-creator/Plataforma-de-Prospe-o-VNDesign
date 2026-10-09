@@ -163,7 +163,7 @@ export interface ProposalTotals {
   monthly: number;
 }
 
-const round2 = (v: number) => Math.round(v * 100) / 100;
+const round2 = (v: number) => Math.round(Number((v * 100).toPrecision(12))) / 100;
 
 export function proposalTotals(items: readonly Pick<ProposalItem, 'price' | 'quantity' | 'recurring'>[], discount = 0): ProposalTotals {
   const once = items.filter((i) => !i.recurring).reduce((s, i) => s + i.price * (i.quantity ?? 1), 0);

@@ -2,7 +2,7 @@
 
 import * as RadixDialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 interface DialogProps {
@@ -17,11 +17,30 @@ interface DialogProps {
 
 /** Diálogo modal acessível (foco preso, Esc fecha, título anunciado). */
 export function Dialog({ open, onOpenChange, title, description, children, footer, className }: DialogProps) {
+  // O diálogo é controlado (sem Radix Trigger): guardamos quem tinha o foco para o devolver ao fechar.
+  const opener = useRef<HTMLElement | null>(null);
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-[2px]" />
         <RadixDialog.Content
+          onOpenAutoFocus={(event) => {
+            opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+            // Foco no primeiro campo do formulário (em vez do botão de fechar).
+            const field = (event.currentTarget as HTMLElement).querySelector<HTMLElement>(
+              'input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([disabled]), select:not([disabled]), textarea:not([disabled])',
+            );
+            if (field) {
+              event.preventDefault();
+              field.focus();
+            }
+          }}
+          onCloseAutoFocus={(event) => {
+            if (opener.current?.isConnected) {
+              event.preventDefault();
+              opener.current.focus();
+            }
+          }}
           className={cn(
             'fixed top-1/2 left-1/2 z-50 flex max-h-[90dvh] w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col',
             'rounded-xl border border-border bg-surface shadow-card',

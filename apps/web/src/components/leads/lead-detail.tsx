@@ -12,7 +12,7 @@ import {
   type Lead,
   type LeadStatus,
 } from '@vndesign/core';
-import { Copy, Edit3, ExternalLink, GitMerge, Mail, MoreHorizontal, Phone, ShieldOff, Trash2 } from 'lucide-react';
+import { Copy, Edit3, ExternalLink, GitMerge, History, Mail, MoreHorizontal, Phone, ShieldOff, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
@@ -37,9 +37,9 @@ import { LeadLocation } from './lead-location';
 import { ProposalsCard } from '@/components/proposals/proposals-card';
 import { SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 
-function Row({ label, children }: { label: string; children: ReactNode }) {
+function Row({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
-    <div className="grid grid-cols-[9rem_1fr] gap-3 py-1.5 text-sm sm:grid-cols-[11rem_1fr]">
+    <div className={cn('grid grid-cols-[9rem_minmax(0,1fr)] gap-3 py-1.5 text-sm sm:grid-cols-[11rem_minmax(0,1fr)]', className)}>
       <dt className="text-muted">{label}</dt>
       <dd className="min-w-0 break-words">{children}</dd>
     </div>
@@ -202,6 +202,11 @@ export function LeadDetail({ id }: { id: string }) {
                 </DropdownItem>
               </DropdownContent>
             </DropdownRoot>
+            {/* Telemóvel/tablet: a linha do tempo (registar notas e chamadas) fica no fim da página. */}
+            <a href="#atividade" className={buttonClasses('outline', 'md', 'lg:hidden')}>
+              <History className="h-4 w-4" aria-hidden />
+              Linha do tempo
+            </a>
           </>
         }
       />
@@ -284,19 +289,18 @@ export function LeadDetail({ id }: { id: string }) {
 
           <Card>
             <CardHeader title="Diagnóstico do site" />
-            <dl className="px-4 py-2">
-              <div className="grid md:grid-cols-2 md:gap-x-6">
-                <Row label="PageSpeed (mobile)">
-                  <PageSpeedScore value={lead.pagespeed} />
-                </Row>
-                <Row label="Mobile?">
-                  <MobileLabel mobile={lead.mobile} />
-                </Row>
-              </div>
-              <Row label="Problemas">
+            {/* Cada linha (<div> com <dt>/<dd>) é filha direta do <dl>, como pede o HTML. */}
+            <dl className="grid px-4 py-2 md:grid-cols-2 md:gap-x-6">
+              <Row label="PageSpeed (mobile)">
+                <PageSpeedScore value={lead.pagespeed} />
+              </Row>
+              <Row label="Mobile?">
+                <MobileLabel mobile={lead.mobile} />
+              </Row>
+              <Row label="Problemas" className="md:col-span-2">
                 {lead.problems ? <span className="whitespace-pre-line">{lead.problems}</span> : dash}
               </Row>
-              <Row label="Ângulo de abordagem">
+              <Row label="Ângulo de abordagem" className="md:col-span-2">
                 {lead.approach_angle ? <span className="whitespace-pre-line">{lead.approach_angle}</span> : dash}
               </Row>
             </dl>
@@ -380,7 +384,7 @@ export function LeadDetail({ id }: { id: string }) {
           </p>
         </div>
 
-        <aside aria-label="Atividade">
+        <aside id="atividade" aria-label="Atividade" className="scroll-mt-20">
           <ActivityTimeline leadId={lead.id} currentUserId={me?.user.id} />
         </aside>
       </div>

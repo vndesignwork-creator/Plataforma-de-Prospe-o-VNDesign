@@ -151,12 +151,13 @@ export function SectorsSettings() {
         actions={
           <Button
             size="sm"
+            variant="outline"
             onClick={() => {
               setEditing(null);
               setOpen(true);
             }}
           >
-            <Plus className="h-4 w-4" aria-hidden /> Novo setor
+            <Plus className="h-3.5 w-3.5" aria-hidden /> Novo setor
           </Button>
         }
       />

@@ -34,17 +34,14 @@ function TodayGroup({ title, icon, leads, tone }: { title: string; icon: ReactNo
       <ul className="divide-y divide-border">
         {leads.map((l) => (
           <li key={l.id} className="flex items-center gap-1">
-            <Link href={`/leads/${l.id}`} className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-md px-2 py-2 hover:bg-surface-2">
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-medium">
-                  <span className="text-muted tabular">#{l.number}</span> {l.company_name}
-                </span>
-                <span className="block truncate text-xs text-muted">{l.next_action_text ?? 'Próxima ação'}</span>
+            {/* Nome numa linha só para ele; data, ação e estado por baixo (no telemóvel o nome não fica cortado). */}
+            <Link href={`/leads/${l.id}`} className="min-w-0 flex-1 rounded-md px-2 py-2 hover:bg-surface-2">
+              <span className="block truncate text-sm font-medium">
+                <span className="text-muted tabular">#{l.number}</span> {l.company_name}
               </span>
-              <span className="flex shrink-0 flex-col items-end gap-1">
-                <span className={`text-xs tabular ${tone === 'danger' ? 'font-semibold text-danger' : 'text-muted'}`}>
-                  {formatDate(l.next_action_on)}
-                </span>
+              <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+                <span className={`tabular ${tone === 'danger' ? 'font-semibold text-danger' : ''}`}>{formatDate(l.next_action_on)}</span>
+                <span className="min-w-0 truncate">{l.next_action_text ?? 'Próxima ação'}</span>
                 <StatusBadge status={l.status} />
               </span>
             </Link>

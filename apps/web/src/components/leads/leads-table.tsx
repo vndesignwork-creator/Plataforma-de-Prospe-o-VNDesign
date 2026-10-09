@@ -415,7 +415,7 @@ export function LeadsTable() {
             </option>
           ))}
         </Select>
-        <fieldset className="flex items-center gap-1.5">
+        <fieldset className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
           <legend className="sr-only">Sugerido em</legend>
           <span className="text-sm text-muted" aria-hidden>
             Sugerido
@@ -425,7 +425,7 @@ export function LeadsTable() {
             value={query.suggested_from ?? ''}
             onChange={(e) => setParams({ de: e.target.value || null })}
             aria-label="Sugerido desde"
-            className="w-38"
+            className="w-auto min-w-0 flex-1 sm:w-38 sm:flex-none"
           />
           <span className="text-sm text-muted" aria-hidden>
             a
@@ -435,7 +435,7 @@ export function LeadsTable() {
             value={query.suggested_to ?? ''}
             onChange={(e) => setParams({ ate: e.target.value || null })}
             aria-label="Sugerido até"
-            className="w-38"
+            className="w-auto min-w-0 flex-1 sm:w-38 sm:flex-none"
           />
         </fieldset>
         {activeFilters ? (
@@ -478,8 +478,9 @@ export function LeadsTable() {
           </EmptyState>
         ) : (
           <>
-            {/* Tabela (tablet/computador) */}
-            <div className="hidden max-h-[calc(100dvh-16rem)] overflow-auto md:block">
+            {/* Tabela (computador). "relative": os textos só para leitores de ecrã (posição absoluta)
+                ficam dentro desta caixa em vez de esticarem a página. */}
+            <div className="relative hidden max-h-[calc(100dvh-16rem)] overflow-auto lg:block">
               <table className="w-full border-collapse text-sm">
                 <caption className="sr-only">Leads — clica no nome da empresa para abrir a ficha</caption>
                 <thead className="sticky top-0 z-10 bg-surface-2">
@@ -546,8 +547,8 @@ export function LeadsTable() {
               </table>
             </div>
 
-            {/* Cartões (telemóvel) */}
-            <ul className="divide-y divide-border md:hidden">
+            {/* Cartões (telemóvel e tablet: a tabela tem demasiadas colunas para caber) */}
+            <ul className="divide-y divide-border lg:hidden">
               {(data?.data ?? []).map((lead) => (
                 <li key={lead.id}>
                   <Link href={`/leads/${lead.id}`} className="flex flex-col gap-1.5 px-4 py-3 hover:bg-surface-2">
