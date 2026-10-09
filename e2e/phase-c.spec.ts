@@ -98,3 +98,12 @@ test.describe('resumo diário por email', () => {
     }
   });
 });
+
+test('lead sem email: "Abrir no email" continua disponível e explica porquê', async ({ page }) => {
+  const res = await page.request.post('/api/v1/leads', { data: { company_name: `Sem Email ${run}` } });
+  const lead = (await res.json()).data;
+  await page.goto(`/leads/${lead.id}`);
+  await page.getByLabel('Modelo', { exact: true }).selectOption({ label: 'Email frio — diagnóstico' });
+  await expect(page.getByRole('button', { name: 'Abrir no email' }).first()).toBeEnabled();
+  await expect(page.getByText('Este lead não tem email — “Abrir no email” abre a mensagem sem destinatário.')).toBeVisible();
+});

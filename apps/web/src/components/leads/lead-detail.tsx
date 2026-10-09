@@ -6,6 +6,7 @@ import {
   formatCurrency,
   formatDate,
   formatDateTime,
+  mailtoUrl,
   todayIso,
   type Lead,
   type LeadStatus,
@@ -119,13 +120,9 @@ export function LeadDetail({ id }: { id: string }) {
   }
 
   function openMailto() {
-    const params = new URLSearchParams();
-    if (lead!.email_subject) params.set('subject', lead!.email_subject);
-    if (lead!.email_body) params.set('body', lead!.email_body);
-    // URLSearchParams usa "+" para espaços; os clientes de email esperam %20.
-    const href = `mailto:${lead!.email ?? ''}?${params.toString().replace(/\+/g, '%20')}`;
     log.mutate({ type: 'email_mailto' });
-    window.location.href = href;
+    if (!lead!.email) toast.info('Este lead não tem email: escreve o destinatário no teu programa de email.');
+    window.location.href = mailtoUrl(lead!.email, lead!.email_subject, lead!.email_body);
   }
 
   return (
@@ -292,7 +289,7 @@ export function LeadDetail({ id }: { id: string }) {
                       <Copy className="h-3.5 w-3.5" aria-hidden />
                       Copiar tudo
                     </Button>
-                    <Button size="sm" onClick={openMailto} disabled={!lead.email} title={lead.email ? undefined : 'Este lead não tem email'}>
+                    <Button size="sm" onClick={openMailto}>
                       <Mail className="h-3.5 w-3.5" aria-hidden />
                       Abrir no email
                     </Button>

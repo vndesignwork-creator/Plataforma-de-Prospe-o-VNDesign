@@ -109,6 +109,7 @@ export function ContactScriptsCard({ lead }: { lead: Lead }) {
 
   function onMailto() {
     log.mutate({ type: 'email_mailto', payload });
+    if (!lead.email) toast.info('Este lead não tem email: escreve o destinatário no teu programa de email.');
     window.location.href = mailtoUrl(lead.email, subject, body);
   }
 
@@ -220,7 +221,7 @@ export function ContactScriptsCard({ lead }: { lead: Lead }) {
             <Copy className="h-3.5 w-3.5" aria-hidden /> Copiar
           </Button>
           {isEmail ? (
-            <Button size="sm" variant="outline" onClick={onMailto} disabled={!lead.email} title={lead.email ? undefined : 'Este lead não tem email'}>
+            <Button size="sm" variant="outline" onClick={onMailto}>
               <Mail className="h-3.5 w-3.5" aria-hidden /> Abrir no email
             </Button>
           ) : null}
@@ -234,6 +235,14 @@ export function ContactScriptsCard({ lead }: { lead: Lead }) {
             {isEmail ? 'Marcar como enviado' : template.kind === 'call_script' ? 'Registar chamada' : 'Marcar como enviado'}
           </Button>
         </div>
+        {isEmail && !lead.email ? (
+          <p className="text-xs text-muted">
+            Este lead não tem email — “Abrir no email” abre a mensagem sem destinatário.{' '}
+            <Link href={`/leads/${lead.id}/editar`} className="text-accent-text underline">
+              Acrescentar email
+            </Link>
+          </p>
+        ) : null}
         {lead.status === 'identificado' ? (
           <p className="text-xs text-muted">Ao marcar como enviado, o lead passa a “Contactado” e o follow-up fica agendado.</p>
         ) : null}
