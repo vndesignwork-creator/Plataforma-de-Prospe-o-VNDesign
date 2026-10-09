@@ -178,6 +178,53 @@ chave de API*) e define `PAGESPEED_API_KEY`. A análise demora 10–40 segundos.
 
 ---
 
+## Email com IA
+
+Na ficha do lead, **Escrever com IA**:
+
+1. Escolhe o tipo de email (primeiro contacto, follow-up, depois de uma chamada, envio da proposta), o tom e o tamanho.
+2. Opcionalmente, acrescenta indicações.
+3. O Claude escreve o assunto e o texto em português de Portugal.
+
+O texto usa os dados do lead, a última análise do site e os argumentos de venda do setor. A assinatura e a linha de opt-out (RGPD) são acrescentadas automaticamente. Revê sempre o texto antes de enviar. Depois podes copiá-lo, abri-lo no programa de email ou guardá-lo como email de prospeção.
+
+**Configurar:**
+
+- Cria uma chave em https://console.anthropic.com (*API Keys*). É preciso ter créditos na conta: cada email custa poucos cêntimos.
+- Define `ANTHROPIC_API_KEY` no `apps/web/.env.local` e nas variáveis da Hostinger.
+- O modelo por omissão é `claude-opus-5-5`; podes mudá-lo com `ANTHROPIC_MODEL`.
+- O estado da configuração aparece em **Definições → Propostas e IA**.
+
+---
+
+## Propostas em PDF
+
+Na ficha do lead, **Propostas → Nova proposta**. Começa com o pacote recomendado; acrescenta
+outros pacotes (Essencial, Profissional, Premium, Manutenção mensal) ou itens à medida, ajusta
+preços, quantidades e desconto. O texto inicial pode ser sugerido a partir da análise do site.
+
+- **Ver PDF / Descarregar:** A4 com a identidade VNDesign (cabeçalho escuro, laranja, Syne e
+  Plus Jakarta Sans), itens, total, mensalidade, validade, pagamento e próximos passos.
+- **Enviar por email** abre o email já escrito (anexa o PDF descarregado).
+- **Marcar como enviada** passa o lead para “Proposta enviada” e regista a atividade.
+- Os pacotes, a validade (30 dias), as condições de pagamento, a nota de IVA e os próximos
+  passos editam-se em **Definições → Propostas e IA**. Os preços iniciais são só exemplos.
+- As propostas são numeradas por ano: `2026-001`, `2026-002`…
+
+---
+
+## Mapa
+
+**Mapa** (menu): os leads com coordenadas, coloridos pelo estado, com filtros por estado e setor.
+
+- **Localizar N leads** procura as moradas no OpenStreetMap (gratuito; 1 pesquisa por segundo,
+  por isso 25 leads demoram cerca de meio minuto). Tenta a morada, depois o nome + cidade e,
+  em último caso, só a cidade (posição aproximada, com círculo tracejado).
+- Na ficha do lead: **Localizar**, **Ver no mapa** ou **Marcar no mapa** (clica no mapa para
+  corrigir a posição).
+
+---
+
 ## API de integração (tarefa semanal com o Claude)
 
 1. **Definições → API e integrações → Criar token** (permissão `leads:import`). Copia o token
@@ -237,7 +284,9 @@ npm run test:e2e       # arranca o "npm run dev" automaticamente
 ```
 
 Se já tiveres o `npm run dev` a correr, acrescenta ao `apps/web/.env.local`
-`AUDIT_ALLOW_PRIVATE=1` e `AUDIT_SKIP_PAGESPEED=1` (o teste do auditor analisa um site local).
+`AUDIT_ALLOW_PRIVATE=1`, `AUDIT_SKIP_PAGESPEED=1` (o teste do auditor analisa um site local),
+`ANTHROPIC_API_KEY=sk-ant-teste`, `AI_BASE_URL=http://127.0.0.1:4621` e
+`GEOCODER_URL=http://127.0.0.1:4620/search` (os testes da Fase E usam serviços falsos, sem custos).
 
 O GitHub Actions (`.github/workflows/ci.yml`) corre lint, tipos, testes, build e — com um
 Supabase local — as migrações, a paridade SQL e os testes E2E.
@@ -299,7 +348,7 @@ A base de dados fica no **Supabase na nuvem** (ver Opção A acima).
 
 3. **Variáveis de ambiente:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
    `SUPABASE_SECRET_KEY` e `HOSTNAME=0.0.0.0` (mais, se usares: `SMTP_*`, `APP_URL`,
-   `CRON_SECRET`, `PAGESPEED_API_KEY`, `VAPID_*` — ver `.env.example`). A Hostinger injeta-as no build e na execução;
+   `CRON_SECRET`, `PAGESPEED_API_KEY`, `VAPID_*`, `ANTHROPIC_API_KEY` — ver `.env.example`). A Hostinger injeta-as no build e na execução;
    cada alteração precisa de um novo deploy.
 4. Associa o domínio (ex.: `leads.vndesign.pt`) e confirma que o SSL está ativo.
 5. No Supabase (*Authentication → URL Configuration*): *Site URL* = `https://leads.vndesign.pt`
@@ -336,4 +385,4 @@ docker run -p 3000:3000 --env-file apps/web/.env.local vndesign-leads
 | B | Kanban, dashboard, importação/exportação CSV/XLSX (com a folha atual) | ✅ |
 | C | Scripts de contacto com variáveis, assinatura, lembretes de follow-up | ✅ |
 | D | Auditor de sites, API de integração com token, PWA e notificações push | ✅ |
-| E | Email com IA, propostas em PDF, mapa | ⏳ |
+| E | Email com IA, propostas em PDF, mapa | ✅ |

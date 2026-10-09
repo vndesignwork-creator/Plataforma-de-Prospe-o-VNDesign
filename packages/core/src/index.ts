@@ -9,3 +9,6 @@ export * from './import-schemas';
 export * from './templates';
 export * from './audit';
 export * from './integration';
+export * from './proposals';
+export * from './ai';
+export * from './geo';

@@ -11,6 +11,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // O pacote partilhado é TypeScript "cru": o Next compila-o.
   transpilePackages: ['@vndesign/core'],
+  // Gerador de PDF das propostas: corre como pacote Node normal (não é empacotado).
+  serverExternalPackages: ['@react-pdf/renderer'],
   // Permite fixar a raiz do monorepo (evita avisos com vários lockfiles).
   turbopack: { root: path.join(__dirname, '..', '..') },
   poweredByHeader: false,

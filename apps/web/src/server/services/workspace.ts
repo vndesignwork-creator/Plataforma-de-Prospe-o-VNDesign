@@ -59,7 +59,7 @@ export async function getSettings(ctx: ApiContext): Promise<WorkspaceSettings> {
 
 export async function updateSettings(
   ctx: ApiContext,
-  patch: Partial<Pick<WorkspaceSettings, 'follow_up_days' | 'opt_out_line'>> & {
+  patch: Partial<Pick<WorkspaceSettings, 'follow_up_days' | 'opt_out_line' | 'proposal'>> & {
     daily_digest?: { enabled: boolean; recipient: string | null };
   },
 ): Promise<WorkspaceSettings> {

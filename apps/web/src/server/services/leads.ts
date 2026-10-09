@@ -20,7 +20,7 @@ import { ApiError, fromPostgrest, unwrap } from '../http';
 
 export const LEAD_SELECT = [
   'id', 'number', 'company_name', 'sector_id', 'sector:sectors(id, name, slug, emoji)',
-  'website', 'city', 'address', 'latitude', 'longitude', 'problems', 'pagespeed', 'mobile',
+  'website', 'city', 'address', 'latitude', 'longitude', 'geocode_status', 'problems', 'pagespeed', 'mobile',
   'email', 'phone', 'contact_name', 'status', 'channel', 'first_contact_on', 'last_follow_up_on',
   'next_action_text', 'next_action_on', 'estimated_value', 'notes', 'approach_angle', 'source_url',
   'suggested_on', 'email_subject', 'email_body', 'kanban_position', 'status_changed_at',
@@ -84,6 +84,9 @@ function applyLeadFilters(q: LeadQueryBuilder, query: LeadFilters): LeadQueryBui
   }
   return q;
 }
+
+/** Os mesmos filtros aplicados a uma consulta com outras colunas (ex.: mapa). */
+export const applyLeadFiltersTo = applyLeadFilters as unknown as <Q>(q: Q, query: LeadFilters) => Q;
 
 export async function listLeads(ctx: ApiContext, query: LeadListQuery) {
   let q = applyLeadFilters(baseLeadQuery(ctx), query);

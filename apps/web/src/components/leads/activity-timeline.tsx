@@ -2,6 +2,10 @@
 
 import {
   ACTIVITY_TYPE_LABELS,
+  AI_EMAIL_KIND_LABELS,
+  PROPOSAL_STATUS_LABELS,
+  type AiEmailKind,
+  type ProposalStatus,
   LEAD_FIELD_LABELS,
   LEAD_STATUS_META,
   formatDate,
@@ -14,7 +18,9 @@ import {
   CheckCircle2,
   Copy,
   Edit3,
+  FileText,
   Gauge,
+  Sparkles,
   GitMerge,
   Mail,
   MessageSquare,
@@ -49,6 +55,8 @@ const ICONS: Partial<Record<Activity['type'], LucideIcon>> = {
   template_used: MessageSquare,
   anonymized: ShieldOff,
   audit_run: Gauge,
+  proposal_generated: FileText,
+  ai_email_generated: Sparkles,
 };
 
 const fieldLabel = (f: string) => (LEAD_FIELD_LABELS as Record<string, string>)[f] ?? f;
@@ -87,6 +95,16 @@ function describe(a: Activity): string | null {
       ];
       return parts.filter(Boolean).join(' · ') || null;
     }
+    case 'proposal_generated':
+      return [
+        p.code ? `Proposta ${String(p.code)}` : null,
+        p.total ? String(p.total) : null,
+        p.status ? PROPOSAL_STATUS_LABELS[p.status as ProposalStatus] : null,
+      ]
+        .filter(Boolean)
+        .join(' · ');
+    case 'ai_email_generated':
+      return p.kind ? AI_EMAIL_KIND_LABELS[p.kind as AiEmailKind] ?? null : null;
     case 'anonymized':
       return p.added_to_do_not_contact ? 'Acrescentado à lista "não contactar"' : null;
     default:

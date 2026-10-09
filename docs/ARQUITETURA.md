@@ -231,3 +231,44 @@ um “Lead editado”. O resumo diário usa a chave de serviço só no servidor
   - `push` e `notificationclick`.
 - Web Push com VAPID (`web-push`). O cron diário envia a notificação a todas as subscrições e
   apaga as que devolvem 404/410.
+
+### Endpoints da Fase E
+
+| Método | Rota |
+|---|---|
+| GET / POST | `/packages` |
+| PATCH / DELETE | `/packages/{id}` (PATCH `{ archived: true }` arquiva) |
+| GET / POST | `/leads/{id}/proposals` |
+| GET / PATCH / DELETE | `/proposals/{id}` |
+| GET | `/proposals/{id}/pdf` (`?download=1`) |
+| POST | `/proposals/{id}/send` (estado "enviada" + lead → "Proposta enviada") |
+| POST | `/leads/{id}/ai-email` (`{ kind, tone, length, use_audit, instructions }`) |
+| GET | `/map` (aceita os filtros de `/leads`) |
+| POST | `/map/geocode` (lote; repetir até `remaining = 0`) |
+| POST | `/leads/{id}/location` (sem corpo = procurar; `{ latitude, longitude }` = posição manual) |
+
+**Propostas** (`packages/core/src/proposals.ts`):
+
+- Os itens ficam copiados na proposta (`items` jsonb). Alterar um pacote não muda propostas antigas.
+- `proposalTotals` separa os itens mensais (manutenção) do total único.
+- O número é sequencial por workspace (`proposal_counter`) e é mostrado como `AAAA-NNN`.
+- O PDF é gerado no servidor com `@react-pdf/renderer`. As fontes estão em `public/fonts/pdf/` (OFL), por isso entram no build standalone.
+
+**Email com IA** (`packages/core/src/ai.ts` + `server/services/ai-email.ts`):
+
+- Usa o SDK oficial `@anthropic-ai/sdk` com o modelo `claude-opus-5-5`:
+  - pensamento adaptativo, `effort: medium`;
+  - saída estruturada `{ subject, body }` (Zod);
+  - `fallbacks: "default"` (se um pedido for recusado, a API tenta outro modelo);
+  - instruções fixas em cache.
+- Os dados do lead vão entre `<dados_do_lead>` e são tratados como dados, não como instruções.
+- A assinatura e o opt-out são acrescentados no servidor, por isso nunca dependem do modelo.
+- A atividade "Email gerado com IA" guarda o tipo, o tom e o modelo; o texto não fica guardado.
+
+**Mapa**:
+
+- Geocodificação no servidor com o Nominatim (OpenStreetMap):
+  - User-Agent identificado e 1 pedido por segundo;
+  - tenta, por ordem, a morada, depois o nome + a cidade e, por fim, só a cidade (`approx`).
+- `set_lead_location()` grava a posição sem gerar "Lead editado".
+- No browser, Leaflet com mapas CARTO (escuro ou claro, conforme o tema).

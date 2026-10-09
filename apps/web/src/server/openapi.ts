@@ -4,6 +4,17 @@
  * Servido em /api/v1/openapi.json e apresentado em /docs/api.
  */
 import {
+  AiEmailRequestSchema,
+  AiEmailResultSchema,
+  GeocodeBatchResultSchema,
+  LeadLocationSchema,
+  MapDataSchema,
+  ProposalCreateSchema,
+  ProposalSchema,
+  ProposalUpdateSchema,
+  ServicePackageCreateSchema,
+  ServicePackageSchema,
+  ServicePackageUpdateSchema,
   ApiTokenCreateSchema,
   ApiTokenCreatedSchema,
   ApiTokenSchema,
@@ -124,6 +135,9 @@ export function getOpenApiDocument() {
       { name: 'Auditor de sites' },
       { name: 'Integrações' },
       { name: 'Notificações' },
+      { name: 'Propostas' },
+      { name: 'Email com IA' },
+      { name: 'Mapa' },
     ],
     paths: {
       '/me': {
@@ -542,6 +556,114 @@ export function getOpenApiDocument() {
           tags: ['Notificações'],
           summary: 'Enviar uma notificação de teste',
           responses: { '200': ok(data(z.object({ sent: z.int(), removed: z.int(), failed: z.int() }))), ...common },
+        }),
+      },
+      '/packages': {
+        get: op({
+          tags: ['Propostas'],
+          summary: 'Pacotes de serviços (?archived=true inclui arquivados)',
+          responses: { '200': ok(data(z.array(ServicePackageSchema))), ...common },
+        }),
+        post: op({
+          tags: ['Propostas'],
+          summary: 'Novo pacote',
+          requestBody: body(ServicePackageCreateSchema),
+          responses: { '201': ok(data(ServicePackageSchema), 'Criado'), ...common },
+        }),
+      },
+      '/packages/{id}': {
+        patch: op({
+          tags: ['Propostas'],
+          summary: 'Editar ou arquivar pacote',
+          requestParams: { path: idParam },
+          requestBody: body(ServicePackageUpdateSchema),
+          responses: { '200': ok(data(ServicePackageSchema)), ...withNotFound },
+        }),
+        delete: op({
+          tags: ['Propostas'],
+          summary: 'Apagar pacote',
+          requestParams: { path: idParam },
+          responses: { '204': { description: 'Apagado' }, ...withNotFound },
+        }),
+      },
+      '/leads/{id}/proposals': {
+        get: op({
+          tags: ['Propostas'],
+          summary: 'Propostas do lead',
+          requestParams: { path: leadId },
+          responses: { '200': ok(data(z.array(ProposalSchema))), ...withNotFound },
+        }),
+        post: op({
+          tags: ['Propostas'],
+          summary: 'Nova proposta (validade e pagamento por omissão vêm das definições)',
+          requestParams: { path: leadId },
+          requestBody: body(ProposalCreateSchema),
+          responses: { '201': ok(data(ProposalSchema), 'Criada'), ...withNotFound },
+        }),
+      },
+      '/proposals/{id}': {
+        get: op({ tags: ['Propostas'], summary: 'Proposta', requestParams: { path: idParam }, responses: { '200': ok(data(ProposalSchema)), ...withNotFound } }),
+        patch: op({
+          tags: ['Propostas'],
+          summary: 'Editar proposta ou mudar o estado',
+          requestParams: { path: idParam },
+          requestBody: body(ProposalUpdateSchema),
+          responses: { '200': ok(data(ProposalSchema)), ...withNotFound },
+        }),
+        delete: op({ tags: ['Propostas'], summary: 'Apagar proposta', requestParams: { path: idParam }, responses: { '204': { description: 'Apagada' }, ...withNotFound } }),
+      },
+      '/proposals/{id}/pdf': {
+        get: op({
+          tags: ['Propostas'],
+          summary: 'PDF da proposta (?download=1 para descarregar)',
+          requestParams: { path: idParam, query: z.object({ download: z.enum(['1']).optional() }) },
+          responses: { '200': { description: 'PDF', content: { 'application/pdf': { schema: z.string().meta({ format: 'binary' }) } } }, ...withNotFound },
+        }),
+      },
+      '/proposals/{id}/send': {
+        post: op({
+          tags: ['Propostas'],
+          summary: 'Marcar como enviada (o lead passa a "Proposta enviada")',
+          requestParams: { path: idParam },
+          responses: { '200': ok(data(z.object({ proposal: ProposalSchema, lead: LeadSchema }))), ...withNotFound },
+        }),
+      },
+      '/leads/{id}/ai-email': {
+        post: op({
+          tags: ['Email com IA'],
+          summary: 'Rascunho de email escrito pelo Claude com os dados do lead',
+          description: 'Usa os dados do lead, a última análise do site, os argumentos do setor e a assinatura. Pode demorar até 30 s.',
+          requestParams: { path: leadId },
+          requestBody: body(AiEmailRequestSchema),
+          responses: {
+            '200': ok(data(AiEmailResultSchema)),
+            '503': problem('ANTHROPIC_API_KEY em falta ou inválida'),
+            ...withNotFound,
+          },
+        }),
+      },
+      '/map': {
+        get: op({
+          tags: ['Mapa'],
+          summary: 'Leads com coordenadas (aceita os filtros de /leads)',
+          requestParams: { query: LeadListQuerySchema },
+          responses: { '200': ok(data(MapDataSchema)), ...common },
+        }),
+      },
+      '/map/geocode': {
+        post: op({
+          tags: ['Mapa'],
+          summary: 'Localizar um lote de leads sem coordenadas (repetir até remaining = 0)',
+          responses: { '200': ok(data(GeocodeBatchResultSchema)), ...common },
+        }),
+      },
+      '/leads/{id}/location': {
+        post: op({
+          tags: ['Mapa'],
+          summary: 'Localizar pela morada (sem corpo) ou gravar a posição escolhida ({ latitude, longitude })',
+          requestParams: { path: leadId },
+          requestBody: { content: { 'application/json': { schema: LeadLocationSchema } }, required: false },
+          responses: { '200': ok(data(LeadSchema)), '422': problem('Sem morada nem cidade'), ...withNotFound },
         }),
       },
       '/preferences/{key}': {

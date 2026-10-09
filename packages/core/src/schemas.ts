@@ -143,6 +143,7 @@ export const LeadSchema = z
     address: z.string().nullable(),
     latitude: z.number().nullable(),
     longitude: z.number().nullable(),
+    geocode_status: z.enum(['ok', 'approx', 'manual', 'not_found']).nullable().optional(),
     problems: z.string().nullable(),
     pagespeed: z.int().nullable(),
     mobile: MobileStatusSchema,
@@ -396,6 +397,22 @@ export const WorkspaceSettingsSchema = z
         recipient: z.string().nullable().default(null),
       })
       .default({ enabled: false, recipient: null }),
+    proposal: z
+      .object({
+        validity_days: z.int().min(1).max(365).default(30),
+        payment_terms: z.string().default('50% na adjudicação e 50% na entrega do site.'),
+        tax_note: z.string().default('Valores sem IVA. Acresce IVA à taxa legal em vigor.'),
+        next_steps: z
+          .string()
+          .default('Para avançar, basta responder a este email ou ligar-me. Marcamos uma reunião curta para afinar os detalhes e começo de imediato.'),
+      })
+      .default({
+        validity_days: 30,
+        payment_terms: '50% na adjudicação e 50% na entrega do site.',
+        tax_note: 'Valores sem IVA. Acresce IVA à taxa legal em vigor.',
+        next_steps:
+          'Para avançar, basta responder a este email ou ligar-me. Marcamos uma reunião curta para afinar os detalhes e começo de imediato.',
+      }),
   })
   .meta({ id: 'WorkspaceSettings' });
 export type WorkspaceSettings = z.infer<typeof WorkspaceSettingsSchema>;
@@ -407,6 +424,12 @@ export const WorkspaceSettingsUpdateSchema = z
     daily_digest: z.object({
       enabled: z.boolean(),
       recipient: nullableEmail,
+    }),
+    proposal: z.object({
+      validity_days: z.int({ error: 'Indica um número de dias.' }).min(1, { error: 'Mínimo 1 dia.' }).max(365),
+      payment_terms: z.string().trim().max(1000),
+      tax_note: z.string().trim().max(500),
+      next_steps: z.string().trim().max(1000),
     }),
   })
   .partial()

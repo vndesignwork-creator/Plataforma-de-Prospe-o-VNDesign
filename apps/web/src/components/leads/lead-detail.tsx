@@ -31,6 +31,9 @@ import { ContactScriptsCard } from '@/components/scripts/contact-scripts-card';
 import { ActivityTimeline } from './activity-timeline';
 import { ChannelLabel, MobileLabel, PageSpeedScore } from './badges';
 import { SiteAuditPanel } from './site-audit';
+import { AiEmailCard } from './ai-email-card';
+import { LeadLocation } from './lead-location';
+import { ProposalsCard } from '@/components/proposals/proposals-card';
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -229,6 +232,9 @@ export function LeadDetail({ id }: { id: string }) {
               </Row>
               <Row label="Cidade">{lead.city ?? dash}</Row>
               <Row label="Morada">{lead.address ?? dash}</Row>
+              <Row label="Mapa">
+                <LeadLocation lead={lead} />
+              </Row>
               <Row label="Contacto">{lead.contact_name ?? dash}</Row>
               <Row label="Email">
                 {lead.email ? (
@@ -277,6 +283,10 @@ export function LeadDetail({ id }: { id: string }) {
           </Card>
 
           {!lead.anonymized_at ? <ContactScriptsCard lead={lead} /> : null}
+
+          <AiEmailCard lead={lead} />
+
+          <ProposalsCard lead={lead} />
 
           <Card>
             <CardHeader

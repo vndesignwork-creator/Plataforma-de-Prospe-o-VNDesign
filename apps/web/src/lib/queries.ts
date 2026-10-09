@@ -11,6 +11,11 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import type {
+  AiEmailRequestInput,
+  AiEmailResult,
+  MapData,
+  Proposal,
+  ServicePackage,
   Activity,
   ApiToken,
   ApiTokenCreate,
@@ -175,7 +180,7 @@ export function useImports() {
 // -----------------------------------------------------------------------------
 // Fase C: modelos, assinatura, definições e follow-up
 // -----------------------------------------------------------------------------
-export type SettingsWithMail = WorkspaceSettings & { mail_configured: boolean };
+export type SettingsWithMail = WorkspaceSettings & { mail_configured: boolean; ai_configured?: boolean };
 
 export function useTemplates() {
   return useQuery({
@@ -255,5 +260,48 @@ export function useRevokeApiToken() {
   return useMutation({
     mutationFn: (id: string) => api(`/tokens/${id}`, { method: 'DELETE' }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['tokens'] }),
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Fase E — propostas, email com IA, mapa
+// -----------------------------------------------------------------------------
+export function usePackages(includeArchived = false) {
+  return useQuery({
+    queryKey: ['packages', { includeArchived }],
+    queryFn: () =>
+      api<{ data: ServicePackage[] }>('/packages', { query: { archived: includeArchived ? 'true' : undefined } }).then((r) => r.data),
+  });
+}
+
+export function useProposals(leadId: string) {
+  return useQuery({
+    queryKey: ['proposals', leadId],
+    queryFn: () => api<{ data: Proposal[] }>(`/leads/${leadId}/proposals`).then((r) => r.data),
+  });
+}
+
+export function useProposal(id: string | null) {
+  return useQuery({
+    queryKey: ['proposal', id],
+    enabled: !!id,
+    queryFn: () => api<{ data: Proposal }>(`/proposals/${id}`).then((r) => r.data),
+  });
+}
+
+export function useAiEmail(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: AiEmailRequestInput) =>
+      api<{ data: AiEmailResult }>(`/leads/${leadId}/ai-email`, { method: 'POST', body }).then((r) => r.data),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.activities(leadId) }),
+  });
+}
+
+export function useMapData(query: Record<string, string | string[] | undefined>) {
+  return useQuery({
+    queryKey: ['map', query],
+    queryFn: () => api<{ data: MapData }>('/map', { query }).then((r) => r.data),
+    placeholderData: keepPreviousData,
   });
 }

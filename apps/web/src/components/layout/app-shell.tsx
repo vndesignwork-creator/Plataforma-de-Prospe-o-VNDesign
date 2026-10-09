@@ -1,7 +1,7 @@
 'use client';
 
 import * as RadixDialog from '@radix-ui/react-dialog';
-import { BookOpen, Columns3, FileUp, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Plus, Settings, Sun, Users, X } from 'lucide-react';
+import { BookOpen, Columns3, FileUp, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Plus, Settings, Sun, Users, X, Map as MapIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
@@ -14,6 +14,7 @@ const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, match: (p: string) => p.startsWith('/dashboard') },
   { href: '/leads', label: 'Leads', icon: Users, match: (p: string) => p === '/leads' || /^\/leads\/(?!novo)/.test(p) },
   { href: '/kanban', label: 'Kanban', icon: Columns3, match: (p: string) => p.startsWith('/kanban') },
+  { href: '/mapa', label: 'Mapa', icon: MapIcon, match: (p: string) => p.startsWith('/mapa') },
   { href: '/scripts', label: 'Scripts', icon: MessageSquareText, match: (p: string) => p.startsWith('/scripts') },
   { href: '/leads/novo', label: 'Novo lead', icon: Plus, match: (p: string) => p === '/leads/novo' },
   { href: '/importar', label: 'Importar', icon: FileUp, match: (p: string) => p.startsWith('/importar') },

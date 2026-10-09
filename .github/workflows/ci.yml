@@ -66,6 +66,9 @@ jobs:
             echo "VAPID_PUBLIC_KEY=$(node -p "require('./vapid.json').publicKey")"
             echo "VAPID_PRIVATE_KEY=$(node -p "require('./vapid.json').privateKey")"
             echo "VAPID_SUBJECT=mailto:ci@vndesign.pt"
+            echo "ANTHROPIC_API_KEY=sk-ant-teste"
+            echo "AI_BASE_URL=http://127.0.0.1:4621"
+            echo "GEOCODER_URL=http://127.0.0.1:4620/search"
           } > apps/web/.env.local
           echo "SUPABASE_URL=$URL" >> "$GITHUB_ENV"
           echo "SUPABASE_KEY=$PUB" >> "$GITHUB_ENV"

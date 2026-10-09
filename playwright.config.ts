@@ -58,7 +58,13 @@ export default defineConfig({
         url: baseURL,
         reuseExistingServer: true,
         timeout: 120_000,
-        // O auditor de sites tem de poder analisar o site local dos testes (phase-d.spec.ts).
-        env: { AUDIT_ALLOW_PRIVATE: '1', AUDIT_SKIP_PAGESPEED: '1' },
+        // Auditor com o site local dos testes (phase-d) e serviços falsos da Fase E (e2e/stubs.ts).
+        env: {
+          AUDIT_ALLOW_PRIVATE: '1',
+          AUDIT_SKIP_PAGESPEED: '1',
+          ANTHROPIC_API_KEY: 'sk-ant-teste',
+          AI_BASE_URL: 'http://127.0.0.1:4621',
+          GEOCODER_URL: 'http://127.0.0.1:4620/search',
+        },
       },
 });
