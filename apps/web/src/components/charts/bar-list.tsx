@@ -38,7 +38,7 @@ export function BarList({
           const pct = max > 0 ? (item.value / max) * 100 : 0;
           const share = total > 0 ? Math.round((item.value / total) * 100) : 0;
           return (
-            <li key={item.key} className="group relative grid grid-cols-[minmax(7rem,11rem)_1fr] items-center gap-3 text-sm">
+            <li key={item.key} className="group relative grid grid-cols-[minmax(0,min(11rem,42%))_minmax(0,1fr)] items-center gap-3 text-sm">
               <span className="flex min-w-0 items-center gap-1.5 truncate text-fg">
                 {item.mark}
                 <span className="truncate">{item.label}</span>
@@ -51,7 +51,7 @@ export function BarList({
                     style={{ width: item.value > 0 ? `max(${pct}%, 3px)` : 0 }}
                   />
                 </span>
-                <span className="w-16 shrink-0 text-right font-medium tabular text-fg">{item.display ?? item.value}</span>
+                <span className="w-12 shrink-0 text-right font-medium tabular text-fg sm:w-16">{item.display ?? item.value}</span>
               </span>
               {item.note ? <span className="col-span-2 -mt-1.5 text-xs text-muted">{item.note}</span> : null}
               <span

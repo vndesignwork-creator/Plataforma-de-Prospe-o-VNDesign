@@ -60,9 +60,16 @@ async function copyText(text: string): Promise<boolean> {
 function ExternalUrl({ url }: { url: string | null }) {
   if (!url) return dash;
   return (
-    <a href={url} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 text-accent-text hover:underline">
-      {displayHost(url)}
-      <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer noopener"
+      title={url}
+      className="inline-flex max-w-full min-w-0 items-center gap-1 align-bottom text-accent-text hover:underline"
+    >
+      {/* Links compridos ficam cortados com "…" dentro da coluna (o endereço completo aparece ao passar o rato). */}
+      <span className="min-w-0 truncate">{displayHost(url)}</span>
+      <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
       <span className="sr-only">(abre num novo separador)</span>
     </a>
   );
@@ -206,7 +213,7 @@ export function LeadDetail({ id }: { id: string }) {
         </p>
       ) : null}
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
         <div className="flex flex-col gap-5">
           <Card>
             <CardHeader
@@ -360,7 +367,7 @@ export function LeadDetail({ id }: { id: string }) {
 
           <Card>
             <CardHeader title="Notas" />
-            <p className="p-4 text-sm whitespace-pre-line">{lead.notes ?? <span className="text-muted">Sem notas.</span>}</p>
+            <p className="p-4 text-sm break-words whitespace-pre-line">{lead.notes ?? <span className="text-muted">Sem notas.</span>}</p>
           </Card>
 
           <p className="text-xs text-muted">

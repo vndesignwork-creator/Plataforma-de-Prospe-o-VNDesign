@@ -12,15 +12,16 @@ const variants: Record<ButtonVariant, string> = {
   danger: 'bg-danger text-white hover:opacity-90 font-semibold dark:text-[#0d0d0d]',
 };
 const sizes: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3 text-sm gap-1.5',
-  md: 'h-10 px-4 text-sm gap-2',
+  sm: 'min-h-8 px-3 py-1 text-sm gap-1.5',
+  md: 'min-h-10 px-4 py-1.5 text-sm gap-2',
   icon: 'h-9 w-9 justify-center',
 };
 
 /** Classes de botão (também para <Link> com aspeto de botão). */
 export function buttonClasses(variant: ButtonVariant = 'primary', size: ButtonSize = 'md', className?: string) {
   return cn(
-    'inline-flex shrink-0 items-center justify-center rounded-lg whitespace-nowrap transition-colors',
+    // max-w-full: num ecrã estreito, um texto comprido passa para 2 linhas em vez de sair do cartão.
+    'inline-flex max-w-full shrink-0 items-center justify-center rounded-lg text-center transition-colors',
     'disabled:pointer-events-none disabled:opacity-50',
     variants[variant],
     sizes[size],

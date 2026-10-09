@@ -112,7 +112,8 @@ function buildColumns(today: string): Col[] {
             href={row.original.website}
             target="_blank"
             rel="noreferrer noopener"
-            className="text-accent-text hover:underline"
+            title={row.original.website}
+            className="block max-w-56 truncate text-accent-text hover:underline"
           >
             {displayHost(row.original.website)}
             <span className="sr-only"> (abre num novo separador)</span>
@@ -165,7 +166,13 @@ function buildColumns(today: string): Col[] {
       meta: { label: 'Fonte' },
       cell: ({ row }) =>
         row.original.source_url ? (
-          <a href={row.original.source_url} target="_blank" rel="noreferrer noopener" className="text-accent-text hover:underline">
+          <a
+            href={row.original.source_url}
+            target="_blank"
+            rel="noreferrer noopener"
+            title={row.original.source_url}
+            className="block max-w-56 truncate text-accent-text hover:underline"
+          >
             {displayHost(row.original.source_url)}
             <span className="sr-only"> (abre num novo separador)</span>
           </a>

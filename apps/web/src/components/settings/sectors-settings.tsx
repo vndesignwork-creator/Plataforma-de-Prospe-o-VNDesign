@@ -168,11 +168,11 @@ export function SectorsSettings() {
       ) : (
         <ul className="divide-y divide-border">
           {(sectors ?? []).map((s) => (
-            <li key={s.id} className="flex flex-wrap items-start gap-3 px-4 py-3">
+            <li key={s.id} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-1 px-4 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
               <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-surface-2 text-accent-text">
                 <SectorIconView sector={s} />
               </span>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0">
                 <p className="flex flex-wrap items-center gap-2 font-medium">
                   {s.name}
                   {s.priority_rank ? <Badge tone="accent">Prioridade {s.priority_rank}</Badge> : null}
@@ -183,7 +183,7 @@ export function SectorsSettings() {
                 </p>
                 {s.opportunity_notes ? <p className="mt-0.5 text-sm text-muted">{s.opportunity_notes}</p> : null}
               </div>
-              <div className="flex gap-1">
+              <div className="col-start-2 -ml-2 flex gap-1 sm:col-start-auto sm:ml-0">
                 <Button
                   size="icon"
                   variant="ghost"

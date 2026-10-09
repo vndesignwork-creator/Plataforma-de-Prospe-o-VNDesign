@@ -281,7 +281,7 @@ export function TemplateLibrary() {
   if (isLoading) return <Skeleton className="h-96" />;
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
       <nav aria-label="Modelos" className="flex flex-col gap-4">
         <Button onClick={() => setSelected('new')} variant={selected === 'new' ? 'primary' : 'outline'}>
           <Plus className="h-4 w-4" aria-hidden /> Novo modelo

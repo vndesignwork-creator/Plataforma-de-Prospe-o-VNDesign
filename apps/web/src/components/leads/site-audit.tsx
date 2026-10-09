@@ -64,7 +64,7 @@ function AuditResult({ audit, lead }: { audit: SiteAudit; lead: Lead }) {
     <div className="flex flex-col gap-4">
       <p className="text-xs text-muted">
         Análise de {formatDateTime(audit.created_at)} ·{' '}
-        <a href={audit.final_url ?? audit.url} target="_blank" rel="noreferrer noopener" className="underline">
+        <a href={audit.final_url ?? audit.url} target="_blank" rel="noreferrer noopener" className="break-all underline">
           {displayHost(audit.final_url ?? audit.url)}
         </a>
         {audit.http_status ? ` · HTTP ${audit.http_status}` : null}

@@ -46,7 +46,7 @@ export function Badge({
     success: 'bg-surface-3 text-success',
   };
   return (
-    <span className={cn('inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium', tones[tone], className)}>
+    <span className={cn('inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap', tones[tone], className)}>
       {children}
     </span>
   );
