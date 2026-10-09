@@ -8,6 +8,7 @@ import {
   isRecurringPackage,
   itemFromPackage,
   mailtoUrl,
+  parseEuroAmount,
   proposalTotals,
   suggestProposalIntro,
   type Lead,
@@ -55,10 +56,7 @@ const toDraft = (i: ProposalItem): DraftItem => ({
   recurring: i.recurring,
   package_id: i.package_id,
 });
-const parseNumber = (v: string) => {
-  const n = Number(v.replace(/\s|€/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'));
-  return Number.isFinite(n) ? n : NaN;
-};
+const parseNumber = (v: string) => parseEuroAmount(v) ?? NaN;
 const fromDraft = (d: DraftItem): ProposalItem => ({
   name: d.name.trim(),
   description: d.description.trim() || null,

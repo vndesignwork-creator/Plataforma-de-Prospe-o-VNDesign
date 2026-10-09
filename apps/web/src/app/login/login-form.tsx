@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { getSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { safeNextPath } from '@/lib/utils';
 
 const LoginSchema = z.object({
   email: z.email({ error: 'Indica um email válido.' }),
@@ -43,8 +44,7 @@ export function LoginForm() {
       );
       return;
     }
-    const next = params.get('next');
-    router.replace(next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard');
+    router.replace(safeNextPath(params.get('next')));
     router.refresh();
   });
 

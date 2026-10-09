@@ -9,7 +9,8 @@ const money = z
   .number({ error: 'Indica um valor.' })
   .min(0, { error: 'O valor não pode ser negativo.' })
   .max(1_000_000)
-  .transform((v) => Math.round(v * 100) / 100);
+  // toPrecision corrige o erro binário (1.005 * 100 = 100.4999…) antes de arredondar aos cêntimos.
+  .transform((v) => Math.round(Number((v * 100).toPrecision(12))) / 100);
 
 const optionalText = (max: number) =>
   z
@@ -54,8 +55,19 @@ export const ServicePackageCreateSchema = z
   .meta({ id: 'ServicePackageCreate' });
 export type ServicePackageCreateInput = z.input<typeof ServicePackageCreateSchema>;
 
+// Nas atualizações parciais os campos com .default() são redefinidos sem ele:
+// em Zod 4, .partial() continuaria a preencher o valor por omissão e um
+// PATCH {archived: true} apagaria os pontos do pacote.
 export const ServicePackageUpdateSchema = ServicePackageCreateSchema.partial()
-  .extend({ archived: z.boolean().optional() })
+  .extend({
+    features: z
+      .array(z.string().trim().max(200))
+      .max(30)
+      .transform((f) => f.filter(Boolean))
+      .optional(),
+    recommended: z.boolean().optional(),
+    archived: z.boolean().optional(),
+  })
   .meta({ id: 'ServicePackageUpdate' });
 
 // -----------------------------------------------------------------------------
@@ -113,8 +125,9 @@ const proposalFields = {
 export const ProposalCreateSchema = z.object(proposalFields).meta({ id: 'ProposalCreate' });
 export type ProposalCreateInput = z.input<typeof ProposalCreateSchema>;
 
+// Sem o .default(0) do desconto: mudar só o estado não pode pôr o desconto a zero.
 export const ProposalUpdateSchema = z
-  .object({ ...proposalFields, status: z.enum(PROPOSAL_STATUSES) })
+  .object({ ...proposalFields, discount: money, status: z.enum(PROPOSAL_STATUSES) })
   .partial()
   .meta({ id: 'ProposalUpdate' });
 export type ProposalUpdateInput = z.input<typeof ProposalUpdateSchema>;

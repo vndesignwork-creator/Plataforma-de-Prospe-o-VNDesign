@@ -19,3 +19,19 @@ export function displayHost(url: string | null | undefined): string {
     return url;
   }
 }
+
+/**
+ * Caminho interno seguro para onde voltar depois do login (?next=…).
+ * Recusa endereços que o browser resolveria para outro site
+ * (ex.: "//mal.pt", "/\mal.pt", "/\t/mal.pt").
+ */
+export function safeNextPath(next: string | null | undefined, fallback = '/dashboard'): string {
+  if (!next?.startsWith('/')) return fallback;
+  try {
+    const base = 'https://interno.invalid';
+    const url = new URL(next, base);
+    return url.origin === base ? url.pathname + url.search + url.hash : fallback;
+  } catch {
+    return fallback;
+  }
+}

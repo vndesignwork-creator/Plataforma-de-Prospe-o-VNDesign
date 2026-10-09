@@ -7,9 +7,20 @@
  * ficheiro de importação e na interface. Se mudares uma, muda a outra.
  */
 
-/** Remove acentos/diacríticos ("Saúde" → "Saude"). */
+/** Letras que o NFD não decompõe, convertidas como faz o unaccent do Postgres. */
+const FOLD: Record<string, string> = {
+  ø: 'o', Ø: 'O', æ: 'ae', Æ: 'AE', œ: 'oe', Œ: 'OE', ß: 'ss', ẞ: 'SS',
+  đ: 'd', Đ: 'D', ð: 'd', Ð: 'D', ł: 'l', Ł: 'L', þ: 'th', Þ: 'TH',
+  ĳ: 'ij', Ĳ: 'IJ', ﬁ: 'fi', ﬂ: 'fl',
+};
+const FOLD_RE = new RegExp(`[${Object.keys(FOLD).join('')}]`, 'g');
+
+/** Remove acentos/diacríticos ("Saúde" → "Saude", "Ørsted" → "Orsted"). */
 export function stripAccents(value: string): string {
-  return value.normalize('NFD').replace(/[̀-ͯ]/g, '');
+  return value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(FOLD_RE, (c) => FOLD[c] ?? c);
 }
 
 /** Minúsculas, sem acentos e com espaços colapsados. Devolve null se vazio. */

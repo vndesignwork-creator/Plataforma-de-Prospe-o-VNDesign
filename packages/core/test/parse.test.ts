@@ -104,3 +104,17 @@ describe('datas e números', () => {
     expect(parseText(' Amadora ')).toBe('Amadora');
   });
 });
+
+describe('ida e volta pelo CSV', () => {
+  it('tira o apóstrofo de proteção do Excel', () => {
+    expect(parseText("'+351 912 345 678")).toBe('+351 912 345 678');
+    expect(parseText("'- nota")).toBe('- nota');
+    expect(parseText("O'Neill")).toBe("O'Neill");
+  });
+
+  it('lê valores em euros à portuguesa', () => {
+    expect(parseEuroAmount('1.200')).toBe(1200);
+    expect(parseEuroAmount('1.200,50 €')).toBe(1200.5);
+    expect(parseEuroAmount('1,005')).toBe(1.01);
+  });
+});

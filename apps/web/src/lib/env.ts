@@ -23,3 +23,10 @@ export const env = {
     );
   },
 };
+
+/**
+ * Cookies da sessão Supabase: em produção só viajam por HTTPS (flag Secure),
+ * para não serem enviados em claro se alguém abrir http://… numa rede pública.
+ * Em desenvolvimento a app corre em http://localhost, por isso não se aplica.
+ */
+export const authCookieOptions = { secure: process.env.NODE_ENV === 'production' };

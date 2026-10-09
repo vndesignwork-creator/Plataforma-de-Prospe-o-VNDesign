@@ -183,9 +183,28 @@ export function mapIntegrationLead(input: Record<string, unknown>, sectors: read
 // -----------------------------------------------------------------------------
 // Notificações push
 // -----------------------------------------------------------------------------
+/**
+ * Serviços de push dos browsers (Chrome/Edge/Opera, Firefox, Windows, Safari).
+ * O servidor faz pedidos para o endpoint registado, por isso não se aceita
+ * outro endereço (evita usar o servidor para chegar a máquinas internas).
+ */
+const PUSH_SERVICE_HOSTS = /(^|\.)(fcm\.googleapis\.com|push\.services\.mozilla\.com|notify\.windows\.com|push\.apple\.com)$/i;
+
+export function isPushServiceUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && url.port === '' && PUSH_SERVICE_HOSTS.test(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 export const PushSubscriptionCreateSchema = z
   .object({
-    endpoint: z.url().max(2000),
+    endpoint: z
+      .url()
+      .max(2000)
+      .refine(isPushServiceUrl, 'Endereço de notificações desconhecido: tem de ser o serviço de push de um browser.'),
     keys: z.object({ p256dh: z.string().min(1).max(500), auth: z.string().min(1).max(200) }),
   })
   .meta({ id: 'PushSubscriptionCreate' });

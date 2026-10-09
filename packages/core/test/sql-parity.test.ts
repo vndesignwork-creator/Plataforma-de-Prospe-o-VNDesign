@@ -32,6 +32,7 @@ const NAMES = [
   'Assoalfra Associação de Solidariedade\nde Alfragide',
   'A Charrua da Quinta Grande',
   'Pão & Companhia, Lda.',
+  'Ørsted Æble Œuvre Straße Łódź Þór',
   '--',
 ];
 const WEBSITES = [

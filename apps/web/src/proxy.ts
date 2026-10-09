@@ -5,6 +5,7 @@
  */
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { authCookieOptions } from '@/lib/env';
 
 const PUBLIC_PATHS = ['/login', '/auth/', '/api/', '/docs/', '/offline'];
 
@@ -15,6 +16,7 @@ export async function proxy(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
+      cookieOptions: authCookieOptions,
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -53,6 +55,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|manifest.webmanifest|sw\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt)$).*)',
+    // A API fica de fora: autentica-se sozinha (src/server/context.ts) e também renova
+    // a sessão — assim cada pedido à API verifica o utilizador uma vez, não duas.
+    '/((?!api/|_next/static|_next/image|favicon.ico|icon|apple-icon|manifest.webmanifest|sw\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt)$).*)',
   ],
 };

@@ -10,6 +10,7 @@ import {
   LeadCreateSchema,
   isDirectoryUrl,
   isSocialUrl,
+  parseEuroAmount,
   MOBILE_STATUS_META,
   MOBILE_STATUSES,
   type DuplicateMatch,
@@ -56,10 +57,10 @@ function toFormValues(lead?: Lead): FormInput {
 }
 
 const emptyToNull = (v: unknown) => (v === '' || v === undefined ? null : v);
+// Valores à portuguesa: "1.200", "1.200,50", "950 €".
 const toNumber = (v: unknown) => {
   if (v === '' || v === null || v === undefined) return null;
-  const n = Number(String(v).replace(/\s|€/g, '').replace(',', '.'));
-  return Number.isNaN(n) ? Number.NaN : n;
+  return parseEuroAmount(v) ?? Number.NaN;
 };
 
 function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {

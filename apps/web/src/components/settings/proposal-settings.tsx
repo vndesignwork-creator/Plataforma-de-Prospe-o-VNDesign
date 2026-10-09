@@ -1,6 +1,6 @@
 'use client';
 
-import { formatCurrency, type ServicePackage } from '@vndesign/core';
+import { formatCurrency, parseEuroAmount, type ServicePackage } from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Sparkles, Star, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -47,7 +47,7 @@ function PackageDialog({ draft, onClose }: { draft: PackageDraft | null; onClose
 
   async function save() {
     setSaving(true);
-    const price = Number(form.price.replace(/\s|€/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'));
+    const price = parseEuroAmount(form.price) ?? Number.NaN;
     const body = {
       name: form.name,
       description: form.description || null,

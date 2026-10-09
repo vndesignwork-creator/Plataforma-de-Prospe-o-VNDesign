@@ -1,12 +1,13 @@
 import { createServerClient } from '@supabase/ssr';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
-import { env } from '@/lib/env';
+import { authCookieOptions, env } from '@/lib/env';
 
 /** Cliente com a sessão do utilizador (cookies) — RLS aplica-se. */
 export async function createSupabaseServerClient(): Promise<SupabaseClient> {
   const cookieStore = await cookies();
   return createServerClient(env.supabaseUrl, env.supabaseKey, {
+    cookieOptions: authCookieOptions,
     cookies: {
       getAll() {
         return cookieStore.getAll();

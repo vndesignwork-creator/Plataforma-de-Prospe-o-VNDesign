@@ -150,8 +150,13 @@ test('notificações push: registar e remover um dispositivo pela API', async ({
   const { data } = await status.json();
   test.skip(!data.configured, 'VAPID não configurado neste ambiente');
 
-  const endpoint = `https://push.exemplo.invalid/${run}`;
-  const sub = { endpoint, keys: { p256dh: 'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM', auth: 'tBHItJI5svbpez7KI4CCXg' } };
+  const keys = { p256dh: 'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM', auth: 'tBHItJI5svbpez7KI4CCXg' };
+  // Só serviços de push de browsers: um endereço interno é recusado.
+  const internal = await page.request.post('/api/v1/push-subscriptions', { data: { endpoint: 'https://127.0.0.1:5432/x', keys } });
+  expect(internal.status()).toBe(400);
+
+  const endpoint = `https://fcm.googleapis.com/fcm/send/e2e-${run}`;
+  const sub = { endpoint, keys };
   expect((await page.request.post('/api/v1/push-subscriptions', { data: sub })).status()).toBe(204);
   const after = (await (await page.request.get('/api/v1/push-subscriptions')).json()).data;
   expect(after.subscriptions.some((s: { endpoint: string }) => s.endpoint === endpoint)).toBe(true);

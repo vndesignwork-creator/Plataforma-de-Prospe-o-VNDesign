@@ -11,24 +11,37 @@ import { getLead, type LeadFilters, applyLeadFiltersTo } from './leads';
 
 const GEOCODER_URL = () => process.env.GEOCODER_URL || 'https://nominatim.openstreetmap.org/search';
 const USER_AGENT = 'VNDesignLeads/1.0 (+https://vndesign.pt)';
-const DELAY_MS = () => (process.env.GEOCODER_URL ? 0 : 1100);
+/** Sem pausa só para um servidor local (testes); qualquer servidor público leva no máximo 1 pedido/segundo. */
+const DELAY_MS = () => (/^https?:\/\/(127\.0\.0\.1|localhost)[:/]/.test(GEOCODER_URL()) ? 0 : 1100);
 const BATCH_TIME_MS = 40_000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Fila única: mesmo com vários lotes ao mesmo tempo, os pedidos saem um de cada vez, com a pausa entre eles.
+let queue: Promise<unknown> = Promise.resolve();
 let lastRequest = 0;
-async function geocode(q: string) {
-  const wait = lastRequest + DELAY_MS() - Date.now();
-  if (wait > 0) await sleep(wait);
-  lastRequest = Date.now();
-  const params = new URLSearchParams({ q, format: 'jsonv2', limit: '1', countrycodes: 'pt', 'accept-language': 'pt-PT' });
-  const res = await fetch(`${GEOCODER_URL()}?${params}`, {
-    headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
-    signal: AbortSignal.timeout(10_000),
+function throttled<T>(fn: () => Promise<T>): Promise<T> {
+  const run = queue.then(async () => {
+    const wait = lastRequest + DELAY_MS() - Date.now();
+    if (wait > 0) await sleep(wait);
+    lastRequest = Date.now();
+    return fn();
   });
-  if (res.status === 429) throw new ApiError(429, 'Demasiados pedidos', 'O serviço de mapas pediu uma pausa. Tenta daqui a um minuto.');
-  if (!res.ok) throw new ApiError(502, 'Serviço de mapas indisponível', `O geocodificador respondeu ${res.status}.`);
-  return parseNominatimResponse(await res.json());
+  queue = run.catch(() => undefined);
+  return run;
+}
+
+function geocode(q: string) {
+  return throttled(async () => {
+    const params = new URLSearchParams({ q, format: 'jsonv2', limit: '1', countrycodes: 'pt', 'accept-language': 'pt-PT' });
+    const res = await fetch(`${GEOCODER_URL()}?${params}`, {
+      headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (res.status === 429) throw new ApiError(429, 'Demasiados pedidos', 'O serviço de mapas pediu uma pausa. Tenta daqui a um minuto.');
+    if (!res.ok) throw new ApiError(502, 'Serviço de mapas indisponível', `O geocodificador respondeu ${res.status}.`);
+    return parseNominatimResponse(await res.json());
+  });
 }
 
 type LeadForGeocode = { id: string; company_name: string; address: string | null; city: string | null };

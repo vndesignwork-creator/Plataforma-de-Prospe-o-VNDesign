@@ -8,6 +8,8 @@ import {
 import { buildGeocodeQueries, parseNominatimResponse } from '../src/geo';
 import {
   ProposalCreateSchema,
+  ProposalUpdateSchema,
+  ServicePackageUpdateSchema,
   isRecurringPackage,
   itemFromPackage,
   proposalCode,
@@ -108,5 +110,17 @@ describe('geocodificação', () => {
     });
     expect(parseNominatimResponse([])).toBeNull();
     expect(parseNominatimResponse({ error: 'x' })).toBeNull();
+  });
+});
+
+describe('atualizações parciais', () => {
+  it('não acrescentam campos que não foram enviados (desconto, pontos, recomendado)', () => {
+    expect(ProposalUpdateSchema.parse({ status: 'aceite' })).toEqual({ status: 'aceite' });
+    expect(ServicePackageUpdateSchema.parse({ archived: true })).toEqual({ archived: true });
+  });
+
+  it('continuam a validar o que é enviado', () => {
+    expect(ProposalUpdateSchema.parse({ discount: 1.005 }).discount).toBe(1.01);
+    expect(ServicePackageUpdateSchema.parse({ features: ['Site', ' '] }).features).toEqual(['Site']);
   });
 });

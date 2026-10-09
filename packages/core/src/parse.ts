@@ -124,7 +124,7 @@ export function parseEuroAmount(value: unknown): number | null {
     s = s.replace(/\./g, '');
   }
   const n = Number(s);
-  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null;
+  return Number.isFinite(n) && n >= 0 ? Math.round(Number((n * 100).toPrecision(12))) / 100 : null;
 }
 
 /** PageSpeed 0–100 ("34", "34/100", 34). */
@@ -138,10 +138,14 @@ export function parsePageSpeed(value: unknown): number | null {
   return Number.isInteger(n) && n >= 0 && n <= 100 ? n : null;
 }
 
-/** Texto livre: "--" e vazio passam a null. */
+/**
+ * Texto livre: "--" e vazio passam a null. Tira o apóstrofo que a exportação
+ * CSV põe antes de "+", "=", "-" e "@" (proteção do Excel), para que exportar
+ * e voltar a importar não estrague telefones como "+351 912 345 678".
+ */
 export function parseText(value: unknown): string | null {
   if (value === null || value === undefined) return null;
-  const s = String(value).trim();
+  const s = String(value).trim().replace(/^'(?=[=+\-@])/, '');
   return isBlank(s) ? null : s;
 }
 

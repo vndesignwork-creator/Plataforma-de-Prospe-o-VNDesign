@@ -1,7 +1,6 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQueryClient } from '@tanstack/react-query';
 import { SECTOR_ICONS, SECTOR_ICON_KEYS, SectorCreateSchema, sectorIconFor, type Sector } from '@vndesign/core';
 import { Archive, ArchiveRestore, Edit3, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
@@ -14,7 +13,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input, Textarea } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
-import { useSectors } from '@/lib/queries';
+import { useInvalidateSectors, useSectors } from '@/lib/queries';
 import { SECTOR_ICON_COMPONENTS, SectorIconView } from '@/components/icons/lead-icons';
 import { cn } from '@/lib/utils';
 
@@ -32,7 +31,7 @@ function SectorDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const qc = useQueryClient();
+  const invalidateSectors = useInvalidateSectors();
   const {
     register,
     handleSubmit,
@@ -57,7 +56,7 @@ function SectorDialog({
     try {
       if (sector) await api(`/sectors/${sector.id}`, { method: 'PATCH', body: values });
       else await api('/sectors', { method: 'POST', body: values });
-      void qc.invalidateQueries({ queryKey: ['sectors'] });
+      invalidateSectors();
       toast.success(sector ? 'Setor atualizado.' : 'Setor criado.');
       onOpenChange(false);
     } catch (error) {
@@ -128,7 +127,7 @@ function SectorDialog({
 }
 
 export function SectorsSettings() {
-  const qc = useQueryClient();
+  const invalidateSectors = useInvalidateSectors();
   const { data: sectors, isLoading } = useSectors(true);
   const [editing, setEditing] = useState<Sector | null>(null);
   const [open, setOpen] = useState(false);
@@ -137,7 +136,7 @@ export function SectorsSettings() {
     try {
       if (action === 'delete') await api(`/sectors/${sector.id}`, { method: 'DELETE' });
       else await api(`/sectors/${sector.id}`, { method: 'PATCH', body: { archived: action === 'archive' } });
-      void qc.invalidateQueries({ queryKey: ['sectors'] });
+      invalidateSectors();
       toast.success(action === 'delete' ? 'Setor apagado.' : action === 'archive' ? 'Setor arquivado.' : 'Setor reativado.');
     } catch (error) {
       toast.error(errorMessage(error));

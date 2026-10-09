@@ -27,25 +27,26 @@ export async function getDashboard(ctx: ApiContext): Promise<Dashboard> {
 /** Lista "Hoje" para um workspace (aceita o cliente do utilizador ou o de serviço). */
 export async function fetchToday(client: SupabaseClient, workspaceId: string): Promise<Today> {
   const today = todayIso();
-  const { data, error } = await client
-    .from('leads')
-    .select(LEAD_SELECT)
-    .eq('workspace_id', workspaceId)
-    .is('anonymized_at', null)
-    .not('status', 'in', '(cliente,sem_interesse)')
-    .not('next_action_on', 'is', null)
-    .lte('next_action_on', addDays(today, 7))
-    .order('next_action_on', { ascending: true })
-    .order('number', { ascending: true })
-    .limit(200);
-  if (error) throw fromPostgrest(error);
-  const leads = (data ?? []) as unknown as Lead[];
-  return {
-    today,
-    overdue: leads.filter((l) => l.next_action_on! < today),
-    due_today: leads.filter((l) => l.next_action_on === today),
-    upcoming: leads.filter((l) => l.next_action_on! > today),
-  };
+  // Três consultas separadas: um atraso grande (ex.: folha importada com datas antigas)
+  // não pode ocupar o limite e esconder os follow-ups de hoje.
+  const base = () =>
+    client
+      .from('leads')
+      .select(LEAD_SELECT)
+      .eq('workspace_id', workspaceId)
+      .is('anonymized_at', null)
+      .not('status', 'in', '(cliente,sem_interesse)')
+      .not('next_action_on', 'is', null);
+  const sorted = <T extends ReturnType<typeof base>>(q: T) =>
+    q.order('next_action_on', { ascending: true }).order('number', { ascending: true }).limit(500);
+  const [overdue, dueToday, upcoming] = await Promise.all([
+    sorted(base().lt('next_action_on', today)),
+    sorted(base().eq('next_action_on', today)),
+    sorted(base().gt('next_action_on', today).lte('next_action_on', addDays(today, 7))),
+  ]);
+  for (const r of [overdue, dueToday, upcoming]) if (r.error) throw fromPostgrest(r.error);
+  const rows = (r: { data: unknown }) => (r.data ?? []) as unknown as Lead[];
+  return { today, overdue: rows(overdue), due_today: rows(dueToday), upcoming: rows(upcoming) };
 }
 
 /** Lista "Hoje": follow-ups em atraso, para hoje e nos próximos 7 dias. */

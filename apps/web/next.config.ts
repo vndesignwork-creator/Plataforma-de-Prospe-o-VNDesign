@@ -6,6 +6,8 @@ const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
+  // Depois da primeira visita por HTTPS, o browser nunca mais usa http:// (os browsers ignoram-no em localhost).
+  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
 ];
 
 const nextConfig: NextConfig = {
@@ -21,6 +23,8 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: '/:path*', headers: securityHeaders },
+      // Dados dos leads: nunca guardados em caches partilhadas (CDN/proxy do alojamento).
+      { source: '/api/:path*', headers: [{ key: 'Cache-Control', value: 'private, no-store' }] },
       // O service worker tem de ser sempre revalidado para as atualizações chegarem.
       {
         source: '/sw.js',

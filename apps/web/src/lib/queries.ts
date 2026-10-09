@@ -100,7 +100,7 @@ export function checkDuplicates(
   return api<{ data: DuplicateCheckResult }>('/leads/check-duplicates', { method: 'POST', body, signal }).then((r) => r.data);
 }
 
-/** Invalida tudo o que depende de um lead (lista, ficha e linha do tempo). */
+/** Invalida tudo o que depende de um lead (lista, Kanban, mapa, ficha, linha do tempo e propostas). */
 export function useInvalidateLead() {
   const qc = useQueryClient();
   return (id?: string) => {
@@ -109,9 +109,23 @@ export function useInvalidateLead() {
     void qc.invalidateQueries({ queryKey: ['board'] });
     void qc.invalidateQueries({ queryKey: ['dashboard'] });
     void qc.invalidateQueries({ queryKey: ['today'] });
+    void qc.invalidateQueries({ queryKey: ['map'] });
+    // Apagar/anonimizar pode acrescentar a empresa à lista "não contactar".
+    void qc.invalidateQueries({ queryKey: qk.dnc });
     if (id) {
       void qc.invalidateQueries({ queryKey: qk.lead(id) });
       void qc.invalidateQueries({ queryKey: qk.activities(id) });
+      void qc.invalidateQueries({ queryKey: ['proposals', id] });
+    }
+  };
+}
+
+/** Depois de mudar um setor (nome, ícone, arquivo): os leads mostram o setor embutido. */
+export function useInvalidateSectors() {
+  const qc = useQueryClient();
+  return () => {
+    for (const key of ['sectors', 'leads', 'lead', 'board', 'map', 'dashboard', 'today']) {
+      void qc.invalidateQueries({ queryKey: [key] });
     }
   };
 }

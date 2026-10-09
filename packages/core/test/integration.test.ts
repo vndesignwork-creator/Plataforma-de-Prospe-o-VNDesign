@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { IntegrationImportSchema, mapIntegrationLead } from '../src/integration';
+import { IntegrationImportSchema, isPushServiceUrl, mapIntegrationLead } from '../src/integration';
 
 const SECTORS = [
   { id: '00000000-0000-4000-8000-000000000001', name: 'Restauração', slug: 'restauracao' },
@@ -62,5 +62,31 @@ describe('IntegrationImportSchema', () => {
     expect(parsed).toMatchObject({ on_duplicate: 'skip', dry_run: false });
     expect(IntegrationImportSchema.safeParse({ leads: [] }).success).toBe(false);
     expect(IntegrationImportSchema.safeParse({ leads: Array(501).fill({ company_name: 'A' }) }).success).toBe(false);
+  });
+});
+
+describe('isPushServiceUrl', () => {
+  it('aceita os serviços de push dos browsers', () => {
+    for (const url of [
+      'https://fcm.googleapis.com/fcm/send/abc',
+      'https://updates.push.services.mozilla.com/wpush/v2/abc',
+      'https://wns2-db5p.notify.windows.com/w/?token=abc',
+      'https://web.push.apple.com/abc',
+    ]) {
+      expect(isPushServiceUrl(url)).toBe(true);
+    }
+  });
+
+  it('recusa endereços internos, http, portas e imitações', () => {
+    for (const url of [
+      'https://127.0.0.1/x',
+      'http://fcm.googleapis.com/fcm/send/abc',
+      'https://fcm.googleapis.com:8443/x',
+      'https://fcm.googleapis.com.mal.pt/x',
+      'https://malfcm.googleapis.com/x',
+      'não é url',
+    ]) {
+      expect(isPushServiceUrl(url)).toBe(false);
+    }
   });
 });

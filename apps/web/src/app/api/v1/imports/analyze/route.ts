@@ -1,11 +1,16 @@
 import { ApiError, apiRoute, json } from '@/server/http';
-import { analyzeFile } from '@/server/services/imports';
+import { MAX_FILE_BYTES, analyzeFile } from '@/server/services/imports';
 
 /**
  * POST /api/v1/imports/analyze — multipart/form-data com "file" (.csv/.xlsx)
  * e, opcionalmente, "sheet". Deteta o cabeçalho e sugere o mapeamento.
  */
 export const POST = apiRoute(async (req) => {
+  // Recusa logo pelo tamanho anunciado, antes de ler o pedido para memória.
+  const length = Number(req.headers.get('content-length') ?? 0);
+  if (length > MAX_FILE_BYTES + 64 * 1024) {
+    throw new ApiError(413, 'Ficheiro demasiado grande', 'O ficheiro tem de ter menos de 10 MB.');
+  }
   let form: FormData;
   try {
     form = await req.formData();
