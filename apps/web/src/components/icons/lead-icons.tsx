@@ -11,7 +11,6 @@ import {
   type SectorIcon,
 } from '@vndesign/core';
 import {
-
   Baby,
   Briefcase,
   Building2,
@@ -47,7 +46,6 @@ import {
   Plane,
   Scale,
   Scissors,
-  Search,
   Send,
   Shirt,
   ShoppingBag,
@@ -55,6 +53,7 @@ import {
   SmartphoneNfc,
   Stethoscope,
   Store,
+  Target,
   Truck,
   Users,
   Utensils,
@@ -66,7 +65,7 @@ import {
 import { cn } from '@/lib/utils';
 
 export const STATUS_ICONS: Record<LeadStatus, LucideIcon> = {
-  identificado: Search,
+  identificado: Target,
   contactado: Send,
   respondeu: MessageCircle,
   reuniao: CalendarClock,

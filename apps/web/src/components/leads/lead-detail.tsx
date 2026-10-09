@@ -329,29 +329,34 @@ export function LeadDetail({ id }: { id: string }) {
               }
             />
             {lead.email_body || lead.email_subject ? (
-              <div className="flex flex-col gap-3 p-4">
-                <div className="flex items-start justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2">
-                  <p className="text-sm">
-                    <span className="text-muted">Assunto: </span>
-                    <span className="font-medium">{lead.email_subject ?? '—'}</span>
-                  </p>
-                  {lead.email_subject ? (
-                    <Button size="sm" variant="ghost" onClick={() => copy('subject')} aria-label="Copiar assunto">
-                      <Copy className="h-3.5 w-3.5" aria-hidden />
-                    </Button>
-                  ) : null}
-                </div>
-                <div className="relative">
+              <div className="flex flex-col gap-4 p-4">
+                {/* Cada parte tem a sua barra com o botão de copiar, para nunca tapar o texto. */}
+                <section aria-label="Assunto do email">
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <h3 className="text-xs font-medium tracking-wide text-muted uppercase">Assunto</h3>
+                    {lead.email_subject ? (
+                      <Button size="sm" variant="ghost" onClick={() => copy('subject')} aria-label="Copiar assunto">
+                        <Copy className="h-3.5 w-3.5" aria-hidden />
+                        Copiar
+                      </Button>
+                    ) : null}
+                  </div>
+                  <p className="rounded-lg bg-surface-2 px-3 py-2 text-sm font-medium break-words">{lead.email_subject ?? '—'}</p>
+                </section>
+                <section aria-label="Mensagem do email">
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <h3 className="text-xs font-medium tracking-wide text-muted uppercase">Mensagem</h3>
+                    {lead.email_body ? (
+                      <Button size="sm" variant="ghost" onClick={() => copy('body')} aria-label="Copiar mensagem">
+                        <Copy className="h-3.5 w-3.5" aria-hidden />
+                        Copiar
+                      </Button>
+                    ) : null}
+                  </div>
                   <pre className="max-h-[28rem] overflow-auto rounded-lg bg-surface-2 p-3 font-sans text-sm leading-relaxed break-words whitespace-pre-wrap">
                     {lead.email_body ?? ''}
                   </pre>
-                  {lead.email_body ? (
-                    <Button size="sm" variant="secondary" onClick={() => copy('body')} className="absolute top-2 right-2">
-                      <Copy className="h-3.5 w-3.5" aria-hidden />
-                      Copiar corpo
-                    </Button>
-                  ) : null}
-                </div>
+                </section>
               </div>
             ) : (
               <p className="p-4 text-sm text-muted">

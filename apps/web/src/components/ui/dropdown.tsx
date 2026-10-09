@@ -14,8 +14,10 @@ export function DropdownContent({ children, className, align = 'end' }: { childr
       <Menu.Content
         align={align}
         sideOffset={6}
+        collisionPadding={12}
         className={cn(
-          'z-50 max-h-[70dvh] min-w-48 overflow-y-auto rounded-lg border border-border bg-surface p-1 shadow-card',
+          // Fundo e borda mais claros que os cartões, para o menu não se confundir com o que está por baixo.
+          'z-50 max-h-[70dvh] max-w-[calc(100vw-1.5rem)] min-w-56 overflow-y-auto rounded-xl border border-border-strong bg-surface-2 p-1.5 shadow-card',
           className,
         )}
       >
@@ -26,7 +28,7 @@ export function DropdownContent({ children, className, align = 'end' }: { childr
 }
 
 const itemClass =
-  'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none select-none data-[highlighted]:bg-surface-2 data-[disabled]:opacity-50';
+  'flex min-h-9 cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm outline-none select-none data-[highlighted]:bg-surface-3 data-[disabled]:cursor-default data-[disabled]:opacity-50 [&>svg]:shrink-0';
 
 export function DropdownItem({
   children,
@@ -40,7 +42,7 @@ export function DropdownItem({
   disabled?: boolean;
 }) {
   return (
-    <Menu.Item onSelect={onSelect} disabled={disabled} className={cn(itemClass, danger && 'text-danger')}>
+    <Menu.Item onSelect={onSelect} disabled={disabled} className={cn(itemClass, danger && 'text-danger data-[highlighted]:bg-danger-soft')}>
       {children}
     </Menu.Item>
   );
@@ -75,5 +77,5 @@ export function DropdownLabel({ children }: { children: ReactNode }) {
 }
 
 export function DropdownSeparator() {
-  return <Menu.Separator className="my-1 h-px bg-border" />;
+  return <Menu.Separator className="-mx-1.5 my-1.5 h-px bg-border-strong" />;
 }

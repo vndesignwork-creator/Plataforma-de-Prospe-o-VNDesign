@@ -55,7 +55,7 @@ function Preview({ subject, body, isEmail }: { subject: string; body: string; is
           aria-label="Lead para a pré-visualização"
           value={lead?.id ?? ''}
           onChange={(e) => setLeadId(e.target.value)}
-          className="h-8 w-auto min-w-48 flex-1 text-sm"
+          className="h-8 w-auto min-w-0 flex-[1_1_12rem] text-sm"
         >
           {(leads?.data ?? []).map((l) => (
             <option key={l.id} value={l.id}>
@@ -76,7 +76,7 @@ function Preview({ subject, body, isEmail }: { subject: string; body: string; is
             <strong>{s.text}</strong>
           </p>
         ) : null}
-        <p className="whitespace-pre-wrap">{b.text || <span className="text-muted">(vazio)</span>}</p>
+        <p className="break-words whitespace-pre-wrap">{b.text || <span className="text-muted">(vazio)</span>}</p>
       </div>
     </section>
   );
@@ -161,7 +161,7 @@ function Editor({ template, onSaved, onDeleted }: { template: ContactTemplate | 
   }
 
   return (
-    <Card>
+    <Card className="@container">
       <CardHeader
         title={template ? template.name : 'Novo modelo'}
         actions={
@@ -177,10 +177,11 @@ function Editor({ template, onSaved, onDeleted }: { template: ContactTemplate | 
           ) : null
         }
       />
-      <form onSubmit={save} className="grid gap-4 p-4 lg:grid-cols-2" noValidate>
-        <div className="flex flex-col gap-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Nome" error={errors.name?.message} required className="sm:col-span-2">
+      {/* Lado a lado só quando o cartão é largo (container query); senão, a pré-visualização fica por baixo. */}
+      <form onSubmit={save} className="grid grid-cols-[minmax(0,1fr)] gap-4 p-4 @3xl:grid-cols-2 @3xl:gap-6" noValidate>
+        <div className="flex min-w-0 flex-col gap-4">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-3 @md:grid-cols-2">
+            <Field label="Nome" error={errors.name?.message} required className="@md:col-span-2">
               <Input {...register('name')} />
             </Field>
             <Field label="Tipo" error={errors.kind?.message}>
@@ -239,10 +240,10 @@ function Editor({ template, onSaved, onDeleted }: { template: ContactTemplate | 
             </p>
           </div>
         </div>
-        <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-4">
           <Preview subject={subject ?? ''} body={body ?? ''} isEmail={isEmail} />
         </div>
-        <div className="flex items-center justify-end gap-2 lg:col-span-2">
+        <div className="flex items-center justify-end gap-2 @3xl:col-span-2">
           {isDirty ? <span className="mr-auto text-sm text-muted">Alterações por guardar</span> : null}
           <Button type="submit" loading={isSubmitting}>
             {template ? 'Guardar modelo' : 'Criar modelo'}

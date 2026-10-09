@@ -19,12 +19,13 @@ export function CardHeader({
   as?: 'h2' | 'h3';
 }) {
   return (
-    <div className={cn('flex items-start justify-between gap-3 border-b border-border px-4 py-3', className)}>
-      <div className="min-w-0">
+    <div className={cn('flex flex-wrap items-start justify-between gap-x-3 gap-y-2 border-b border-border px-4 py-3', className)}>
+      {/* Com pouco espaço, as ações passam para baixo do título em vez de o espremer. */}
+      <div className="min-w-0 flex-[1_1_14rem]">
         <Heading className="text-base font-semibold">{title}</Heading>
         {description ? <p className="mt-0.5 text-sm text-muted">{description}</p> : null}
       </div>
-      {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+      {actions ? <div className="flex max-w-full flex-wrap items-center gap-2">{actions}</div> : null}
     </div>
   );
 }

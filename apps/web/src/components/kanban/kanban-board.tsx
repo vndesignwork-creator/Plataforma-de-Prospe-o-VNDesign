@@ -277,8 +277,9 @@ export function KanbanBoard() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Pesquisa e filtros: numa linha quando cabe; senão, os filtros passam juntos para a linha de baixo e repartem a largura. */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-0 flex-1 basis-56">
+        <div className="relative min-w-0 flex-[999_1_16rem]">
           <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
           <Input
             type="search"
@@ -289,18 +290,20 @@ export function KanbanBoard() {
             className="pl-9"
           />
         </div>
-        <MultiSelectFilter
-          label="Setor"
-          value={sector}
-          onChange={setSector}
-          options={[...(sectors ?? []).map((s) => ({ value: s.id, label: s.name, icon: <SectorIconView sector={s} className="text-muted" /> })), { value: 'none', label: 'Sem setor' }]}
-        />
-        <MultiSelectFilter
-          label="Canal"
-          value={channel}
-          onChange={setChannel}
-          options={[...LEAD_CHANNELS.map((c) => ({ value: c, label: LEAD_CHANNEL_META[c].label, icon: <ChannelIcon channel={c} className="text-muted" /> })), { value: 'none', label: 'Sem canal' }]}
-        />
+        <div className="flex flex-[1_1_auto] gap-2 *:flex-1 *:justify-between">
+          <MultiSelectFilter
+            label="Setor"
+            value={sector}
+            onChange={setSector}
+            options={[...(sectors ?? []).map((s) => ({ value: s.id, label: s.name, icon: <SectorIconView sector={s} className="text-muted" /> })), { value: 'none', label: 'Sem setor' }]}
+          />
+          <MultiSelectFilter
+            label="Canal"
+            value={channel}
+            onChange={setChannel}
+            options={[...LEAD_CHANNELS.map((c) => ({ value: c, label: LEAD_CHANNEL_META[c].label, icon: <ChannelIcon channel={c} className="text-muted" /> })), { value: 'none', label: 'Sem canal' }]}
+          />
+        </div>
       </div>
       <p className="text-sm text-muted">
         Arrasta os cartões entre colunas para mudar o estado. Com o teclado: foca um cartão, carrega em Espaço, usa as
