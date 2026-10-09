@@ -35,7 +35,14 @@ export function anthropicClient(): Anthropic {
     // 55 s por pedido e uma repetição: cabe no limite de 60 s das funções do Vercel.
     client = {
       key,
-      instance: new Anthropic({ apiKey: key, baseURL: process.env.AI_BASE_URL || undefined, timeout: 55_000, maxRetries: 1 }),
+      // Endereço fixo: uma ANTHROPIC_BASE_URL definida no sistema (por outra ferramenta) não é usada.
+      instance: new Anthropic({
+        apiKey: key,
+        authToken: null,
+        baseURL: process.env.AI_BASE_URL || 'https://api.anthropic.com',
+        timeout: 55_000,
+        maxRetries: 1,
+      }),
     };
   }
   return client.instance;

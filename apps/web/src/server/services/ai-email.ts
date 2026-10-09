@@ -116,7 +116,7 @@ export async function generateAiEmail(ctx: ApiContext, leadId: string, request: 
       throw new ApiError(
         503,
         'Chave da IA inválida',
-        `A Anthropic não reconhece a chave em uso (${aiKeyHint()}). Confirma que é a chave que criaste, que não foi apagada e que só há uma linha ANTHROPIC_API_KEY no .env.local; depois reinicia o servidor.`,
+        `A Anthropic recusou a chave em uso (${aiKeyHint()}): "${anthropicErrorMessage(error)}". Confirma que é a chave que criaste, que não foi apagada e que só há uma linha ANTHROPIC_API_KEY no .env.local; depois reinicia o servidor.`,
       );
     }
     if (error instanceof Anthropic.PermissionDeniedError) {
