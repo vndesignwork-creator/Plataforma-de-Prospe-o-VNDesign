@@ -1,7 +1,7 @@
 'use client';
 
 import * as RadixDialog from '@radix-ui/react-dialog';
-import { BookOpen, Columns3, FileUp, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Plus, Settings, Sun, Users, X, Map as MapIcon } from 'lucide-react';
+import { BookOpen, Columns3, FileUp, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Settings, Sun, Users, X, Map as MapIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';

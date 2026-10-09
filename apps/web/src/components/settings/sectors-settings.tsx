@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { SECTOR_ICONS, SECTOR_ICON_KEYS, SectorCreateSchema, sectorIconFor, type Sector } from '@vndesign/core';
 import { Archive, ArchiveRestore, Edit3, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import type { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -36,7 +36,7 @@ function SectorDialog({
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<SectorInput, unknown, SectorOutput>({
@@ -50,6 +50,8 @@ function SectorDialog({
       sales_arguments: sector?.sales_arguments ?? '',
     },
   });
+
+  const currentIcon = useWatch({ control, name: 'icon' });
 
   const onSubmit = handleSubmit(async (values) => {
     try {
@@ -89,7 +91,7 @@ function SectorDialog({
           <div role="radiogroup" aria-label="Ícone do setor" className="flex flex-wrap gap-1.5">
             {SECTOR_ICON_KEYS.map((key) => {
               const Icon = SECTOR_ICON_COMPONENTS[key];
-              const selected = watch('icon') === key;
+              const selected = currentIcon === key;
               return (
                 <button
                   key={key}
