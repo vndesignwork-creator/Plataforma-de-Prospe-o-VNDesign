@@ -11,7 +11,9 @@ import {
   LEAD_STATUSES,
   MANUAL_ACTIVITY_TYPES,
   MOBILE_STATUSES,
+  SECTOR_ICON_KEYS,
   TEMPLATE_KINDS,
+  type SectorIcon,
 } from './enums';
 import { ensureUrlProtocol } from './normalize';
 
@@ -128,7 +130,13 @@ export const LeadUpdateSchema = z
 export type LeadUpdate = z.output<typeof LeadUpdateSchema>;
 
 export const SectorRefSchema = z
-  .object({ id: z.uuid(), name: z.string(), slug: z.string(), emoji: z.string().nullable() })
+  .object({
+    id: z.uuid(),
+    name: z.string(),
+    slug: z.string(),
+    emoji: z.string().nullable(),
+    icon: z.string().nullable().optional().meta({ description: 'Ícone de linha (ver SECTOR_ICONS)' }),
+  })
   .meta({ id: 'SectorRef' });
 
 export const LeadSchema = z
@@ -339,6 +347,7 @@ export const SectorSchema = z
     name: z.string(),
     slug: z.string(),
     emoji: z.string().nullable(),
+    icon: z.string().nullable().optional(),
     sort_order: z.int(),
     priority_rank: z.int().nullable(),
     opportunity_notes: z.string().nullable(),
@@ -353,6 +362,7 @@ export const SectorCreateSchema = z
   .object({
     name: z.string().trim().min(1, { error: 'Indica o nome do setor.' }).max(80),
     emoji: nullableText(16).optional(),
+    icon: z.enum(SECTOR_ICON_KEYS as [SectorIcon, ...SectorIcon[]]).nullable().optional(),
     sort_order: z.int().min(0).max(999).optional(),
     priority_rank: z.int().min(1).max(99).nullable().optional(),
     opportunity_notes: nullableText(4000).optional(),

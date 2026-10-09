@@ -14,7 +14,7 @@ async function createLead(page: Page, fields: { name: string; city?: string; web
 test('criar lead, abrir a ficha e passar a "Contactado" agenda follow-up', async ({ page }) => {
   const name = `Restaurante Teste ${run}`;
   await createLead(page, { name, city: 'Amadora', website: `teste-${run}.pt`, email: `geral@teste-${run}.pt` });
-  await page.getByLabel('Setor').selectOption({ label: '🍽️ Restauração' });
+  await page.getByLabel('Setor').selectOption({ label: 'Restauração' });
   await page.getByLabel('Email de prospeção').fill('Boa tarde,\n\nEmail de teste.\n\nCumprimentos');
   await page.getByLabel('Assunto do email').fill('Uma sugestão para o vosso site');
   await page.getByRole('button', { name: 'Criar lead' }).click();
@@ -68,7 +68,7 @@ test('aviso de duplicado ao criar e junção com o lead existente', async ({ pag
 test('pesquisa e filtros da tabela', async ({ page }) => {
   const name = `Imobiliária Filtro ${run}`;
   await createLead(page, { name, city: 'Sintra' });
-  await page.getByLabel('Setor').selectOption({ label: '🏠 Imobiliária' });
+  await page.getByLabel('Setor').selectOption({ label: 'Imobiliária' });
   await page.getByRole('button', { name: 'Criar lead' }).click();
   await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
 
@@ -91,4 +91,21 @@ test('validação do formulário em português', async ({ page }) => {
   await page.getByRole('button', { name: 'Criar lead' }).click();
   await expect(page.getByText('Indica o nome da empresa.')).toBeVisible();
   await expect(page.getByText('Email inválido.')).toBeVisible();
+});
+
+test('diretório no Website (Sluurpy, TripAdvisor…) passa para Fonte', async ({ page }) => {
+  const url = `https://www.sluurpy.com/pt/cabanas/restaurant/${Date.now()}/teste`;
+  const created = await page.request.post('/api/v1/leads?force=true', { data: { company_name: `Cabanas Dir ${Date.now()}`, website: url } });
+  expect(created.status()).toBe(201);
+  const lead = (await created.json()).data;
+  expect(lead).toMatchObject({ website: null, source_url: url });
+
+  // Na edição: o mesmo diretório com a Fonte igual fica só na Fonte.
+  const patched = await page.request.patch(`/api/v1/leads/${lead.id}`, { data: { website: url } });
+  expect((await patched.json()).data).toMatchObject({ website: null, source_url: url });
+
+  // O formulário avisa antes de gravar.
+  await page.goto(`/leads/${lead.id}/editar`);
+  await page.getByLabel('Website').fill('https://pt.tripadvisor.pt/Restaurant_Review-x');
+  await expect(page.getByText('Isto é um diretório (TripAdvisor, Sluurpy, Google Maps…), não o site da empresa')).toBeVisible();
 });

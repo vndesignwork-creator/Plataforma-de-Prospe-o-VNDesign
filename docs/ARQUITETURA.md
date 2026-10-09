@@ -64,6 +64,17 @@ com um utilizador, mas está pronto para colaboradores.
 
 ## Regras de negócio
 
+### Website vs. Fonte
+
+Um diretório ou agregador (TripAdvisor, Sluurpy, Wanderlog, Google Maps, TheFork…) **não é o
+site da empresa**:
+
+- a importação, a API e o formulário passam esse link para **Fonte** e deixam o Website vazio
+  (`fixDirectoryWebsite` em `packages/core/src/links.ts`);
+- se a Fonte já tiver outro link, o diretório vai para as notas;
+- as redes sociais ficam no Website, como página da empresa ("sem site próprio");
+- `vnd_is_directory_url()` é o espelho em SQL e está coberto pelo teste de paridade.
+
 ### Deteção de duplicados (`find_lead_duplicates`)
 
 A **fonte de verdade é o SQL**. O espelho em TypeScript (`packages/core/src/normalize.ts`)

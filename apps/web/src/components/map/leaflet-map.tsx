@@ -6,6 +6,7 @@ import type { LatLngBoundsExpression, LatLngExpression } from 'leaflet';
 import Link from 'next/link';
 import { useEffect } from 'react';
 import { CircleMarker, MapContainer, Popup, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet';
+import { SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 
 /** Amadora — centro por omissão. */
 const DEFAULT_CENTER: LatLngExpression = [38.7538, -9.2308];
@@ -87,9 +88,14 @@ export default function LeafletMap({ leads, theme, focusId, placing, onPlace }: 
                 <strong>
                   #{lead.number} {lead.company_name}
                 </strong>
-                <span>
-                  {meta.emoji} {meta.label}
-                  {lead.sector ? ` · ${lead.sector.emoji ?? ''} ${lead.sector.name}` : ''}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                  <StatusIcon status={lead.status} className="h-3.5 w-3.5" /> {meta.label}
+                  {lead.sector ? (
+                    <>
+                      {' · '}
+                      <SectorIconView sector={lead.sector} className="h-3.5 w-3.5" /> {lead.sector.name}
+                    </>
+                  ) : null}
                 </span>
                 {lead.address || lead.city ? <span>{lead.address ?? lead.city}</span> : null}
                 {lead.geocode_status === 'approx' ? <em>Posição aproximada (cidade)</em> : null}

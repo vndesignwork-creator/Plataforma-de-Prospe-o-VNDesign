@@ -12,11 +12,10 @@ import { useTheme } from './theme';
 
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, match: (p: string) => p.startsWith('/dashboard') },
-  { href: '/leads', label: 'Leads', icon: Users, match: (p: string) => p === '/leads' || /^\/leads\/(?!novo)/.test(p) },
+  { href: '/leads', label: 'Leads', icon: Users, match: (p: string) => p === '/leads' || p.startsWith('/leads/') },
   { href: '/kanban', label: 'Kanban', icon: Columns3, match: (p: string) => p.startsWith('/kanban') },
   { href: '/mapa', label: 'Mapa', icon: MapIcon, match: (p: string) => p.startsWith('/mapa') },
   { href: '/scripts', label: 'Scripts', icon: MessageSquareText, match: (p: string) => p.startsWith('/scripts') },
-  { href: '/leads/novo', label: 'Novo lead', icon: Plus, match: (p: string) => p === '/leads/novo' },
   { href: '/importar', label: 'Importar', icon: FileUp, match: (p: string) => p.startsWith('/importar') },
   { href: '/definicoes', label: 'Definições', icon: Settings, match: (p: string) => p.startsWith('/definicoes') },
 ];

@@ -6,6 +6,7 @@ import {
   formatCurrency,
   formatDate,
   formatDateTime,
+  isSocialUrl,
   mailtoUrl,
   todayIso,
   type Lead,
@@ -34,6 +35,7 @@ import { SiteAuditPanel } from './site-audit';
 import { AiEmailCard } from './ai-email-card';
 import { LeadLocation } from './lead-location';
 import { ProposalsCard } from '@/components/proposals/proposals-card';
+import { SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -137,7 +139,15 @@ export function LeadDetail({ id }: { id: string }) {
               Leads
             </Link>{' '}
             / #{lead.number}
-            {lead.sector ? ` · ${lead.sector.emoji ?? ''} ${lead.sector.name}` : ''}
+            {lead.sector ? (
+              <>
+                {' · '}
+                <span className="inline-flex items-center gap-1 align-[-2px]">
+                  <SectorIconView sector={lead.sector} className="h-3.5 w-3.5" />
+                  {lead.sector.name}
+                </span>
+              </>
+            ) : null}
           </span>
         }
         title={lead.company_name}
@@ -146,19 +156,22 @@ export function LeadDetail({ id }: { id: string }) {
             <label className="sr-only" htmlFor="lead-status">
               Estado
             </label>
-            <Select
-              id="lead-status"
-              value={lead.status}
-              onChange={(e) => changeStatus(e.target.value as LeadStatus)}
-              disabled={update.isPending || Boolean(lead.anonymized_at)}
-              className="w-auto font-medium"
-            >
-              {LEAD_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {LEAD_STATUS_META[s].emoji} {LEAD_STATUS_META[s].label}
-                </option>
-              ))}
-            </Select>
+            <span className="relative inline-flex">
+              <StatusIcon status={lead.status} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2" />
+              <Select
+                id="lead-status"
+                value={lead.status}
+                onChange={(e) => changeStatus(e.target.value as LeadStatus)}
+                disabled={update.isPending || Boolean(lead.anonymized_at)}
+                className="w-auto pl-9 font-medium"
+              >
+                {LEAD_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {LEAD_STATUS_META[s].label}
+                  </option>
+                ))}
+              </Select>
+            </span>
             {!lead.anonymized_at ? (
               <Link href={`/leads/${lead.id}/editar`} className={buttonClasses('outline')}>
                 <Edit3 className="h-4 w-4" aria-hidden />
@@ -229,6 +242,7 @@ export function LeadDetail({ id }: { id: string }) {
             <dl className="grid px-4 py-2 md:grid-cols-2 md:gap-x-6">
               <Row label="Website">
                 <ExternalUrl url={lead.website} />
+                {isSocialUrl(lead.website) ? <span className="ml-2 text-xs text-muted">(rede social — sem site próprio)</span> : null}
               </Row>
               <Row label="Cidade">{lead.city ?? dash}</Row>
               <Row label="Morada">{lead.address ?? dash}</Row>

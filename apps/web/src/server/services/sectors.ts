@@ -3,7 +3,7 @@ import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest, unwrap } from '../http';
 
 const SECTOR_SELECT =
-  'id, name, slug, emoji, sort_order, priority_rank, opportunity_notes, sales_arguments, archived_at';
+  'id, name, slug, emoji, icon, sort_order, priority_rank, opportunity_notes, sales_arguments, archived_at';
 
 type SectorRow = Omit<Sector, 'lead_count'> & { leads?: { count: number }[] };
 
@@ -36,6 +36,7 @@ export async function createSector(
   input: {
     name: string;
     emoji?: string | null;
+    icon?: string | null;
     sort_order?: number;
     priority_rank?: number | null;
     opportunity_notes?: string | null;

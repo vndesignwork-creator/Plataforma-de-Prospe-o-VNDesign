@@ -2,7 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
-import { SectorCreateSchema, type Sector } from '@vndesign/core';
+import { SECTOR_ICONS, SECTOR_ICON_KEYS, SectorCreateSchema, sectorIconFor, type Sector } from '@vndesign/core';
 import { Archive, ArchiveRestore, Edit3, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -15,6 +15,8 @@ import { Field } from '@/components/ui/field';
 import { Input, Textarea } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
 import { useSectors } from '@/lib/queries';
+import { SECTOR_ICON_COMPONENTS, SectorIconView } from '@/components/icons/lead-icons';
+import { cn } from '@/lib/utils';
 
 type SectorInput = z.input<typeof SectorCreateSchema>;
 type SectorOutput = z.output<typeof SectorCreateSchema>;
@@ -34,12 +36,15 @@ function SectorDialog({
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<SectorInput, unknown, SectorOutput>({
     resolver: zodResolver(SectorCreateSchema),
     values: {
       name: sector?.name ?? '',
       emoji: sector?.emoji ?? '',
+      icon: sector ? sectorIconFor(sector) : 'briefcase',
       priority_rank: sector?.priority_rank ?? null,
       opportunity_notes: sector?.opportunity_notes ?? '',
       sales_arguments: sector?.sales_arguments ?? '',
@@ -75,13 +80,36 @@ function SectorDialog({
         </>
       }
     >
-      <form onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-[6rem_1fr]" noValidate>
-        <Field label="Emoji" error={errors.emoji?.message}>
-          <Input maxLength={16} {...register('emoji')} />
-        </Field>
-        <Field label="Nome" error={errors.name?.message} required>
+      <form onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-2" noValidate>
+        <Field label="Nome" error={errors.name?.message} required className="sm:col-span-2">
           <Input {...register('name')} />
         </Field>
+        <fieldset className="sm:col-span-2">
+          <legend className="mb-1.5 text-sm font-medium">Ícone</legend>
+          <div role="radiogroup" aria-label="Ícone do setor" className="flex flex-wrap gap-1.5">
+            {SECTOR_ICON_KEYS.map((key) => {
+              const Icon = SECTOR_ICON_COMPONENTS[key];
+              const selected = watch('icon') === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  aria-label={SECTOR_ICONS[key]}
+                  title={SECTOR_ICONS[key]}
+                  onClick={() => setValue('icon', key, { shouldDirty: true })}
+                  className={cn(
+                    'inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors',
+                    selected ? 'border-accent bg-accent-soft text-accent-text' : 'border-border text-muted hover:border-border-strong hover:text-fg',
+                  )}
+                >
+                  <Icon className="h-4 w-4" aria-hidden />
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
         <Field label="Prioridade (1 = maior oportunidade)" error={errors.priority_rank?.message} className="sm:col-span-2">
           <Input type="number" min={1} max={99} {...register('priority_rank', { setValueAs: toNumberOrNull })} />
         </Field>
@@ -139,8 +167,8 @@ export function SectorsSettings() {
         <ul className="divide-y divide-border">
           {(sectors ?? []).map((s) => (
             <li key={s.id} className="flex flex-wrap items-start gap-3 px-4 py-3">
-              <span className="text-xl" aria-hidden>
-                {s.emoji}
+              <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-surface-2 text-accent-text">
+                <SectorIconView sector={s} />
               </span>
               <div className="min-w-0 flex-1">
                 <p className="flex flex-wrap items-center gap-2 font-medium">

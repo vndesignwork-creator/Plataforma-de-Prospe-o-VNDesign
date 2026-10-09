@@ -3,6 +3,7 @@
  * mapeamento de colunas e conversão de cada linha num lead válido.
  * Funções puras — usadas pela API (pré-visualização) e testadas com Vitest.
  */
+import { fixDirectoryWebsite, type LeadLinks } from './links';
 import { LeadCreateSchema, type LeadCreate } from './schemas';
 import {
   emailBusinessDomain,
@@ -289,6 +290,16 @@ export function mapImportRow(
     const v = parseEuroAmount(value);
     if (v !== null) lead.estimated_value = v;
     else warnings.push(`Valor "${value}" inválido — ignorado.`);
+  }
+
+  // Um diretório (TripAdvisor, Sluurpy, Google Maps…) não é o site da empresa: vai para "Fonte".
+  const fixed = fixDirectoryWebsite(lead as LeadLinks);
+  if (fixed) {
+    warnings.push(`Website "${String(lead.website)}" é um diretório, não o site da empresa — passou para Fonte.`);
+    for (const [k, v] of Object.entries(fixed)) {
+      if (v === null) delete lead[k];
+      else lead[k] = v;
+    }
   }
 
   // Validação final com o mesmo schema da API; campos opcionais inválidos saem.

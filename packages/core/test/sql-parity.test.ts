@@ -5,6 +5,7 @@
  *   SUPABASE_URL=http://127.0.0.1:54321 SUPABASE_KEY=<publishable key> npm test
  */
 import { describe, expect, it } from 'vitest';
+import { isDirectoryUrl } from '../src/links';
 import { emailBusinessDomain, normalizeCompanyName, normalizeEmail, websiteKey } from '../src/normalize';
 
 const url = process.env.SUPABASE_URL;
@@ -43,6 +44,17 @@ const WEBSITES = [
   'https://www.facebook.com/',
   '--',
 ];
+const LINKS = [
+  ...WEBSITES,
+  'https://wanderlog.com/list/geoCategory/37054',
+  'sluurpy.pt/lisboa/x',
+  'https://pt.tripadvisor.pt/Restaurant_Review-g1',
+  'https://www.google.com/maps/place/x',
+  'https://maps.app.goo.gl/abc',
+  'https://user@www.restaurantguru.com:443/x',
+  'oquintal.mdig.pt',
+  'https://olagar.pt',
+];
 const EMAILS = [' geral@aad.pt', 'Geral@SFRAA.pt ', 'a@x.pt; b@y.pt', 'oliveira@gmail.com', '--'];
 
 describe.skipIf(!url || !key)('paridade TypeScript ↔ SQL', () => {
@@ -51,6 +63,9 @@ describe.skipIf(!url || !key)('paridade TypeScript ↔ SQL', () => {
   });
   it.each(WEBSITES)('vnd_website_key(%j)', async (site) => {
     expect(await rpc('vnd_website_key', { p: site })).toBe(websiteKey(site));
+  });
+  it.each(LINKS)('vnd_is_directory_url(%j)', async (link) => {
+    expect(await rpc('vnd_is_directory_url', { p: link })).toBe(isDirectoryUrl(link));
   });
   it.each(EMAILS)('vnd_normalize_email(%j)', async (email) => {
     const normalized = await rpc('vnd_normalize_email', { p: email });

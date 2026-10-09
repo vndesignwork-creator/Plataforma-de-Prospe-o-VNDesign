@@ -7,8 +7,9 @@ import {
   type MobileStatus,
 } from '@vndesign/core';
 import { cn } from '@/lib/utils';
+import { ChannelIcon, MobileIcon, StatusIcon } from '@/components/icons/lead-icons';
 
-/** Estado com ponto de cor + texto (a cor nunca é a única pista — WCAG 1.4.1). */
+/** Estado com ícone na cor do estado + texto (a cor nunca é a única pista — WCAG 1.4.1). */
 export function StatusBadge({ status, className }: { status: LeadStatus; className?: string }) {
   const meta = LEAD_STATUS_META[status];
   return (
@@ -18,7 +19,7 @@ export function StatusBadge({ status, className }: { status: LeadStatus; classNa
         className,
       )}
     >
-      <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: meta.color }} aria-hidden />
+      <StatusIcon status={status} className="h-3.5 w-3.5" />
       {meta.label}
     </span>
   );
@@ -28,8 +29,8 @@ export function ChannelLabel({ channel }: { channel: LeadChannel | null }) {
   if (!channel) return <span className="text-muted">—</span>;
   const meta = LEAD_CHANNEL_META[channel];
   return (
-    <span className="whitespace-nowrap">
-      <span aria-hidden>{meta.emoji} </span>
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+      <ChannelIcon channel={channel} className="text-muted" />
       {meta.label}
     </span>
   );
@@ -39,8 +40,8 @@ export function MobileLabel({ mobile }: { mobile: MobileStatus }) {
   if (mobile === 'desconhecido') return <span className="text-muted">—</span>;
   const meta = MOBILE_STATUS_META[mobile];
   return (
-    <span className={cn('whitespace-nowrap', mobile === 'nao' && 'text-danger', mobile === 'sim' && 'text-success')}>
-      <span aria-hidden>{meta.emoji} </span>
+    <span className={cn('inline-flex items-center gap-1.5 whitespace-nowrap', mobile === 'nao' && 'text-danger', mobile === 'sim' && 'text-success')}>
+      <MobileIcon mobile={mobile} />
       {meta.label}
     </span>
   );

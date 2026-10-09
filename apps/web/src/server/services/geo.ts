@@ -97,7 +97,7 @@ export async function geocodeMissing(ctx: ApiContext, limit = 25): Promise<Geoco
 }
 
 const MAP_SELECT =
-  'id, number, company_name, status, city, address, latitude, longitude, geocode_status, estimated_value, next_action_on, sector:sectors(id, name, emoji)';
+  'id, number, company_name, status, city, address, latitude, longitude, geocode_status, estimated_value, next_action_on, sector:sectors(id, name, emoji, icon)';
 
 export async function getMapData(ctx: ApiContext, filters: LeadFilters): Promise<MapData> {
   const located = applyLeadFiltersTo(

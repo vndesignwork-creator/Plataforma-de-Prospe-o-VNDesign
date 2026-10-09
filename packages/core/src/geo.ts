@@ -63,7 +63,7 @@ export const MapLeadSchema = z
     geocode_status: z.enum(GEOCODE_STATUSES).nullable(),
     estimated_value: z.number().nullable(),
     next_action_on: z.string().nullable(),
-    sector: z.object({ id: z.uuid(), name: z.string(), emoji: z.string().nullable() }).nullable(),
+    sector: z.object({ id: z.uuid(), name: z.string(), emoji: z.string().nullable(), icon: z.string().nullable().optional() }).nullable(),
   })
   .meta({ id: 'MapLead' });
 export type MapLead = z.infer<typeof MapLeadSchema>;

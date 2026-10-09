@@ -11,14 +11,15 @@ import {
 import { AlertCircle, CalendarClock, CalendarDays } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { BarList, Dot } from '@/components/charts/bar-list';
+import { BarList } from '@/components/charts/bar-list';
 import { ColumnChart } from '@/components/charts/column-chart';
 import { StatTile } from '@/components/charts/stat-tile';
 import { FollowUpActions } from '@/components/follow-up/follow-up-actions';
 import { StatusBadge } from '@/components/leads/badges';
 import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
 import { errorMessage } from '@/lib/api-client';
-import { useDashboard, useToday } from '@/lib/queries';
+import { useDashboard, useSectors, useToday } from '@/lib/queries';
+import { ChannelIcon, SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 
 const euros = (v: number) => formatCurrency(v, { decimals: false });
 
@@ -78,6 +79,7 @@ function TodayCard() {
 
 export function DashboardView() {
   const { data, isLoading, error } = useDashboard();
+  const { data: sectors } = useSectors();
 
   if (error) {
     return (
@@ -148,7 +150,7 @@ export function DashboardView() {
                 return {
                   key: f.stage,
                   label: LEAD_STATUS_META[f.stage].label,
-                  mark: <Dot color={LEAD_STATUS_META[f.stage].color} />,
+                  mark: <StatusIcon status={f.stage} className="h-3.5 w-3.5" />,
                   value: f.count,
                   note:
                     i === 0
@@ -186,7 +188,7 @@ export function DashboardView() {
               items={data.by_status.map((s) => ({
                 key: s.status,
                 label: LEAD_STATUS_META[s.status].label,
-                mark: <Dot color={LEAD_STATUS_META[s.status].color} />,
+                mark: <StatusIcon status={s.status} className="h-3.5 w-3.5" />,
                 value: s.count,
               }))}
             />
@@ -201,7 +203,9 @@ export function DashboardView() {
               items={data.by_sector.map((s) => ({
                 key: s.id ?? 'none',
                 label: s.name,
-                mark: s.emoji ? <span aria-hidden>{s.emoji}</span> : undefined,
+                mark: s.id ? (
+                  <SectorIconView sector={sectors?.find((x) => x.id === s.id) ?? { name: s.name }} className="h-3.5 w-3.5 text-muted" />
+                ) : undefined,
                 value: s.count,
               }))}
             />
@@ -216,7 +220,7 @@ export function DashboardView() {
               items={data.by_channel.map((c) => ({
                 key: c.channel ?? 'none',
                 label: c.channel ? LEAD_CHANNEL_META[c.channel].label : 'Sem canal',
-                mark: c.channel ? <span aria-hidden>{LEAD_CHANNEL_META[c.channel].emoji}</span> : undefined,
+                mark: c.channel ? <ChannelIcon channel={c.channel} className="h-3.5 w-3.5 text-muted" /> : undefined,
                 value: c.count,
               }))}
             />

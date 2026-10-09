@@ -8,6 +8,8 @@ import {
   LEAD_STATUS_META,
   LEAD_STATUSES,
   LeadCreateSchema,
+  isDirectoryUrl,
+  isSocialUrl,
   MOBILE_STATUS_META,
   MOBILE_STATUSES,
   type DuplicateMatch,
@@ -171,7 +173,7 @@ export function LeadForm({ lead }: { lead?: Lead }) {
             <option value="">— Sem setor —</option>
             {(sectors ?? []).map((s) => (
               <option key={s.id} value={s.id}>
-                {s.emoji} {s.name}
+                {s.name}
               </option>
             ))}
           </Select>
@@ -179,7 +181,17 @@ export function LeadForm({ lead }: { lead?: Lead }) {
         <Field label="Cidade" error={e('city')}>
           <Input autoComplete="off" {...register('city')} />
         </Field>
-        <Field label="Website" error={e('website')} hint="Ex.: vndesign.pt ou página de Facebook">
+        <Field
+          label="Website"
+          error={e('website')}
+          hint={
+            isDirectoryUrl(website)
+              ? 'Isto é um diretório (TripAdvisor, Sluurpy, Google Maps…), não o site da empresa: ao gravar passa para “Fonte”.'
+              : isSocialUrl(website)
+                ? 'Rede social: fica como página da empresa (sem site próprio).'
+                : 'O site próprio da empresa (ex.: vndesign.pt). Sem site? Deixa vazio ou põe a página de Facebook.'
+          }
+        >
           <Input type="url" inputMode="url" autoComplete="off" {...register('website')} />
         </Field>
         <Field label="Morada" error={e('address')} hint="Morada comercial (para o mapa, mais tarde)">
@@ -208,7 +220,7 @@ export function LeadForm({ lead }: { lead?: Lead }) {
             <option value="">—</option>
             {LEAD_CHANNELS.map((c) => (
               <option key={c} value={c}>
-                {LEAD_CHANNEL_META[c].emoji} {LEAD_CHANNEL_META[c].label}
+                {LEAD_CHANNEL_META[c].label}
               </option>
             ))}
           </Select>
@@ -226,7 +238,7 @@ export function LeadForm({ lead }: { lead?: Lead }) {
           <Select {...register('mobile')}>
             {MOBILE_STATUSES.map((m) => (
               <option key={m} value={m}>
-                {m === 'desconhecido' ? '-- (por verificar)' : `${MOBILE_STATUS_META[m].emoji} ${MOBILE_STATUS_META[m].label}`}
+                {m === 'desconhecido' ? '-- (por verificar)' : MOBILE_STATUS_META[m].label}
               </option>
             ))}
           </Select>
@@ -238,7 +250,7 @@ export function LeadForm({ lead }: { lead?: Lead }) {
           <Select {...register('status')}>
             {LEAD_STATUSES.map((s) => (
               <option key={s} value={s}>
-                {LEAD_STATUS_META[s].emoji} {LEAD_STATUS_META[s].label}
+                {LEAD_STATUS_META[s].label}
               </option>
             ))}
           </Select>

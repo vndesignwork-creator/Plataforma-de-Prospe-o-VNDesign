@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 export interface BarItem {
   key: string;
   label: string;
-  /** Marca de identidade ao lado do rótulo (emoji ou ponto de cor). */
+  /** Marca de identidade ao lado do rótulo (ícone de linha ou ponto de cor). */
   mark?: ReactNode;
   value: number;
   /** Texto do valor (ex.: "1250 €"); por omissão o número. */

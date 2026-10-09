@@ -176,3 +176,85 @@ export const LEAD_FIELD_LABELS = {
   email_body: 'Email de prospeção',
 } as const;
 export type LeadField = keyof typeof LEAD_FIELD_LABELS;
+
+// -----------------------------------------------------------------------------
+// Ícones dos setores (ícones de linha "lucide"; a app móvel usa os mesmos nomes)
+// -----------------------------------------------------------------------------
+export const SECTOR_ICONS = {
+  utensils: 'Restauração',
+  coffee: 'Café / pastelaria',
+  wine: 'Bar / vinhos',
+  stethoscope: 'Saúde / clínica',
+  'heart-pulse': 'Bem-estar',
+  pill: 'Farmácia',
+  house: 'Imobiliária',
+  'shopping-bag': 'Comércio',
+  store: 'Loja',
+  scale: 'Advocacia',
+  hotel: 'Turismo / alojamento',
+  plane: 'Viagens',
+  wrench: 'Serviços técnicos',
+  hammer: 'Obras / construção',
+  car: 'Automóvel / oficina',
+  'graduation-cap': 'Educação / formação',
+  scissors: 'Cabeleireiro / estética',
+  dumbbell: 'Desporto / ginásio',
+  camera: 'Fotografia',
+  'paw-print': 'Animais',
+  calculator: 'Contabilidade',
+  truck: 'Transportes',
+  paintbrush: 'Design / arte',
+  laptop: 'Tecnologia',
+  leaf: 'Jardinagem / agricultura',
+  shirt: 'Moda',
+  'flower-2': 'Florista',
+  baby: 'Infância',
+  music: 'Música / eventos',
+  users: 'Associações',
+  'building-2': 'Empresas',
+  briefcase: 'Serviços / outro',
+} as const;
+export type SectorIcon = keyof typeof SECTOR_ICONS;
+export const SECTOR_ICON_KEYS = Object.keys(SECTOR_ICONS) as SectorIcon[];
+
+const SECTOR_ICON_KEYWORDS: [RegExp, SectorIcon][] = [
+  [/restaura|tasca|pizz|sushi|comida|snack/, 'utensils'],
+  [/cafe|pastel|padaria|confeit/, 'coffee'],
+  [/\bbar\b|vinho|cerveja/, 'wine'],
+  [/saude|clinic|medic|dent|fisio|psico|veterin/, 'stethoscope'],
+  [/bem-estar|spa|massag|yoga/, 'heart-pulse'],
+  [/farmac/, 'pill'],
+  [/imobil|casa|habita/, 'house'],
+  [/comerc|loja|retalho|mercad/, 'shopping-bag'],
+  [/advog|jurid|solicit|notar/, 'scale'],
+  [/turism|hotel|alojament|hostel|guest/, 'hotel'],
+  [/viage/, 'plane'],
+  [/tecnic|repara|canaliz|eletric|climatiz/, 'wrench'],
+  [/obra|constru|remodel|carpint/, 'hammer'],
+  [/auto|oficina|mecan|carro/, 'car'],
+  [/educa|forma|escola|explica|ensino/, 'graduation-cap'],
+  [/cabel|barbear|estetic|beleza|unha/, 'scissors'],
+  [/ginasi|desport|fitness|pilates|crossfit/, 'dumbbell'],
+  [/fotograf|video/, 'camera'],
+  [/anima|pet|canil/, 'paw-print'],
+  [/contab|financ|seguro/, 'calculator'],
+  [/transport|mudanc|logist/, 'truck'],
+  [/design|arte|atelier/, 'paintbrush'],
+  [/tecnolog|informat|software/, 'laptop'],
+  [/jardin|agric/, 'leaf'],
+  [/moda|roupa|boutique/, 'shirt'],
+  [/flor/, 'flower-2'],
+  [/infan|crianc|creche|bebe/, 'baby'],
+  [/music|evento|festa/, 'music'],
+  [/associa|clube|igreja/, 'users'],
+];
+
+/** Ícone do setor: o escolhido nas Definições ou um sugerido pelo nome. */
+export function sectorIconFor(sector: { icon?: string | null; name?: string | null; slug?: string | null }): SectorIcon {
+  if (sector.icon && sector.icon in SECTOR_ICONS) return sector.icon as SectorIcon;
+  const text = `${sector.slug ?? ''} ${sector.name ?? ''}`
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase();
+  return SECTOR_ICON_KEYWORDS.find(([re]) => re.test(text))?.[1] ?? 'briefcase';
+}

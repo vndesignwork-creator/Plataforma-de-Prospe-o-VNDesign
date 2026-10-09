@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronDown } from 'lucide-react';
+import type { ReactNode } from 'react';
 import {
   DropdownCheckboxItem,
   DropdownContent,
@@ -14,6 +15,8 @@ import { cn } from '@/lib/utils';
 export interface Option {
   value: string;
   label: string;
+  /** Ícone de linha antes do rótulo (decorativo). */
+  icon?: ReactNode;
 }
 
 /** Filtro de escolha múltipla (menu com caixas de verificação). */
@@ -53,7 +56,10 @@ export function MultiSelectFilter({
               onChange(checked ? [...value, o.value] : value.filter((v) => v !== o.value))
             }
           >
-            {o.label}
+            <span className="flex items-center gap-2">
+              {o.icon}
+              {o.label}
+            </span>
           </DropdownCheckboxItem>
         ))}
         {count ? (

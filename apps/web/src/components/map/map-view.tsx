@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Card, Skeleton } from '@/components/ui/card';
 import { api, errorMessage } from '@/lib/api-client';
 import { useInvalidateLead, useLead, useMapData, useSectors } from '@/lib/queries';
+import { SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 
 // O Leaflet usa `window`: só no browser.
 const LeafletMap = dynamic(() => import('./leaflet-map'), {
@@ -21,7 +22,7 @@ const LeafletMap = dynamic(() => import('./leaflet-map'), {
   loading: () => <Skeleton className="h-full w-full" />,
 });
 
-const STATUS_OPTIONS = LEAD_STATUSES.map((s) => ({ value: s, label: `${LEAD_STATUS_META[s].emoji} ${LEAD_STATUS_META[s].label}` }));
+const STATUS_OPTIONS = LEAD_STATUSES.map((s) => ({ value: s, label: LEAD_STATUS_META[s].label, icon: <StatusIcon status={s} /> }));
 
 export function MapView() {
   const router = useRouter();
@@ -44,7 +45,7 @@ export function MapView() {
 
   const sectorOptions = useMemo(
     () => [
-      ...(sectors ?? []).map((s) => ({ value: s.id, label: `${s.emoji ?? ''} ${s.name}`.trim() })),
+      ...(sectors ?? []).map((s) => ({ value: s.id, label: s.name, icon: <SectorIconView sector={s} className="text-muted" /> })),
       { value: 'none', label: 'Sem setor' },
     ],
     [sectors],

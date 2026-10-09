@@ -40,6 +40,7 @@ import { api, errorMessage } from '@/lib/api-client';
 import { useDebouncedValue } from '@/lib/hooks';
 import { useBoard, useInvalidateLead, useSectors } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+import { ChannelIcon, SectorIconView } from '@/components/icons/lead-icons';
 
 type Columns = Record<LeadStatus, Lead[]>;
 
@@ -86,8 +87,9 @@ function LeadCard({ lead, today, dragging }: { lead: Lead; today: string; draggi
           </Link>
           <p className="mt-1 flex flex-wrap gap-x-2 text-xs text-muted">
             {lead.sector ? (
-              <span>
-                <span aria-hidden>{lead.sector.emoji}</span> {lead.sector.name}
+              <span className="inline-flex items-center gap-1">
+                <SectorIconView sector={lead.sector} className="h-3.5 w-3.5" />
+                {lead.sector.name}
               </span>
             ) : null}
             {lead.city ? <span>{lead.city}</span> : null}
@@ -291,13 +293,13 @@ export function KanbanBoard() {
           label="Setor"
           value={sector}
           onChange={setSector}
-          options={[...(sectors ?? []).map((s) => ({ value: s.id, label: `${s.emoji ?? ''} ${s.name}`.trim() })), { value: 'none', label: 'Sem setor' }]}
+          options={[...(sectors ?? []).map((s) => ({ value: s.id, label: s.name, icon: <SectorIconView sector={s} className="text-muted" /> })), { value: 'none', label: 'Sem setor' }]}
         />
         <MultiSelectFilter
           label="Canal"
           value={channel}
           onChange={setChannel}
-          options={[...LEAD_CHANNELS.map((c) => ({ value: c, label: `${LEAD_CHANNEL_META[c].emoji} ${LEAD_CHANNEL_META[c].label}` })), { value: 'none', label: 'Sem canal' }]}
+          options={[...LEAD_CHANNELS.map((c) => ({ value: c, label: LEAD_CHANNEL_META[c].label, icon: <ChannelIcon channel={c} className="text-muted" /> })), { value: 'none', label: 'Sem canal' }]}
         />
       </div>
       <p className="text-sm text-muted">

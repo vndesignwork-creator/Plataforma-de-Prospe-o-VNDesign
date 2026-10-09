@@ -40,6 +40,7 @@ import { usePreference, useLeads, useSectors, useSetPreference } from '@/lib/que
 import { cn, displayHost } from '@/lib/utils';
 import { ChannelLabel, MobileLabel, PageSpeedScore, StatusBadge } from './badges';
 import { MultiSelectFilter } from './multi-select';
+import { ChannelIcon, SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 
 const PAGE_SIZE = 50;
 
@@ -94,8 +95,8 @@ function buildColumns(today: string): Col[] {
       meta: { label: 'Setor' },
       cell: ({ row }) =>
         row.original.sector ? (
-          <span className="whitespace-nowrap">
-            <span aria-hidden>{row.original.sector.emoji} </span>
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+            <SectorIconView sector={row.original.sector} className="text-muted" />
             {row.original.sector.name}
           </span>
         ) : (
@@ -374,7 +375,7 @@ export function LeadsTable() {
           value={query.sector}
           onChange={(v) => setParams({ sector: v })}
           options={[
-            ...(sectors ?? []).map((s) => ({ value: s.id, label: `${s.emoji ?? ''} ${s.name}`.trim() })),
+            ...(sectors ?? []).map((s) => ({ value: s.id, label: s.name, icon: <SectorIconView sector={s} className="text-muted" /> })),
             { value: 'none', label: 'Sem setor' },
           ]}
         />
@@ -382,14 +383,14 @@ export function LeadsTable() {
           label="Estado"
           value={query.status}
           onChange={(v) => setParams({ status: v })}
-          options={LEAD_STATUSES.map((s) => ({ value: s, label: `${LEAD_STATUS_META[s].emoji} ${LEAD_STATUS_META[s].label}` }))}
+          options={LEAD_STATUSES.map((s) => ({ value: s, label: LEAD_STATUS_META[s].label, icon: <StatusIcon status={s} /> }))}
         />
         <MultiSelectFilter
           label="Canal"
           value={query.channel}
           onChange={(v) => setParams({ channel: v })}
           options={[
-            ...LEAD_CHANNELS.map((c) => ({ value: c, label: `${LEAD_CHANNEL_META[c].emoji} ${LEAD_CHANNEL_META[c].label}` })),
+            ...LEAD_CHANNELS.map((c) => ({ value: c, label: LEAD_CHANNEL_META[c].label, icon: <ChannelIcon channel={c} className="text-muted" /> })),
             { value: 'none', label: 'Sem canal' },
           ]}
         />
@@ -552,8 +553,9 @@ export function LeadsTable() {
                     </span>
                     <span className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted">
                       {lead.sector ? (
-                        <span>
-                          {lead.sector.emoji} {lead.sector.name}
+                        <span className="inline-flex items-center gap-1.5">
+                          <SectorIconView sector={lead.sector} />
+                          {lead.sector.name}
                         </span>
                       ) : null}
                       {lead.city ? <span>{lead.city}</span> : null}

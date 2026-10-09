@@ -6,22 +6,9 @@
  */
 import { z } from 'zod';
 import { MOBILE_STATUSES, type MobileStatus } from './enums';
+import { isSocialOrDirectoryUrl } from './links';
 
-// -----------------------------------------------------------------------------
-// Sites que não são da empresa (redes sociais, diretórios, mapas)
-// -----------------------------------------------------------------------------
-const NOT_OWN_SITE =
-  /(^|\.)(facebook\.com|fb\.com|instagram\.com|linkedin\.com|tiktok\.com|twitter\.com|x\.com|youtube\.com|linktr\.ee|restaurantguru\.com|sluurpy\.com|wanderlog\.com|tripadvisor\.[a-z.]+|thefork\.[a-z.]+|zomato\.com|google\.[a-z.]+|goo\.gl|maps\.app\.goo\.gl|business\.site|paginasamarelas\.pt|zaask\.pt|fixando\.pt)$/;
-
-/** O endereço é de uma rede social ou diretório (e não um site próprio)? */
-export function isSocialOrDirectoryUrl(url: string | null | undefined): boolean {
-  try {
-    const host = new URL(url ?? '').hostname.toLowerCase().replace(/^(www|m|mobile)\./, '');
-    return NOT_OWN_SITE.test(host);
-  } catch {
-    return false;
-  }
-}
+export { isSocialOrDirectoryUrl };
 
 // -----------------------------------------------------------------------------
 // HTML

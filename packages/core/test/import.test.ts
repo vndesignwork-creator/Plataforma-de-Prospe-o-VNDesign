@@ -160,3 +160,23 @@ describe('leadsToCsv', () => {
     expect(line).toContain(';1250,5;"a\nb";');
   });
 });
+
+describe('mapImportRow — diretórios no Website', () => {
+  const mapping = ['company_name', 'website', 'source_url'] as const;
+  it('passa o diretório para a Fonte e limpa o Website', () => {
+    const r = mapImportRow(['Cervejaria X', 'https://www.sluurpy.com/pt/cabanas/restaurant/123', ''], [...mapping], []);
+    expect(r.ok && r.value.lead).toMatchObject({ source_url: 'https://www.sluurpy.com/pt/cabanas/restaurant/123' });
+    expect(r.ok && r.value.lead.website).toBeUndefined();
+    expect(r.ok && r.value.warnings[0]).toContain('diretório');
+  });
+  it('se Website e Fonte forem o mesmo diretório, fica só a Fonte', () => {
+    const url = 'https://wanderlog.com/list/geoCategory/37054';
+    const r = mapImportRow(['Café Y', url, url], [...mapping], []);
+    expect(r.ok && r.value.lead).toMatchObject({ source_url: url });
+    expect(r.ok && r.value.lead.website).toBeUndefined();
+  });
+  it('mantém sites próprios e redes sociais', () => {
+    const r = mapImportRow(['Z', 'https://www.facebook.com/z', 'https://maps.google.com/?cid=1'], [...mapping], []);
+    expect(r.ok && r.value.lead.website).toBe('https://www.facebook.com/z');
+  });
+});

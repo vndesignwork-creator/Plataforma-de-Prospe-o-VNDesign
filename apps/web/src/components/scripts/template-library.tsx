@@ -26,6 +26,7 @@ import { api, errorMessage } from '@/lib/api-client';
 import { useLeads, useSectors, useTemplates } from '@/lib/queries';
 import { EMAIL_KINDS, useTemplateContext } from '@/lib/template-context';
 import { cn } from '@/lib/utils';
+import { SectorIconView } from '@/components/icons/lead-icons';
 
 type FormOutput = z.output<typeof ContactTemplateCreateSchema>;
 
@@ -196,7 +197,7 @@ function Editor({ template, onSaved, onDeleted }: { template: ContactTemplate | 
                 <option value="">Todos os setores</option>
                 {(sectors ?? []).map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.emoji} {s.name}
+                    {s.name}
                   </option>
                 ))}
               </Select>
@@ -309,7 +310,8 @@ export function TemplateLibrary() {
                         {t.name}
                         {sector ? (
                           <Badge className="ml-1.5">
-                            {sector.emoji} {sector.name}
+                            <SectorIconView sector={sector} className="h-3 w-3" />
+                            {sector.name}
                           </Badge>
                         ) : null}
                       </button>

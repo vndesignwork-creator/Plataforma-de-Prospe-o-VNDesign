@@ -5,6 +5,8 @@
  */
 import {
   addDays,
+  fixDirectoryWebsite,
+  isDirectoryUrl,
   normalizeText,
   todayIso,
   type DoNotContact,
@@ -19,7 +21,7 @@ import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest, unwrap } from '../http';
 
 export const LEAD_SELECT = [
-  'id', 'number', 'company_name', 'sector_id', 'sector:sectors(id, name, slug, emoji)',
+  'id', 'number', 'company_name', 'sector_id', 'sector:sectors(id, name, slug, emoji, icon)',
   'website', 'city', 'address', 'latitude', 'longitude', 'geocode_status', 'problems', 'pagespeed', 'mobile',
   'email', 'phone', 'contact_name', 'status', 'channel', 'first_contact_on', 'last_follow_up_on',
   'next_action_text', 'next_action_on', 'estimated_value', 'notes', 'approach_angle', 'source_url',
@@ -153,6 +155,8 @@ export async function createLead(
   input: LeadCreate,
   options: { force?: boolean } = {},
 ): Promise<Lead> {
+  // Um diretório (TripAdvisor, Sluurpy, Google Maps…) no Website passa para a Fonte.
+  input = { ...input, ...fixDirectoryWebsite(input) };
   const check = await checkDuplicates(ctx, input);
 
   // A lista "não contactar" bloqueia sempre (não há "criar mesmo assim").
@@ -186,6 +190,17 @@ export async function createLead(
 
 export async function updateLead(ctx: ApiContext, id: string, patch: LeadUpdate): Promise<Lead> {
   if (Object.keys(patch).length === 0) return getLead(ctx, id);
+  if (isDirectoryUrl(patch.website)) {
+    const current = await getLead(ctx, id);
+    patch = {
+      ...patch,
+      ...fixDirectoryWebsite({
+        website: patch.website,
+        source_url: patch.source_url !== undefined ? patch.source_url : current.source_url,
+        notes: patch.notes !== undefined ? patch.notes : current.notes,
+      }),
+    };
+  }
   const result = await ctx.supabase
     .from('leads')
     .update(patch)

@@ -46,7 +46,7 @@ function display(field: MergeField, value: unknown, sectors: Sector[]): string {
   switch (field) {
     case 'sector_id': {
       const s = sectors.find((x) => x.id === value);
-      return s ? `${s.emoji ?? ''} ${s.name}`.trim() : '—';
+      return s ? s.name : '—';
     }
     case 'status':
       return LEAD_STATUS_META[value as LeadStatus]?.label ?? String(value);
