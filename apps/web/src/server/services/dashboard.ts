@@ -35,6 +35,7 @@ export async function fetchToday(client: SupabaseClient, workspaceId: string): P
       .select(LEAD_SELECT)
       .eq('workspace_id', workspaceId)
       .is('anonymized_at', null)
+      .is('archived_at', null)
       .not('status', 'in', '(cliente,sem_interesse)')
       .not('next_action_on', 'is', null);
   const sorted = <T extends ReturnType<typeof base>>(q: T) =>

@@ -81,6 +81,8 @@ export const ACTIVITY_TYPES = [
   'follow_up_scheduled',
   'follow_up_done',
   'anonymized',
+  'archived',
+  'unarchived',
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
@@ -113,6 +115,8 @@ export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
   follow_up_scheduled: 'Follow-up agendado',
   follow_up_done: 'Follow-up feito',
   anonymized: 'Dados anonimizados',
+  archived: 'Arquivado',
+  unarchived: 'Reposto do arquivo',
 };
 
 export const TEMPLATE_KINDS = [

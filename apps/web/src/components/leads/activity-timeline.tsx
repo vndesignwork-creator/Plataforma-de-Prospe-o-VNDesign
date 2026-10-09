@@ -14,6 +14,8 @@ import {
   type LeadStatus,
 } from '@vndesign/core';
 import {
+  Archive,
+  ArchiveRestore,
   CalendarClock,
   CheckCircle2,
   Copy,
@@ -54,6 +56,8 @@ const ICONS: Partial<Record<Activity['type'], LucideIcon>> = {
   follow_up_done: CheckCircle2,
   template_used: MessageSquare,
   anonymized: ShieldOff,
+  archived: Archive,
+  unarchived: ArchiveRestore,
   audit_run: Gauge,
   proposal_generated: FileText,
   ai_email_generated: Sparkles,
@@ -105,6 +109,8 @@ function describe(a: Activity): string | null {
         .join(' · ');
     case 'ai_email_generated':
       return p.kind ? AI_EMAIL_KIND_LABELS[p.kind as AiEmailKind] ?? null : null;
+    case 'archived':
+      return p.auto ? 'Automático: em "Sem interesse" há mais tempo do que o definido' : null;
     case 'anonymized':
       return p.added_to_do_not_contact ? 'Acrescentado à lista "não contactar"' : null;
     default:

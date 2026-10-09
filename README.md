@@ -124,6 +124,18 @@ português) com as mesmas colunas — pode ser reimportado sem mapear nada.
   todas as manhãs mesmo com a plataforma fechada (ver “App no telemóvel” abaixo).
 - **Resumo diário por email** (opcional): precisa de SMTP e de um cron.
 
+## Arquivar e apagar leads
+
+- **Arquivar** (ficha → *Arquivar*, ou vários de uma vez na lista): o lead sai da lista, do
+  Kanban, do mapa, de “Hoje” e do resumo diário, mas mantém histórico, propostas e estatísticas
+  e continua a ser detetado como duplicado. *Repor* volta a pô-lo ativo.
+- **Lista de leads:** seleciona leads com as caixas à esquerda para *Arquivar*, *Repor* ou
+  *Apagar* em conjunto; o filtro *Sem os arquivados / Só os arquivados / Com os arquivados*
+  mostra os arquivados.
+- **Arquivo automático** (opcional): Definições → Follow-up e lembretes → leads em “Sem
+  interesse” há mais de N dias são arquivados todas as manhãs (pelo mesmo cron do resumo diário).
+- **Apagar** é definitivo (para erros, testes e duplicados). Para pedidos RGPD usa *Anonimizar*.
+
 ### Configurar o email (resumo diário)
 
 Em `apps/web/.env.local` (ou nas variáveis da Hostinger/Vercel):

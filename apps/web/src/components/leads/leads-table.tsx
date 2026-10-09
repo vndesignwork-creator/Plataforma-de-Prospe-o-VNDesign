@@ -16,14 +16,31 @@ import {
   formatDate,
   todayIso,
   type Lead,
+  type LeadArchiveFilter,
+  type LeadBulkAction,
   type LeadSortField,
 } from '@vndesign/core';
-import { ArrowDown, ArrowUp, ArrowUpDown, Columns3, Download, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
+import {
+  Archive,
+  ArchiveRestore,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Columns3,
+  Download,
+  Plus,
+  Search,
+  SlidersHorizontal,
+  Trash2,
+  X,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
-import { EmptyState, Skeleton } from '@/components/ui/card';
+import { Badge, EmptyState, Skeleton } from '@/components/ui/card';
+import { Dialog } from '@/components/ui/dialog';
 import {
   DropdownCheckboxItem,
   DropdownContent,
@@ -36,7 +53,7 @@ import {
 import { Input, Select } from '@/components/ui/input';
 import { errorMessage, toQueryString } from '@/lib/api-client';
 import { useDebouncedValue } from '@/lib/hooks';
-import { usePreference, useLeads, useSectors, useSetPreference } from '@/lib/queries';
+import { bulkResultMessage, useBulkLeadAction, usePreference, useLeads, useSectors, useSetPreference } from '@/lib/queries';
 import { cn, displayHost } from '@/lib/utils';
 import { ChannelLabel, MobileLabel, PageSpeedScore, StatusBadge } from './badges';
 import { MultiSelectFilter } from './multi-select';
@@ -70,6 +87,20 @@ function NextAction({ lead, today }: { lead: Lead; today: string }) {
   );
 }
 
+function ArchivedBadge() {
+  return (
+    <Badge className="ml-2 align-middle">
+      <Archive className="h-3 w-3" aria-hidden /> Arquivado
+    </Badge>
+  );
+}
+
+const ARCHIVE_OPTIONS: { value: '' | LeadArchiveFilter; label: string }[] = [
+  { value: '', label: 'Sem os arquivados' },
+  { value: 'only', label: 'Só os arquivados' },
+  { value: 'include', label: 'Com os arquivados' },
+];
+
 function buildColumns(today: string): Col[] {
   return [
     {
@@ -82,12 +113,15 @@ function buildColumns(today: string): Col[] {
       meta: { label: 'Empresa', sort: 'company_name', className: 'min-w-56' },
       enableHiding: false,
       cell: ({ row }) => (
-        <Link
-          href={`/leads/${row.original.id}`}
-          className="font-semibold text-fg hover:text-accent-text hover:underline"
-        >
-          {row.original.company_name}
-        </Link>
+        <>
+          <Link
+            href={`/leads/${row.original.id}`}
+            className="font-semibold text-fg hover:text-accent-text hover:underline"
+          >
+            {row.original.company_name}
+          </Link>
+          {row.original.archived_at ? <ArchivedBadge /> : null}
+        </>
       ),
     },
     {
@@ -244,6 +278,7 @@ export function LeadsTable() {
     due: get('due') || undefined,
     suggested_from: get('de') || undefined,
     suggested_to: get('ate') || undefined,
+    archived: (get('arquivo') || undefined) as LeadArchiveFilter | undefined,
     sort,
     order,
     page,
@@ -272,8 +307,52 @@ export function LeadsTable() {
 
   const activeFilters =
     query.sector.length + query.status.length + query.channel.length +
-    [query.q, query.city, query.due, query.suggested_from, query.suggested_to].filter(Boolean).length;
+    [query.q, query.city, query.due, query.suggested_from, query.suggested_to, query.archived].filter(Boolean).length;
   const [showFilters, setShowFilters] = useState(false);
+
+  // Seleção para ações em conjunto. Fica presa aos filtros/página atuais:
+  // mudar de página ou de filtro começa uma seleção nova (sem efeitos).
+  const selectionKey = JSON.stringify(query);
+  const [selection, setSelection] = useState<{ key: string; ids: Set<string> }>({ key: '', ids: new Set() });
+  const selected = selection.key === selectionKey ? selection.ids : new Set<string>();
+  const pageIds = (data?.data ?? []).map((l) => l.id);
+  const allSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+  function toggle(id: string, on: boolean) {
+    const next = new Set(selected);
+    if (on) next.add(id);
+    else next.delete(id);
+    setSelection({ key: selectionKey, ids: next });
+  }
+  function toggleAll(on: boolean) {
+    setSelection({ key: selectionKey, ids: on ? new Set(pageIds) : new Set() });
+  }
+  const clearSelection = () => setSelection({ key: selectionKey, ids: new Set() });
+
+  const bulk = useBulkLeadAction();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  async function runBulk(action: LeadBulkAction) {
+    const ids = [...selected];
+    try {
+      const result = await bulk.mutateAsync({ action, ids });
+      clearSelection();
+      setConfirmDelete(false);
+      const undo = action === 'archive' ? 'restore' : action === 'restore' ? 'archive' : null;
+      toast.success(bulkResultMessage(result), {
+        action: undo
+          ? {
+              label: 'Anular',
+              onClick: () =>
+                bulk.mutate(
+                  { action: undo, ids },
+                  { onSuccess: (r) => toast.success(bulkResultMessage(r)), onError: (e) => toast.error(errorMessage(e)) },
+                ),
+            }
+          : undefined,
+      });
+    } catch (err) {
+      toast.error(errorMessage(err));
+    }
+  }
 
   function toggleSort(field: LeadSortField) {
     if (sort === field) setParams({ order: order === 'asc' ? 'desc' : 'asc', sort: field });
@@ -415,6 +494,18 @@ export function LeadsTable() {
             </option>
           ))}
         </Select>
+        <Select
+          value={query.archived ?? ''}
+          onChange={(e) => setParams({ arquivo: e.target.value || null })}
+          aria-label="Leads arquivados"
+          className="w-auto"
+        >
+          {ARCHIVE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </Select>
         <fieldset className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
           <legend className="sr-only">Sugerido em</legend>
           <span className="text-sm text-muted" aria-hidden>
@@ -457,6 +548,51 @@ export function LeadsTable() {
         </p>
       ) : null}
 
+      {selected.size ? (
+        <div
+          role="region"
+          aria-label="Ações nos leads selecionados"
+          className="sticky top-16 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-accent/50 bg-surface-2 px-3 py-2 shadow-card lg:top-2"
+        >
+          <span className="mr-auto text-sm font-medium tabular">
+            {selected.size === 1 ? '1 lead selecionado' : `${selected.size} leads selecionados`}
+          </span>
+          {query.archived === 'only' ? null : (
+            <Button size="sm" variant="outline" onClick={() => void runBulk('archive')} loading={bulk.isPending}>
+              <Archive className="h-3.5 w-3.5" aria-hidden /> Arquivar
+            </Button>
+          )}
+          {query.archived ? (
+            <Button size="sm" variant="outline" onClick={() => void runBulk('restore')} loading={bulk.isPending}>
+              <ArchiveRestore className="h-3.5 w-3.5" aria-hidden /> Repor
+            </Button>
+          ) : null}
+          <Button size="sm" variant="outline" className="text-danger" onClick={() => setConfirmDelete(true)}>
+            <Trash2 className="h-3.5 w-3.5" aria-hidden /> Apagar
+          </Button>
+          <Button size="sm" variant="ghost" onClick={clearSelection}>
+            <X className="h-3.5 w-3.5" aria-hidden /> Limpar seleção
+          </Button>
+        </div>
+      ) : null}
+
+      <Dialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title={selected.size === 1 ? 'Apagar 1 lead?' : `Apagar ${selected.size} leads?`}
+        description="Apaga os leads, a linha do tempo e as propostas. Não pode ser desfeito. Se só não os queres ver, arquiva-os; se alguém pediu para ser esquecido (RGPD), usa Anonimizar na ficha do lead."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={() => void runBulk('delete')} loading={bulk.isPending}>
+              Apagar definitivamente
+            </Button>
+          </>
+        }
+      />
+
       <div className={cn('rounded-xl border border-border bg-surface transition-opacity', isFetching && !isLoading && 'opacity-70')}>
         {isLoading ? (
           <div className="flex flex-col gap-2 p-4">
@@ -486,6 +622,15 @@ export function LeadsTable() {
                 <thead className="sticky top-0 z-10 bg-surface-2">
                   {table.getHeaderGroups().map((hg) => (
                     <tr key={hg.id}>
+                      <th scope="col" className="w-10 border-b border-border py-2 pr-1 pl-3">
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={(e) => toggleAll(e.target.checked)}
+                          aria-label="Selecionar todos os leads desta página"
+                          className="h-4 w-4 align-middle"
+                        />
+                      </th>
                       {hg.headers.map((header) => {
                         const meta = (header.column.columnDef as Col).meta;
                         const sorted = meta.sort && sort === meta.sort ? order : null;
@@ -527,12 +672,24 @@ export function LeadsTable() {
                   {table.getRowModel().rows.map((row) => (
                     <tr
                       key={row.id}
-                      className="cursor-pointer border-b border-border last:border-0 hover:bg-surface-2"
+                      className={cn(
+                        'cursor-pointer border-b border-border last:border-0 hover:bg-surface-2',
+                        selected.has(row.id) && 'bg-accent-soft hover:bg-accent-soft',
+                      )}
                       onClick={(e) => {
-                        if ((e.target as HTMLElement).closest('a,button')) return;
+                        if ((e.target as HTMLElement).closest('a,button,input,label')) return;
                         router.push(`/leads/${row.id}`);
                       }}
                     >
+                      <td className="py-2 pr-1 pl-3 align-top">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(row.id)}
+                          onChange={(e) => toggle(row.id, e.target.checked)}
+                          aria-label={`Selecionar #${row.original.number} ${row.original.company_name}`}
+                          className="mt-0.5 h-4 w-4"
+                        />
+                      </td>
                       {row.getVisibleCells().map((cell) => (
                         <td
                           key={cell.id}
@@ -550,12 +707,23 @@ export function LeadsTable() {
             {/* Cartões (telemóvel e tablet: a tabela tem demasiadas colunas para caber) */}
             <ul className="divide-y divide-border lg:hidden">
               {(data?.data ?? []).map((lead) => (
-                <li key={lead.id}>
-                  <Link href={`/leads/${lead.id}`} className="flex flex-col gap-1.5 px-4 py-3 hover:bg-surface-2">
+                <li key={lead.id} className={cn('flex items-start', selected.has(lead.id) && 'bg-accent-soft')}>
+                  {/* Caixa fora do link: tocar nela seleciona, tocar no resto abre a ficha. */}
+                  <label className="flex shrink-0 cursor-pointer items-center self-stretch py-3 pr-1 pl-4">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(lead.id)}
+                      onChange={(e) => toggle(lead.id, e.target.checked)}
+                      aria-label={`Selecionar #${lead.number} ${lead.company_name}`}
+                      className="h-4 w-4"
+                    />
+                  </label>
+                  <Link href={`/leads/${lead.id}`} className="flex min-w-0 flex-1 flex-col gap-1.5 py-3 pr-4 pl-2 hover:bg-surface-2">
                     <span className="flex items-start justify-between gap-3">
                       <span className="font-semibold">
                         <span className="mr-1.5 text-muted tabular">#{lead.number}</span>
                         {lead.company_name}
+                        {lead.archived_at ? <ArchivedBadge /> : null}
                       </span>
                       <StatusBadge status={lead.status} />
                     </span>

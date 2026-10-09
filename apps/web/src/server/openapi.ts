@@ -49,6 +49,8 @@ import {
   DoNotContactCreateSchema,
   DoNotContactSchema,
   DuplicateCheckResultSchema,
+  LeadBulkActionSchema,
+  LeadBulkResultSchema,
   DuplicateCheckSchema,
   LeadAnonymizeSchema,
   LeadCreateSchema,
@@ -183,6 +185,14 @@ export function getOpenApiDocument() {
           summary: 'Verificar duplicados e lista "não contactar" sem gravar',
           requestBody: body(DuplicateCheckSchema),
           responses: { '200': ok(data(DuplicateCheckResultSchema)), ...common },
+        }),
+      },
+      '/leads/bulk': {
+        post: op({
+          tags: ['Leads'],
+          summary: 'Arquivar, repor ou apagar vários leads de uma vez (máx. 200; só com sessão)',
+          requestBody: body(LeadBulkActionSchema),
+          responses: { '200': ok(data(LeadBulkResultSchema)), ...common },
         }),
       },
       '/leads/{id}': {

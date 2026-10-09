@@ -12,7 +12,20 @@ import {
   type Lead,
   type LeadStatus,
 } from '@vndesign/core';
-import { Copy, Edit3, ExternalLink, GitMerge, History, Mail, MoreHorizontal, Phone, ShieldOff, Trash2 } from 'lucide-react';
+import {
+  Archive,
+  ArchiveRestore,
+  Copy,
+  Edit3,
+  ExternalLink,
+  GitMerge,
+  History,
+  Mail,
+  MoreHorizontal,
+  Phone,
+  ShieldOff,
+  Trash2,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
@@ -25,7 +38,16 @@ import { DropdownContent, DropdownItem, DropdownRoot, DropdownSeparator, Dropdow
 import { Input, Select } from '@/components/ui/input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useDebouncedValue } from '@/lib/hooks';
-import { useInvalidateLead, useLead, useLeads, useLogActivity, useMe, useUpdateLead } from '@/lib/queries';
+import {
+  bulkResultMessage,
+  useBulkLeadAction,
+  useInvalidateLead,
+  useLead,
+  useLeads,
+  useLogActivity,
+  useMe,
+  useUpdateLead,
+} from '@/lib/queries';
 import { cn, displayHost } from '@/lib/utils';
 import { FollowUpActions } from '@/components/follow-up/follow-up-actions';
 import { ContactScriptsCard } from '@/components/scripts/contact-scripts-card';
@@ -80,6 +102,7 @@ export function LeadDetail({ id }: { id: string }) {
   const { data: lead, isLoading, error } = useLead(id);
   const { data: me } = useMe();
   const update = useUpdateLead(id);
+  const bulk = useBulkLeadAction();
   const log = useLogActivity(id);
   const invalidate = useInvalidateLead();
   const [dialog, setDialog] = useState<null | 'delete' | 'anonymize' | 'merge'>(null);
@@ -128,6 +151,26 @@ export function LeadDetail({ id }: { id: string }) {
       log.mutate({ type: 'email_copied', payload: { part } });
     } else {
       toast.error('Não foi possível copiar. Seleciona o texto e copia manualmente.');
+    }
+  }
+
+  /** Arquivar/repor, com "Anular" no aviso para desfazer logo. */
+  async function setArchived(archived: boolean) {
+    const ids = [lead!.id];
+    try {
+      await bulk.mutateAsync({ action: archived ? 'archive' : 'restore', ids });
+      toast.success(archived ? 'Lead arquivado. Já não aparece na lista, no Kanban, no mapa nem em "Hoje".' : 'Lead reposto.', {
+        action: {
+          label: 'Anular',
+          onClick: () =>
+            bulk.mutate(
+              { action: archived ? 'restore' : 'archive', ids },
+              { onSuccess: (r) => toast.success(bulkResultMessage(r)), onError: (e) => toast.error(errorMessage(e)) },
+            ),
+        },
+      });
+    } catch (err) {
+      toast.error(errorMessage(err));
     }
   }
 
@@ -185,6 +228,17 @@ export function LeadDetail({ id }: { id: string }) {
                 Editar
               </Link>
             ) : null}
+            {lead.archived_at ? (
+              <Button variant="outline" onClick={() => void setArchived(false)} loading={bulk.isPending}>
+                <ArchiveRestore className="h-4 w-4" aria-hidden />
+                Repor
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={() => void setArchived(true)} loading={bulk.isPending}>
+                <Archive className="h-4 w-4" aria-hidden />
+                Arquivar
+              </Button>
+            )}
             <DropdownRoot>
               <DropdownTrigger className={buttonClasses('outline', 'icon')} aria-label="Mais ações">
                 <MoreHorizontal className="h-4 w-4" aria-hidden />
@@ -210,6 +264,21 @@ export function LeadDetail({ id }: { id: string }) {
           </>
         }
       />
+
+      {lead.archived_at ? (
+        <div
+          role="status"
+          className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm"
+        >
+          <p className="flex items-start gap-2">
+            <Archive className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden />
+            <span>
+              <span className="font-medium">Arquivado em {formatDateTime(lead.archived_at)}.</span>{' '}
+              <span className="text-muted">Não aparece na lista, no Kanban, no mapa nem em &quot;Hoje&quot;; o histórico mantém-se.</span>
+            </span>
+          </p>
+        </div>
+      ) : null}
 
       {lead.anonymized_at ? (
         <p role="status" className="mb-4 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-muted">

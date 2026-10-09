@@ -1,7 +1,7 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { Mail } from 'lucide-react';
+import { Archive, Mail } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,8 @@ export function PreferencesSettings() {
   const { data: settings, isLoading } = useSettings();
   const [followUpDays, setFollowUpDays] = useState('3');
   const [optOut, setOptOut] = useState('');
+  const [autoArchive, setAutoArchive] = useState(false);
+  const [autoArchiveDays, setAutoArchiveDays] = useState('60');
   const [digestEnabled, setDigestEnabled] = useState(false);
   const [recipient, setRecipient] = useState('');
   const [saving, setSaving] = useState(false);
@@ -28,6 +30,8 @@ export function PreferencesSettings() {
     /* eslint-disable react-hooks/set-state-in-effect -- sincroniza o formulário com os dados carregados */
     setFollowUpDays(String(settings.follow_up_days));
     setOptOut(settings.opt_out_line);
+    setAutoArchive(settings.auto_archive_days !== null);
+    setAutoArchiveDays(String(settings.auto_archive_days ?? 60));
     setDigestEnabled(settings.daily_digest.enabled);
     setRecipient(settings.daily_digest.recipient ?? '');
     /* eslint-enable react-hooks/set-state-in-effect */
@@ -41,6 +45,7 @@ export function PreferencesSettings() {
         method: 'PATCH',
         body: {
           follow_up_days: Number(followUpDays),
+          auto_archive_days: autoArchive ? Number(autoArchiveDays) : null,
           opt_out_line: optOut,
           daily_digest: { enabled: digestEnabled, recipient },
         },
@@ -78,6 +83,33 @@ export function PreferencesSettings() {
         <Field label="Linha de opt-out (RGPD)" hint="Variável {{opt_out}} nos modelos de email.">
           <Input value={optOut} onChange={(e) => setOptOut(e.target.value)} />
         </Field>
+
+        <fieldset className="flex flex-col gap-3 rounded-lg border border-border p-3 md:col-span-2">
+          <legend className="flex items-center gap-2 px-1 text-sm font-semibold">
+            <Archive className="h-4 w-4" aria-hidden /> Arquivo automático
+          </legend>
+          <p className="text-sm text-muted">
+            Os leads em &quot;Sem interesse&quot; há muito tempo passam sozinhos para o arquivo (todas as manhãs). Continuam na
+            deteção de duplicados e nas estatísticas, e podes repô-los quando quiseres (Leads → filtro &quot;Só os
+            arquivados&quot;).
+          </p>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={autoArchive} onChange={(e) => setAutoArchive(e.target.checked)} />
+            Arquivar automaticamente os leads sem interesse
+          </label>
+          {autoArchive ? (
+            <Field label="Depois de quantos dias em “Sem interesse”" hint="Entre 7 e 365 dias.">
+              <Input
+                type="number"
+                min={7}
+                max={365}
+                value={autoArchiveDays}
+                onChange={(e) => setAutoArchiveDays(e.target.value)}
+                className="max-w-32"
+              />
+            </Field>
+          ) : null}
+        </fieldset>
 
         <fieldset className="flex flex-col gap-3 rounded-lg border border-border p-3 md:col-span-2">
           <legend className="flex items-center gap-2 px-1 text-sm font-semibold">

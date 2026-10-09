@@ -11,6 +11,8 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import type {
+  LeadBulkActionInput,
+  LeadBulkResult,
   AiEmailRequestInput,
   AiEmailResult,
   MapData,
@@ -118,6 +120,32 @@ export function useInvalidateLead() {
       void qc.invalidateQueries({ queryKey: ['proposals', id] });
     }
   };
+}
+
+/** Arquivar, repor ou apagar um ou vários leads (POST /leads/bulk). */
+export function useBulkLeadAction() {
+  const qc = useQueryClient();
+  const invalidate = useInvalidateLead();
+  return useMutation({
+    mutationFn: (input: LeadBulkActionInput) =>
+      api<{ data: LeadBulkResult }>('/leads/bulk', { method: 'POST', body: input }).then((r) => r.data),
+    onSuccess: (_result, input) => {
+      invalidate();
+      if (input.action === 'delete') {
+        for (const id of input.ids) qc.removeQueries({ queryKey: qk.lead(id) });
+      } else {
+        void qc.invalidateQueries({ queryKey: ['lead'] });
+        void qc.invalidateQueries({ queryKey: ['activities'] });
+      }
+    },
+  });
+}
+
+/** Mensagem curta para o resultado de uma ação em leads ("3 leads arquivados."). */
+export function bulkResultMessage({ action, affected }: LeadBulkResult): string {
+  const leads = affected === 1 ? '1 lead' : `${affected} leads`;
+  const verb = { archive: 'arquivado', restore: 'reposto', delete: 'apagado' }[action];
+  return `${leads} ${affected === 1 ? verb : `${verb}s`}.`;
 }
 
 /** Depois de mudar um setor (nome, ícone, arquivo): os leads mostram o setor embutido. */

@@ -1,6 +1,8 @@
 import { timingSafeEqual } from 'node:crypto';
 import { handleError, json, problemResponse } from '@/server/http';
+import { createSupabaseAdminClient } from '@/server/supabase-admin';
 import { sendDailyDigests } from '@/server/services/digest';
+import { autoArchiveLeads } from '@/server/services/leads';
 import { sendDailyPushes } from '@/server/services/push';
 
 export const dynamic = 'force-dynamic';
@@ -15,8 +17,9 @@ function authorized(req: Request): boolean {
 }
 
 /**
- * GET/POST /api/v1/cron/daily-digest — envia o resumo diário a todos os
- * workspaces com o resumo ativo e a notificação push a todos os dispositivos
+ * GET/POST /api/v1/cron/daily-digest — arquiva os leads "Sem interesse" antigos
+ * (nos workspaces com o arquivo automático ligado), envia o resumo diário a todos
+ * os workspaces com o resumo ativo e a notificação push a todos os dispositivos
  * subscritos. Autenticação: "Authorization: Bearer CRON_SECRET"
  * (o Vercel Cron envia-o automaticamente). ?dry_run=true não envia.
  */
@@ -25,11 +28,13 @@ async function handler(req: Request) {
   try {
     const url = new URL(req.url);
     const dryRun = url.searchParams.get('dry_run') === 'true';
+    // Primeiro o arquivo automático, para o resumo já não contar esses leads.
+    const archived = await autoArchiveLeads(createSupabaseAdminClient(), dryRun);
     const [results, push] = await Promise.all([
       sendDailyDigests({ appUrl: process.env.APP_URL ?? url.origin, dryRun }),
       sendDailyPushes({ dryRun }),
     ]);
-    return json({ data: results, push });
+    return json({ data: results, push, archived });
   } catch (e) {
     return handleError(e);
   }

@@ -89,6 +89,7 @@ export async function geocodeMissing(ctx: ApiContext, limit = 25): Promise<Geoco
       .select('id, company_name, address, city', { count: 'exact' })
       .eq('workspace_id', ctx.workspaceId)
       .is('anonymized_at', null)
+      .is('archived_at', null)
       .is('geocode_status', null)
       .or('address.not.is.null,city.not.is.null');
   const { data, error } = await pending().order('number').limit(limit);
@@ -125,7 +126,8 @@ export async function getMapData(ctx: ApiContext, filters: LeadFilters): Promise
       .from('leads')
       .select('id', { count: 'exact', head: true })
       .eq('workspace_id', ctx.workspaceId)
-      .is('anonymized_at', null);
+      .is('anonymized_at', null)
+      .is('archived_at', null);
     q = status === 'missing' ? q.is('geocode_status', null).or('address.not.is.null,city.not.is.null') : q.eq('geocode_status', 'not_found');
     return q;
   };

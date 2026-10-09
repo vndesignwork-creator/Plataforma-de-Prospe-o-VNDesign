@@ -113,7 +113,12 @@ aplica os dados de um registo novo a um lead existente.
 
 - Guardar só dados empresariais públicos; o campo **Fonte** indica a origem dos dados.
 - **Apagar:** remove o lead e toda a linha do tempo; pode acrescentar a empresa à lista
-  "não contactar".
+  "não contactar". Vários de uma vez: `POST /api/v1/leads/bulk` (`archive`, `restore`, `delete`;
+  só com sessão, máx. 200).
+- **Arquivar** (`leads.archived_at`): fora da lista, Kanban, mapa, "Hoje" e resumo diário
+  (`?archived=only|include` para os ver); conta nas estatísticas e na deteção de duplicados.
+  `auto_archive_leads()` (cron diário) arquiva os "Sem interesse" há mais de
+  `settings.auto_archive_days` dias.
 - **Anonimizar** (`anonymize_lead`): apaga contactos, textos livres e notas; mantém setor,
   cidade, estado e valor para as estatísticas.
 - **Lista "não contactar":** bloqueia criação e importação. A correspondência faz-se por

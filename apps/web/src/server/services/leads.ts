@@ -13,10 +13,13 @@ import {
   type DuplicateCheckResult,
   type DuplicateMatch,
   type Lead,
+  type LeadBulkAction,
+  type LeadBulkResult,
   type LeadCreate,
   type LeadListQuery,
   type LeadUpdate,
 } from '@vndesign/core';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest, unwrap } from '../http';
 
@@ -26,7 +29,7 @@ export const LEAD_SELECT = [
   'email', 'phone', 'contact_name', 'status', 'channel', 'first_contact_on', 'last_follow_up_on',
   'next_action_text', 'next_action_on', 'estimated_value', 'notes', 'approach_angle', 'source_url',
   'suggested_on', 'email_subject', 'email_body', 'kanban_position', 'status_changed_at',
-  'anonymized_at', 'created_by', 'created_at', 'updated_at',
+  'anonymized_at', 'archived_at', 'created_by', 'created_at', 'updated_at',
 ].join(', ');
 
 const NOT_FOUND = 'Lead não encontrado';
@@ -47,11 +50,17 @@ type LeadQueryBuilder = ReturnType<typeof baseLeadQuery>;
 
 /** Filtros comuns à lista, ao Kanban e à exportação. */
 export type LeadFilters = Partial<
-  Pick<LeadListQuery, 'q' | 'sector' | 'status' | 'channel' | 'city' | 'suggested_from' | 'suggested_to' | 'due' | 'include_anonymized'>
+  Pick<
+    LeadListQuery,
+    'q' | 'sector' | 'status' | 'channel' | 'city' | 'suggested_from' | 'suggested_to' | 'due' | 'include_anonymized' | 'archived'
+  >
 >;
 
 function applyLeadFilters(q: LeadQueryBuilder, query: LeadFilters): LeadQueryBuilder {
   if (query.include_anonymized !== 'true') q = q.is('anonymized_at', null);
+  // Arquivados: por omissão ficam de fora (lista, Kanban, mapa, exportação).
+  if (query.archived === 'only') q = q.not('archived_at', 'is', null);
+  else if (query.archived !== 'include') q = q.is('archived_at', null);
 
   if (query.q) {
     const term = normalizeText(query.q);
@@ -264,6 +273,42 @@ export async function mergeLeads(
   });
   if (error) throw fromPostgrest(error, NOT_FOUND);
   return getLead(ctx, primaryId);
+}
+
+/**
+ * Arquivar, repor ou apagar vários leads de uma vez. Só conta os que mudaram
+ * (um lead já arquivado não volta a ser arquivado nem regista atividade).
+ */
+export async function bulkLeadAction(ctx: ApiContext, action: LeadBulkAction, ids: string[]): Promise<LeadBulkResult> {
+  const unique = [...new Set(ids)];
+  const base = () => ctx.supabase.from('leads');
+  let result;
+  if (action === 'delete') {
+    result = await base().delete().eq('workspace_id', ctx.workspaceId).in('id', unique).select('id');
+  } else if (action === 'archive') {
+    result = await base()
+      .update({ archived_at: new Date().toISOString() })
+      .eq('workspace_id', ctx.workspaceId)
+      .in('id', unique)
+      .is('archived_at', null)
+      .select('id');
+  } else {
+    result = await base()
+      .update({ archived_at: null })
+      .eq('workspace_id', ctx.workspaceId)
+      .in('id', unique)
+      .not('archived_at', 'is', null)
+      .select('id');
+  }
+  if (result.error) throw fromPostgrest(result.error);
+  return { action, affected: result.data?.length ?? 0 };
+}
+
+/** Arquivo automático (cron): leads em "Sem interesse" há mais de N dias, por workspace. */
+export async function autoArchiveLeads(admin: SupabaseClient, dryRun = false): Promise<number> {
+  const { data, error } = await admin.rpc('auto_archive_leads', { p_dry_run: dryRun });
+  if (error) throw fromPostgrest(error);
+  return Number(data ?? 0);
 }
 
 /** Todos os leads que respeitam os filtros (em blocos de 1000), para exportar. */

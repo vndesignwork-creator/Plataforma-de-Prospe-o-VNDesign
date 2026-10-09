@@ -174,6 +174,8 @@ export const LeadSchema = z
     kanban_position: z.number(),
     status_changed_at: z.string(),
     anonymized_at: z.string().nullable(),
+    /** Arquivado: fora da lista, do Kanban, do mapa e de "Hoje" (histórico e estatísticas mantêm-se). */
+    archived_at: z.string().nullable().optional(),
     created_by: z.uuid().nullable(),
     created_at: z.string(),
     updated_at: z.string(),
@@ -212,6 +214,9 @@ const csvList = <T extends z.ZodType<unknown, string>>(item: T) =>
     )
     .pipe(z.array(item).max(50));
 
+export const LEAD_ARCHIVE_FILTERS = ['only', 'include'] as const;
+export type LeadArchiveFilter = (typeof LEAD_ARCHIVE_FILTERS)[number];
+
 export const LeadListQuerySchema = z
   .object({
     q: z.string().trim().max(200).optional().meta({ description: 'Pesquisa em nome, cidade, contacto, email, website, problemas e notas' }),
@@ -226,6 +231,10 @@ export const LeadListQuerySchema = z
       .optional()
       .meta({ description: 'Próxima ação em atraso, para hoje ou nos próximos 7 dias' }),
     include_anonymized: z.enum(['true', 'false']).optional(),
+    archived: z
+      .enum(LEAD_ARCHIVE_FILTERS)
+      .optional()
+      .meta({ description: 'Leads arquivados: "only" = só os arquivados, "include" = todos. Por omissão ficam de fora.' }),
     sort: z.enum(LEAD_SORT_FIELDS).default('number'),
     order: z.enum(['asc', 'desc']).default('desc'),
     page: z.coerce.number().int().min(1).default(1),
@@ -233,6 +242,28 @@ export const LeadListQuerySchema = z
   })
   .meta({ id: 'LeadListQuery' });
 export type LeadListQuery = z.output<typeof LeadListQuerySchema>;
+
+// -----------------------------------------------------------------------------
+// Ações em vários leads de uma vez (lista) — também usadas na ficha com um só id
+// -----------------------------------------------------------------------------
+export const LEAD_BULK_ACTIONS = ['archive', 'restore', 'delete'] as const;
+export type LeadBulkAction = (typeof LEAD_BULK_ACTIONS)[number];
+
+export const LeadBulkActionSchema = z
+  .object({
+    action: z.enum(LEAD_BULK_ACTIONS).meta({ description: 'archive = arquivar, restore = repor do arquivo, delete = apagar' }),
+    ids: z.array(z.uuid()).min(1, { error: 'Escolhe pelo menos um lead.' }).max(200, { error: 'No máximo 200 leads de cada vez.' }),
+  })
+  .meta({ id: 'LeadBulkAction' });
+export type LeadBulkActionInput = z.input<typeof LeadBulkActionSchema>;
+
+export const LeadBulkResultSchema = z
+  .object({
+    action: z.enum(LEAD_BULK_ACTIONS),
+    affected: z.int().meta({ description: 'Leads alterados (os já arquivados/repostos ou inexistentes não contam)' }),
+  })
+  .meta({ id: 'LeadBulkResult' });
+export type LeadBulkResult = z.infer<typeof LeadBulkResultSchema>;
 
 // -----------------------------------------------------------------------------
 // Duplicados, "não contactar", juntar e anonimizar
@@ -400,6 +431,8 @@ export const WorkspaceSettingsSchema = z
     timezone: z.string().default('Europe/Lisbon'),
     currency: z.string().default('EUR'),
     follow_up_days: z.int().min(1).max(60).default(3),
+    /** Arquivar sozinhos os leads em "Sem interesse" há mais de N dias (null = desligado). */
+    auto_archive_days: z.int().min(7).max(365).nullable().default(null),
     opt_out_line: z.string().default(''),
     daily_digest: z
       .object({
@@ -430,6 +463,11 @@ export type WorkspaceSettings = z.infer<typeof WorkspaceSettingsSchema>;
 export const WorkspaceSettingsUpdateSchema = z
   .object({
     follow_up_days: z.int({ error: 'Indica um número de dias.' }).min(1, { error: 'Mínimo 1 dia.' }).max(60, { error: 'Máximo 60 dias.' }),
+    auto_archive_days: z
+      .int({ error: 'Indica um número de dias.' })
+      .min(7, { error: 'Mínimo 7 dias.' })
+      .max(365, { error: 'Máximo 365 dias.' })
+      .nullable(),
     opt_out_line: z.string().trim().max(300),
     daily_digest: z.object({
       enabled: z.boolean(),
@@ -489,6 +527,7 @@ export const DashboardSchema = z
       won: z.int(),
       lost: z.int(),
       paused: z.int(),
+      archived: z.int().optional(),
       contacted: z.int().meta({ description: 'Leads que já saíram de "Identificado"' }),
       conversion_rate: z.number().meta({ description: 'Clientes ÷ total' }),
       conversion_rate_contacted: z.number().meta({ description: 'Clientes ÷ contactados' }),
