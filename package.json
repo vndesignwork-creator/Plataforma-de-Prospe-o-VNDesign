@@ -24,7 +24,8 @@
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "db:push": "supabase db push",
-    "create-user": "node scripts/create-user.mjs"
+    "create-user": "node scripts/create-user.mjs",
+    "ai-key": "node scripts/set-ai-key.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.0",

@@ -191,7 +191,10 @@ O texto usa os dados do lead, a última análise do site e os argumentos de vend
 **Configurar:**
 
 - Cria uma chave em https://console.anthropic.com (*API Keys*). É preciso ter créditos na conta: cada email custa poucos cêntimos.
-- Define `ANTHROPIC_API_KEY` no `apps/web/.env.local` e nas variáveis da Hostinger.
+- No PC, na pasta do projeto, corre `npm run ai-key`. Cola a chave quando for pedida (não
+  aparece no ecrã). O comando testa-a junto da Anthropic e só a grava no
+  `apps/web/.env.local` se for aceite. `npm run ai-key -- --test` volta a testar a chave gravada.
+- Na Hostinger, define `ANTHROPIC_API_KEY` nas variáveis de ambiente.
 - O modelo por omissão é `claude-opus-5-5`; podes mudá-lo com `ANTHROPIC_MODEL`.
 - O estado da configuração aparece em **Definições → Propostas e IA**.
 
