@@ -18,7 +18,7 @@ import {
   type AiEmailResult,
   type SiteAudit,
 } from '@vndesign/core';
-import { aiModel, anthropicClient, isAiConfigured } from '../ai/claude';
+import { aiKeyHint, aiModel, anthropicClient, anthropicErrorMessage, isAiConfigured } from '../ai/claude';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
 import { getLead } from './leads';
@@ -111,8 +111,20 @@ export async function generateAiEmail(ctx: ApiContext, leadId: string, request: 
       messages: [{ role: 'user', content: prompt }],
     });
   } catch (error) {
-    if (error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError) {
-      throw new ApiError(503, 'Chave da IA inválida', 'A ANTHROPIC_API_KEY foi recusada. Confirma a chave nas variáveis do servidor.');
+    if (error instanceof Anthropic.AuthenticationError) {
+      console.error('[ia] chave recusada', anthropicErrorMessage(error), aiKeyHint());
+      throw new ApiError(
+        503,
+        'Chave da IA inválida',
+        `A Anthropic não reconhece a chave em uso (${aiKeyHint()}). Confirma que é a chave que criaste, que não foi apagada e que só há uma linha ANTHROPIC_API_KEY no .env.local; depois reinicia o servidor.`,
+      );
+    }
+    if (error instanceof Anthropic.PermissionDeniedError) {
+      console.error('[ia] sem permissão', anthropicErrorMessage(error));
+      throw new ApiError(503, 'Chave sem permissão', `A Anthropic recusou o pedido: ${anthropicErrorMessage(error)}`);
+    }
+    if (error instanceof Anthropic.BadRequestError && /credit balance/i.test(anthropicErrorMessage(error))) {
+      throw new ApiError(402, 'Sem créditos na Anthropic', 'A conta não tem créditos. Compra créditos em console.anthropic.com → Billing.');
     }
     if (error instanceof Anthropic.RateLimitError) {
       throw new ApiError(429, 'Demasiados pedidos', 'O limite da IA foi atingido. Tenta outra vez dentro de um minuto.');
@@ -121,8 +133,8 @@ export async function generateAiEmail(ctx: ApiContext, leadId: string, request: 
       throw new ApiError(504, 'A IA demorou demasiado', 'Tenta outra vez.');
     }
     if (error instanceof Anthropic.APIError) {
-      console.error('[ia] erro da API', error.status, error.message);
-      throw new ApiError(502, 'Erro da IA', 'O serviço de IA não respondeu como esperado. Tenta outra vez.');
+      console.error('[ia] erro da API', error.status, anthropicErrorMessage(error));
+      throw new ApiError(502, 'Erro da IA', `A Anthropic respondeu ${error.status ?? 'com um erro'}: ${anthropicErrorMessage(error)}`);
     }
     throw error;
   }
