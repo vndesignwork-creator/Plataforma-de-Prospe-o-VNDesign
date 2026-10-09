@@ -311,6 +311,7 @@ export const ActivitySchema = z
     body: z.string().nullable(),
     payload: z.record(z.string(), z.unknown()),
     actor_user_id: z.uuid().nullable(),
+    actor_token_id: z.uuid().nullable().meta({ description: 'Token de integração usado (se a ação veio da API)' }),
     created_at: z.string(),
   })
   .meta({ id: 'Activity' });

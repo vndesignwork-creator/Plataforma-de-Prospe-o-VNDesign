@@ -11,6 +11,8 @@ export const metadata: Metadata = {
   title: { default: 'VNDesign Leads', template: '%s · VNDesign Leads' },
   description: 'Plataforma de prospeção de clientes da VNDesign',
   applicationName: 'VNDesign Leads',
+  appleWebApp: { capable: true, title: 'VND Leads', statusBarStyle: 'black-translucent' },
+  icons: { apple: '/icons/apple-touch-icon.png' },
   robots: { index: false, follow: false },
 };
 

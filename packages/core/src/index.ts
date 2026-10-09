@@ -7,3 +7,5 @@ export * from './import';
 export * from './export';
 export * from './import-schemas';
 export * from './templates';
+export * from './audit';
+export * from './integration';

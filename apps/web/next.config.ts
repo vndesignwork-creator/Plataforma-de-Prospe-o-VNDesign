@@ -17,7 +17,17 @@ const nextConfig: NextConfig = {
   // Imagem Docker (Coolify): BUILD_STANDALONE=1 gera um servidor Node autónomo.
   output: process.env.BUILD_STANDALONE ? 'standalone' : undefined,
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }];
+    return [
+      { source: '/:path*', headers: securityHeaders },
+      // O service worker tem de ser sempre revalidado para as atualizações chegarem.
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+        ],
+      },
+    ];
   },
 };
 

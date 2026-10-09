@@ -3,7 +3,7 @@ import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest, unwrap } from '../http';
 import { getLead } from './leads';
 
-const ACTIVITY_SELECT = 'id, lead_id, type, body, payload, actor_user_id, created_at';
+const ACTIVITY_SELECT = 'id, lead_id, type, body, payload, actor_user_id, actor_token_id, created_at';
 
 export async function listActivities(ctx: ApiContext, leadId: string): Promise<Activity[]> {
   await getLead(ctx, leadId);

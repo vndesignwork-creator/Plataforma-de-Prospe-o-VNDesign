@@ -53,5 +53,12 @@ export default defineConfig({
   ],
   webServer: process.env.E2E_BASE_URL
     ? undefined
-    : { command: 'npm run dev', url: baseURL, reuseExistingServer: true, timeout: 120_000 },
+    : {
+        command: 'npm run dev',
+        url: baseURL,
+        reuseExistingServer: true,
+        timeout: 120_000,
+        // O auditor de sites tem de poder analisar o site local dos testes (phase-d.spec.ts).
+        env: { AUDIT_ALLOW_PRIVATE: '1', AUDIT_SKIP_PAGESPEED: '1' },
+      },
 });

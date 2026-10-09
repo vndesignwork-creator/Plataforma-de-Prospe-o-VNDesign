@@ -6,4 +6,4 @@ import { checkDuplicates } from '@/server/services/leads';
 export const POST = apiRoute(async (req, ctx) => {
   const input = await parseJson(req, DuplicateCheckSchema);
   return json({ data: await checkDuplicates(ctx, input) });
-});
+}, { token: 'leads:read' });

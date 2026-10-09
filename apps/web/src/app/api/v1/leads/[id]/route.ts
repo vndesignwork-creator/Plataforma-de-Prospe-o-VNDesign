@@ -7,13 +7,14 @@ type Params = { id: string };
 /** GET /api/v1/leads/{id} */
 export const GET = apiRoute<Params>(async (_req, ctx, { id }) =>
   json({ data: await getLead(ctx, parseId(id)) }),
+  { token: 'leads:read' },
 );
 
 /** PATCH /api/v1/leads/{id} — só os campos enviados são alterados. */
 export const PATCH = apiRoute<Params>(async (req, ctx, { id }) => {
   const patch = await parseJson(req, LeadUpdateSchema);
   return json({ data: await updateLead(ctx, parseId(id), patch) });
-});
+}, { token: 'leads:write' });
 
 /**
  * DELETE /api/v1/leads/{id} — apaga definitivamente (RGPD).

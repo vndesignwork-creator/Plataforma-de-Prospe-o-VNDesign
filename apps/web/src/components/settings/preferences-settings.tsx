@@ -1,8 +1,8 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { Bell, Mail } from 'lucide-react';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { Mail } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
@@ -10,57 +10,7 @@ import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
 import { useMe, useSettings, type SettingsWithMail } from '@/lib/queries';
-import { NOTIFY_KEY, notificationsEnabled } from '@/components/follow-up/follow-up-notifier';
-
-const subscribeStorage = (cb: () => void) => {
-  window.addEventListener('storage', cb);
-  return () => window.removeEventListener('storage', cb);
-};
-
-function BrowserNotifications() {
-  const enabled = useSyncExternalStore(subscribeStorage, notificationsEnabled, () => false);
-  const [, force] = useState(0);
-  const supported = typeof window !== 'undefined' && 'Notification' in window;
-
-  async function toggle() {
-    if (enabled) {
-      localStorage.removeItem(NOTIFY_KEY);
-      force((n) => n + 1);
-      toast.success('Notificações desligadas neste browser.');
-      return;
-    }
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      toast.error('O browser não deu permissão. Ativa as notificações nas definições do site.');
-      return;
-    }
-    localStorage.setItem(NOTIFY_KEY, 'on');
-    localStorage.removeItem('vnd-notified-date');
-    force((n) => n + 1);
-    new Notification('VNDesign Leads', { body: 'Notificações ativas: vais ser avisado dos follow-ups do dia.', icon: '/icon.svg' });
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      <h3 className="flex items-center gap-2 text-sm font-semibold">
-        <Bell className="h-4 w-4" aria-hidden /> Notificações no browser
-      </h3>
-      <p className="text-sm text-muted">
-        Uma vez por dia, ao abrires a plataforma, mostra quantos follow-ups tens para hoje e em atraso. (Com a app instalada no
-        telemóvel — Fase D — passam a chegar mesmo com a plataforma fechada.)
-      </p>
-      <div>
-        {supported ? (
-          <Button size="sm" variant={enabled ? 'outline' : 'primary'} onClick={toggle}>
-            {enabled ? 'Desligar neste browser' : 'Ativar neste browser'}
-          </Button>
-        ) : (
-          <span className="text-sm text-muted">Este browser não suporta notificações.</span>
-        )}
-      </div>
-    </div>
-  );
-}
+import { PushSettings } from './push-settings';
 
 export function PreferencesSettings() {
   const qc = useQueryClient();
@@ -162,7 +112,7 @@ export function PreferencesSettings() {
         </fieldset>
 
         <div className="md:col-span-2">
-          <BrowserNotifications />
+          <PushSettings />
         </div>
 
         <div className="flex justify-end md:col-span-2">

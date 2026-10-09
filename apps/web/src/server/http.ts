@@ -4,6 +4,7 @@
  */
 import type { PostgrestError } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import type { ApiTokenScope } from '@vndesign/core';
 import { z } from 'zod';
 import { getApiContext, type ApiContext } from './context';
 
@@ -105,14 +106,34 @@ export function unwrap<T>(result: { data: T | null; error: PostgrestError | null
 type RouteParams = Record<string, string>;
 type Handler<P extends RouteParams> = (req: Request, ctx: ApiContext, params: P) => Promise<Response>;
 
+export interface ApiRouteOptions {
+  /**
+   * Aceita tokens de integração com este scope. Sem esta opção, a rota só
+   * aceita a sessão da web ou o access token Supabase da app.
+   */
+  token?: ApiTokenScope;
+}
+
+/** Garante que o pedido com token de integração tem o scope necessário. */
+export function assertTokenScope(ctx: ApiContext, scope: ApiTokenScope | undefined) {
+  if (ctx.authMethod !== 'token') return;
+  if (!scope) {
+    throw new ApiError(403, 'Não disponível com token', 'Este endpoint não aceita tokens de integração.');
+  }
+  if (!ctx.token?.scopes.includes(scope)) {
+    throw new ApiError(403, 'Sem permissão', `O token não tem a permissão "${scope}".`);
+  }
+}
+
 /**
- * Envolve um route handler: autentica (sessão ou Bearer), resolve o workspace,
- * e converte exceções em respostas problem+json.
+ * Envolve um route handler: autentica (sessão, Bearer ou token de integração),
+ * resolve o workspace e converte exceções em respostas problem+json.
  */
-export function apiRoute<P extends RouteParams = RouteParams>(handler: Handler<P>) {
+export function apiRoute<P extends RouteParams = RouteParams>(handler: Handler<P>, options: ApiRouteOptions = {}) {
   return async (req: Request, segment: { params: Promise<P> }): Promise<Response> => {
     try {
       const ctx = await getApiContext(req);
+      assertTokenScope(ctx, options.token);
       const params = await segment.params;
       return await handler(req, ctx, params);
     } catch (error) {

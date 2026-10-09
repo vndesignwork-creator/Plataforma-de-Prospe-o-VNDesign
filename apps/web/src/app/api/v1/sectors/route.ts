@@ -6,7 +6,7 @@ import { createSector, listSectors } from '@/server/services/sectors';
 export const GET = apiRoute(async (req, ctx) => {
   const includeArchived = new URL(req.url).searchParams.get('include_archived') === 'true';
   return json({ data: await listSectors(ctx, includeArchived) });
-});
+}, { token: 'leads:read' });
 
 /** POST /api/v1/sectors */
 export const POST = apiRoute(async (req, ctx) => {

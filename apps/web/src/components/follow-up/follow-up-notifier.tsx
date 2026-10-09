@@ -43,7 +43,7 @@ export function FollowUpNotifier() {
           body: data.overdue.length
             ? `${data.overdue.length} em atraso. ${[...data.overdue, ...data.due_today].slice(0, 3).map((l) => l.company_name).join(', ')}…`
             : [...data.due_today].slice(0, 3).map((l) => l.company_name).join(', '),
-          icon: '/icon.svg',
+          icon: '/icons/icon-192.png',
           tag: 'vnd-follow-ups',
         });
         n.onclick = () => {

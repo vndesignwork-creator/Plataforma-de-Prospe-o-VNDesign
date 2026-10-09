@@ -12,6 +12,11 @@ import {
 } from '@tanstack/react-query';
 import type {
   Activity,
+  ApiToken,
+  ApiTokenCreate,
+  ApiTokenCreated,
+  AuditApply,
+  SiteAudit,
   BoardColumn,
   ContactTemplate,
   Signature,
@@ -194,5 +199,61 @@ export function useFollowUp(id: string) {
     mutationFn: (body: { action: 'done' | 'snooze'; days?: number | null; note?: string }) =>
       api<{ data: Lead }>(`/leads/${id}/follow-up`, { method: 'POST', body }).then((r) => r.data),
     onSuccess: () => invalidate(id),
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Fase D — auditor de sites, tokens de integração
+// -----------------------------------------------------------------------------
+export function useAudits(leadId: string) {
+  return useQuery({
+    queryKey: ['audits', leadId],
+    queryFn: () => api<{ data: SiteAudit[] }>(`/leads/${leadId}/audits`).then((r) => r.data),
+  });
+}
+
+export function useRunAudit(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { url?: string }) =>
+      api<{ data: SiteAudit }>(`/leads/${leadId}/audits`, { method: 'POST', body }).then((r) => r.data),
+    onSuccess: (audit) => {
+      qc.setQueryData<SiteAudit[]>(['audits', leadId], (old) => [audit, ...(old ?? [])]);
+      void qc.invalidateQueries({ queryKey: qk.activities(leadId) });
+    },
+  });
+}
+
+export function useApplyAudit(leadId: string) {
+  const invalidate = useInvalidateLead();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ auditId, ...body }: { auditId: string; fields: AuditApply['fields']; problems_mode?: AuditApply['problems_mode'] }) =>
+      api<{ data: Lead }>(`/leads/${leadId}/audits/${auditId}/apply`, { method: 'POST', body }).then((r) => r.data),
+    onSuccess: (lead) => {
+      qc.setQueryData(qk.lead(leadId), lead);
+      invalidate(leadId);
+    },
+  });
+}
+
+export function useApiTokens() {
+  return useQuery({ queryKey: ['tokens'], queryFn: () => api<{ data: ApiToken[] }>('/tokens').then((r) => r.data) });
+}
+
+export function useCreateApiToken() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: ApiTokenCreate) =>
+      api<{ data: ApiTokenCreated }>('/tokens', { method: 'POST', body }).then((r) => r.data),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['tokens'] }),
+  });
+}
+
+export function useRevokeApiToken() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api(`/tokens/${id}`, { method: 'DELETE' }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['tokens'] }),
   });
 }

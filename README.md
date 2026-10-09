@@ -120,7 +120,8 @@ português) com as mesmas colunas — pode ser reimportado sem mapear nada.
   guarda como email de prospeção ou marca como enviado (passa a “Contactado” e agenda o follow-up).
 - **Follow-up:** na ficha e na lista “Hoje” — *Feito* (com ou sem nova data) ou *Adiar*.
   Os dias até ao follow-up configuram-se em **Definições → Follow-up e lembretes**.
-- **Notificações no browser:** Definições → ativar (uma vez por dia, ao abrir a plataforma).
+- **Notificações push** (Fase D): Definições → *Ativar notificações neste dispositivo* — chegam
+  todas as manhãs mesmo com a plataforma fechada (ver “App no telemóvel” abaixo).
 - **Resumo diário por email** (opcional): precisa de SMTP e de um cron.
 
 ### Configurar o email (resumo diário)
@@ -149,6 +150,66 @@ Enviar um resumo de teste agora**.
   `curl -s -H "Authorization: Bearer <CRON_SECRET>" https://leads.vndesign.pt/api/v1/cron/daily-digest`
 - **Coolify:** *Scheduled Tasks* com o mesmo `curl`.
 
+O mesmo cron envia também as **notificações push** a todos os dispositivos ativados.
+
+---
+
+## Auditor de sites
+
+Na ficha do lead, **Diagnóstico do site → Analisar site**. Verifica:
+
+- HTTPS e certificado SSL (válido, emissor, data de expiração);
+- adaptação a telemóvel (meta viewport e zoom bloqueado);
+- título e meta descrição;
+- plataforma (WordPress com versão, Wix, Shopify, Squarespace…) e ano do copyright no rodapé;
+- PageSpeed mobile do Google (pontuação, LCP, CLS…).
+
+Os problemas encontrados são escritos à moda da folha (“Sem HTTPS; Não é responsivo;
+PageSpeed 34”) e podes **aplicá-los ao lead** (PageSpeed, Mobile? e Problemas — substituir
+ou acrescentar). Fica um histórico das análises e uma entrada “Site analisado” na atividade.
+Links de redes sociais/diretórios dão “Sem site próprio”.
+
+**PageSpeed:** sem chave funciona com limites baixos. Para uso diário cria uma chave gratuita
+(Google Cloud → *APIs e serviços* → ativar *PageSpeed Insights API* → *Credenciais → Criar
+chave de API*) e define `PAGESPEED_API_KEY`. A análise demora 10–40 segundos.
+
+**Segurança:** o servidor só abre endereços públicos em `http`/`https` (portas 80/443), nunca
+`localhost` nem a rede interna, também depois de redirecionamentos.
+
+---
+
+## API de integração (tarefa semanal com o Claude)
+
+1. **Definições → API e integrações → Criar token** (permissão `leads:import`). Copia o token
+   `vnd_…` — só é mostrado uma vez.
+2. A tarefa envia os leads para `POST /api/v1/leads/import` com
+   `Authorization: Bearer vnd_…`. Guia completo, exemplos em curl/PowerShell e o texto para
+   colar nas instruções da tarefa: **[docs/INTEGRACAO.md](docs/INTEGRACAO.md)**.
+3. Os leads entram com as mesmas regras da importação: duplicados ignorados (ou juntados),
+   lista “não contactar” respeitada, e aparecem no histórico de importações e na atividade
+   (“via API”).
+
+Podes revogar um token a qualquer momento; deixa de funcionar de imediato.
+
+---
+
+## App no telemóvel (PWA)
+
+- **Instalar:** abre a plataforma no Chrome do telemóvel → menu ⋮ → **Adicionar ao ecrã
+  principal** (ou o botão *Instalar a app* em Definições). Abre em ecrã inteiro, com ícone próprio.
+- **Notificações push:** Definições → *Follow-up e lembretes* → **Ativar notificações neste
+  dispositivo** → *Enviar notificação de teste*. Ao tocar na notificação abre o lead (ou o dashboard).
+- Precisam das chaves VAPID no servidor (uma vez):
+
+  ```powershell
+  npx web-push generate-vapid-keys
+  ```
+
+  e define `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` e `VAPID_SUBJECT=mailto:geral@vndesign.pt`.
+  Sem elas, as Definições oferecem o aviso “ao abrir a plataforma”.
+- Sem rede, aparece a página “Sem ligação” (os dados não ficam guardados no telemóvel).
+- No iPhone, as notificações só funcionam com a app instalada no ecrã principal (iOS 16.4+).
+
 ---
 
 ## Testes
@@ -175,6 +236,9 @@ npx playwright install chromium
 npm run test:e2e       # arranca o "npm run dev" automaticamente
 ```
 
+Se já tiveres o `npm run dev` a correr, acrescenta ao `apps/web/.env.local`
+`AUDIT_ALLOW_PRIVATE=1` e `AUDIT_SKIP_PAGESPEED=1` (o teste do auditor analisa um site local).
+
 O GitHub Actions (`.github/workflows/ci.yml`) corre lint, tipos, testes, build e — com um
 Supabase local — as migrações, a paridade SQL e os testes E2E.
 
@@ -186,7 +250,9 @@ Supabase local — as migrações, a paridade SQL e os testes E2E.
 - Autenticação:
   - **Web:** sessão (cookies);
   - **App móvel:** `Authorization: Bearer <access token do Supabase>`;
-  - **Integrações:** tokens pessoais `vnd_…`, a partir da Fase D (incluindo `POST /api/v1/leads/import`).
+  - **Integrações:** tokens pessoais `vnd_…` (Definições → API e integrações), com permissões
+    `leads:import` (`POST /leads/import`), `leads:read` (`GET /leads`, `/leads/{id}`, `/sectors`,
+    `/meta`, `POST /leads/check-duplicates`) e `leads:write` (`POST /leads`, `PATCH /leads/{id}`).
 - Erros em `application/problem+json`, com mensagens em pt-PT. Respostas em `{ "data": … }`.
 
 Exemplo em PowerShell, com um access token:
@@ -232,7 +298,8 @@ A base de dados fica no **Supabase na nuvem** (ver Opção A acima).
    | Entry file | `apps/web/.next/standalone/apps/web/server.js` |
 
 3. **Variáveis de ambiente:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
-   `SUPABASE_SECRET_KEY` e `HOSTNAME=0.0.0.0`. A Hostinger injeta-as no build e na execução;
+   `SUPABASE_SECRET_KEY` e `HOSTNAME=0.0.0.0` (mais, se usares: `SMTP_*`, `APP_URL`,
+   `CRON_SECRET`, `PAGESPEED_API_KEY`, `VAPID_*` — ver `.env.example`). A Hostinger injeta-as no build e na execução;
    cada alteração precisa de um novo deploy.
 4. Associa o domínio (ex.: `leads.vndesign.pt`) e confirma que o SSL está ativo.
 5. No Supabase (*Authentication → URL Configuration*): *Site URL* = `https://leads.vndesign.pt`
@@ -268,5 +335,5 @@ docker run -p 3000:3000 --env-file apps/web/.env.local vndesign-leads
 | A | Projeto, autenticação, modelo de dados + RLS, CRUD de leads, tabela + ficha, duplicados, "não contactar", RGPD | ✅ |
 | B | Kanban, dashboard, importação/exportação CSV/XLSX (com a folha atual) | ✅ |
 | C | Scripts de contacto com variáveis, assinatura, lembretes de follow-up | ✅ |
-| D | Auditor de sites, API de integração com token, PWA | ⏳ |
+| D | Auditor de sites, API de integração com token, PWA e notificações push | ✅ |
 | E | Email com IA, propostas em PDF, mapa | ⏳ |

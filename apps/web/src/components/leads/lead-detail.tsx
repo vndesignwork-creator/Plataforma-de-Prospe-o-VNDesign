@@ -29,6 +29,7 @@ import { FollowUpActions } from '@/components/follow-up/follow-up-actions';
 import { ContactScriptsCard } from '@/components/scripts/contact-scripts-card';
 import { ActivityTimeline } from './activity-timeline';
 import { ChannelLabel, MobileLabel, PageSpeedScore } from './badges';
+import { SiteAuditPanel } from './site-audit';
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -275,6 +276,7 @@ export function LeadDetail({ id }: { id: string }) {
                 {lead.approach_angle ? <span className="whitespace-pre-line">{lead.approach_angle}</span> : dash}
               </Row>
             </dl>
+            <SiteAuditPanel lead={lead} />
           </Card>
 
           {!lead.anonymized_at ? <ContactScriptsCard lead={lead} /> : null}

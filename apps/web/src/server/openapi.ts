@@ -4,6 +4,16 @@
  * Servido em /api/v1/openapi.json e apresentado em /docs/api.
  */
 import {
+  ApiTokenCreateSchema,
+  ApiTokenCreatedSchema,
+  ApiTokenSchema,
+  AuditApplySchema,
+  IntegrationImportResultSchema,
+  IntegrationImportSchema,
+  PushSubscriptionCreateSchema,
+  PushSubscriptionDeleteSchema,
+  SiteAuditRequestSchema,
+  SiteAuditSchema,
   ActivityCreateSchema,
   ContactTemplateCreateSchema,
   ContactTemplateSchema,
@@ -84,7 +94,8 @@ export function getOpenApiDocument() {
         '**Autenticação**',
         '- Web: sessão (cookies Supabase).',
         '- App móvel: `Authorization: Bearer <access token Supabase>`.',
-        '- Integrações: tokens pessoais `vnd_…` (Fase D).',
+        '- Integrações: tokens pessoais `Authorization: Bearer vnd_…` (criados em Definições → API e integrações).',
+        '  Só funcionam nos endpoints marcados com um scope (`leads:import`, `leads:read`, `leads:write`).',
         '',
         '**Convenções**: JSON em snake_case; datas `AAAA-MM-DD`; valores em euros; erros em `application/problem+json` com mensagens em pt-PT.',
         'Respostas de sucesso vêm em `{ "data": … }` (listas também com `meta`).',
@@ -95,6 +106,7 @@ export function getOpenApiDocument() {
     components: {
       securitySchemes: {
         bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+        apiToken: { type: 'http', scheme: 'bearer', bearerFormat: 'vnd_…', description: 'Token de integração' },
         cookieAuth: { type: 'apiKey', in: 'cookie', name: 'sb-<projeto>-auth-token' },
       },
     },
@@ -109,6 +121,9 @@ export function getOpenApiDocument() {
       { name: 'Setores' },
       { name: 'Não contactar' },
       { name: 'Preferências' },
+      { name: 'Auditor de sites' },
+      { name: 'Integrações' },
+      { name: 'Notificações' },
     ],
     paths: {
       '/me': {
@@ -429,6 +444,104 @@ export function getOpenApiDocument() {
           summary: 'Remover da lista',
           requestParams: { path: idParam },
           responses: { '204': { description: 'Removido' }, ...withNotFound },
+        }),
+      },
+      '/leads/import': {
+        post: op({
+          tags: ['Integrações'],
+          summary: 'Importar leads em JSON (scope leads:import)',
+          description: [
+            'Para integrações como a tarefa semanal de prospeção. Os valores podem vir como na folha',
+            '("🔍 Identificado", "Sim", "06/10/2026", "1.200 €"); o setor é procurado pelo nome.',
+            'Duplicados: `on_duplicate` = `skip` (por omissão), `merge` (preenche campos vazios) ou `create`.',
+            'A lista "não contactar" bloqueia sempre. Com `dry_run: true` nada é gravado.',
+            'Cabeçalho opcional `Idempotency-Key`: repetir o pedido devolve a resposta original (`replayed: true`).',
+          ].join('\n'),
+          security: [{ apiToken: [] }, { bearerAuth: [] }, { cookieAuth: [] }],
+          requestParams: { header: z.object({ 'Idempotency-Key': z.string().max(200).optional() }) },
+          requestBody: body(IntegrationImportSchema),
+          responses: {
+            '200': ok(data(IntegrationImportResultSchema), 'Validado (dry_run), repetido ou nada gravado'),
+            '201': ok(data(IntegrationImportResultSchema), 'Leads criados/juntados'),
+            '403': problem('O token não tem o scope leads:import'),
+            ...common,
+          },
+        }),
+      },
+      '/tokens': {
+        get: op({
+          tags: ['Integrações'],
+          summary: 'Tokens de integração do utilizador (só sessão)',
+          responses: { '200': ok(data(z.array(ApiTokenSchema))), ...common },
+        }),
+        post: op({
+          tags: ['Integrações'],
+          summary: 'Criar token (o valor só é devolvido agora)',
+          requestBody: body(ApiTokenCreateSchema),
+          responses: { '201': ok(data(ApiTokenCreatedSchema), 'Criado'), ...common },
+        }),
+      },
+      '/tokens/{id}': {
+        delete: op({
+          tags: ['Integrações'],
+          summary: 'Revogar token',
+          requestParams: { path: idParam },
+          responses: { '204': { description: 'Revogado' }, ...withNotFound },
+        }),
+      },
+      '/leads/{id}/audits': {
+        get: op({
+          tags: ['Auditor de sites'],
+          summary: 'Histórico de análises do site do lead',
+          requestParams: { path: leadId },
+          responses: { '200': ok(data(z.array(SiteAuditSchema))), ...withNotFound },
+        }),
+        post: op({
+          tags: ['Auditor de sites'],
+          summary: 'Analisar o site (HTTPS/SSL, telemóvel, SEO, CMS, copyright, PageSpeed)',
+          description: 'Pode demorar até 1 minuto (PageSpeed). Por omissão analisa o website do lead.',
+          requestParams: { path: leadId },
+          requestBody: body(SiteAuditRequestSchema),
+          responses: {
+            '201': ok(data(SiteAuditSchema), 'Análise concluída'),
+            '422': problem('Sem website, ou endereço interno/inválido'),
+            ...withNotFound,
+          },
+        }),
+      },
+      '/leads/{id}/audits/{auditId}/apply': {
+        post: op({
+          tags: ['Auditor de sites'],
+          summary: 'Aplicar PageSpeed, Mobile? e/ou Problemas ao lead',
+          requestParams: { path: z.object({ id: z.uuid(), auditId: z.uuid() }) },
+          requestBody: body(AuditApplySchema),
+          responses: { '200': ok(data(LeadSchema)), ...withNotFound },
+        }),
+      },
+      '/push-subscriptions': {
+        get: op({
+          tags: ['Notificações'],
+          summary: 'Chave pública VAPID e dispositivos subscritos',
+          responses: { '200': ok(data(z.record(z.string(), z.unknown()))), ...common },
+        }),
+        post: op({
+          tags: ['Notificações'],
+          summary: 'Registar este browser para notificações push',
+          requestBody: body(PushSubscriptionCreateSchema),
+          responses: { '204': { description: 'Registado' }, '503': problem('Push não configurado'), ...common },
+        }),
+        delete: op({
+          tags: ['Notificações'],
+          summary: 'Desligar as notificações neste browser',
+          requestBody: body(PushSubscriptionDeleteSchema),
+          responses: { '204': { description: 'Removido' }, ...common },
+        }),
+      },
+      '/push-subscriptions/test': {
+        post: op({
+          tags: ['Notificações'],
+          summary: 'Enviar uma notificação de teste',
+          responses: { '200': ok(data(z.object({ sent: z.int(), removed: z.int(), failed: z.int() }))), ...common },
         }),
       },
       '/preferences/{key}': {

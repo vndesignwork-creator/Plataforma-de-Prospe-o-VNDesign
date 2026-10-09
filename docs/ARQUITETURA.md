@@ -19,7 +19,7 @@ Integrações (token)─┘          │                                   ▲
   |---|---|---|
   | Web | Sessão Supabase em cookies (renovada pelo `proxy.ts`) | JWT do utilizador → RLS |
   | App móvel | `Authorization: Bearer <access token Supabase>` | JWT do utilizador → RLS |
-  | Integrações (Fase D) | `Authorization: Bearer vnd_…` (hash SHA-256, scopes) | servidor + `workspace_id` explícito |
+  | Integrações | `Authorization: Bearer vnd_…` (hash SHA-256, scopes por rota) | chave de serviço + `workspace_id` explícito |
 
 - Pedidos autenticados por cookie que alteram dados têm de ter `Origin` igual ao host
   (proteção CSRF).
@@ -39,6 +39,9 @@ com um utilizador, mas está pronto para colaboradores.
 | `do_not_contact` | RGPD; bloqueia criação/importação |
 | `contact_templates`, `signatures`, `tools` | dados iniciais da folha (interface nas Fases C/B) |
 | `user_preferences` | ex.: colunas visíveis da tabela (`leads.table`) |
+| `site_audits` | análises de sites (Fase D) |
+| `api_tokens` | tokens de integração — só o hash (Fase D) |
+| `push_subscriptions` | dispositivos com notificações push (Fase D) |
 
 **Enums:** `lead_status`, `lead_channel`, `mobile_status` (`desconhecido` = "--"),
 `activity_type`, `template_kind`, `member_role`.
@@ -179,40 +182,52 @@ desaparecem e a pontuação é arrumada (“Olá {{contacto}},” → “Olá,�
 um “Lead editado”. O resumo diário usa a chave de serviço só no servidor
 (`digest_recipients()`, acessível apenas a `service_role`).
 
-### Planeado: `POST /api/v1/leads/import` (Fase D)
+### Endpoints da Fase D
 
-Para a tarefa semanal de prospeção com o Claude. Autenticação por token
-`Authorization: Bearer vnd_…` com o scope `leads:import`. Suporta `Idempotency-Key`.
+| Método | Rota |
+|---|---|
+| GET / POST | `/leads/{id}/audits` (análise do site; histórico) |
+| POST | `/leads/{id}/audits/{auditId}/apply` (`{ fields: [pagespeed, mobile, problems], problems_mode }`) |
+| POST | `/leads/import` (JSON; token `leads:import`; `Idempotency-Key`) |
+| GET / POST | `/tokens` (só sessão) |
+| DELETE | `/tokens/{id}` |
+| GET / POST / DELETE | `/push-subscriptions` |
+| POST | `/push-subscriptions/test` |
 
-```json
-{
-  "source": "claude-semanal",
-  "on_duplicate": "skip",
-  "dry_run": false,
-  "leads": [
-    {
-      "company_name": "Restaurante O Lagar",
-      "sector": "Restauração",
-      "website": "https://olagar.pt",
-      "city": "Amadora",
-      "problems": "Sem HTTPS; não é responsivo",
-      "pagespeed": 34,
-      "mobile": "Não",
-      "email": "geral@olagar.pt",
-      "approach_angle": "Reservas online",
-      "source_url": "https://maps.google.com/…",
-      "suggested_on": "2026-10-06",
-      "email_subject": "…",
-      "email_body": "…"
-    }
-  ]
-}
-```
+**Auditor** (`apps/web/src/server/audit/`):
 
-- `sector`, `status`, `channel` e `mobile` aceitam o nome, o código ou a versão com emoji
-  da folha (por exemplo `"🔍 Identificado"`). Os parsers já existem em
-  `packages/core/src/parse.ts`.
-- `on_duplicate` pode ser `skip`, `merge` ou `create`.
-- A resposta traz um resultado por lead:
-  - `created`, `merged`, `skipped_duplicate`, `blocked_dnc` ou `invalid`;
-  - mais um resumo.
+- `safe-request.ts` abre o site com proteção SSRF:
+  - só `http`/`https`, portas 80/443;
+  - `lookup` próprio que recusa IPs internos em **cada** ligação, incluindo redirecionamentos e DNS rebinding;
+  - limite de 15 s e 2 MB.
+- O certificado é lido do próprio socket TLS (`authorized` + `checkServerIdentity`).
+- O PageSpeed corre em paralelo.
+- A interpretação é pura e testada: `analyzeHtml`, `parsePageSpeedResponse`, `buildAuditFindings` em `packages/core/src/audit.ts`.
+- `site_audits` guarda o histórico.
+
+**Tokens de integração:**
+
+- `vnd_` + 32 bytes aleatórios. Só se guarda o SHA-256 e um prefixo.
+- O pedido é validado no servidor com a chave de serviço e só funciona nas rotas que declaram
+  um scope (`apiRoute(handler, { token: 'leads:read' })`). Os serviços filtram sempre por
+  `workspace_id`.
+- O autor das alterações chega aos triggers pelos cabeçalhos `X-Vnd-Actor-User` e `X-Vnd-Token-Id`.
+  O PostgREST expõe-nos em `request.headers`, e as funções `vnd_actor_user_id()` e
+  `vnd_actor_token_id()` só os aceitam com o papel `service_role`.
+- A atividade guarda `actor_token_id`, que aparece como “via API”.
+
+**Importação JSON:**
+
+- Usa o mesmo `mapImportRow` da importação de ficheiros (`mapIntegrationLead`).
+- Deteta duplicados no próprio pedido e na base de dados (`find_import_duplicates`) e verifica a lista "não contactar".
+- Grava com `commitImport` (`source = 'api'`).
+- A resposta é guardada em `import_jobs.options.response`; o índice único `(workspace_id, idempotency_key)` garante a idempotência.
+
+**PWA:**
+
+- `app/manifest.ts` e ícones em `public/icons/`.
+- `public/sw.js`:
+  - navegações em rede primeiro, com `/offline` sem rede (os dados nunca vão para cache);
+  - `push` e `notificationclick`.
+- Web Push com VAPID (`web-push`). O cron diário envia a notificação a todas as subscrições e
+  apaga as que devolvem 404/410.

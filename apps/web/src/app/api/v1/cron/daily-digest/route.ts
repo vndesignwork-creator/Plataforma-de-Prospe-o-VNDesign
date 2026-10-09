@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { handleError, json, problemResponse } from '@/server/http';
 import { sendDailyDigests } from '@/server/services/digest';
+import { sendDailyPushes } from '@/server/services/push';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,18 +16,20 @@ function authorized(req: Request): boolean {
 
 /**
  * GET/POST /api/v1/cron/daily-digest — envia o resumo diário a todos os
- * workspaces com o resumo ativo. Autenticação: "Authorization: Bearer CRON_SECRET"
+ * workspaces com o resumo ativo e a notificação push a todos os dispositivos
+ * subscritos. Autenticação: "Authorization: Bearer CRON_SECRET"
  * (o Vercel Cron envia-o automaticamente). ?dry_run=true não envia.
  */
 async function handler(req: Request) {
   if (!authorized(req)) return problemResponse(401, 'Não autorizado', 'CRON_SECRET em falta ou inválido.');
   try {
     const url = new URL(req.url);
-    const results = await sendDailyDigests({
-      appUrl: process.env.APP_URL ?? url.origin,
-      dryRun: url.searchParams.get('dry_run') === 'true',
-    });
-    return json({ data: results });
+    const dryRun = url.searchParams.get('dry_run') === 'true';
+    const [results, push] = await Promise.all([
+      sendDailyDigests({ appUrl: process.env.APP_URL ?? url.origin, dryRun }),
+      sendDailyPushes({ dryRun }),
+    ]);
+    return json({ data: results, push });
   } catch (e) {
     return handleError(e);
   }

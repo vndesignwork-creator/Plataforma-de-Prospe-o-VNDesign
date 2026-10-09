@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Copy,
   Edit3,
+  Gauge,
   GitMerge,
   Mail,
   MessageSquare,
@@ -47,6 +48,7 @@ const ICONS: Partial<Record<Activity['type'], LucideIcon>> = {
   follow_up_done: CheckCircle2,
   template_used: MessageSquare,
   anonymized: ShieldOff,
+  audit_run: Gauge,
 };
 
 const fieldLabel = (f: string) => (LEAD_FIELD_LABELS as Record<string, string>)[f] ?? f;
@@ -78,6 +80,13 @@ function describe(a: Activity): string | null {
       return [p.done_text ? `${String(p.done_text)} ✓` : null, p.on ? `Próximo: ${formatDate(String(p.on))}` : 'Sem próxima ação']
         .filter(Boolean)
         .join(' · ');
+    case 'audit_run': {
+      const parts = [
+        typeof p.pagespeed === 'number' ? `PageSpeed ${p.pagespeed}` : null,
+        typeof p.issues === 'number' ? (p.issues === 1 ? '1 problema' : `${p.issues} problemas`) : null,
+      ];
+      return parts.filter(Boolean).join(' · ') || null;
+    }
     case 'anonymized':
       return p.added_to_do_not_contact ? 'Acrescentado à lista "não contactar"' : null;
     default:
@@ -181,6 +190,7 @@ export function ActivityTimeline({ leadId, currentUserId }: { leadId: string; cu
                   {a.body ? <p className="mt-1 text-sm break-words whitespace-pre-line">{a.body}</p> : null}
                   <p className="mt-0.5 text-xs text-muted tabular">
                     <time dateTime={a.created_at}>{formatDateTime(a.created_at)}</time>
+                    {a.actor_token_id ? ' · via API' : null}
                   </p>
                 </div>
               </li>

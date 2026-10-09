@@ -143,7 +143,7 @@ type DupRow = {
 };
 type DncRow = { row_index: number; entry_id: string; company_name: string; reason: string | null };
 
-async function lookupConflicts(
+export async function lookupConflicts(
   ctx: ApiContext,
   probes: { company_name?: string | null; website?: string | null; email?: string | null }[],
 ) {
@@ -217,7 +217,14 @@ export async function previewImport(
 // 3. Gravar
 // -----------------------------------------------------------------------------
 
-export async function commitImport(ctx: ApiContext, input: ImportCommit): Promise<ImportJob> {
+export type CommitImportInput = Omit<ImportCommit, 'source'> & {
+  source: ImportJob['source'];
+  /** Opções extra guardadas no histórico (ex.: on_duplicate da API). */
+  options?: Record<string, unknown>;
+  idempotency_key?: string | null;
+};
+
+export async function commitImport(ctx: ApiContext, input: CommitImportInput): Promise<ImportJob> {
   for (const item of input.items) {
     if (item.action === 'merge' && !item.target_id) {
       throw new ApiError(400, 'Pedido inválido', `Linha ${item.index + 1}: indica o lead a juntar.`);
@@ -239,7 +246,8 @@ export async function commitImport(ctx: ApiContext, input: ImportCommit): Promis
       workspace_id: ctx.workspaceId,
       source: input.source,
       filename: input.filename ?? null,
-      options: { keep_numbers: input.keep_numbers },
+      options: { keep_numbers: input.keep_numbers, ...input.options },
+      idempotency_key: input.idempotency_key ?? null,
       created_by: ctx.user.id,
     })
     .select('id, created_at')

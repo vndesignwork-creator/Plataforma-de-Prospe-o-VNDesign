@@ -25,4 +25,5 @@ export const GET = apiRoute(async (_req, ctx) =>
       sectors: await listSectors(ctx),
     },
   }),
+  { token: 'leads:read' },
 );

@@ -7,7 +7,7 @@ export const GET = apiRoute(async (req, ctx) => {
   const query = parseQuery(req, LeadListQuerySchema);
   const { data, total } = await listLeads(ctx, query);
   return json({ data, meta: { page: query.page, limit: query.limit, total } });
-});
+}, { token: 'leads:read' });
 
 /**
  * POST /api/v1/leads — cria um lead.
@@ -20,4 +20,4 @@ export const POST = apiRoute(async (req, ctx) => {
   const force = new URL(req.url).searchParams.get('force') === 'true';
   const lead = await createLead(ctx, input, { force });
   return json({ data: lead }, { status: 201 });
-});
+}, { token: 'leads:write' });

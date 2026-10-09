@@ -52,6 +52,7 @@ jobs:
           URL=$(grep '^API_URL=' supabase.env | cut -d= -f2- | tr -d '"')
           PUB=$(grep '^PUBLISHABLE_KEY=' supabase.env | cut -d= -f2- | tr -d '"')
           SEC=$(grep '^SECRET_KEY=' supabase.env | cut -d= -f2- | tr -d '"')
+          npx web-push generate-vapid-keys --json > vapid.json
           {
             echo "NEXT_PUBLIC_SUPABASE_URL=$URL"
             echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$PUB"
@@ -60,6 +61,11 @@ jobs:
             echo "SMTP_PORT=54325"
             echo "CRON_SECRET=ci-cron-secret"
             echo "MAILPIT_URL=http://127.0.0.1:54324"
+            echo "AUDIT_ALLOW_PRIVATE=1"
+            echo "AUDIT_SKIP_PAGESPEED=1"
+            echo "VAPID_PUBLIC_KEY=$(node -p "require('./vapid.json').publicKey")"
+            echo "VAPID_PRIVATE_KEY=$(node -p "require('./vapid.json').privateKey")"
+            echo "VAPID_SUBJECT=mailto:ci@vndesign.pt"
           } > apps/web/.env.local
           echo "SUPABASE_URL=$URL" >> "$GITHUB_ENV"
           echo "SUPABASE_KEY=$PUB" >> "$GITHUB_ENV"
