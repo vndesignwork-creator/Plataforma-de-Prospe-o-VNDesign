@@ -7,9 +7,12 @@ import Anthropic from '@anthropic-ai/sdk';
 
 export const DEFAULT_AI_MODEL = 'claude-opus-5-5';
 
-/** Chave sem espaços, quebras de linha ou aspas à volta (erros comuns ao colar). */
+/**
+ * Chave sem aspas, espaços, quebras de linha ou carateres invisíveis (erros
+ * comuns ao colar). As chaves da Anthropic só têm carateres ASCII visíveis.
+ */
 export function aiApiKey(): string | null {
-  const key = (process.env.ANTHROPIC_API_KEY ?? '').trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim();
+  const key = (process.env.ANTHROPIC_API_KEY ?? '').replace(/["'“”‘’]/g, '').replace(/[^\x21-\x7E]/g, '');
   return key || null;
 }
 
