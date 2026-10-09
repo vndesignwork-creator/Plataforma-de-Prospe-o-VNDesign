@@ -29,7 +29,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className="min-h-dvh antialiased">
+      {/* Extensões do browser (ex.: ColorZilla) acrescentam atributos ao <body>: não é um erro da aplicação. */}
+      <body className="min-h-dvh antialiased" suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>
     </html>
