@@ -23,7 +23,7 @@ import {
   type LeadTask,
   type TaskTemplate,
 } from '@vndesign/core';
-import { ChevronRight, GripVertical, ListPlus, Pencil, Plus, X } from 'lucide-react';
+import { Bell, ChevronRight, GripVertical, ListPlus, Pencil, Plus, X } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
@@ -33,8 +33,11 @@ import { Input } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
 import { useInvalidateTasks, useLeadTasks, useTaskTemplates } from '@/lib/queries';
 import { Linkified } from '@/lib/linkify';
+import { formatReminder, isoToLocalInput, localInputToIso } from '@/lib/local-datetime';
 import { cn } from '@/lib/utils';
 import { TaskProgress } from './task-progress';
+
+type TaskPatch = { title: string; due_on: string | null; remind_at: string | null };
 
 /** Prazo da tarefa: vermelho em atraso, laranja hoje. */
 export function DueChip({ due, today, done }: { due: string | null; today: string; done?: boolean }) {
@@ -54,23 +57,43 @@ export function DueChip({ due, today, done }: { due: string | null; today: strin
   );
 }
 
+/** 🔔 15/10 10:00 — a laranja enquanto está por avisar; cinzento depois de avisado ou com a tarefa feita. */
+export function ReminderChip({ task }: { task: Pick<LeadTask, 'remind_at' | 'reminded_at' | 'done_at'> }) {
+  if (!task.remind_at) return null;
+  const pending = !task.reminded_at && !task.done_at && new Date(task.remind_at) > new Date();
+  return (
+    <span
+      className={cn(
+        'inline-flex shrink-0 items-center gap-1 rounded px-1.5 text-xs tabular',
+        pending ? 'bg-accent-soft text-accent-text' : 'bg-surface-3 text-muted',
+      )}
+      title={pending ? 'Lembrete (notificação)' : 'Lembrete já enviado'}
+    >
+      <Bell className="h-3 w-3" aria-hidden />
+      <span className="sr-only">Lembrete: </span>
+      {formatReminder(task.remind_at)}
+    </span>
+  );
+}
+
 function TaskEditor({
   task,
   onSave,
   onCancel,
 }: {
   task: LeadTask;
-  onSave: (patch: { title: string; due_on: string | null }) => Promise<void>;
+  onSave: (patch: TaskPatch) => Promise<void>;
   onCancel: () => void;
 }) {
   const [title, setTitle] = useState(task.title);
   const [due, setDue] = useState(task.due_on ?? '');
+  const [remind, setRemind] = useState(isoToLocalInput(task.remind_at));
   const [saving, setSaving] = useState(false);
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
     setSaving(true);
-    await onSave({ title: title.trim(), due_on: due || null });
+    await onSave({ title: title.trim(), due_on: due || null, remind_at: localInputToIso(remind) });
     setSaving(false);
   }
   return (
@@ -83,6 +106,16 @@ function TaskEditor({
         className="min-w-40 flex-[1_1_12rem]"
       />
       <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} aria-label="Prazo da tarefa" className="w-auto" />
+      <span className="relative inline-flex items-center">
+        <Bell className="pointer-events-none absolute left-3 h-4 w-4 text-muted" aria-hidden />
+        <Input
+          type="datetime-local"
+          value={remind}
+          onChange={(e) => setRemind(e.target.value)}
+          aria-label="Lembrete (dia e hora)"
+          className="w-auto pl-9"
+        />
+      </span>
       <Button type="submit" size="sm" loading={saving}>
         Guardar
       </Button>
@@ -110,7 +143,7 @@ function TaskRow({
   sortable: boolean;
   onToggle: (done: boolean) => void;
   onEdit: () => void;
-  onSave: (patch: { title: string; due_on: string | null }) => Promise<void>;
+  onSave: (patch: TaskPatch) => Promise<void>;
   onCancelEdit: () => void;
   onDelete: () => void;
 }) {
@@ -161,6 +194,12 @@ function TaskRow({
               <>
                 {' '}
                 <DueChip due={task.due_on} today={today} done={done} />
+              </>
+            ) : null}
+            {task.remind_at ? (
+              <>
+                {' '}
+                <ReminderChip task={task} />
               </>
             ) : null}
           </span>
@@ -230,6 +269,8 @@ export function TasksCard({ lead }: { lead: Lead }) {
   const { data: templates } = useTaskTemplates();
   const [title, setTitle] = useState('');
   const [due, setDue] = useState('');
+  const [remind, setRemind] = useState('');
+  const [showRemind, setShowRemind] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
 
@@ -266,14 +307,23 @@ export function TasksCard({ lead }: { lead: Lead }) {
     if (!value) return;
     // Limpa já, para se poder escrever a seguinte enquanto esta grava (o texto volta se der erro).
     const dueValue = due;
+    const remindValue = remind;
     setTitle('');
     setDue('');
+    setRemind('');
+    setShowRemind(false);
     try {
-      await api(`/leads/${lead.id}/tasks`, { method: 'POST', body: { title: value, due_on: dueValue || null } });
+      await api(`/leads/${lead.id}/tasks`, {
+        method: 'POST',
+        body: { title: value, due_on: dueValue || null, remind_at: localInputToIso(remindValue) },
+      });
+      if (remindValue) toast.success(`Lembrete marcado para ${formatReminder(localInputToIso(remindValue)!)}.`);
     } catch (error) {
       toast.error(errorMessage(error));
       setTitle(value);
       setDue(dueValue);
+      setRemind(remindValue);
+      setShowRemind(Boolean(remindValue));
     } finally {
       invalidate(lead.id);
     }
@@ -291,7 +341,7 @@ export function TasksCard({ lead }: { lead: Lead }) {
     }
   }
 
-  async function save(task: LeadTask, patch: { title: string; due_on: string | null }) {
+  async function save(task: LeadTask, patch: TaskPatch) {
     try {
       await api(`/tasks/${task.id}`, { method: 'PATCH', body: patch });
       setEditingId(null);
@@ -354,7 +404,7 @@ export function TasksCard({ lead }: { lead: Lead }) {
     editing: editingId === task.id,
     onToggle: (isDone: boolean) => void toggle(task, isDone),
     onEdit: () => setEditingId(task.id),
-    onSave: (patch: { title: string; due_on: string | null }) => save(task, patch),
+    onSave: (patch: TaskPatch) => save(task, patch),
     onCancelEdit: () => setEditingId(null),
     onDelete: () => void remove(task),
   });
@@ -377,11 +427,39 @@ export function TasksCard({ lead }: { lead: Lead }) {
           className="min-w-0 flex-[1_1_10rem]"
         />
         <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} aria-label="Prazo (opcional)" className="w-auto flex-[0_1_9.5rem]" />
+        <Button
+          type="button"
+          size="icon"
+          variant={showRemind ? 'secondary' : 'outline'}
+          aria-pressed={showRemind}
+          aria-label="Lembrete com notificação"
+          title="Lembrete com notificação"
+          onClick={() => setShowRemind((v) => !v)}
+        >
+          <Bell className="h-4 w-4" aria-hidden />
+        </Button>
         {/* Sem "a carregar": o Enter tem de continuar a funcionar enquanto a anterior grava. */}
         <Button type="submit" size="sm" disabled={!title.trim()}>
           <Plus className="h-4 w-4" aria-hidden />
           Acrescentar
         </Button>
+        {showRemind ? (
+          <div className="flex w-full flex-wrap items-center gap-2 text-sm">
+            <label htmlFor={`remind-${lead.id}`} className="text-muted">
+              Lembrar em
+            </label>
+            <Input
+              id={`remind-${lead.id}`}
+              type="datetime-local"
+              value={remind}
+              onChange={(e) => setRemind(e.target.value)}
+              className="w-auto"
+            />
+            <p className="w-full text-xs text-muted">
+              Recebes uma notificação a essa hora nos dispositivos com as notificações ativas (Definições → Follow-up e lembretes).
+            </p>
+          </div>
+        ) : null}
       </form>
 
       {isLoading ? (

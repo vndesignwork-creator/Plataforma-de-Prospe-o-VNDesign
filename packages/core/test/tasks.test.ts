@@ -11,11 +11,17 @@ import {
 
 describe('tarefas: schemas', () => {
   it('tarefa nova: texto obrigatório e prazo opcional', () => {
-    expect(LeadTaskCreateSchema.parse({ title: '  Pedir fotos ' })).toEqual({ title: 'Pedir fotos', due_on: null });
+    expect(LeadTaskCreateSchema.parse({ title: '  Pedir fotos ' })).toEqual({ title: 'Pedir fotos', due_on: null, remind_at: null });
     expect(LeadTaskCreateSchema.parse({ title: 'Maquete', due_on: '2026-10-20' }).due_on).toBe('2026-10-20');
     expect(LeadTaskCreateSchema.parse({ title: 'Maquete', due_on: '' }).due_on).toBeNull();
     expect(LeadTaskCreateSchema.safeParse({ title: '   ' }).success).toBe(false);
     expect(LeadTaskCreateSchema.safeParse({ title: 'x', due_on: '20/10/2026' }).success).toBe(false);
+  });
+
+  it('lembrete: data e hora com fuso; null desliga', () => {
+    expect(LeadTaskCreateSchema.parse({ title: 'Ligar', remind_at: '2026-10-15T09:00:00.000Z' }).remind_at).toBe('2026-10-15T09:00:00.000Z');
+    expect(LeadTaskCreateSchema.safeParse({ title: 'Ligar', remind_at: '15/10/2026 10:00' }).success).toBe(false);
+    expect(LeadTaskUpdateSchema.parse({ remind_at: null })).toEqual({ remind_at: null });
   });
 
   it('editar não inventa campos', () => {

@@ -189,6 +189,13 @@ Enviar um resumo de teste agora**.
 
 O mesmo cron envia também as **notificações push** a todos os dispositivos ativados.
 
+**Lembretes das tarefas** (sino 🔔 no cartão Tarefas: dia e hora) — outro cron, **de 5 em 5
+minutos**, envia a notificação quando chega a hora:
+
+- **Hostinger** (hPanel → Avançado → Cron Jobs, "a cada 5 minutos"), comando:
+  `curl -s -H "Authorization: Bearer <CRON_SECRET>" https://leads.vndesign.pt/api/v1/cron/reminders`
+- Com a plataforma aberta, o lembrete aparece também como aviso no ecrã.
+
 ---
 
 ## Auditor de sites

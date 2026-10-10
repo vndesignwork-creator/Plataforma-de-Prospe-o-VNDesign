@@ -149,3 +149,46 @@ test('API: juntar leads leva as tarefas; anonimizar apaga-as', async ({ page }) 
   expect(anon.status()).toBe(200);
   expect((await (await page.request.get(`/api/v1/leads/${a.id}/tasks`)).json()).data).toEqual([]);
 });
+
+test('lembretes: marcar no cartão, aviso na plataforma e envio pelo cron', async ({ page, request }) => {
+  const lead = (await (await page.request.post('/api/v1/leads', { data: { company_name: `Lembrete ${run}` } })).json()).data;
+  await page.goto(`/leads/${lead.id}`);
+  const card = page.locator('#tarefas');
+
+  // Lembrete para daqui a umas horas pelo sino: a tarefa fica com a etiqueta e o prazo nesse dia.
+  await card.getByLabel('Nova tarefa').fill(`Ligar ao cliente ${run}`);
+  await card.getByRole('button', { name: 'Lembrete com notificação' }).click();
+  // Hora de Lisboa (o browser dos testes está em Europe/Lisbon), daqui a 3 horas.
+  const local = new Date(Date.now() + 3 * 60 * 60 * 1000)
+    .toLocaleString('sv-SE', { timeZone: 'Europe/Lisbon', hour12: false })
+    .slice(0, 16)
+    .replace(' ', 'T');
+  await card.getByLabel('Lembrar em').fill(local);
+  await card.getByRole('button', { name: 'Acrescentar' }).click();
+  await expect(page.getByText(/Lembrete marcado para/)).toBeVisible();
+  await expect(card.getByText('Lembrete:', { exact: false })).toBeAttached();
+  const created = (await (await page.request.get(`/api/v1/leads/${lead.id}/tasks`)).json()).data[0];
+  expect(created.remind_at).not.toBeNull();
+  expect(created.due_on).not.toBeNull();
+
+  // Um lembrete que já chegou à hora aparece como aviso com a plataforma aberta.
+  const past = new Date(Date.now() - 60 * 1000).toISOString();
+  const res = await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title: `Enviar maquete ${run}`, remind_at: past } });
+  expect(res.status()).toBe(201);
+  await page.goto('/dashboard');
+  await expect(page.getByText(`⏰ Enviar maquete ${run}`)).toBeVisible({ timeout: 30_000 });
+
+  // O cron exige o segredo e envia (marca) os lembretes que chegaram à hora.
+  expect((await request.get('/api/v1/cron/reminders')).status()).toBe(401);
+  if (process.env.CRON_SECRET) {
+    const cron = await request.get('/api/v1/cron/reminders', { headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` } });
+    expect(cron.status()).toBe(200);
+    const ids = (await cron.json()).data.map((r: { task_id: string }) => r.task_id);
+    const tasks = (await (await page.request.get(`/api/v1/leads/${lead.id}/tasks`)).json()).data;
+    const due = tasks.find((t: { title: string }) => t.title === `Enviar maquete ${run}`);
+    expect(ids).toContain(due.id);
+    expect(due.reminded_at).not.toBeNull();
+    // O de daqui a 3 horas ainda não.
+    expect(tasks.find((t: { title: string }) => t.title === `Ligar ao cliente ${run}`).reminded_at).toBeNull();
+  }
+});

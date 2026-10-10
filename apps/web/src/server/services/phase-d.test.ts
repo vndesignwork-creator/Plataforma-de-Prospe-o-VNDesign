@@ -2,7 +2,7 @@ import type { Lead, Today, TodayTask } from '@vndesign/core';
 import { describe, expect, it } from 'vitest';
 import { appendProblems } from './audits';
 import { buildDigestEmail } from './digest';
-import { buildDailyPush } from './push';
+import { buildDailyPush, buildReminderPush } from './push';
 
 const lead = (id: string, company_name: string, number = 4) => ({ id, number, company_name }) as Lead;
 const today = (overdue: Lead[], due_today: Lead[]): Today => ({ today: '2026-10-09', overdue, due_today, upcoming: [] });
@@ -79,5 +79,16 @@ describe('tarefas no aviso e no resumo diário', () => {
     expect(email.subject).toContain('1 tarefa para hoje');
     expect(email.text).toContain('- Enviar maquete — #7 Café Central (09/10/2026) https://leads.vndesign.pt/leads/7-cafe-central');
     expect(email.html).toContain('Tarefas (1)');
+  });
+});
+
+describe('lembretes das tarefas', () => {
+  it('notificação com o título, o lead e o link para as tarefas', () => {
+    expect(buildReminderPush({ id: 't1', title: 'Ligar ao Rui', lead: { number: 7, company_name: 'Café Central' } })).toEqual({
+      title: '⏰ Ligar ao Rui',
+      body: 'Lembrete · #7 Café Central',
+      url: '/leads/7-cafe-central#tarefas',
+      tag: 'task-t1',
+    });
   });
 });

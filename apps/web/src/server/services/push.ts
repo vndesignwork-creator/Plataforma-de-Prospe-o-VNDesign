@@ -135,3 +135,81 @@ export async function sendDailyPushes(options: { dryRun?: boolean } = {}): Promi
   }
   return results;
 }
+
+// -----------------------------------------------------------------------------
+// Lembretes das tarefas (cron /api/v1/cron/reminders, de 5 em 5 minutos)
+// -----------------------------------------------------------------------------
+export interface ReminderResult {
+  task_id: string;
+  workspace_id: string;
+  devices: number;
+  status: 'sent' | 'no_devices' | 'expired' | 'dry_run';
+}
+
+/** Lembretes mais antigos do que isto (ex.: o cron esteve parado) já não são enviados, só marcados. */
+const REMINDER_MAX_DELAY_MS = 12 * 60 * 60 * 1000;
+
+export function buildReminderPush(task: {
+  id: string;
+  title: string;
+  lead: { number: number; company_name: string } | null;
+}): PushPayload {
+  return {
+    title: `⏰ ${task.title}`,
+    body: task.lead ? `Lembrete · #${task.lead.number} ${task.lead.company_name}` : 'Lembrete de tarefa',
+    url: task.lead ? `${leadPath(task.lead)}#tarefas` : '/dashboard',
+    tag: `task-${task.id}`,
+  };
+}
+
+/** Envia as notificações dos lembretes que já chegaram à hora e marca-os como enviados. */
+export async function sendTaskReminders(options: { dryRun?: boolean; now?: Date } = {}): Promise<ReminderResult[]> {
+  const admin = createSupabaseAdminClient();
+  const now = options.now ?? new Date();
+  const { data, error } = await admin
+    .from('lead_tasks')
+    .select('id, workspace_id, title, remind_at, lead:leads(number, company_name)')
+    .is('reminded_at', null)
+    .is('done_at', null)
+    .not('remind_at', 'is', null)
+    .lte('remind_at', now.toISOString())
+    .order('remind_at')
+    .limit(200);
+  if (error) throw new Error(error.message);
+  const tasks = (data ?? []) as unknown as {
+    id: string;
+    workspace_id: string;
+    title: string;
+    remind_at: string;
+    lead: { number: number; company_name: string } | null;
+  }[];
+  if (!tasks.length) return [];
+
+  const configured = isPushConfigured();
+  const workspaces = [...new Set(tasks.map((t) => t.workspace_id))];
+  const subsByWorkspace = new Map<string, StoredSubscription[]>();
+  if (configured) {
+    const { data: subs, error: subsError } = await admin
+      .from('push_subscriptions')
+      .select('id, workspace_id, endpoint, p256dh, auth')
+      .in('workspace_id', workspaces);
+    if (subsError) throw new Error(subsError.message);
+    for (const row of (subs ?? []) as (StoredSubscription & { workspace_id: string })[]) {
+      subsByWorkspace.set(row.workspace_id, [...(subsByWorkspace.get(row.workspace_id) ?? []), row]);
+    }
+  }
+
+  const results: ReminderResult[] = [];
+  for (const task of tasks) {
+    const subs = subsByWorkspace.get(task.workspace_id) ?? [];
+    const expired = now.getTime() - new Date(task.remind_at).getTime() > REMINDER_MAX_DELAY_MS;
+    const status: ReminderResult['status'] = options.dryRun ? 'dry_run' : expired ? 'expired' : subs.length ? 'sent' : 'no_devices';
+    if (status === 'sent') await deliver(subs, buildReminderPush(task));
+    // Marca sempre (menos no teste): sem dispositivos, o aviso aparece na plataforma ("Hoje").
+    if (!options.dryRun) {
+      await admin.from('lead_tasks').update({ reminded_at: now.toISOString() }).eq('id', task.id);
+    }
+    results.push({ task_id: task.id, workspace_id: task.workspace_id, devices: subs.length, status });
+  }
+  return results;
+}

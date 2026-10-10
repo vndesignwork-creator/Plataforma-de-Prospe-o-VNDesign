@@ -310,4 +310,6 @@ um “Lead editado”. O resumo diário usa a chave de serviço só no servidor
 - Progresso (`task_progress: {total, done}`) junto aos leads em `GET /leads` e `GET /board`
   (`withTaskProgress`); `GET /dashboard/today` devolve `tasks` (em atraso, hoje, 7 dias), usado
   também pelo resumo por email e pela notificação diária.
-
+- Lembretes: `lead_tasks.remind_at` (+ `reminded_at`); `GET /api/v1/cron/reminders` (CRON_SECRET, de 5 em 5 min)
+  envia push dos que chegaram à hora (até 12 h de atraso) e marca `reminded_at`; mudar a hora volta a
+  deixá-lo por enviar (trigger). Com a app aberta, `ReminderWatcher` mostra um aviso (dados de "Hoje").

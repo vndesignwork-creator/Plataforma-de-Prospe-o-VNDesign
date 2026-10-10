@@ -21,7 +21,7 @@ import { ApiError, fromPostgrest, unwrap } from '../http';
 import { createActivity } from './activities';
 import { getLead } from './leads';
 
-const TASK_SELECT = 'id, lead_id, title, due_on, done_at, position, created_at, updated_at';
+const TASK_SELECT = 'id, lead_id, title, due_on, done_at, remind_at, reminded_at, position, created_at, updated_at';
 const TEMPLATE_SELECT = 'id, name, service, items, sort_order';
 const TASK_NOT_FOUND = 'Tarefa não encontrada';
 
@@ -55,7 +55,14 @@ export async function createTask(ctx: ApiContext, leadId: string, input: LeadTas
   await getLead(ctx, leadId);
   const result = await ctx.supabase
     .from('lead_tasks')
-    .insert({ ...input, workspace_id: ctx.workspaceId, lead_id: leadId, position: await nextPosition(ctx, leadId) })
+    .insert({
+      ...input,
+      // Um lembrete sem prazo põe a tarefa nesse dia (aparece em "Hoje").
+      due_on: input.due_on ?? (input.remind_at ? todayIso(new Date(input.remind_at)) : null),
+      workspace_id: ctx.workspaceId,
+      lead_id: leadId,
+      position: await nextPosition(ctx, leadId),
+    })
     .select(TASK_SELECT)
     .single();
   return unwrap(result) as LeadTask;
@@ -64,14 +71,16 @@ export async function createTask(ctx: ApiContext, leadId: string, input: LeadTas
 export async function updateTask(ctx: ApiContext, id: string, patch: LeadTaskUpdate): Promise<LeadTask> {
   const { done, ...rest } = patch;
   const update: Record<string, unknown> = { ...rest };
-  if (done !== undefined) {
-    // Só muda a data quando o estado muda (voltar a marcar não regista outra vez).
+  if (done !== undefined || (rest.remind_at && rest.due_on === undefined)) {
     const current = unwrap(
-      await ctx.supabase.from('lead_tasks').select('done_at').eq('workspace_id', ctx.workspaceId).eq('id', id).maybeSingle(),
+      await ctx.supabase.from('lead_tasks').select('done_at, due_on').eq('workspace_id', ctx.workspaceId).eq('id', id).maybeSingle(),
       TASK_NOT_FOUND,
-    ) as { done_at: string | null };
+    ) as { done_at: string | null; due_on: string | null };
+    // Só muda a data quando o estado muda (voltar a marcar não regista outra vez).
     if (done && !current.done_at) update.done_at = new Date().toISOString();
-    if (!done) update.done_at = null;
+    if (done === false) update.done_at = null;
+    // Lembrete numa tarefa sem prazo: o prazo passa a ser o dia do lembrete.
+    if (rest.remind_at && rest.due_on === undefined && !current.due_on) update.due_on = todayIso(new Date(rest.remind_at));
   }
   if (!Object.keys(update).length) {
     return unwrap(
