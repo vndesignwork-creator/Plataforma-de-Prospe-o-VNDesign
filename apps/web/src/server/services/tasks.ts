@@ -153,7 +153,12 @@ export async function withTaskProgress<L extends Pick<Lead, 'id'>>(
   let q = client.from('lead_tasks').select('lead_id, done_at').eq('workspace_id', workspaceId);
   if (ids.length <= 100) q = q.in('lead_id', ids);
   const { data, error } = await q.range(0, 19_999);
-  if (error) throw fromPostgrest(error);
+  if (error) {
+    // O progresso é um extra: um problema nas tarefas (ex.: migração ainda por aplicar)
+    // nunca pode deixar a lista de leads ou o Kanban em branco.
+    console.error('[tarefas] progresso indisponível', error);
+    return leads.map((l) => ({ ...l, task_progress: null }));
+  }
   const progress = new Map<string, { total: number; done: number }>();
   for (const row of (data ?? []) as { lead_id: string; done_at: string | null }[]) {
     const p = progress.get(row.lead_id) ?? { total: 0, done: 0 };
@@ -180,7 +185,11 @@ export async function fetchTodayTasks(client: SupabaseClient, workspaceId: strin
     .order('due_on')
     .order('position')
     .limit(500);
-  if (error) throw fromPostgrest(error);
+  if (error) {
+    // Tal como o progresso: sem tarefas, "Hoje", o resumo e o aviso continuam a funcionar.
+    console.error('[tarefas] "Hoje" sem tarefas', error);
+    return { overdue: [], due_today: [], upcoming: [] };
+  }
   const tasks = ((data ?? []) as unknown as (LeadTask & { lead: TodayTask['lead'] & Record<string, unknown> })[]).map(
     ({ lead, ...t }) => ({ ...t, lead: { id: lead.id, number: lead.number, company_name: lead.company_name, status: lead.status } }),
   );
