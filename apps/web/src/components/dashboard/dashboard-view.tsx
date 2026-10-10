@@ -202,7 +202,8 @@ export function DashboardView() {
           <div className="p-4">
             <BarList
               caption="Leads por setor"
-              items={data.by_sector.map((s) => ({
+              emptyText="Ainda não há leads com setor."
+              items={data.by_sector.filter((s) => s.count > 0).map((s) => ({
                 key: s.id ?? 'none',
                 label: s.name,
                 mark: s.id ? (

@@ -216,7 +216,7 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
   const pdfUrl = proposal ? `/api/v1/proposals/${proposal.id}/pdf` : null;
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-5">
+    <div className="mx-auto flex max-w-5xl flex-col gap-5 max-lg:pb-24">
       <PageHeader
         eyebrow={
           <Link href={`/leads/${lead.id}`} className="hover:text-fg hover:underline">
@@ -434,7 +434,8 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
               ) : null}
             </dl>
             <div className="flex flex-col gap-2 border-t border-border p-4">
-              <Button onClick={() => void save()} loading={saving}>
+              {/* No telemóvel/tablet este botão está na barra fixa em baixo. */}
+              <Button onClick={() => void save()} loading={saving} className="max-lg:hidden">
                 {proposal ? 'Guardar alterações' : 'Criar proposta'}
               </Button>
               {proposal ? (
@@ -470,6 +471,22 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
             </p>
           ) : null}
         </aside>
+      </div>
+
+      {/* Telemóvel/tablet: total sempre à vista enquanto se escolhem pacotes e preços. */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur lg:hidden">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
+          <p className="min-w-0 text-sm" aria-live="polite">
+            <span className="text-muted">Total </span>
+            <span className="text-base font-semibold text-accent-text tabular">{formatCurrency(totals.total)}</span>
+            {totals.monthly > 0 ? (
+              <span className="block text-xs text-muted tabular">+ {formatCurrency(totals.monthly)}/mês</span>
+            ) : null}
+          </p>
+          <Button onClick={() => void save()} loading={saving}>
+            {proposal ? 'Guardar alterações' : 'Criar proposta'}
+          </Button>
+        </div>
       </div>
 
       <Dialog

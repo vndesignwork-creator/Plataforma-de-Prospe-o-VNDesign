@@ -29,7 +29,7 @@ test('proposta: pacote recomendado + manutenção, desconto, PDF e marcar como e
   await expect(items.getByRole('listitem')).toHaveCount(2);
   await page.getByLabel('Desconto (€)').fill('50');
   await expect(page.getByTestId('proposal-total')).toHaveText('900,00 €');
-  await expect(page.getByText('45,00 €/mês')).toBeVisible();
+  await expect(page.getByRole('complementary', { name: 'Resumo da proposta' }).getByText('45,00 €/mês')).toBeVisible();
 
   await page.getByRole('button', { name: 'Criar proposta' }).click();
   await expect(page.getByText(/Proposta \d{4}-\d{3} criada\./)).toBeVisible();

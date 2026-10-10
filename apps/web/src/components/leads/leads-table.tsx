@@ -778,8 +778,8 @@ export function LeadsTable() {
                       ) : null}
                       {lead.city ? <span>{lead.city}</span> : null}
                       {lead.estimated_value !== null ? <span className="tabular">{formatCurrency(lead.estimated_value)}</span> : null}
-                      <ServiceIcons services={lead.services} />
                     </span>
+                    <ServiceIcons services={lead.services} labeled />
                     {lead.next_action_on || lead.next_action_text ? (
                       <span className="text-sm">
                         <NextAction lead={lead} today={today} />

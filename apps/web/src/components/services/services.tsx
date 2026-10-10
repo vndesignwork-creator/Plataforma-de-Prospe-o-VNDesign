@@ -130,21 +130,47 @@ export function ServicePicker({
 }
 
 /** Versão compacta (tabela e Kanban): só ícones, com o nome ao passar o rato e para leitores de ecrã. */
-export function ServiceIcons({ services, className }: { services?: readonly string[] | null; className?: string }) {
+/** Nomes curtos para os cartões (o nome completo fica no "title" e para leitores de ecrã). */
+const SERVICE_SHORT_LABELS: Record<ServiceKey, string> = {
+  landing_page: 'Landing',
+  site_institucional: 'Site',
+  blog: 'Blog',
+  loja_online: 'Loja',
+  identidade_visual: 'Identidade',
+  flyers_cartazes: 'Flyers',
+  posts_redes: 'Posts',
+  estampas: 'T-shirts',
+};
+
+/**
+ * Serviços de um lead em ícones. Com `labeled`, cada ícone leva um nome curto
+ * (no telemóvel não há "title" ao passar o rato, por isso só o ícone não chega).
+ */
+export function ServiceIcons({
+  services,
+  className,
+  labeled,
+}: {
+  services?: readonly string[] | null;
+  className?: string;
+  labeled?: boolean;
+}) {
   const list = (services ?? []).filter((s): s is ServiceKey => s in SERVICES);
   if (!list.length) return null;
   return (
-    <span className={cn('inline-flex items-center gap-1', className)}>
+    <span className={cn('inline-flex flex-wrap items-center gap-1', className)}>
       {list.map((s) => (
         <span
           key={s}
           title={serviceLabel(s)}
           className={cn(
-            'inline-flex h-6 w-6 items-center justify-center rounded-md',
+            'inline-flex h-6 items-center justify-center gap-1 rounded-md',
+            labeled ? 'px-1.5 text-xs font-medium' : 'w-6',
             SERVICES[s].category === 'web' ? 'bg-surface-3 text-fg' : 'bg-accent-soft text-accent-text',
           )}
         >
-          <ServiceIcon service={s} className="h-3.5 w-3.5" />
+          <ServiceIcon service={s} className="h-3.5 w-3.5 shrink-0" />
+          {labeled ? <span aria-hidden>{SERVICE_SHORT_LABELS[s]}</span> : null}
           <span className="sr-only">{serviceLabel(s)}</span>
         </span>
       ))}

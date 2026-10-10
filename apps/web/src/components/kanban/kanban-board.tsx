@@ -110,7 +110,7 @@ function LeadCard({
             ) : null}
             {lead.city ? <span>{lead.city}</span> : null}
           </p>
-          <ServiceIcons services={lead.services} className="mt-1.5" />
+          <ServiceIcons services={lead.services} className="mt-1.5" labeled />
           {lead.next_action_on || lead.next_action_text ? (
             <p className={cn('mt-1.5 text-xs', overdue ? 'font-medium text-danger' : 'text-fg')}>
               {lead.next_action_text ?? 'Próxima ação'}
