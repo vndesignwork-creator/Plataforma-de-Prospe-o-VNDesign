@@ -99,14 +99,27 @@ test('Kanban: mover com o teclado muda o estado e agenda o follow-up', async ({ 
   await expect(page.getByLabel('Leads em Contactado').getByText(name)).toBeVisible();
 });
 
-test('Dashboard mostra o resumo, o funil e a lista "Hoje"', async ({ page }) => {
+test('Dashboard: o essencial e "Hoje"; o resto em Estatísticas', async ({ page }) => {
   await page.goto('/dashboard');
   await expect(page.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
-  for (const label of ['Total de leads', 'Leads ativos', 'Clientes ganhos', 'Taxa de conversão', 'Valor do pipeline']) {
+  for (const label of ['Leads ativos', 'Clientes ganhos', 'Taxa de conversão', 'Valor do pipeline']) {
+    await expect(page.getByText(label, { exact: true })).toBeVisible();
+  }
+  await expect(page.getByRole('heading', { name: 'Hoje', exact: true })).toBeVisible();
+  // Pipeline com ligação à lista filtrada.
+  await expect(page.getByRole('list', { name: 'Leads por estado' }).getByRole('link', { name: /Contactado/ })).toHaveAttribute(
+    'href',
+    '/leads?status=contactado',
+  );
+  await expect(page.getByRole('heading', { name: 'Funil de conversão' })).toHaveCount(0);
+
+  await page.getByRole('link', { name: 'Ver todas as estatísticas' }).click();
+  await expect(page).toHaveURL(/\/estatisticas$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Estatísticas' })).toBeVisible();
+  for (const label of ['Total de leads', 'Valor total estimado']) {
     await expect(page.getByText(label, { exact: true })).toBeVisible();
   }
   await expect(page.getByRole('heading', { name: 'Funil de conversão' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Hoje', exact: true })).toBeVisible();
   await expect(page.getByRole('table', { name: 'Leads por estado' })).toBeAttached();
 });
 

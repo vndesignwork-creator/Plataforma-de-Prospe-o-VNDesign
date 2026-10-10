@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: 'Dashboard' };
 export default function DashboardPage() {
   return (
     <>
-      <PageHeader title="Dashboard" description="Resumo da prospeção e o que há para fazer hoje." />
+      <PageHeader title="Dashboard" description="O que há para fazer hoje e como está o pipeline." />
       <DashboardView />
     </>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import * as RadixDialog from '@radix-ui/react-dialog';
-import { BookOpen, Columns3, FileUp, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Settings, Sun, Users, X } from 'lucide-react';
+import { BarChart3, BookOpen, Columns3, FileUp, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Settings, Sun, Users, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
@@ -16,6 +16,7 @@ const NAV = [
   // O mapa abre-se a partir dos Leads ("Ver no mapa"), por isso conta como Leads.
   { href: '/leads', label: 'Leads', icon: Users, match: (p: string) => p === '/leads' || p.startsWith('/leads/') || p.startsWith('/mapa') },
   { href: '/kanban', label: 'Kanban', icon: Columns3, match: (p: string) => p.startsWith('/kanban') },
+  { href: '/estatisticas', label: 'Estatísticas', icon: BarChart3, match: (p: string) => p.startsWith('/estatisticas') },
   { href: '/scripts', label: 'Scripts', icon: MessageSquareText, match: (p: string) => p.startsWith('/scripts') },
   { href: '/importar', label: 'Importar', icon: FileUp, match: (p: string) => p.startsWith('/importar') },
   { href: '/definicoes', label: 'Definições', icon: Settings, match: (p: string) => p.startsWith('/definicoes') },

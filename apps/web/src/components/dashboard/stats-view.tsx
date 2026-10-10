@@ -1,0 +1,198 @@
+'use client';
+
+import {
+  LEAD_CHANNEL_META,
+  LEAD_STATUS_META,
+  formatCurrency,
+  formatDate,
+  formatPercent,
+  serviceLabel,
+} from '@vndesign/core';
+import Link from 'next/link';
+import { BarList } from '@/components/charts/bar-list';
+import { ColumnChart } from '@/components/charts/column-chart';
+import { StatTile } from '@/components/charts/stat-tile';
+import { ChannelIcon, SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
+import { ServiceIcon } from '@/components/services/services';
+import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
+import { errorMessage } from '@/lib/api-client';
+import { useDashboard, useSectors } from '@/lib/queries';
+
+const euros = (v: number) => formatCurrency(v, { decimals: false });
+
+/** Página Estatísticas: todos os números da prospeção (o Dashboard mostra só o essencial). */
+export function StatsView() {
+  const { data, isLoading, error } = useDashboard();
+  const { data: sectors } = useSectors();
+
+  if (error) {
+    return (
+      <p role="alert" className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">
+        {errorMessage(error)}
+      </p>
+    );
+  }
+  if (isLoading || !data) {
+    return (
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 8 }, (_, i) => (
+          <Skeleton key={i} className="h-24" />
+        ))}
+      </div>
+    );
+  }
+
+  const t = data.totals;
+  if (t.total === 0) {
+    return (
+      <Card>
+        <EmptyState title="Ainda não há leads">
+          <p>Importa a tua folha ou cria o primeiro lead para veres aqui as estatísticas.</p>
+          <p className="mt-3 flex justify-center gap-3">
+            <Link href="/importar" className="text-accent-text underline">
+              Importar folha
+            </Link>
+            <Link href="/leads/novo" className="text-accent-text underline">
+              Novo lead
+            </Link>
+          </p>
+        </EmptyState>
+      </Card>
+    );
+  }
+
+  const funnelFirst = data.funnel[0]?.count ?? 0;
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Resumo (equivalente ao "📈 Resumo geral" da folha) */}
+      <section aria-label="Resumo" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatTile label="Total de leads" value={t.total} />
+        <StatTile label="Leads ativos" value={t.active} hint={t.paused ? `${t.paused} em pausa` : undefined} />
+        <StatTile label="Clientes ganhos" value={t.won} />
+        <StatTile label="Sem interesse" value={t.lost} />
+        <StatTile
+          label="Taxa de conversão"
+          value={formatPercent(t.conversion_rate)}
+          hint={`${formatPercent(t.conversion_rate_contacted)} dos contactados (${t.contacted})`}
+        />
+        <StatTile label="Valor ganho" value={euros(t.value_won)} hint="Soma dos clientes" />
+        <StatTile label="Valor do pipeline" value={euros(t.value_pipeline)} hint="Soma dos leads ativos" />
+        <StatTile label="Valor total estimado" value={euros(t.value_total)} hint="Soma de todos os leads" />
+      </section>
+
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-2">
+
+        <Card>
+          <CardHeader title="Funil de conversão" description="Etapa mais avançada a que cada lead já chegou" />
+          <div className="p-4">
+            <BarList
+              caption="Funil de conversão"
+              items={data.funnel.map((f, i) => {
+                const prev = i > 0 ? data.funnel[i - 1]!.count : null;
+                return {
+                  key: f.stage,
+                  label: LEAD_STATUS_META[f.stage].label,
+                  mark: <StatusIcon status={f.stage} className="h-3.5 w-3.5" />,
+                  value: f.count,
+                  note:
+                    i === 0
+                      ? undefined
+                      : `${funnelFirst ? formatPercent(f.count / funnelFirst) : '0%'} do total · ${
+                          prev ? formatPercent(f.count / prev) : '0%'
+                        } da etapa anterior`,
+                };
+              })}
+            />
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader title="Leads adicionados por semana" description="Pela data “Sugerido em” (ou de criação)" />
+          <div className="p-4">
+            <ColumnChart
+              caption="Leads adicionados por semana, últimas 12 semanas"
+              items={data.weekly.map((w) => ({
+                key: w.week_start,
+                label: formatDate(w.week_start).slice(0, 5),
+                fullLabel: `Semana de ${formatDate(w.week_start)}`,
+                value: w.count,
+              }))}
+            />
+          </div>
+        </Card>
+      </div>
+
+      {/* Distribuições: 2 × 2 no computador (cada uma com largura para os nomes). */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-2">
+        <Card>
+          <CardHeader title="Por estado" />
+          <div className="p-4">
+            <BarList
+              caption="Leads por estado"
+              items={data.by_status.map((s) => ({
+                key: s.status,
+                label: LEAD_STATUS_META[s.status].label,
+                mark: <StatusIcon status={s.status} className="h-3.5 w-3.5" />,
+                value: s.count,
+              }))}
+            />
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader title="Por setor" />
+          <div className="p-4">
+            <BarList
+              caption="Leads por setor"
+              emptyText="Ainda não há leads com setor."
+              items={data.by_sector.filter((s) => s.count > 0).map((s) => ({
+                key: s.id ?? 'none',
+                label: s.name,
+                mark: s.id ? (
+                  <SectorIconView sector={sectors?.find((x) => x.id === s.id) ?? { name: s.name }} className="h-3.5 w-3.5 text-muted" />
+                ) : undefined,
+                value: s.count,
+              }))}
+            />
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader title="Por serviço" description="Leads com interesse em cada serviço (e quantos já são clientes)." />
+          <div className="p-4">
+            <BarList
+              caption="Leads por serviço de interesse"
+              emptyText="Ainda não há leads com serviços de interesse."
+              items={(data.by_service ?? [])
+                .filter((s) => s.count > 0)
+                .map((s) => ({
+                  key: s.service,
+                  label: serviceLabel(s.service),
+                  mark: <ServiceIcon service={s.service} className="h-3.5 w-3.5 text-muted" />,
+                  value: s.count,
+                  note: s.won ? (s.won === 1 ? '1 cliente' : `${s.won} clientes`) : undefined,
+                }))}
+            />
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader title="Por canal" />
+          <div className="p-4">
+            <BarList
+              caption="Leads por canal"
+              emptyText="Ainda não há leads com canal."
+              items={data.by_channel.filter((c) => c.count > 0).map((c) => ({
+                key: c.channel ?? 'none',
+                label: c.channel ? LEAD_CHANNEL_META[c.channel].label : 'Sem canal',
+                mark: c.channel ? <ChannelIcon channel={c.channel} className="h-3.5 w-3.5 text-muted" /> : undefined,
+                value: c.count,
+              }))}
+            />
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}

@@ -1,24 +1,20 @@
 'use client';
 
 import {
-  LEAD_CHANNEL_META,
   LEAD_STATUS_META,
   formatCurrency,
   formatDate,
   formatPercent,
-  serviceLabel,
   type Lead,
+  type LeadStatus,
   type TodayTask,
   leadPath,
 } from '@vndesign/core';
-import { AlertCircle, CalendarClock, CalendarDays, ListChecks } from 'lucide-react';
+import { AlertCircle, BarChart3, CalendarClock, CalendarDays, ListChecks } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
-import { ServiceIcon } from '@/components/services/services';
-import { BarList } from '@/components/charts/bar-list';
-import { ColumnChart } from '@/components/charts/column-chart';
 import { StatTile } from '@/components/charts/stat-tile';
 import { FollowUpActions } from '@/components/follow-up/follow-up-actions';
 import { StatusBadge } from '@/components/leads/badges';
@@ -26,8 +22,8 @@ import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
 import { api, errorMessage } from '@/lib/api-client';
 import { DueChip, ReminderChip } from '@/components/tasks/tasks-card';
 import { Linkified } from '@/lib/linkify';
-import { useDashboard, useSectors, useToday } from '@/lib/queries';
-import { ChannelIcon, SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
+import { useDashboard, useToday } from '@/lib/queries';
+import { StatusIcon } from '@/components/icons/lead-icons';
 
 const euros = (v: number) => formatCurrency(v, { decimals: false });
 
@@ -146,9 +142,44 @@ function TodayCard({ className }: { className?: string }) {
   );
 }
 
+/** Estados pela ordem do pipeline, com o número de leads e ligação à lista filtrada. */
+function PipelineCard({ byStatus }: { byStatus: { status: LeadStatus; count: number }[] }) {
+  const max = Math.max(1, ...byStatus.map((s) => s.count));
+  return (
+    <Card>
+      <CardHeader
+        title="Pipeline"
+        description="Leads em cada estado"
+        actions={
+          <Link href="/kanban" className="text-sm text-accent-text hover:underline">
+            Kanban
+          </Link>
+        }
+      />
+      <ul className="flex flex-col p-2" aria-label="Leads por estado">
+        {byStatus.map(({ status, count }) => (
+          <li key={status}>
+            <Link
+              href={`/leads?status=${status}`}
+              className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-surface-2"
+            >
+              <StatusIcon status={status} className="h-3.5 w-3.5 shrink-0" />
+              <span className="min-w-0 flex-1 truncate">{LEAD_STATUS_META[status].label}</span>
+              <span className="h-1.5 w-16 overflow-hidden rounded-full bg-surface-3" aria-hidden>
+                <span className="block h-full rounded-full bg-accent" style={{ width: `${(count / max) * 100}%` }} />
+              </span>
+              <span className="w-8 text-right font-medium tabular">{count}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+/** Dashboard: o que há para fazer hoje e quatro números essenciais (o resto em Estatísticas). */
 export function DashboardView() {
   const { data, isLoading, error } = useDashboard();
-  const { data: sectors } = useSectors();
 
   if (error) {
     return (
@@ -160,7 +191,7 @@ export function DashboardView() {
   if (isLoading || !data) {
     return (
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 8 }, (_, i) => (
+        {Array.from({ length: 4 }, (_, i) => (
           <Skeleton key={i} className="h-24" />
         ))}
       </div>
@@ -186,139 +217,33 @@ export function DashboardView() {
     );
   }
 
-  const funnelFirst = data.funnel[0]?.count ?? 0;
-
   return (
     <div className="flex flex-col gap-5">
-      {/* Resumo (equivalente ao "📈 Resumo geral" da folha) */}
       <section aria-label="Resumo" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label="Total de leads" value={t.total} />
-        <StatTile label="Leads ativos" value={t.active} hint={t.paused ? `${t.paused} em pausa` : undefined} />
-        <StatTile label="Clientes ganhos" value={t.won} />
-        <StatTile label="Sem interesse" value={t.lost} />
-        <StatTile
-          label="Taxa de conversão"
-          value={formatPercent(t.conversion_rate)}
-          hint={`${formatPercent(t.conversion_rate_contacted)} dos contactados (${t.contacted})`}
-        />
-        <StatTile label="Valor ganho" value={euros(t.value_won)} hint="Soma dos clientes" />
+        <StatTile label="Leads ativos" value={t.active} hint={t.paused ? `${t.paused} em pausa` : `${t.total} no total`} />
+        <StatTile label="Clientes ganhos" value={t.won} hint={t.value_won ? `${euros(t.value_won)} ganhos` : undefined} />
+        <StatTile label="Taxa de conversão" value={formatPercent(t.conversion_rate_contacted)} hint="dos leads contactados" />
         <StatTile label="Valor do pipeline" value={euros(t.value_pipeline)} hint="Soma dos leads ativos" />
-        <StatTile label="Valor total estimado" value={euros(t.value_total)} hint="Soma de todos os leads" />
       </section>
 
       {/* No telemóvel os cartões ficam numa só coluna ("contents") e o "Hoje" passa para o topo: é o que se abre o dia a ver. */}
-      <div className="contents lg:grid lg:grid-cols-2 lg:gap-5 xl:grid-cols-3">
+      <div className="contents lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-start lg:gap-5">
         <TodayCard className="max-lg:order-first" />
-
-        <Card>
-          <CardHeader title="Funil de conversão" description="Etapa mais avançada a que cada lead já chegou" />
-          <div className="p-4">
-            <BarList
-              caption="Funil de conversão"
-              items={data.funnel.map((f, i) => {
-                const prev = i > 0 ? data.funnel[i - 1]!.count : null;
-                return {
-                  key: f.stage,
-                  label: LEAD_STATUS_META[f.stage].label,
-                  mark: <StatusIcon status={f.stage} className="h-3.5 w-3.5" />,
-                  value: f.count,
-                  note:
-                    i === 0
-                      ? undefined
-                      : `${funnelFirst ? formatPercent(f.count / funnelFirst) : '0%'} do total · ${
-                          prev ? formatPercent(f.count / prev) : '0%'
-                        } da etapa anterior`,
-                };
-              })}
-            />
-          </div>
-        </Card>
-
-        <Card>
-          <CardHeader title="Leads adicionados por semana" description="Pela data “Sugerido em” (ou de criação)" />
-          <div className="p-4">
-            <ColumnChart
-              caption="Leads adicionados por semana, últimas 12 semanas"
-              items={data.weekly.map((w) => ({
-                key: w.week_start,
-                label: formatDate(w.week_start).slice(0, 5),
-                fullLabel: `Semana de ${formatDate(w.week_start)}`,
-                value: w.count,
-              }))}
-            />
-          </div>
-        </Card>
-      </div>
-
-      {/* Distribuições: 2 × 2 no computador (cada uma com largura para os nomes). */}
-      <div className="contents lg:grid lg:grid-cols-2 lg:gap-5">
-        <Card>
-          <CardHeader title="Por estado" />
-          <div className="p-4">
-            <BarList
-              caption="Leads por estado"
-              items={data.by_status.map((s) => ({
-                key: s.status,
-                label: LEAD_STATUS_META[s.status].label,
-                mark: <StatusIcon status={s.status} className="h-3.5 w-3.5" />,
-                value: s.count,
-              }))}
-            />
-          </div>
-        </Card>
-
-        <Card>
-          <CardHeader title="Por setor" />
-          <div className="p-4">
-            <BarList
-              caption="Leads por setor"
-              emptyText="Ainda não há leads com setor."
-              items={data.by_sector.filter((s) => s.count > 0).map((s) => ({
-                key: s.id ?? 'none',
-                label: s.name,
-                mark: s.id ? (
-                  <SectorIconView sector={sectors?.find((x) => x.id === s.id) ?? { name: s.name }} className="h-3.5 w-3.5 text-muted" />
-                ) : undefined,
-                value: s.count,
-              }))}
-            />
-          </div>
-        </Card>
-
-        <Card>
-          <CardHeader title="Por serviço" description="Leads com interesse em cada serviço (e quantos já são clientes)." />
-          <div className="p-4">
-            <BarList
-              caption="Leads por serviço de interesse"
-              emptyText="Ainda não há leads com serviços de interesse."
-              items={(data.by_service ?? [])
-                .filter((s) => s.count > 0)
-                .map((s) => ({
-                  key: s.service,
-                  label: serviceLabel(s.service),
-                  mark: <ServiceIcon service={s.service} className="h-3.5 w-3.5 text-muted" />,
-                  value: s.count,
-                  note: s.won ? (s.won === 1 ? '1 cliente' : `${s.won} clientes`) : undefined,
-                }))}
-            />
-          </div>
-        </Card>
-
-        <Card>
-          <CardHeader title="Por canal" />
-          <div className="p-4">
-            <BarList
-              caption="Leads por canal"
-              emptyText="Ainda não há leads com canal."
-              items={data.by_channel.filter((c) => c.count > 0).map((c) => ({
-                key: c.channel ?? 'none',
-                label: c.channel ? LEAD_CHANNEL_META[c.channel].label : 'Sem canal',
-                mark: c.channel ? <ChannelIcon channel={c.channel} className="h-3.5 w-3.5 text-muted" /> : undefined,
-                value: c.count,
-              }))}
-            />
-          </div>
-        </Card>
+        <div className="flex flex-col gap-5">
+          <PipelineCard byStatus={data.by_status} />
+          <Link
+            href="/estatisticas"
+            className="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-sm font-medium hover:bg-surface-2"
+          >
+            <span className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-accent-text" aria-hidden />
+              Ver todas as estatísticas
+            </span>
+            <span className="text-muted" aria-hidden>
+              →
+            </span>
+          </Link>
+        </div>
       </div>
     </div>
   );
