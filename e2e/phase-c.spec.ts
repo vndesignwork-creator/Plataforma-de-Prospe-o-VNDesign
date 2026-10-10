@@ -77,7 +77,7 @@ test.describe('resumo diário por email', () => {
   test.skip(!process.env.MAILPIT_URL, 'Defina MAILPIT_URL (ex.: http://127.0.0.1:54324) para testar o envio.');
 
   test('envio de teste chega à caixa de correio (Mailpit)', async ({ page, request }) => {
-    await page.goto('/definicoes');
+    await page.goto('/definicoes/lembretes');
     await page.getByLabel('Enviar o resumo diário').check();
     await page.getByRole('button', { name: 'Guardar definições' }).click();
     await expect(page.getByText('Definições guardadas.')).toBeVisible();

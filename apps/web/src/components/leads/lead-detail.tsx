@@ -63,6 +63,7 @@ import { AiEmailCard } from './ai-email-card';
 import { LeadLocation } from './lead-location';
 import { ProposalsCard } from '@/components/proposals/proposals-card';
 import { TasksCard } from '@/components/tasks/tasks-card';
+import { NotesCard } from './notes-card';
 import { SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 import { ServiceChips } from '@/components/services/services';
 
@@ -517,19 +518,7 @@ export function LeadDetail({ id }: { id: string }) {
         {/* Coluna lateral (computador): o que se consulta durante uma chamada — notas, propostas e atividade. */}
         <aside aria-label="Tarefas, notas, propostas e atividade" className="flex flex-col gap-5">
           {!lead.anonymized_at ? <TasksCard lead={lead} /> : null}
-          <Card>
-            <CardHeader
-              title="Notas"
-              actions={
-                !lead.anonymized_at ? (
-                  <Link href={leadPath(lead, '/editar')} className="text-sm text-accent-text hover:underline">
-                    Editar
-                  </Link>
-                ) : null
-              }
-            />
-            <p className="p-4 text-sm break-words whitespace-pre-line">{lead.notes ?? <span className="text-muted">Sem notas.</span>}</p>
-          </Card>
+          <NotesCard lead={lead} />
           <ProposalsCard lead={lead} />
           <div id="atividade" className="scroll-mt-20">
             <ActivityTimeline leadId={lead.id} currentUserId={me?.user.id} />

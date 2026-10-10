@@ -52,7 +52,7 @@ export function LoginForm() {
     if (!(await trigger('email'))) return;
     setSendingReset(true);
     const { error: resetError } = await getSupabaseBrowserClient().auth.resetPasswordForEmail(getValues('email'), {
-      redirectTo: `${window.location.origin}/auth/callback?next=/definicoes%23conta`,
+      redirectTo: `${window.location.origin}/auth/callback?next=/definicoes/conta`,
     });
     setSendingReset(false);
     if (resetError) toast.error('Não foi possível enviar o email. Tenta mais tarde.');
