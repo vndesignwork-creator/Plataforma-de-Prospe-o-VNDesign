@@ -169,10 +169,27 @@ if (users.length) {
   const email = await ask('Email para entrar: ');
   const fullName = await ask('Nome (para a assinatura dos emails): ');
   const phone = await ask('Telefone (opcional): ');
-  const password = await askHidden('Palavra-passe (mín. 10 carateres, não aparece): ');
-  const again = await askHidden('Repete a palavra-passe: ');
-  if (!email || password.length < 10 || password !== again) {
-    fail('Email em falta, palavra-passe curta ou diferente. Corre outra vez: npm run publicar');
+  if (!email.includes('@')) {
+    fail('Email em falta ou inválido. Corre outra vez: npm run publicar');
+    process.exit(1);
+  }
+  // Até 3 tentativas para a palavra-passe, com a razão exata de cada recusa.
+  let password = '';
+  for (let attempt = 1; attempt <= 3 && !password; attempt++) {
+    const first = await askHidden('Palavra-passe (mín. 8 carateres, não aparece): ');
+    if (first.length < 8) {
+      fail(`Tem ${first.length} carateres; precisa de pelo menos 8.`);
+      continue;
+    }
+    const again = await askHidden('Repete a palavra-passe: ');
+    if (first !== again) {
+      fail('As duas palavras-passe não são iguais.');
+      continue;
+    }
+    password = first;
+  }
+  if (!password) {
+    fail('Palavra-passe não definida. Corre outra vez: npm run publicar');
     process.exit(1);
   }
   const res = await call('/auth/v1/admin/users', {
