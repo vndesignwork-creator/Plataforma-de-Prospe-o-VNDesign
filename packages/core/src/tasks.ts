@@ -3,8 +3,8 @@
  * por exemplo, os passos de um projeto depois de o lead passar a cliente.
  */
 import { z } from 'zod';
+import { ServiceKeySchema } from './services';
 import { LEAD_STATUSES } from './enums';
-import { SERVICE_KEYS } from './services';
 
 // (Sem importar de ./schemas: o schema "Hoje" de lá usa os daqui.)
 const nullableDate = z
@@ -104,7 +104,7 @@ export const TaskTemplateSchema = z
   .object({
     id: z.uuid(),
     name: z.string(),
-    service: z.enum(SERVICE_KEYS).nullable(),
+    service: z.string().nullable(),
     items: z.array(z.string()),
     sort_order: z.int(),
   })
@@ -114,7 +114,7 @@ export type TaskTemplate = z.infer<typeof TaskTemplateSchema>;
 export const TaskTemplateCreateSchema = z
   .object({
     name: z.string().trim().min(1, { error: 'Indica o nome da lista.' }).max(120),
-    service: z.enum(SERVICE_KEYS).nullish().transform((v) => v ?? null),
+    service: ServiceKeySchema.nullish().transform((v) => v ?? null),
     items: templateItems.refine((items) => items.length > 0, { error: 'Escreve pelo menos uma tarefa.' }),
     sort_order: z.int().min(0).max(1000).optional(),
   })
@@ -125,7 +125,7 @@ export type TaskTemplateCreate = z.output<typeof TaskTemplateCreateSchema>;
 export const TaskTemplateUpdateSchema = z
   .object({
     name: z.string().trim().min(1, { error: 'Indica o nome da lista.' }).max(120).optional(),
-    service: z.enum(SERVICE_KEYS).nullable().optional(),
+    service: ServiceKeySchema.nullable().optional(),
     items: templateItems.refine((items) => items.length > 0, { error: 'Escreve pelo menos uma tarefa.' }).optional(),
     sort_order: z.int().min(0).max(1000).optional(),
   })
@@ -136,9 +136,9 @@ export const ApplyTaskTemplateSchema = z
   .object({ template_id: z.uuid({ error: 'Lista inválida.' }) })
   .meta({ id: 'ApplyTaskTemplate' });
 
-/** Listas sugeridas para um lead: as dos seus serviços, pela ordem do catálogo. */
+/** Listas sugeridas para um lead: as dos seus serviços, pela ordem dos serviços do lead. */
 export function suggestTaskTemplates<T extends Pick<TaskTemplate, 'service'>>(templates: readonly T[], services: readonly string[] = []): T[] {
-  return SERVICE_KEYS.filter((k) => services.includes(k)).flatMap((k) => templates.filter((t) => t.service === k));
+  return [...new Set(services)].flatMap((k) => templates.filter((t) => t.service === k));
 }
 
 /** Tarefas pela ordem de apresentação: por fazer (pela posição) e concluídas (as mais recentes primeiro). */

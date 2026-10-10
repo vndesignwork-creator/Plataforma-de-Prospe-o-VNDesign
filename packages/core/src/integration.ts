@@ -11,6 +11,7 @@ import {
   type ImportSectorRef,
   type MapRowResult,
 } from './import';
+import type { ServiceInfo } from './services';
 
 // -----------------------------------------------------------------------------
 // Tokens
@@ -155,7 +156,11 @@ function toCell(value: unknown): string {
  * folha: "🔍 Identificado", "Sim", "06/10/2026", "1.200 €"…) usando as mesmas
  * regras da importação de ficheiros.
  */
-export function mapIntegrationLead(input: Record<string, unknown>, sectors: readonly ImportSectorRef[]): MapRowResult {
+export function mapIntegrationLead(
+  input: Record<string, unknown>,
+  sectors: readonly ImportSectorRef[],
+  services?: readonly ServiceInfo[],
+): MapRowResult {
   const row: string[] = Array(IMPORT_FIELDS.length).fill('');
   const unknown: string[] = [];
   for (const [rawKey, value] of Object.entries(input)) {
@@ -171,7 +176,7 @@ export function mapIntegrationLead(input: Record<string, unknown>, sectors: read
     }
     row[IMPORT_FIELDS.indexOf(field)] = toCell(value);
   }
-  const result = mapImportRow(row, IMPORT_FIELDS, sectors);
+  const result = mapImportRow(row, IMPORT_FIELDS, sectors, services);
   if (unknown.length) {
     const warning = `Campos ignorados: ${unknown.join(', ')}.`;
     if (result.ok) result.value.warnings.push(warning);

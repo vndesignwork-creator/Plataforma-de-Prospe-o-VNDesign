@@ -18,6 +18,7 @@ import type {
   MapData,
   Proposal,
   ServicePackage,
+  Service,
   Activity,
   ApiToken,
   ApiTokenCreate,
@@ -45,6 +46,7 @@ import { api } from './api-client';
 export const qk = {
   me: ['me'] as const,
   sectors: (archived = false) => ['sectors', { archived }] as const,
+  services: (archived = false) => ['services', { archived }] as const,
   leads: (query: Record<string, unknown>) => ['leads', query] as const,
   lead: (id: string) => ['lead', id] as const,
   activities: (id: string) => ['activities', id] as const,
@@ -68,6 +70,26 @@ export function useSectors(includeArchived = false) {
       api<{ data: Sector[] }>('/sectors', { query: { include_archived: includeArchived || undefined } }).then((r) => r.data),
     staleTime: 60_000,
   });
+}
+
+/** Serviços do workspace (Definições → Serviços); com `includeArchived`, também os escondidos. */
+export function useServices(includeArchived = false) {
+  return useQuery({
+    queryKey: qk.services(includeArchived),
+    queryFn: () =>
+      api<{ data: Service[] }>('/services', { query: { include_archived: includeArchived || undefined } }).then((r) => r.data),
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** Depois de mudar serviços: listas, fichas e estatísticas mostram os nomes novos. */
+export function useInvalidateServices() {
+  const qc = useQueryClient();
+  return () => {
+    for (const key of ['services', 'leads', 'lead', 'board', 'dashboard', 'packages', 'task-templates']) {
+      void qc.invalidateQueries({ queryKey: [key] });
+    }
+  };
 }
 
 export function useLeads(query: Record<string, string | number | string[] | undefined>) {

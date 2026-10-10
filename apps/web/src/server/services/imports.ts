@@ -24,6 +24,7 @@ import Papa from 'papaparse';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
 import { listSectors } from './sectors';
+import { loadServiceCatalog } from './service-catalog';
 
 export const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
@@ -160,8 +161,8 @@ export async function previewImport(
   ctx: ApiContext,
   input: { rows: string[][]; mapping: ImportTarget[] },
 ): Promise<ImportPreview> {
-  const sectors = await listSectors(ctx, true);
-  const mapped = input.rows.map((row) => (isEmptyRow(row) ? null : mapImportRow(row, input.mapping, sectors)));
+  const [sectors, services] = await Promise.all([listSectors(ctx, true), loadServiceCatalog(ctx)]);
+  const mapped = input.rows.map((row) => (isEmptyRow(row) ? null : mapImportRow(row, input.mapping, sectors, services)));
   const leads = mapped.map((m) => (m?.ok ? m.value.lead : null));
   const inFile = findBatchDuplicates(leads);
   const probes = leads.map((l) => (l ? { company_name: l.company_name, website: l.website ?? null, email: l.email ?? null } : {}));

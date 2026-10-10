@@ -71,6 +71,10 @@ import {
   PreferenceValueSchema,
   ProblemSchema,
   SectorCreateSchema,
+  ServiceCreateSchema,
+  ServiceReorderSchema,
+  ServiceSchema,
+  ServiceUpdateSchema,
   SectorSchema,
   SectorUpdateSchema,
 } from '@vndesign/core';
@@ -140,6 +144,7 @@ export function getOpenApiDocument() {
       { name: 'Importação e exportação' },
       { name: 'Atividade' },
       { name: 'Setores' },
+      { name: 'Serviços' },
       { name: 'Não contactar' },
       { name: 'Preferências' },
       { name: 'Auditor de sites' },
@@ -456,6 +461,43 @@ export function getOpenApiDocument() {
           summary: 'Apagar setor sem leads',
           requestParams: { path: idParam },
           responses: { '204': { description: 'Apagado' }, ...withNotFound, '409': problem('Setor com leads') },
+        }),
+      },
+      '/services': {
+        get: op({
+          tags: ['Serviços'],
+          summary: 'Listar serviços (Definições → Serviços)',
+          requestParams: { query: z.object({ include_archived: z.enum(['true', 'false']).optional() }) },
+          responses: { '200': ok(data(z.array(ServiceSchema))), ...common },
+        }),
+        post: op({
+          tags: ['Serviços'],
+          summary: 'Criar serviço (a chave é gerada a partir do nome)',
+          requestBody: body(ServiceCreateSchema),
+          responses: { '201': ok(data(ServiceSchema), 'Criado'), ...common, '409': problem('Nome repetido') },
+        }),
+      },
+      '/services/reorder': {
+        post: op({
+          tags: ['Serviços'],
+          summary: 'Mudar a ordem dos serviços',
+          requestBody: body(ServiceReorderSchema),
+          responses: { '200': ok(data(z.array(ServiceSchema))), ...common },
+        }),
+      },
+      '/services/{id}': {
+        patch: op({
+          tags: ['Serviços'],
+          summary: 'Editar, esconder ou voltar a mostrar um serviço',
+          requestParams: { path: idParam },
+          requestBody: body(ServiceUpdateSchema),
+          responses: { '200': ok(data(ServiceSchema)), ...withNotFound, '409': problem('Nome repetido') },
+        }),
+        delete: op({
+          tags: ['Serviços'],
+          summary: 'Apagar serviço sem leads',
+          requestParams: { path: idParam },
+          responses: { '204': { description: 'Apagado' }, ...withNotFound, '409': problem('Serviço com leads') },
         }),
       },
       '/do-not-contact': {

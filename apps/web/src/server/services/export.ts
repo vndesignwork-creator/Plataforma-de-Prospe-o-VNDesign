@@ -1,4 +1,4 @@
-import { EXPORT_COLUMNS, leadsToCsv, todayIso, type Lead } from '@vndesign/core';
+import { exportColumns, leadsToCsv, todayIso, type Lead, type ServiceInfo } from '@vndesign/core';
 import ExcelJS from 'exceljs';
 
 /** Data "AAAA-MM-DD" → Date UTC (o Excel mostra-a sem desvios de fuso). */
@@ -7,7 +7,8 @@ function toExcelDate(iso: string): Date {
   return new Date(Date.UTC(y!, m! - 1, d!));
 }
 
-export async function leadsToXlsx(leads: readonly Lead[]): Promise<Buffer> {
+export async function leadsToXlsx(leads: readonly Lead[], services?: readonly ServiceInfo[]): Promise<Buffer> {
+  const EXPORT_COLUMNS = exportColumns(services);
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'VNDesign Leads';
   workbook.created = new Date();
@@ -45,14 +46,14 @@ export async function leadsToXlsx(leads: readonly Lead[]): Promise<Buffer> {
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
-export async function exportLeads(leads: readonly Lead[], format: 'csv' | 'xlsx') {
+export async function exportLeads(leads: readonly Lead[], format: 'csv' | 'xlsx', services?: readonly ServiceInfo[]) {
   const filename = `leads-vndesign-${todayIso()}.${format}`;
   if (format === 'csv') {
-    return { filename, contentType: 'text/csv; charset=utf-8', body: leadsToCsv(leads) as string | Buffer };
+    return { filename, contentType: 'text/csv; charset=utf-8', body: leadsToCsv(leads, services) as string | Buffer };
   }
   return {
     filename,
     contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    body: (await leadsToXlsx(leads)) as string | Buffer,
+    body: (await leadsToXlsx(leads, services)) as string | Buffer,
   };
 }

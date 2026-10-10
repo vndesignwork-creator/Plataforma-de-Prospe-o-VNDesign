@@ -3,7 +3,7 @@
  * A chamada à API é feita no servidor; aqui fica só a parte "pura" e testável.
  */
 import { z } from 'zod';
-import { SERVICE_KEYS, serviceCategory, serviceLabel } from './services';
+import { ServiceKeyListSchema, serviceCategory, serviceLabel, type ServiceInfo } from './services';
 import type { AuditIssue } from './audit';
 import { formatDate } from './format';
 
@@ -37,9 +37,7 @@ export const AiEmailRequestSchema = z
     tone: z.enum(AI_EMAIL_TONES).default('proximo'),
     length: z.enum(AI_EMAIL_LENGTHS).default('curto'),
     use_audit: z.boolean().default(true).meta({ description: 'Usar os problemas da última análise do site' }),
-    services: z
-      .array(z.enum(SERVICE_KEYS))
-      .max(SERVICE_KEYS.length)
+    services: ServiceKeyListSchema
       .optional()
       .meta({ description: 'Serviços a propor; por omissão, os serviços de interesse do lead (ou um site)' }),
     instructions: z
@@ -86,6 +84,8 @@ export interface AiEmailContext {
     services?: readonly string[] | null;
   };
   sectorArguments?: string | null;
+  /** Serviços do workspace (nomes e categorias); por omissão, os de origem. */
+  services?: readonly ServiceInfo[];
   auditIssues?: readonly Pick<AuditIssue, 'message'>[];
   auditCms?: string | null;
   sender: {
@@ -168,8 +168,8 @@ export function buildAiEmailPrompt(request: AiEmailRequest, ctx: AiEmailContext)
   // Serviços a propor: os escolhidos no pedido, senão os do lead, senão um site.
   const services = (request.services?.length ? request.services : (l.services ?? [])).filter(Boolean);
   const proposing = services.length ? services : ['site_institucional'];
-  const graphic = proposing.some((s) => serviceCategory(s) === 'grafico');
-  const web = proposing.some((s) => serviceCategory(s) === 'web');
+  const graphic = proposing.some((s) => serviceCategory(s, ctx.services) === 'grafico');
+  const web = proposing.some((s) => serviceCategory(s, ctx.services) === 'web');
 
   const sender = [
     line('Nome', ctx.sender.name),
@@ -181,7 +181,7 @@ export function buildAiEmailPrompt(request: AiEmailRequest, ctx: AiEmailContext)
 
   return [
     `Tipo de email: ${KIND_BRIEF[request.kind]}`,
-    `Serviços a propor: ${proposing.map(serviceLabel).join(', ')}`,
+    `Serviços a propor: ${proposing.map((s) => serviceLabel(s, ctx.services)).join(', ')}`,
     TONE_BRIEF[request.tone],
     LENGTH_BRIEF[request.length],
     request.instructions ? `Indicações do designer: ${request.instructions}` : null,

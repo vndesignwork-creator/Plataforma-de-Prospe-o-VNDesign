@@ -1,57 +1,126 @@
 'use client';
 
 /**
- * Serviços de interesse de um lead (Web Design e Design Gráfico): ícones,
- * etiquetas e o seletor usado no formulário e na ficha.
+ * Serviços de interesse de um lead: ícones, etiquetas, o seletor do formulário e
+ * os filtros. A lista vem de Definições → Serviços (GET /services); enquanto
+ * carrega, usa os serviços de origem.
  */
 import {
+  DEFAULT_SERVICES,
   SERVICE_CATEGORIES,
   SERVICE_CATEGORY_LABELS,
-  SERVICES,
   serviceLabel,
-  servicesOf,
+  serviceShortLabel,
   type ServiceCategory,
-  type ServiceKey,
+  type ServiceIconKey,
+  type ServiceInfo,
 } from '@vndesign/core';
 import {
+  BookOpen,
+  Briefcase,
   Building2,
+  Camera,
   FileImage,
   Images,
+  LayoutGrid,
   LayoutTemplate,
+  Mail,
+  Megaphone,
   Monitor,
   Newspaper,
+  Package,
   Palette,
   PenTool,
+  Presentation,
+  Printer,
+  Search,
   Shirt,
   ShoppingCart,
+  Smartphone,
+  Sparkles,
+  Video,
+  Wrench,
   type LucideIcon,
 } from 'lucide-react';
+import { useMemo } from 'react';
+import { useServices } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
-export const SERVICE_ICONS: Record<ServiceKey, LucideIcon> = {
-  landing_page: LayoutTemplate,
-  site_institucional: Building2,
-  blog: Newspaper,
-  loja_online: ShoppingCart,
-  identidade_visual: PenTool,
-  flyers_cartazes: FileImage,
-  posts_redes: Images,
-  estampas: Shirt,
+export const SERVICE_ICON_COMPONENTS: Record<ServiceIconKey, LucideIcon> = {
+  layout: LayoutTemplate,
+  building: Building2,
+  newspaper: Newspaper,
+  cart: ShoppingCart,
+  pen: PenTool,
+  'file-image': FileImage,
+  images: Images,
+  shirt: Shirt,
+  monitor: Monitor,
+  smartphone: Smartphone,
+  palette: Palette,
+  camera: Camera,
+  video: Video,
+  megaphone: Megaphone,
+  search: Search,
+  mail: Mail,
+  printer: Printer,
+  package: Package,
+  book: BookOpen,
+  presentation: Presentation,
+  wrench: Wrench,
+  briefcase: Briefcase,
+  sparkles: Sparkles,
 };
 
 export const CATEGORY_ICONS: Record<ServiceCategory, LucideIcon> = {
   web: Monitor,
   grafico: Palette,
+  outros: LayoutGrid,
 };
 
-export function ServiceIcon({ service, className }: { service: ServiceKey; className?: string }) {
-  const Icon = SERVICE_ICONS[service];
+/** Cores das etiquetas por categoria. */
+const CATEGORY_CHIP: Record<ServiceCategory, string> = {
+  web: 'bg-surface-3 text-fg',
+  grafico: 'bg-accent-soft text-accent-text',
+  outros: 'border border-border-strong text-fg',
+};
+
+export interface ServiceCatalog {
+  /** Todos (também os escondidos), pela ordem definida. */
+  all: ServiceInfo[];
+  /** Só os visíveis (para escolher). */
+  active: ServiceInfo[];
+  get: (key: string) => ServiceInfo | undefined;
+}
+
+/** Serviços do workspace (com os escondidos, para mostrar os leads antigos). */
+export function useServiceCatalog(): ServiceCatalog {
+  const { data } = useServices(true);
+  return useMemo(() => {
+    const all: ServiceInfo[] = data ?? DEFAULT_SERVICES;
+    const byKey = new Map(all.map((s) => [s.key, s]));
+    return { all, active: all.filter((s) => !s.archived_at), get: (key: string) => byKey.get(key) };
+  }, [data]);
+}
+
+const iconKey = (icon: string | null | undefined): ServiceIconKey =>
+  icon && icon in SERVICE_ICON_COMPONENTS ? (icon as ServiceIconKey) : 'sparkles';
+
+/** Ícone escolhido para um serviço (ou "Outro" se não tiver). */
+export function ServiceGlyph({ icon, className }: { icon: string | null | undefined; className?: string }) {
+  const Icon = SERVICE_ICON_COMPONENTS[iconKey(icon)];
   return <Icon className={cn('inline-block h-4 w-4 shrink-0', className)} aria-hidden />;
 }
 
-/** Etiquetas com os serviços (ficha, lista, cartões). */
+export function ServiceIcon({ service, className }: { service: string; className?: string }) {
+  const catalog = useServiceCatalog();
+  return <ServiceGlyph icon={catalog.get(service)?.icon} className={className} />;
+}
+
+/** Etiquetas com os serviços (ficha). */
 export function ServiceChips({ services, className }: { services?: readonly string[] | null; className?: string }) {
-  const list = (services ?? []).filter((s): s is ServiceKey => s in SERVICES);
+  const catalog = useServiceCatalog();
+  const list = (services ?? []).filter((s) => catalog.get(s));
   if (!list.length) return null;
   return (
     <ul className={cn('flex flex-wrap gap-1.5', className)} aria-label="Serviços de interesse">
@@ -60,11 +129,11 @@ export function ServiceChips({ services, className }: { services?: readonly stri
           key={s}
           className={cn(
             'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap',
-            SERVICES[s].category === 'web' ? 'bg-surface-3 text-fg' : 'bg-accent-soft text-accent-text',
+            CATEGORY_CHIP[catalog.get(s)!.category],
           )}
         >
           <ServiceIcon service={s} className="h-3.5 w-3.5" />
-          {serviceLabel(s)}
+          {serviceLabel(s, catalog.all)}
         </li>
       ))}
     </ul>
@@ -78,18 +147,27 @@ export function ServicePicker({
   disabled,
 }: {
   value: readonly string[];
-  onChange: (value: ServiceKey[]) => void;
+  onChange: (value: string[]) => void;
   disabled?: boolean;
 }) {
-  function toggle(key: ServiceKey, on: boolean) {
+  const catalog = useServiceCatalog();
+  // Os visíveis, mais os escondidos que este lead já tem (para não se perderem sem aviso).
+  const shown = catalog.all.filter((s) => !s.archived_at || value.includes(s.key));
+  const order = catalog.all.map((s) => s.key);
+
+  function toggle(key: string, on: boolean) {
     const next = new Set(value);
     if (on) next.add(key);
     else next.delete(key);
-    onChange(SERVICE_CATEGORIES.flatMap((c) => servicesOf(c)).filter((k) => next.has(k)));
+    onChange(order.filter((k) => next.has(k)));
   }
+
+  const groups = SERVICE_CATEGORIES.map((category) => ({ category, items: shown.filter((s) => s.category === category) })).filter(
+    (g) => g.items.length,
+  );
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      {SERVICE_CATEGORIES.map((category) => {
+      {groups.map(({ category, items }) => {
         const CategoryIcon = CATEGORY_ICONS[category];
         return (
           <fieldset key={category} className="flex flex-col gap-2">
@@ -98,11 +176,11 @@ export function ServicePicker({
               {SERVICE_CATEGORY_LABELS[category]}
             </legend>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {servicesOf(category).map((key) => {
-                const checked = value.includes(key);
+              {items.map((s) => {
+                const checked = value.includes(s.key);
                 return (
                   <label
-                    key={key}
+                    key={s.key}
                     className={cn(
                       'flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors',
                       checked ? 'border-accent bg-accent-soft' : 'border-border-input hover:border-muted',
@@ -113,11 +191,14 @@ export function ServicePicker({
                       type="checkbox"
                       checked={checked}
                       disabled={disabled}
-                      onChange={(e) => toggle(key, e.target.checked)}
+                      onChange={(e) => toggle(s.key, e.target.checked)}
                       className="h-4 w-4"
                     />
-                    <ServiceIcon service={key} className="text-muted" />
-                    {serviceLabel(key)}
+                    <ServiceGlyph icon={s.icon} className="text-muted" />
+                    <span className="min-w-0 break-words">
+                      {s.label}
+                      {s.archived_at ? <span className="text-muted"> (escondido)</span> : null}
+                    </span>
                   </label>
                 );
               })}
@@ -129,22 +210,9 @@ export function ServicePicker({
   );
 }
 
-/** Versão compacta (tabela e Kanban): só ícones, com o nome ao passar o rato e para leitores de ecrã. */
-/** Nomes curtos para os cartões (o nome completo fica no "title" e para leitores de ecrã). */
-const SERVICE_SHORT_LABELS: Record<ServiceKey, string> = {
-  landing_page: 'Landing',
-  site_institucional: 'Site',
-  blog: 'Blog',
-  loja_online: 'Loja',
-  identidade_visual: 'Identidade',
-  flyers_cartazes: 'Flyers',
-  posts_redes: 'Posts',
-  estampas: 'T-shirts',
-};
-
 /**
- * Serviços de um lead em ícones. Com `labeled`, cada ícone leva um nome curto
- * (no telemóvel não há "title" ao passar o rato, por isso só o ícone não chega).
+ * Serviços de um lead em ícones (tabela e Kanban). Com `labeled`, cada ícone leva
+ * um nome curto (no telemóvel não há "title" ao passar o rato).
  */
 export function ServiceIcons({
   services,
@@ -155,39 +223,70 @@ export function ServiceIcons({
   className?: string;
   labeled?: boolean;
 }) {
-  const list = (services ?? []).filter((s): s is ServiceKey => s in SERVICES);
+  const catalog = useServiceCatalog();
+  const list = (services ?? []).filter((s) => catalog.get(s));
   if (!list.length) return null;
   return (
     <span className={cn('inline-flex flex-wrap items-center gap-1', className)}>
-      {list.map((s) => (
-        <span
-          key={s}
-          title={serviceLabel(s)}
-          className={cn(
-            'inline-flex h-6 items-center justify-center gap-1 rounded-md',
-            labeled ? 'px-1.5 text-xs font-medium' : 'w-6',
-            SERVICES[s].category === 'web' ? 'bg-surface-3 text-fg' : 'bg-accent-soft text-accent-text',
-          )}
-        >
-          <ServiceIcon service={s} className="h-3.5 w-3.5 shrink-0" />
-          {labeled ? <span aria-hidden>{SERVICE_SHORT_LABELS[s]}</span> : null}
-          <span className="sr-only">{serviceLabel(s)}</span>
-        </span>
-      ))}
+      {list.map((s) => {
+        const info = catalog.get(s)!;
+        return (
+          <span
+            key={s}
+            title={info.label}
+            className={cn(
+              'inline-flex h-6 items-center justify-center gap-1 rounded-md',
+              labeled ? 'px-1.5 text-xs font-medium' : 'w-6',
+              CATEGORY_CHIP[info.category],
+            )}
+          >
+            <ServiceGlyph icon={info.icon} className="h-3.5 w-3.5" />
+            {labeled ? <span aria-hidden>{serviceShortLabel(s, catalog.all)}</span> : null}
+            <span className="sr-only">{info.label}</span>
+          </span>
+        );
+      })}
     </span>
   );
 }
 
-/** Opções para os filtros de lista/Kanban (agrupadas por categoria no rótulo). */
-export function serviceFilterOptions() {
+/** Opções para os filtros de lista/Kanban (com a categoria no rótulo). */
+export function useServiceFilterOptions() {
+  const catalog = useServiceCatalog();
   return [
-    ...SERVICE_CATEGORIES.flatMap((c) =>
-      servicesOf(c).map((k) => ({
-        value: k,
-        label: `${serviceLabel(k)} · ${SERVICE_CATEGORY_LABELS[c]}`,
-        icon: <ServiceIcon service={k} className="text-muted" />,
-      })),
-    ),
+    ...catalog.all.map((s) => ({
+      value: s.key,
+      label: `${s.label} · ${SERVICE_CATEGORY_LABELS[s.category]}${s.archived_at ? ' (escondido)' : ''}`,
+      icon: <ServiceGlyph icon={s.icon} className="text-muted" />,
+    })),
     { value: 'none', label: 'Sem serviço definido' },
   ];
+}
+
+/** Seletor de serviço (pacotes, listas de tarefas): agrupado por categoria. */
+export function ServiceOptions({ catalog, category }: { catalog: ServiceCatalog; category?: ServiceCategory }) {
+  const groups = SERVICE_CATEGORIES.filter((c) => !category || c === category)
+    .map((c) => ({ c, items: catalog.all.filter((s) => s.category === c && !s.archived_at) }))
+    .filter((g) => g.items.length);
+  return (
+    <>
+      {groups.map(({ c, items }) =>
+        category ? (
+          items.map((s) => (
+            <option key={s.key} value={s.key}>
+              {s.label}
+            </option>
+          ))
+        ) : (
+          <optgroup key={c} label={SERVICE_CATEGORY_LABELS[c]}>
+            {items.map((s) => (
+              <option key={s.key} value={s.key}>
+                {s.label}
+              </option>
+            ))}
+          </optgroup>
+        ),
+      )}
+    </>
+  );
 }

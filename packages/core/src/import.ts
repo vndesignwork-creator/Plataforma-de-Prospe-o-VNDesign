@@ -3,7 +3,7 @@
  * mapeamento de colunas e conversão de cada linha num lead válido.
  * Funções puras — usadas pela API (pré-visualização) e testadas com Vitest.
  */
-import { parseServices } from './services';
+import { parseServices, type ServiceInfo } from './services';
 import { fixDirectoryWebsite, type LeadLinks } from './links';
 import { LeadCreateSchema, type LeadCreate } from './schemas';
 import {
@@ -209,6 +209,7 @@ export function mapImportRow(
   row: readonly string[],
   mapping: readonly ImportTarget[],
   sectors: readonly ImportSectorRef[],
+  services?: readonly ServiceInfo[],
 ): MapRowResult {
   const warnings: string[] = [];
   const lead: Record<string, unknown> = {};
@@ -296,11 +297,11 @@ export function mapImportRow(
     else warnings.push(`Valor "${value}" inválido — ignorado.`);
   }
 
-  const services = get('services');
-  if (services) {
-    const keys = parseServices(services);
+  const servicesCell = get('services');
+  if (servicesCell) {
+    const keys = parseServices(servicesCell, services);
     if (keys.length) lead.services = keys;
-    else warnings.push(`Serviços "${services}" não reconhecidos — ignorados.`);
+    else warnings.push(`Serviços "${servicesCell}" não reconhecidos — ignorados.`);
   }
 
   // Um diretório (TripAdvisor, Sluurpy, Google Maps…) não é o site da empresa: vai para "Fonte".

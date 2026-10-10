@@ -23,6 +23,7 @@ import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
 import { getLead } from './leads';
 import { listSectors } from './sectors';
+import { loadServiceCatalog } from './service-catalog';
 import { getSettings, getSignature } from './workspace';
 
 async function latestAudit(ctx: ApiContext, leadId: string) {
@@ -57,12 +58,13 @@ export async function generateAiEmail(ctx: ApiContext, leadId: string, request: 
   const lead = await getLead(ctx, leadId);
   if (lead.anonymized_at) throw new ApiError(422, 'Lead anonimizado', 'Não é possível escrever para um lead anonimizado.');
 
-  const [signature, settings, sectors, audit, proposal] = await Promise.all([
+  const [signature, settings, sectors, audit, proposal, services] = await Promise.all([
     getSignature(ctx),
     getSettings(ctx),
     lead.sector_id ? listSectors(ctx, true) : Promise.resolve([]),
     request.use_audit ? latestAudit(ctx, leadId) : Promise.resolve(null),
     request.kind === 'envio_proposta' ? latestProposal(ctx, leadId) : Promise.resolve(null),
+    loadServiceCatalog(ctx),
   ]);
   const sector = sectors.find((s) => s.id === lead.sector_id);
 
@@ -83,6 +85,7 @@ export async function generateAiEmail(ctx: ApiContext, leadId: string, request: 
       services: lead.services ?? [],
     },
     sectorArguments: sector?.sales_arguments ?? null,
+    services,
     auditIssues: audit?.issues ?? [],
     auditCms: audit?.cms ?? null,
     sender: {

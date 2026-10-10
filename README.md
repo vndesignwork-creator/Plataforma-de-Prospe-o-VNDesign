@@ -124,13 +124,16 @@ português) com as mesmas colunas — pode ser reimportado sem mapear nada.
   todas as manhãs mesmo com a plataforma fechada (ver “App no telemóvel” abaixo).
 - **Resumo diário por email** (opcional): precisa de SMTP e de um cron.
 
-## Serviços: Web Design e Design Gráfico
+## Serviços: Web Design, Design Gráfico e outros
 
-- **Serviços de interesse** em cada lead (formulário e ficha): Landing Pages, Sites Institucionais,
-  Blogs, Pequenas Lojas · Identidade Visual, Flyers e Cartazes, Posts Rede Social, Estampas T-shirts.
+- **Definições → Serviços:** acrescentar, mudar o nome, a categoria (Web Design, Design Gráfico ou
+  Outros serviços), o nome curto dos cartões e o ícone; mudar a ordem; **esconder** (os leads que já o
+  têm ficam com ele) ou **apagar** (só sem leads). Começa com os 8 do site: Landing Pages, Sites
+  Institucionais, Blogs, Pequenas Lojas · Identidade Visual, Flyers e Cartazes, Posts Rede Social, Estampas T-shirts.
+- **Serviços de interesse** em cada lead (formulário e ficha), escolhidos da lista acima.
 - **Filtro "Serviço"** na lista e no Kanban; ícones nos leads; gráfico **Por serviço** no dashboard.
-- **Pacotes por categoria** (Definições → Propostas e IA): cada pacote é de Web Design ou Design
-  Gráfico e pode estar ligado a um serviço. Vêm 5 pacotes de design gráfico de exemplo — **revê os preços**.
+- **Pacotes por categoria** (Definições → Propostas e IA): cada pacote é de Web Design, Design
+  Gráfico ou Outros e pode estar ligado a um serviço. Vêm 5 pacotes de design gráfico de exemplo — **revê os preços**.
 - **Proposta nova:** sugere um pacote por cada serviço de interesse do lead (ex.: site + logótipo).
 - **Email com IA:** escolhe os serviços a propor (por omissão os do lead); para design gráfico usa o
   *Portfólio de design gráfico* da assinatura (variável `{{portfolio_design}}` nos modelos).

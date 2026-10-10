@@ -13,12 +13,11 @@ import {
   type AiEmailLength,
   type AiEmailTone,
   type Lead,
-  type ServiceKey,
 } from '@vndesign/core';
 import { Copy, Mail, RefreshCw, Save, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { MultiSelectFilter } from './multi-select';
-import { serviceFilterOptions } from '@/components/services/services';
+import { useServiceCatalog, useServiceFilterOptions } from '@/components/services/services';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
@@ -35,6 +34,8 @@ function defaultKind(lead: Lead): AiEmailKind {
 }
 
 export function AiEmailCard({ lead }: { lead: Lead }) {
+  const serviceOptions = useServiceFilterOptions();
+  const catalog = useServiceCatalog();
   const { data: settings } = useSettings();
   const generate = useAiEmail(lead.id);
   const update = useUpdateLead(lead.id);
@@ -59,7 +60,7 @@ export function AiEmailCard({ lead }: { lead: Lead }) {
         length,
         use_audit: useAudit,
         instructions: instructions.trim() || undefined,
-        services: services as ServiceKey[],
+        services,
       });
       setDraft({ subject: result.subject, body: result.body });
       toast.success('Email gerado. Revê e ajusta antes de enviar.');
@@ -147,10 +148,10 @@ export function AiEmailCard({ lead }: { lead: Lead }) {
                 label="Serviços a propor"
                 value={services}
                 onChange={setServices}
-                options={serviceFilterOptions().filter((o) => o.value !== 'none')}
+                options={serviceOptions.filter((o) => o.value !== 'none')}
               />
               <span className="text-sm text-muted">
-                {services.length ? services.map(serviceLabel).join(', ') : 'Um site (por omissão)'}
+                {services.length ? services.map((s) => serviceLabel(s, catalog.all)).join(', ') : 'Um site (por omissão)'}
               </span>
             </div>
             <div className="sm:col-span-3">

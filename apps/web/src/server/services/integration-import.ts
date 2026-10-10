@@ -17,6 +17,7 @@ import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
 import { commitImport, lookupConflicts } from './imports';
 import { listSectors } from './sectors';
+import { loadServiceCatalog } from './service-catalog';
 
 export const MAX_IDEMPOTENCY_KEY = 200;
 
@@ -48,8 +49,8 @@ export async function importLeadsFromApi(
     if (replay) return { status: 200, body: replay };
   }
 
-  const sectors = await listSectors(ctx, true);
-  const mapped: MapRowResult[] = input.leads.map((lead) => mapIntegrationLead(lead, sectors));
+  const [sectors, services] = await Promise.all([listSectors(ctx, true), loadServiceCatalog(ctx)]);
+  const mapped: MapRowResult[] = input.leads.map((lead) => mapIntegrationLead(lead, sectors, services));
   const leads = mapped.map((m) => (m.ok ? m.value.lead : null));
   const inBatch = findBatchDuplicates(leads);
   const { dups, dnc } = await lookupConflicts(

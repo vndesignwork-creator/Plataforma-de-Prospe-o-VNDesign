@@ -289,10 +289,18 @@ um “Lead editado”. O resumo diário usa a chave de serviço só no servidor
 - `set_lead_location()` grava a posição sem gerar "Lead editado".
 - No browser, Leaflet com mapas do OpenStreetMap (sem chave; no tema escuro invertidos por CSS — o CARTO passou a exigir chave).
 
-## Serviços (Web Design / Design Gráfico)
+## Serviços (Definições → Serviços)
 
-- Catálogo fixo em `packages/core/src/services.ts` (`SERVICES`: chave, nome, categoria `web`/`grafico`).
-  A mesma lista está na verificação de `leads.services` (migração `20261016000100`): mudar as duas.
+- Tabela `services` por workspace (migração `20261020000100`): `key` (não muda; guardada nos leads,
+  pacotes e listas de tarefas), `label`, `short_label`, `category` (`web`/`grafico`/`outros`), `icon`,
+  `sort_order`, `archived_at` (escondido). `seed_services()` cria os 8 de origem em cada workspace.
+- Validação por triggers (`vnd_check_lead_services`, `vnd_check_row_service`): a chave tem de existir no
+  workspace (escondidos incluídos). Apagar só sem leads (`service_lead_counts`); os pacotes e as listas
+  desse serviço ficam sem serviço (`vnd_services_before_delete`).
+- API `/services` (+ `/{id}`, `/reorder`); `server/services/service-catalog.ts`. Importação, exportação e
+  email com IA usam `loadServiceCatalog()` (cai para `DEFAULT_SERVICES` se a tabela ainda não existir).
+- Core (`packages/core/src/services.ts`): `DEFAULT_SERVICES`, `serviceLabel/serviceCategory/parseServices`
+  recebem o catálogo; na web, `useServiceCatalog()` em `components/services/services.tsx`.
 - `leads.services text[]` (índice GIN; filtro `?service=a,b` usa interseção `ov`, `none` = sem serviço).
 - `service_packages.category` + `service`; `suggestPackages()` escolhe os pacotes de uma proposta nova.
 - Importação: `import_lead_services()` acrescenta os serviços da folha depois de `import_leads()`.

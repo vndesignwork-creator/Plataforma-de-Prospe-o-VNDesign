@@ -13,7 +13,7 @@ import { BarList } from '@/components/charts/bar-list';
 import { ColumnChart } from '@/components/charts/column-chart';
 import { StatTile } from '@/components/charts/stat-tile';
 import { ChannelIcon, SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
-import { ServiceIcon } from '@/components/services/services';
+import { ServiceIcon, useServiceCatalog } from '@/components/services/services';
 import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
 import { errorMessage } from '@/lib/api-client';
 import { useDashboard, useSectors } from '@/lib/queries';
@@ -22,6 +22,7 @@ const euros = (v: number) => formatCurrency(v, { decimals: false });
 
 /** Página Estatísticas: todos os números da prospeção (o Dashboard mostra só o essencial). */
 export function StatsView() {
+  const catalog = useServiceCatalog();
   const { data, isLoading, error } = useDashboard();
   const { data: sectors } = useSectors();
 
@@ -168,7 +169,7 @@ export function StatsView() {
                 .filter((s) => s.count > 0)
                 .map((s) => ({
                   key: s.service,
-                  label: serviceLabel(s.service),
+                  label: serviceLabel(s.service, catalog.all),
                   mark: <ServiceIcon service={s.service} className="h-3.5 w-3.5 text-muted" />,
                   value: s.count,
                   note: s.won ? (s.won === 1 ? '1 cliente' : `${s.won} clientes`) : undefined,

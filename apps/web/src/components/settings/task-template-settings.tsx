@@ -1,6 +1,6 @@
 'use client';
 
-import { SERVICE_CATEGORIES, SERVICE_CATEGORY_LABELS, serviceLabel, servicesOf, type ServiceKey, type TaskTemplate } from '@vndesign/core';
+import { serviceLabel, type TaskTemplate } from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { ListChecks, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
@@ -10,20 +10,21 @@ import { Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input, Select, Textarea } from '@/components/ui/input';
-import { ServiceIcon } from '@/components/services/services';
+import { ServiceIcon, ServiceOptions, useServiceCatalog } from '@/components/services/services';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useTaskTemplates } from '@/lib/queries';
 
 interface Draft {
   id: string | null;
   name: string;
-  service: ServiceKey | '';
+  service: string;
   items: string;
 }
 
 const emptyDraft: Draft = { id: null, name: '', service: '', items: '' };
 
 function TemplateDialog({ draft, onClose }: { draft: Draft | null; onClose: () => void }) {
+  const catalog = useServiceCatalog();
   const qc = useQueryClient();
   const [form, setForm] = useState<Draft>(draft ?? emptyDraft);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
@@ -68,17 +69,9 @@ function TemplateDialog({ draft, onClose }: { draft: Draft | null; onClose: () =
           <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         </Field>
         <Field label="Serviço" hint="Sugerida nos leads com este serviço." error={errors.service?.[0]}>
-          <Select value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value as ServiceKey | '' })}>
+          <Select value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })}>
             <option value="">— Nenhum —</option>
-            {SERVICE_CATEGORIES.map((c) => (
-              <optgroup key={c} label={SERVICE_CATEGORY_LABELS[c]}>
-                {servicesOf(c).map((k) => (
-                  <option key={k} value={k}>
-                    {serviceLabel(k)}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
+            <ServiceOptions catalog={catalog} />
           </Select>
         </Field>
         <div className="sm:col-span-2">
@@ -97,6 +90,7 @@ function TemplateDialog({ draft, onClose }: { draft: Draft | null; onClose: () =
 
 /** Definições → Listas de tarefas: as listas prontas que se aplicam a um lead (uma por serviço). */
 export function TaskTemplateSettings() {
+  const catalog = useServiceCatalog();
   const qc = useQueryClient();
   const { data: templates, isLoading } = useTaskTemplates();
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -139,7 +133,7 @@ export function TaskTemplateSettings() {
                 <p className="font-medium">{t.name}</p>
                 <p className="text-sm text-muted">
                   {t.items.length} tarefa{t.items.length === 1 ? '' : 's'}
-                  {t.service ? ` · ${serviceLabel(t.service)}` : ''}
+                  {t.service ? ` · ${serviceLabel(t.service, catalog.all)}` : ''}
                 </p>
               </div>
               <Button

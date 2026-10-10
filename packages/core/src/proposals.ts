@@ -4,7 +4,7 @@
  */
 import { z } from 'zod';
 import type { AuditIssue } from './audit';
-import { SERVICE_CATEGORIES, SERVICE_KEYS } from './services';
+import { SERVICE_CATEGORIES, ServiceKeySchema } from './services';
 
 const money = z
   .number({ error: 'Indica um valor.' })
@@ -35,10 +35,10 @@ export const ServicePackageSchema = z
     recommended: z.boolean(),
     sort_order: z.int(),
     archived_at: z.string().nullable(),
-    /** Web Design ou Design Gráfico (agrupa os pacotes nas definições e nas propostas). */
+    /** Web Design, Design Gráfico ou Outros (agrupa os pacotes nas definições e nas propostas). */
     category: z.enum(SERVICE_CATEGORIES),
     /** Serviço do catálogo (opcional): sugere o pacote para leads com esse interesse. */
-    service: z.enum(SERVICE_KEYS).nullable(),
+    service: z.string().nullable(),
   })
   .meta({ id: 'ServicePackage' });
 export type ServicePackage = z.infer<typeof ServicePackageSchema>;
@@ -57,7 +57,7 @@ export const ServicePackageCreateSchema = z
     recommended: z.boolean().default(false),
     sort_order: z.int().min(0).max(1000).optional(),
     category: z.enum(SERVICE_CATEGORIES).default('web'),
-    service: z.enum(SERVICE_KEYS).nullish().transform((v) => v ?? null),
+    service: ServiceKeySchema.nullish().transform((v) => v ?? null),
   })
   .meta({ id: 'ServicePackageCreate' });
 export type ServicePackageCreateInput = z.input<typeof ServicePackageCreateSchema>;

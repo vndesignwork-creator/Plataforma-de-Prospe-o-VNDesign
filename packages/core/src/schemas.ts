@@ -16,7 +16,7 @@ import {
   type SectorIcon,
 } from './enums';
 import { ensureUrlProtocol } from './normalize';
-import { SERVICE_KEYS } from './services';
+import { ServiceKeyListSchema, ServiceKeySchema } from './services';
 import { TodayTasksSchema } from './tasks';
 
 // Mensagens genéricas de validação em português (as específicas estão em cada campo).
@@ -113,11 +113,8 @@ const leadFields = {
   suggested_on: nullableDate,
   email_subject: nullableText(300),
   email_body: nullableText(20_000),
-  /** Serviços de interesse (Web Design e/ou Design Gráfico). */
-  services: z
-    .array(z.enum(SERVICE_KEYS, { error: 'Serviço desconhecido.' }))
-    .max(SERVICE_KEYS.length)
-    .transform((list) => SERVICE_KEYS.filter((k) => list.includes(k))),
+  /** Serviços de interesse (chaves de GET /services; a base de dados confirma que existem). */
+  services: ServiceKeyListSchema,
 };
 
 export const EDITABLE_LEAD_FIELDS = Object.keys(leadFields) as (keyof typeof leadFields)[];
@@ -172,7 +169,7 @@ export const LeadSchema = z
     next_action_text: z.string().nullable(),
     next_action_on: z.string().nullable(),
     estimated_value: z.number().nullable(),
-    services: z.array(z.enum(SERVICE_KEYS)).optional(),
+    services: z.array(z.string()).optional(),
     notes: z.string().nullable(),
     approach_angle: z.string().nullable(),
     source_url: z.string().nullable(),
@@ -233,7 +230,7 @@ export const LeadListQuerySchema = z
     sector: csvList(z.union([z.uuid(), z.literal('none')])).optional().meta({ description: 'IDs de setor separados por vírgula ("none" = sem setor)' }),
     status: csvList(LeadStatusSchema).optional(),
     channel: csvList(z.union([LeadChannelSchema, z.literal('none')])).optional(),
-    service: csvList(z.union([z.enum(SERVICE_KEYS), z.literal('none')]))
+    service: csvList(z.union([ServiceKeySchema, z.literal('none')]))
       .optional()
       .meta({ description: 'Serviços de interesse separados por vírgula ("none" = sem serviço); basta um coincidir' }),
     city: z.string().trim().max(120).optional(),
@@ -553,7 +550,7 @@ export const DashboardSchema = z
     ),
     by_status: z.array(z.object({ status: LeadStatusSchema, count: z.int() })),
     by_service: z
-      .array(z.object({ service: z.enum(SERVICE_KEYS), count: z.int(), won: z.int() }))
+      .array(z.object({ service: z.string(), count: z.int(), won: z.int() }))
       .optional()
       .meta({ description: 'Leads com interesse em cada serviço e quantos são clientes' }),
     by_channel: z.array(z.object({ channel: LeadChannelSchema.nullable(), count: z.int() })),

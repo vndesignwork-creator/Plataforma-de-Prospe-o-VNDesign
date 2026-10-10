@@ -3,7 +3,18 @@ import { mapImportRow, suggestMapping } from '../src/import';
 import { AiEmailRequestSchema, buildAiEmailPrompt } from '../src/ai';
 import { ServicePackageUpdateSchema, suggestPackages } from '../src/proposals';
 import { LeadCreateSchema } from '../src/schemas';
-import { SERVICE_KEYS, parseServices, serviceCategory, servicesOf } from '../src/services';
+import {
+  SERVICE_KEYS,
+  ServiceCreateSchema,
+  ServiceUpdateSchema,
+  parseServices,
+  serviceCategory,
+  serviceKeyFromLabel,
+  serviceLabel,
+  serviceShortLabel,
+  servicesOf,
+  type ServiceInfo,
+} from '../src/services';
 
 describe('catálogo de serviços', () => {
   it('tem as duas categorias do site (4 + 4)', () => {
@@ -20,10 +31,10 @@ describe('catálogo de serviços', () => {
     expect(parseServices('nada disto')).toEqual([]);
   });
 
-  it('o lead guarda os serviços sem repetidos e na ordem do catálogo', () => {
+  it('o lead guarda os serviços sem repetidos (a base de dados confirma que existem)', () => {
     const lead = LeadCreateSchema.parse({ company_name: 'X', services: ['posts_redes', 'landing_page', 'posts_redes'] });
-    expect(lead.services).toEqual(['landing_page', 'posts_redes']);
-    expect(LeadCreateSchema.safeParse({ company_name: 'X', services: ['outro'] }).success).toBe(false);
+    expect(lead.services).toEqual(['posts_redes', 'landing_page']);
+    expect(LeadCreateSchema.safeParse({ company_name: 'X', services: ['Outro serviço!'] }).success).toBe(false);
   });
 
   it('a coluna "Serviços" da folha é reconhecida e importada', () => {
@@ -36,6 +47,55 @@ describe('catálogo de serviços', () => {
 
   it('atualizar um pacote não muda a categoria se não for enviada', () => {
     expect(ServicePackageUpdateSchema.parse({ name: 'Logótipo' })).toEqual({ name: 'Logótipo' });
+  });
+});
+
+describe('serviços geridos em Definições', () => {
+  const catalog: ServiceInfo[] = [
+    { key: 'site_institucional', label: 'Sites', category: 'web' },
+    { key: 'fotografia_de_produto', label: 'Fotografia de produto', category: 'outros', short_label: 'Fotos' },
+    { key: 'gestao_redes', label: 'Gestão de redes sociais', category: 'outros' },
+  ];
+
+  it('a chave nasce do nome e não repete as existentes', () => {
+    expect(serviceKeyFromLabel('Fotografia de Produto')).toBe('fotografia_de_produto');
+    expect(serviceKeyFromLabel('Vídeo', ['video'])).toBe('video_2');
+    expect(serviceKeyFromLabel('Vídeo', ['video', 'video_2'])).toBe('video_3');
+    expect(serviceKeyFromLabel('!!!')).toBe('servico');
+  });
+
+  it('nomes, nomes curtos e categorias vêm do catálogo do workspace', () => {
+    expect(serviceLabel('fotografia_de_produto', catalog)).toBe('Fotografia de produto');
+    expect(serviceShortLabel('fotografia_de_produto', catalog)).toBe('Fotos');
+    expect(serviceShortLabel('gestao_redes', catalog)).toBe('Gestão');
+    expect(serviceCategory('gestao_redes', catalog)).toBe('outros');
+    expect(servicesOf('outros', catalog)).toEqual(['fotografia_de_produto', 'gestao_redes']);
+    // Desconhecido: mostra a chave.
+    expect(serviceLabel('xpto', catalog)).toBe('xpto');
+  });
+
+  it('a importação reconhece os serviços novos pelo nome ou nome curto', () => {
+    expect(parseServices('Fotos; gestão de redes sociais, site', catalog)).toEqual([
+      'site_institucional',
+      'fotografia_de_produto',
+      'gestao_redes',
+    ]);
+    // Um alias de origem cujo serviço não existe no workspace é ignorado.
+    expect(parseServices('logótipo', catalog)).toEqual([]);
+    const result = mapImportRow(['Estúdio', 'Fotos'], ['company_name', 'services'], [], catalog);
+    expect(result.ok && result.value.lead.services).toEqual(['fotografia_de_produto']);
+  });
+
+  it('criar e editar um serviço', () => {
+    expect(ServiceCreateSchema.parse({ label: ' Fotografia ' })).toEqual({
+      label: 'Fotografia',
+      short_label: null,
+      category: 'outros',
+      icon: 'sparkles',
+    });
+    expect(ServiceCreateSchema.safeParse({ label: '' }).success).toBe(false);
+    expect(ServiceCreateSchema.safeParse({ label: 'X', icon: 'foguetao' }).success).toBe(false);
+    expect(ServiceUpdateSchema.parse({ archived: true })).toEqual({ archived: true });
   });
 });
 
@@ -55,6 +115,14 @@ describe('email com IA por serviço', () => {
   it('sem serviços, propõe um site (como antes)', () => {
     const prompt = buildAiEmailPrompt(AiEmailRequestSchema.parse({}), { ...ctx, lead: { company_name: 'X' } });
     expect(prompt).toContain('Serviços a propor: Sites Institucionais');
+  });
+
+  it('usa os nomes dos serviços do workspace', () => {
+    const prompt = buildAiEmailPrompt(AiEmailRequestSchema.parse({ services: ['fotografia'] }), {
+      ...ctx,
+      services: [{ key: 'fotografia', label: 'Fotografia de produto', category: 'outros' }],
+    });
+    expect(prompt).toContain('Serviços a propor: Fotografia de produto');
   });
 
   it('os serviços do pedido mandam sobre os do lead', () => {

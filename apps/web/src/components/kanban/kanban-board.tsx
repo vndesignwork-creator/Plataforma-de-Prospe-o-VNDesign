@@ -44,7 +44,7 @@ import { useDebouncedValue } from '@/lib/hooks';
 import { useBoard, useInvalidateLead, useSectors } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 import { ChannelIcon, SectorIconView } from '@/components/icons/lead-icons';
-import { ServiceIcons, serviceFilterOptions } from '@/components/services/services';
+import { ServiceIcons, useServiceFilterOptions } from '@/components/services/services';
 import { TaskProgress } from '@/components/tasks/task-progress';
 
 type Columns = Record<LeadStatus, Lead[]>;
@@ -315,6 +315,7 @@ function ColumnNav({
 
 export function KanbanBoard() {
   const today = todayIso();
+  const serviceOptions = useServiceFilterOptions();
   const qc = useQueryClient();
   const router = useRouter();
   const invalidate = useInvalidateLead();
@@ -516,7 +517,7 @@ export function KanbanBoard() {
             onChange={setSector}
             options={[...(sectors ?? []).map((s) => ({ value: s.id, label: s.name, icon: <SectorIconView sector={s} className="text-muted" /> })), { value: 'none', label: 'Sem setor' }]}
           />
-          <MultiSelectFilter label="Serviço" value={service} onChange={setService} options={serviceFilterOptions()} />
+          <MultiSelectFilter label="Serviço" value={service} onChange={setService} options={serviceOptions} />
           <MultiSelectFilter
             label="Canal"
             value={channel}

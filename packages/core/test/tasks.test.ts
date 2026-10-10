@@ -42,7 +42,7 @@ describe('tarefas: schemas', () => {
       items: ['A', 'B'],
     });
     expect(TaskTemplateCreateSchema.safeParse({ name: 'Site', items: ['', ' '] }).success).toBe(false);
-    expect(TaskTemplateCreateSchema.safeParse({ name: 'Site', service: 'outro', items: ['A'] }).success).toBe(false);
+    expect(TaskTemplateCreateSchema.safeParse({ name: 'Site', service: 'Outro!', items: ['A'] }).success).toBe(false);
     // Editar só o nome não mexe nas tarefas nem no serviço.
     expect(TaskTemplateUpdateSchema.parse({ name: 'Novo nome' })).toEqual({ name: 'Novo nome' });
   });
@@ -61,14 +61,14 @@ describe('tarefas: utilitários', () => {
     expect(done.map((t) => t.id)).toEqual(['d', 'c']);
   });
 
-  it('suggestTaskTemplates: as listas dos serviços do lead, pela ordem do catálogo', () => {
+  it('suggestTaskTemplates: as listas dos serviços do lead, pela ordem dos serviços do lead', () => {
     const templates = [
       { id: '1', service: 'identidade_visual' as const },
       { id: '2', service: 'site_institucional' as const },
       { id: '3', service: null },
       { id: '4', service: 'estampas' as const },
     ];
-    expect(suggestTaskTemplates(templates, ['identidade_visual', 'site_institucional']).map((t) => t.id)).toEqual(['2', '1']);
+    expect(suggestTaskTemplates(templates, ['identidade_visual', 'site_institucional']).map((t) => t.id)).toEqual(['1', '2']);
     expect(suggestTaskTemplates(templates, [])).toEqual([]);
   });
 });

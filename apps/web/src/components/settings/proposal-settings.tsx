@@ -20,7 +20,7 @@ import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input, Select, Textarea } from '@/components/ui/input';
-import { CATEGORY_ICONS, ServiceIcon } from '@/components/services/services';
+import { CATEGORY_ICONS, ServiceIcon, useServiceCatalog } from '@/components/services/services';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { usePackages, useSettings, type SettingsWithMail } from '@/lib/queries';
 
@@ -60,6 +60,7 @@ const toDraft = (p: ServicePackage): PackageDraft => ({
 });
 
 function PackageDialog({ draft, onClose }: { draft: PackageDraft | null; onClose: () => void }) {
+  const catalog = useServiceCatalog();
   const qc = useQueryClient();
   const [form, setForm] = useState<PackageDraft>(draft ?? emptyDraft);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
@@ -125,7 +126,7 @@ function PackageDialog({ draft, onClose }: { draft: PackageDraft | null; onClose
             onChange={(e) => {
               const category = e.target.value as ServiceCategory;
               // O serviço tem de pertencer à categoria escolhida.
-              setForm({ ...form, category, service: form.service && servicesOf(category).includes(form.service) ? form.service : '' });
+              setForm({ ...form, category, service: form.service && servicesOf(category, catalog.all).includes(form.service) ? form.service : '' });
             }}
           >
             {SERVICE_CATEGORIES.map((c) => (
@@ -136,11 +137,11 @@ function PackageDialog({ draft, onClose }: { draft: PackageDraft | null; onClose
           </Select>
         </Field>
         <Field label="Serviço" hint="Sugere este pacote para leads com este interesse.">
-          <Select value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value as ServiceKey | '' })}>
+          <Select value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })}>
             <option value="">Geral (toda a categoria)</option>
-            {servicesOf(form.category).map((k) => (
+            {servicesOf(form.category, catalog.all).map((k) => (
               <option key={k} value={k}>
-                {serviceLabel(k)}
+                {serviceLabel(k, catalog.all)}
               </option>
             ))}
           </Select>
@@ -176,6 +177,7 @@ function PackageDialog({ draft, onClose }: { draft: PackageDraft | null; onClose
 }
 
 export function ProposalSettings() {
+  const catalog = useServiceCatalog();
   const qc = useQueryClient();
   const { data: settings, isLoading } = useSettings();
   const { data: packages } = usePackages();
@@ -229,7 +231,7 @@ export function ProposalSettings() {
     <Card id="propostas">
       <CardHeader
         title="Propostas e IA"
-        description="Pacotes de Web Design e de Design Gráfico, textos do PDF e o gerador de emails com IA."
+        description="Pacotes por categoria de serviço, textos do PDF e o gerador de emails com IA."
         actions={
           <Button size="sm" variant="outline" onClick={() => setEditing({ ...emptyDraft })}>
             <Plus className="h-3.5 w-3.5" aria-hidden /> Novo pacote
@@ -264,7 +266,7 @@ export function ProposalSettings() {
                   <p className="text-xs text-muted">
                     <span className="tabular">{formatCurrency(p.price)}</span> · {p.features.length} pontos
                     {p.delivery_days ? ` · ${p.delivery_days} dias` : ''}
-                    {p.service ? ` · ${serviceLabel(p.service)}` : ''}
+                    {p.service ? ` · ${serviceLabel(p.service, catalog.all)}` : ''}
                   </p>
                 </div>
                 <div className="flex shrink-0 gap-1">

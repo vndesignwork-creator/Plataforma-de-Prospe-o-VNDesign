@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 export const SETTINGS_SECTIONS = [
   { slug: 'assinatura', label: 'Assinatura' },
   { slug: 'lembretes', label: 'Follow-up e lembretes' },
+  { slug: 'servicos', label: 'Serviços' },
   { slug: 'propostas', label: 'Propostas e IA' },
   { slug: 'listas-tarefas', label: 'Listas de tarefas' },
   { slug: 'setores', label: 'Setores' },

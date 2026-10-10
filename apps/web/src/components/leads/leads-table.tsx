@@ -59,7 +59,7 @@ import { cn, displayHost } from '@/lib/utils';
 import { ChannelLabel, MobileLabel, PageSpeedScore, StatusBadge } from './badges';
 import { MultiSelectFilter } from './multi-select';
 import { ChannelIcon, SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
-import { ServiceIcons, serviceFilterOptions } from '@/components/services/services';
+import { ServiceIcons, useServiceFilterOptions } from '@/components/services/services';
 import { TaskProgress } from '@/components/tasks/task-progress';
 
 const PAGE_SIZE = 50;
@@ -253,6 +253,7 @@ const MOBILE_SORTS = [
 
 export function LeadsTable() {
   const router = useRouter();
+  const serviceOptions = useServiceFilterOptions();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const today = todayIso();
@@ -522,7 +523,7 @@ export function LeadsTable() {
           label="Serviço"
           value={query.service}
           onChange={(v) => setParams({ servico: v })}
-          options={serviceFilterOptions()}
+          options={serviceOptions}
         />
         <Input
           value={city}
