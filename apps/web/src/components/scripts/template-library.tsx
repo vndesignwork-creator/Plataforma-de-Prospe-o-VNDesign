@@ -12,7 +12,7 @@ import {
   type ContactTemplateCreateInput,
   type TemplateKind,
 } from '@vndesign/core';
-import { Copy, Plus, Trash2 } from 'lucide-react';
+import { ChevronRight, Copy, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -27,6 +27,17 @@ import { useLeads, useSectors, useTemplates } from '@/lib/queries';
 import { EMAIL_KINDS, useTemplateContext } from '@/lib/template-context';
 import { cn } from '@/lib/utils';
 import { SectorIconView } from '@/components/icons/lead-icons';
+
+/** Variáveis agrupadas pelo que preenchem (no editor de modelos). */
+const VARIABLE_GROUPS = [
+  { label: 'Do lead', keys: ['empresa', 'contacto', 'setor', 'cidade', 'problema', 'angulo', 'website', 'argumentos'] },
+  { label: 'Datas', keys: ['data', 'hoje'] },
+  {
+    label: 'Os teus dados',
+    keys: ['meu_nome', 'meu_cargo', 'meu_telefone', 'meu_email', 'meu_site', 'portfolio', 'portfolio_design', 'projetos', 'assinatura', 'opt_out'],
+  },
+] as const;
+
 
 type FormOutput = z.output<typeof ContactTemplateCreateSchema>;
 
@@ -220,25 +231,37 @@ function Editor({ template, onSaved, onDeleted }: { template: ContactTemplate | 
               className="font-mono text-[13px] leading-relaxed"
             />
           </Field>
-          <div>
-            <p className="mb-1.5 text-xs font-medium text-muted">Inserir variável (no cursor):</p>
-            <div className="flex flex-wrap gap-1.5">
-              {TEMPLATE_VARIABLES.map((v) => (
-                <button
-                  key={v.key}
-                  type="button"
-                  onClick={() => insertVariable(v.key)}
-                  title={v.label}
-                  className="rounded-md border border-border bg-surface-2 px-2 py-0.5 font-mono text-xs hover:border-accent hover:text-accent-text"
-                >
-                  {`{{${v.key}}}`}
-                </button>
+          {/* Variáveis recolhidas: abrem-se só quando são precisas, agrupadas pelo que preenchem. */}
+          <details className="group rounded-lg border border-border">
+            <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 px-3 py-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
+              <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" aria-hidden />
+              Inserir variável
+              <span className="font-normal text-muted">no sítio do cursor</span>
+            </summary>
+            <div className="flex flex-col gap-3 border-t border-border p-3">
+              {VARIABLE_GROUPS.map((group) => (
+                <div key={group.label}>
+                  <p className="mb-1.5 text-xs font-semibold tracking-wide text-muted uppercase">{group.label}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {TEMPLATE_VARIABLES.filter((v) => (group.keys as readonly string[]).includes(v.key)).map((v) => (
+                      <button
+                        key={v.key}
+                        type="button"
+                        onClick={() => insertVariable(v.key)}
+                        title={v.label}
+                        className="rounded-md border border-border bg-surface-2 px-2 py-0.5 font-mono text-xs hover:border-accent hover:text-accent-text"
+                      >
+                        {`{{${v.key}}}`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ))}
+              <p className="text-xs text-muted">
+                Dica: <code className="font-mono">{'{{contacto|equipa}}'}</code> usa “equipa” quando o lead não tem contacto.
+              </p>
             </div>
-            <p className="mt-2 text-xs text-muted">
-              Dica: <code className="font-mono">{'{{contacto|equipa}}'}</code> usa “equipa” quando o lead não tem contacto.
-            </p>
-          </div>
+          </details>
         </div>
         <div className="flex min-w-0 flex-col gap-4">
           <Preview subject={subject ?? ''} body={body ?? ''} isEmail={isEmail} />

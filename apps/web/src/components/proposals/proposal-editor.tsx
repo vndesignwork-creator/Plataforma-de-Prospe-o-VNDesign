@@ -28,6 +28,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button, buttonClasses } from '@/components/ui/button';
+import { CATEGORY_ICONS } from '@/components/services/services';
 import { Badge, Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
@@ -268,33 +269,41 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
             <CardHeader title="Itens" description="Escolhe pacotes ou acrescenta itens à medida. Os preços podem ser ajustados." />
             <div className="flex flex-col gap-4 p-4">
               {packages?.length ? (
-                <div className="flex flex-col gap-2" role="group" aria-label="Acrescentar pacote">
+                <div className="flex flex-col gap-4" role="group" aria-label="Acrescentar pacote">
                   {SERVICE_CATEGORIES.map((category) => {
                     const group = packages.filter((p) => (p.category ?? 'web') === category);
                     if (!group.length) return null;
+                    const Icon = CATEGORY_ICONS[category];
                     return (
-                      <div key={category} className="flex flex-wrap items-center gap-2">
-                        <span className="w-full text-xs font-semibold tracking-wide text-muted uppercase sm:w-28">
+                      <section key={category} aria-label={SERVICE_CATEGORY_LABELS[category]}>
+                        <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted uppercase">
+                          <Icon className="h-3.5 w-3.5" aria-hidden />
                           {SERVICE_CATEGORY_LABELS[category]}
-                        </span>
-                        {group.map((p) => (
-                          <Button
-                            key={p.id}
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setItems((list) => [...list, toDraft(itemFromPackage(p, isRecurringPackage(p)))])}
-                          >
-                            <Plus className="h-3.5 w-3.5" aria-hidden /> {p.name}
-                            <span className="text-muted tabular">
-                              {formatCurrency(p.price, { decimals: false })}
-                              {isRecurringPackage(p) ? '/mês' : ''}
-                            </span>
-                          </Button>
-                        ))}
-                      </div>
+                        </h3>
+                        {/* Grelha: todos os pacotes com a mesma largura, nome à esquerda e preço à direita. */}
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          {group.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => setItems((list) => [...list, toDraft(itemFromPackage(p, isRecurringPackage(p)))])}
+                              className="flex min-h-10 items-center gap-2 rounded-lg border border-border px-3 py-2 text-left text-sm transition-colors hover:border-accent hover:bg-surface-2"
+                            >
+                              <Plus className="h-3.5 w-3.5 shrink-0 text-accent-text" aria-hidden />
+                              <span className="min-w-0 flex-1 break-words">
+                                {p.name}
+                              </span>
+                              <span className="shrink-0 text-muted tabular">
+                                {formatCurrency(p.price, { decimals: false })}
+                                {isRecurringPackage(p) ? '/mês' : ''}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </section>
                     );
                   })}
-                  <div>
+                  <div className="border-t border-border pt-3">
                   <Button
                     size="sm"
                     variant="ghost"
