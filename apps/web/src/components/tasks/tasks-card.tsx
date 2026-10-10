@@ -32,6 +32,7 @@ import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownSep
 import { Input } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
 import { useInvalidateTasks, useLeadTasks, useTaskTemplates } from '@/lib/queries';
+import { Linkified } from '@/lib/linkify';
 import { cn } from '@/lib/utils';
 import { TaskProgress } from './task-progress';
 
@@ -148,26 +149,27 @@ function TaskRow({
         <TaskEditor task={task} onSave={onSave} onCancel={onCancelEdit} />
       ) : (
         <>
-          <button
-            type="button"
-            onClick={onEdit}
-            className={cn('min-w-0 flex-1 text-left text-sm break-words', done && 'text-muted line-through')}
-            title="Editar"
+          {/* Tocar no texto edita; os links do texto abrem (o lápis faz o mesmo, para o teclado). */}
+          <span
+            onClick={(e) => {
+              if (!(e.target as HTMLElement).closest('a')) onEdit();
+            }}
+            className={cn('min-w-0 flex-1 cursor-text text-sm break-words', done && 'text-muted line-through')}
           >
-            {task.title}
+            <Linkified text={task.title} />
             {task.due_on ? (
               <>
                 {' '}
                 <DueChip due={task.due_on} today={today} done={done} />
               </>
             ) : null}
-          </button>
+          </span>
           <span className="flex shrink-0 items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100 pointer-coarse:opacity-100">
             <button
               type="button"
               onClick={onEdit}
               aria-label={`Editar: ${task.title}`}
-              className="rounded p-1 text-muted hover:bg-surface-3 hover:text-fg max-sm:hidden"
+              className="rounded p-1 text-muted hover:bg-surface-3 hover:text-fg pointer-coarse:p-1.5"
             >
               <Pencil className="h-3.5 w-3.5" aria-hidden />
             </button>
@@ -228,7 +230,6 @@ export function TasksCard({ lead }: { lead: Lead }) {
   const { data: templates } = useTaskTemplates();
   const [title, setTitle] = useState('');
   const [due, setDue] = useState('');
-  const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
 
@@ -261,16 +262,19 @@ export function TasksCard({ lead }: { lead: Lead }) {
 
   async function add(e: FormEvent) {
     e.preventDefault();
-    if (!title.trim()) return;
-    setAdding(true);
+    const value = title.trim();
+    if (!value) return;
+    // Limpa já, para se poder escrever a seguinte enquanto esta grava (o texto volta se der erro).
+    const dueValue = due;
+    setTitle('');
+    setDue('');
     try {
-      await api(`/leads/${lead.id}/tasks`, { method: 'POST', body: { title: title.trim(), due_on: due || null } });
-      setTitle('');
-      setDue('');
+      await api(`/leads/${lead.id}/tasks`, { method: 'POST', body: { title: value, due_on: dueValue || null } });
     } catch (error) {
       toast.error(errorMessage(error));
+      setTitle(value);
+      setDue(dueValue);
     } finally {
-      setAdding(false);
       invalidate(lead.id);
     }
   }
@@ -373,7 +377,8 @@ export function TasksCard({ lead }: { lead: Lead }) {
           className="min-w-0 flex-[1_1_10rem]"
         />
         <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} aria-label="Prazo (opcional)" className="w-auto flex-[0_1_9.5rem]" />
-        <Button type="submit" size="sm" loading={adding} disabled={!title.trim()}>
+        {/* Sem "a carregar": o Enter tem de continuar a funcionar enquanto a anterior grava. */}
+        <Button type="submit" size="sm" disabled={!title.trim()}>
           <Plus className="h-4 w-4" aria-hidden />
           Acrescentar
         </Button>

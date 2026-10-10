@@ -25,6 +25,7 @@ import { StatusBadge } from '@/components/leads/badges';
 import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
 import { api, errorMessage } from '@/lib/api-client';
 import { DueChip } from '@/components/tasks/tasks-card';
+import { Linkified } from '@/lib/linkify';
 import { useDashboard, useSectors, useToday } from '@/lib/queries';
 import { ChannelIcon, SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 
@@ -101,7 +102,7 @@ function TodayTasks({ title, today, tasks }: { title: string; today: string; tas
                 className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer"
               />
               <span className="min-w-0 flex-1">
-                <span className={`block text-sm font-medium break-words ${done ? 'text-muted line-through' : ''}`}>{t.title}</span>
+                <span className={`block text-sm font-medium break-words ${done ? 'text-muted line-through' : ''}`}><Linkified text={t.title} /></span>
                 <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
                   <DueChip due={t.due_on} today={today} done={done} />
                   <Link href={`${leadPath(t.lead)}#tarefas`} className="hover:text-fg hover:underline">

@@ -41,17 +41,32 @@ test('ficha: acrescentar, reordenar com o teclado, concluir e editar tarefas', a
   await expect(page.getByLabel('Atividade do lead').getByText('Tarefa concluída')).toBeVisible();
 
   // Editar com prazo.
-  await card.getByRole('button', { name: 'Fazer maquete', exact: true }).click();
+  await card.getByRole('button', { name: 'Editar: Fazer maquete' }).click();
   await card.getByLabel('Texto da tarefa').fill('Fazer maquete da página inicial');
   await card.getByLabel('Prazo da tarefa').fill(iso(-1));
   await card.getByRole('button', { name: 'Guardar' }).click();
   await expect(card.getByText('Fazer maquete da página inicial')).toBeVisible();
   await expect(card.getByText('(em atraso)')).toBeAttached();
 
+  // Links no texto ficam clicáveis (e não abrem a edição).
+  await card.getByLabel('Nova tarefa').fill('Ver referência em oquintal.pt/menu.');
+  await card.getByLabel('Nova tarefa').press('Enter');
+  const link = card.getByRole('link', { name: 'oquintal.pt/menu' });
+  await expect(link).toHaveAttribute('href', 'https://oquintal.pt/menu');
+  await expect(link).toHaveAttribute('target', '_blank');
+
+  // Escrever a seguinte logo a seguir não perde o texto.
+  await card.getByLabel('Nova tarefa').fill('Primeira rápida');
+  await card.getByLabel('Nova tarefa').press('Enter');
+  await card.getByLabel('Nova tarefa').fill('Segunda rápida');
+  await card.getByLabel('Nova tarefa').press('Enter');
+  await expect(card.getByRole('list', { name: 'Tarefas por fazer' }).getByText('Segunda rápida')).toBeVisible();
+  await expect(card.getByLabel('Nova tarefa')).toHaveValue('');
+
   // Apagar.
   await card.getByRole('button', { name: 'Apagar: Publicar site' }).click();
   await expect(page.getByText('Tarefa apagada.')).toBeVisible();
-  await expect(pending).toHaveCount(1);
+  await expect(pending).toHaveCount(4);
 });
 
 test('lista pronta sugerida pelos serviços do lead (sem repetir tarefas)', async ({ page }) => {
