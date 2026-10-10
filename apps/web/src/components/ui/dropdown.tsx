@@ -2,11 +2,45 @@
 
 import * as Menu from '@radix-ui/react-dropdown-menu';
 import { Check } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { createContext, useContext, useRef, useState, type ComponentProps, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { cn } from '@/lib/utils';
 
-export const DropdownRoot = Menu.Root;
-export const DropdownTrigger = Menu.Trigger;
+const SetOpen = createContext<Dispatch<SetStateAction<boolean>> | null>(null);
+
+export function DropdownRoot(props: Omit<ComponentProps<typeof Menu.Root>, 'open' | 'onOpenChange'>) {
+  const [open, setOpen] = useState(false);
+  return (
+    <SetOpen.Provider value={setOpen}>
+      <Menu.Root {...props} open={open} onOpenChange={setOpen} />
+    </SetOpen.Provider>
+  );
+}
+
+/**
+ * O Radix abre o menu logo ao pousar o dedo (pointerdown): no telemóvel, um
+ * deslize para fazer scroll que comece em cima do botão abria o menu e travava o
+ * scroll. Com o dedo/caneta só abre no toque completo (click); com o rato e o
+ * teclado fica igual.
+ */
+export function DropdownTrigger({ onPointerDown, onClick, ...props }: ComponentProps<typeof Menu.Trigger>) {
+  const setOpen = useContext(SetOpen);
+  const touch = useRef(false);
+  return (
+    <Menu.Trigger
+      {...props}
+      onPointerDown={(e) => {
+        onPointerDown?.(e);
+        touch.current = e.pointerType !== 'mouse';
+        if (touch.current && setOpen) e.preventDefault(); // o Radix ignora eventos já "prevenidos"
+      }}
+      onClick={(e) => {
+        onClick?.(e);
+        if (touch.current && setOpen && !e.defaultPrevented) setOpen((o) => !o);
+        touch.current = false;
+      }}
+    />
+  );
+}
 
 export function DropdownContent({ children, className, align = 'end' }: { children: ReactNode; className?: string; align?: 'start' | 'end' }) {
   return (

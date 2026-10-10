@@ -4,7 +4,7 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
   TouchSensor,
   closestCorners,
   useDroppable,
@@ -29,12 +29,13 @@ import {
   type Lead,
   type LeadStatus,
 } from '@vndesign/core';
-import { GripVertical, Search } from 'lucide-react';
+import { ArrowLeftRight, GripVertical, Search } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { MultiSelectFilter } from '@/components/leads/multi-select';
 import { Skeleton } from '@/components/ui/card';
+import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownTrigger } from '@/components/ui/dropdown';
 import { Input } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
 import { useDebouncedValue } from '@/lib/hooks';
@@ -72,12 +73,15 @@ function LeadCard({
   today,
   dragging,
   handle,
+  menu,
 }: {
   lead: Lead;
   today: string;
   dragging?: boolean;
   /** Pega para arrastar (botão focável); no cartão fantasma é só o ícone. */
   handle?: ReactNode;
+  /** Menu "Mudar estado" (alternativa a arrastar, sobretudo no telemóvel). */
+  menu?: ReactNode;
 }) {
   const overdue = lead.next_action_on !== null && lead.next_action_on < today;
   return (
@@ -118,22 +122,57 @@ function LeadCard({
             <p className="mt-1.5 text-xs font-medium tabular">{formatCurrency(lead.estimated_value)}</p>
           ) : null}
         </div>
+        {menu}
       </div>
     </div>
   );
 }
 
-function SortableCard({ lead, today }: { lead: Lead; today: string }) {
+type MoveTo = (lead: Lead, to: LeadStatus) => void;
+
+/** Botão ⇄ com a lista de estados: muda o lead de coluna com um toque, sem arrastar. */
+function MoveMenu({ lead, statuses, onMove }: { lead: Lead; statuses: LeadStatus[]; onMove: MoveTo }) {
+  return (
+    <DropdownRoot>
+      <DropdownTrigger
+        aria-label={`Mudar estado de #${lead.number} ${lead.company_name}`}
+        // Não deixa o toque/clique no botão começar a arrastar o cartão.
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+        className="-m-1 shrink-0 rounded p-1 text-muted hover:bg-surface-3 hover:text-fg data-[state=open]:bg-surface-3 data-[state=open]:text-fg pointer-coarse:-m-2 pointer-coarse:p-2"
+      >
+        <ArrowLeftRight className="h-4 w-4" aria-hidden />
+      </DropdownTrigger>
+      <DropdownContent className="min-w-48">
+        <DropdownLabel>Mudar para</DropdownLabel>
+        {statuses
+          .filter((s) => s !== lead.status)
+          .map((s) => (
+            <DropdownItem key={s} onSelect={() => onMove(lead, s)}>
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: LEAD_STATUS_META[s].color }} aria-hidden />
+              {LEAD_STATUS_META[s].label}
+            </DropdownItem>
+          ))}
+      </DropdownContent>
+    </DropdownRoot>
+  );
+}
+
+function SortableCard({ lead, today, statuses, onMove }: { lead: Lead; today: string; statuses: LeadStatus[]; onMove: MoveTo }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: lead.id,
   });
-  // Com o rato/dedo arrasta-se o cartão inteiro; com o teclado, a partir da pega.
-  // O <li> continua a ser um item de lista (a pega e o link são os únicos controlos).
+  // Rato: arrasta-se o cartão inteiro. Dedo: mantém-se premido (para deslizar o
+  // ecrã continuar a fazer scroll). Teclado: a partir da pega.
+  // O <li> continua a ser um item de lista (a pega, o link e o menu são os controlos).
   return (
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={cn('touch-manipulation', isDragging && 'opacity-40')}
+      className={cn(
+        'touch-manipulation pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]',
+        isDragging && 'opacity-40',
+      )}
       {...listeners}
     >
       <LeadCard
@@ -146,25 +185,40 @@ function SortableCard({ lead, today }: { lead: Lead; today: string }) {
             {...attributes}
             aria-roledescription="cartão arrastável"
             aria-label={`Mover #${lead.number} ${lead.company_name}, ${LEAD_STATUS_META[lead.status].label}`}
-            className="-m-1 shrink-0 cursor-grab rounded p-1 text-muted hover:bg-surface-3 hover:text-fg"
+            className="-m-1 shrink-0 cursor-grab touch-none rounded p-1 text-muted hover:bg-surface-3 hover:text-fg"
           >
             <GripVertical className="h-4 w-4" aria-hidden />
           </button>
         }
+        menu={<MoveMenu lead={lead} statuses={statuses} onMove={onMove} />}
       />
     </li>
   );
 }
 
-function Column({ status, leads, today }: { status: LeadStatus; leads: Lead[]; today: string }) {
+function Column({
+  status,
+  leads,
+  today,
+  statuses,
+  onMove,
+}: {
+  status: LeadStatus;
+  leads: Lead[];
+  today: string;
+  statuses: LeadStatus[];
+  onMove: MoveTo;
+}) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const meta = LEAD_STATUS_META[status];
   const value = leads.reduce((s, l) => s + (l.estimated_value ?? 0), 0);
   return (
     <section
       aria-labelledby={`col-${status}`}
+      data-column={status}
       className={cn(
-        'flex min-h-0 w-64 shrink-0 flex-col rounded-xl border border-border bg-surface-2/60 xl:w-72',
+        // Telemóvel: colunas quase da largura do ecrã (vê-se a ponta da seguinte), com encaixe ao deslizar.
+        'flex w-[min(18rem,calc(100vw-3.5rem))] shrink-0 snap-start snap-always flex-col rounded-xl border border-border bg-surface-2/60 sm:w-64 md:min-h-0 xl:w-72',
         isOver && 'border-accent',
       )}
     >
@@ -177,9 +231,14 @@ function Column({ status, leads, today }: { status: LeadStatus; leads: Lead[]; t
         {value > 0 ? <span className="text-xs text-muted tabular">{formatCurrency(value, { decimals: false })}</span> : null}
       </header>
       <SortableContext id={status} items={leads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
-        <ul ref={setNodeRef} className="flex min-h-24 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain p-2" aria-label={`Leads em ${meta.label}`}>
+        {/* No telemóvel a coluna cresce e faz-se scroll à página (um só scroll vertical); a partir de md cada coluna tem o seu. */}
+        <ul
+          ref={setNodeRef}
+          className="flex min-h-24 flex-1 flex-col gap-2 p-2 md:overflow-y-auto md:overscroll-contain"
+          aria-label={`Leads em ${meta.label}`}
+        >
           {leads.map((lead) => (
-            <SortableCard key={lead.id} lead={lead} today={today} />
+            <SortableCard key={lead.id} lead={lead} today={today} statuses={statuses} onMove={onMove} />
           ))}
           {leads.length === 0 ? (
             <li className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs text-muted">
@@ -189,6 +248,64 @@ function Column({ status, leads, today }: { status: LeadStatus; leads: Lead[]; t
         </ul>
       </SortableContext>
     </section>
+  );
+}
+
+/** Índice das colunas (fica preso no topo): saltar para uma coluna sem deslizar o quadro todo. */
+function ColumnNav({
+  columns,
+  active,
+  onSelect,
+}: {
+  columns: Columns;
+  active: LeadStatus | null;
+  onSelect: (status: LeadStatus) => void;
+}) {
+  const listRef = useRef<HTMLUListElement>(null);
+  const statuses = Object.keys(columns) as LeadStatus[];
+  const current = active ?? statuses[0];
+
+  // Mantém o botão da coluna atual à vista dentro do índice.
+  useEffect(() => {
+    const list = listRef.current;
+    const button = list?.querySelector<HTMLElement>(`[data-nav="${current}"]`);
+    if (!list || !button) return;
+    const left = button.offsetLeft - list.offsetLeft;
+    if (left < list.scrollLeft || left + button.offsetWidth > list.scrollLeft + list.clientWidth) {
+      list.scrollTo({ left: left - 16 });
+    }
+  }, [current]);
+
+  return (
+    <nav
+      aria-label="Colunas do Kanban"
+      className="sticky top-14 z-30 -mx-4 -mt-2 mb-1 border-b border-border bg-bg/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 lg:top-0 lg:-mx-8 lg:px-8"
+    >
+      <ul ref={listRef} className="relative flex gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {statuses.map((status) => {
+          const meta = LEAD_STATUS_META[status];
+          const isCurrent = status === current;
+          return (
+            <li key={status} className="shrink-0">
+              <button
+                type="button"
+                data-nav={status}
+                onClick={() => onSelect(status)}
+                aria-current={isCurrent ? 'true' : undefined}
+                className={cn(
+                  'flex min-h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium whitespace-nowrap transition-colors pointer-coarse:min-h-10',
+                  isCurrent ? 'border-accent bg-accent-soft text-accent-text' : 'border-border bg-surface text-muted hover:text-fg',
+                )}
+              >
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: meta.color }} aria-hidden />
+                {meta.label}
+                <span className="tabular opacity-80">{columns[status].length}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 }
 
@@ -211,9 +328,12 @@ export function KanbanBoard() {
   const serverColumns = useMemo(() => (board ? toColumns(board) : null), [board]);
   const columns = dragColumns ?? serverColumns;
 
+  // Rato e dedo têm sensores separados: com um só sensor de "ponteiro", deslizar o
+  // dedo para fazer scroll agarrava logo o cartão. No telemóvel é preciso manter o
+  // dedo parado ~¼ s; se mexer antes disso, é scroll normal.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
@@ -234,10 +354,12 @@ export function KanbanBoard() {
     onDragCancel: ({ active }) => `Movimento de ${leadName(active.id)} cancelado.`,
   };
 
-  function onDragStart({ active }: DragStartEvent) {
+  function onDragStart({ active, activatorEvent }: DragStartEvent) {
     if (!serverColumns) return;
     setActiveId(String(active.id));
     setDragColumns(structuredClone(serverColumns));
+    // Vibração curta a confirmar que o cartão foi agarrado (Android).
+    if ('touches' in activatorEvent) navigator.vibrate?.(10);
   }
 
   function onDragOver({ active, over }: DragOverEvent) {
@@ -279,14 +401,28 @@ export function KanbanBoard() {
     }
     const position = positionAt(list, index);
     list[index] = { ...list[index]!, kanban_position: position, status: to };
-    const optimistic = { ...cols, [to]: list };
+    setDragColumns(null);
+    await saveMove(original, to, position, { ...cols, [to]: list });
+  }
+
+  /** Menu "Mudar para": o lead vai para o topo da coluna escolhida. */
+  async function moveTo(lead: Lead, to: LeadStatus) {
+    if (!serverColumns || lead.status === to) return;
+    const first = serverColumns[to][0];
+    const position = first ? first.kanban_position - 1 : 0;
+    await saveMove(lead, to, position, {
+      ...serverColumns,
+      [lead.status]: serverColumns[lead.status].filter((l) => l.id !== lead.id),
+      [to]: [{ ...lead, status: to, kanban_position: position }, ...serverColumns[to]],
+    });
+  }
+
+  async function saveMove(original: Lead, to: LeadStatus, position: number, optimistic: Columns) {
     qc.setQueryData(['board', query], (old: BoardColumn[] | undefined) =>
       old?.map((c) => ({ ...c, leads: optimistic[c.status], total: optimistic[c.status].length })),
     );
-    setDragColumns(null);
-
     try {
-      const { data: updated } = await api<{ data: Lead }>(`/leads/${active.id}/move`, {
+      const { data: updated } = await api<{ data: Lead }>(`/leads/${original.id}/move`, {
         method: 'POST',
         body: { status: to, position },
       });
@@ -299,11 +435,56 @@ export function KanbanBoard() {
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
-      invalidate(String(active.id));
+      invalidate(original.id);
     }
   }
 
   const activeLead = activeId && columns ? Object.values(columns).flat().find((l) => l.id === activeId) : null;
+  const statuses = useMemo(() => (columns ? (Object.keys(columns) as LeadStatus[]) : []), [columns]);
+
+  // Coluna destacada no índice: mantém-se enquanto se vir inteira (útil no computador,
+  // onde se veem várias); senão passa a ser a primeira que se vê inteira.
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState<LeadStatus | null>(null);
+  const frame = useRef(0);
+  const pinnedUntil = useRef(0);
+  const onBoardScroll = useCallback(() => {
+    cancelAnimationFrame(frame.current);
+    // Durante o scroll suave depois de tocar no índice, fica a coluna escolhida.
+    if (Date.now() < pinnedUntil.current) return;
+    frame.current = requestAnimationFrame(() => {
+      const el = scrollerRef.current;
+      if (!el) return;
+      const box = el.getBoundingClientRect();
+      const pad = parseFloat(getComputedStyle(el).paddingLeft) || 0;
+      const view = { left: box.left + pad, right: box.right - pad };
+      const cols = [...el.querySelectorAll<HTMLElement>('[data-column]')];
+      const inView = (c: HTMLElement) => {
+        const r = c.getBoundingClientRect();
+        return r.left >= view.left - 2 && r.right <= view.right + 2;
+      };
+      setVisible((current) => {
+        const kept = cols.find((c) => c.dataset.column === current);
+        if (kept && inView(kept)) return current;
+        const next = cols.find(inView) ?? cols.find((c) => c.getBoundingClientRect().right > view.left + 24);
+        return (next?.dataset.column as LeadStatus | undefined) ?? null;
+      });
+    });
+  }, []);
+  useEffect(() => () => cancelAnimationFrame(frame.current), []);
+
+  function scrollToColumn(status: LeadStatus) {
+    const el = scrollerRef.current;
+    const col = el?.querySelector<HTMLElement>(`[data-column="${status}"]`);
+    if (!el || !col) return;
+    const pad = parseFloat(getComputedStyle(el).paddingLeft) || 0;
+    const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    pinnedUntil.current = Date.now() + 1000;
+    el.scrollTo({ left: col.offsetLeft - pad, behavior: smooth ? 'smooth' : 'auto' });
+    // Se a página já desceu dentro de uma coluna comprida, volta ao topo do quadro.
+    if (el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: 'start', behavior: smooth ? 'smooth' : 'auto' });
+    setVisible(status);
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -336,9 +517,15 @@ export function KanbanBoard() {
           />
         </div>
       </div>
-      <p className="text-sm text-muted">
-        Arrasta os cartões entre colunas para mudar o estado. Com o teclado: foca um cartão, carrega em Espaço, usa as
-        setas e Espaço para largar.
+      <p className="hidden text-sm text-muted pointer-fine:block">
+        Arrasta os cartões entre colunas para mudar o estado, ou usa o botão{' '}
+        <ArrowLeftRight className="inline h-3.5 w-3.5 align-[-2px]" role="img" aria-label="Mudar estado" />. Com o teclado: foca a
+        pega de um cartão, carrega em Espaço, usa as setas e Espaço para largar.
+      </p>
+      <p className="hidden text-sm text-muted pointer-coarse:block">
+        Desliza para o lado para mudar de coluna. Para mudar o estado, toca em{' '}
+        <ArrowLeftRight className="inline h-3.5 w-3.5 align-[-2px]" role="img" aria-label="Mudar estado" /> ou mantém o dedo num
+        cartão e arrasta-o.
       </p>
 
       {isLoading || !columns ? (
@@ -366,10 +553,19 @@ export function KanbanBoard() {
             },
           }}
         >
-          {/* Altura fixa: cada coluna tem o seu scroll e a barra horizontal fica à vista, logo abaixo do quadro. */}
-          <div className="-mx-4 flex h-[calc(100dvh-15rem)] min-h-96 gap-3 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-            {(Object.keys(columns) as LeadStatus[]).map((status) => (
-              <Column key={status} status={status} leads={columns[status]} today={today} />
+          <ColumnNav columns={columns} active={visible} onSelect={scrollToColumn} />
+          {/* Computador (md+): altura fixa, cada coluna tem o seu scroll e a barra horizontal fica à vista.
+              Telemóvel: as colunas crescem (scroll vertical da página) e deslizam para o lado com encaixe. */}
+          <div
+            ref={scrollerRef}
+            onScroll={onBoardScroll}
+            className={cn(
+              'relative -mx-4 flex scroll-mt-28 items-start gap-3 overflow-x-auto overscroll-x-contain px-4 pb-3 scroll-px-4 sm:-mx-6 sm:scroll-px-6 sm:px-6 md:h-[calc(100dvh-18.5rem)] md:min-h-96 md:items-stretch lg:-mx-8 lg:scroll-mt-16 lg:scroll-px-8 lg:px-8',
+              activeId ? 'snap-none' : 'snap-x snap-mandatory md:snap-none',
+            )}
+          >
+            {statuses.map((status) => (
+              <Column key={status} status={status} leads={columns[status]} today={today} statuses={statuses} onMove={moveTo} />
             ))}
           </div>
           <DragOverlay>{activeLead ? <LeadCard lead={activeLead} today={today} dragging /> : null}</DragOverlay>

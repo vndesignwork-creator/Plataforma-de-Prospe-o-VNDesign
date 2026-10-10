@@ -125,7 +125,7 @@ test('Kanban: arrastar com o rato para outra coluna', async ({ page }) => {
   await page.request.post('/api/v1/leads', { data: { company_name: name } });
   await page.goto('/kanban');
   await page.getByLabel('Filtrar leads no Kanban').fill(name);
-  const card = page.getByRole('button', { name: new RegExp(name) });
+  const card = page.getByRole('button', { name: new RegExp(`^Mover .*${name}`) });
   await expect(card).toBeVisible();
   await expect(page.getByRole('button', { name: /, Identificado$/ })).toHaveCount(1);
   const from = (await card.boundingBox())!;
@@ -137,4 +137,21 @@ test('Kanban: arrastar com o rato para outra coluna', async ({ page }) => {
   await page.mouse.up();
   await expect(page.getByText(/→ Respondeu\./)).toBeVisible();
   await expect(page.getByLabel('Leads em Respondeu').getByText(name)).toBeVisible();
+});
+
+test('Kanban: mudar o estado pelo menu ⇄ e saltar de coluna pelo índice', async ({ page }) => {
+  const name = `Kanban Menu ${run}`;
+  await page.request.post('/api/v1/leads', { data: { company_name: name } });
+  await page.goto('/kanban');
+  await page.getByLabel('Filtrar leads no Kanban').fill(name);
+  await expect(page.getByRole('button', { name: /, Identificado$/ })).toHaveCount(1);
+  await page.getByRole('button', { name: new RegExp(`^Mudar estado de .*${name}$`) }).click();
+  await page.getByRole('menuitem', { name: 'Reunião' }).click();
+  await expect(page.getByText(/→ Reunião\./)).toBeVisible();
+  await expect(page.getByLabel('Leads em Reunião').getByText(name)).toBeVisible();
+
+  const nav = page.getByRole('navigation', { name: 'Colunas do Kanban' });
+  await nav.getByRole('button', { name: /^Em pausa/ }).click();
+  await expect(nav.getByRole('button', { name: /^Em pausa/ })).toHaveAttribute('aria-current', 'true');
+  await expect(page.getByLabel('Leads em Em pausa')).toBeInViewport();
 });
