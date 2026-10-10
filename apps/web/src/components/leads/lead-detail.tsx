@@ -246,19 +246,22 @@ export function LeadDetail({ id }: { id: string }) {
           </span>
         }
         title={lead.company_name}
+        // Telemóvel/tablet: grelha de 2 colunas sem buracos (Estado | Editar ⋯ / Tarefas | Linha do tempo);
+        // no computador volta a ser uma fila de botões.
+        actionsClassName="grid w-full grid-cols-2 lg:flex lg:w-auto"
         actions={
           <>
-            <label className="sr-only" htmlFor="lead-status">
-              Estado
-            </label>
-            <span className="relative inline-flex">
+            <span className="relative inline-flex min-w-0">
+              <label className="sr-only" htmlFor="lead-status">
+                Estado
+              </label>
               <StatusIcon status={lead.status} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2" />
               <Select
                 id="lead-status"
                 value={lead.status}
                 onChange={(e) => changeStatus(e.target.value as LeadStatus)}
                 disabled={update.isPending || Boolean(lead.anonymized_at)}
-                className="w-auto pl-9 font-medium"
+                className="w-full pl-9 font-medium lg:w-auto"
               >
                 {LEAD_STATUSES.map((s) => (
                   <option key={s} value={s}>
@@ -267,43 +270,50 @@ export function LeadDetail({ id }: { id: string }) {
                 ))}
               </Select>
             </span>
-            {!lead.anonymized_at ? (
-              <Link href={leadPath(lead, '/editar')} className={buttonClasses('outline')}>
-                <Edit3 className="h-4 w-4" aria-hidden />
-                Editar
-              </Link>
-            ) : null}
-            {lead.archived_at ? (
-              <Button variant="outline" onClick={() => void setArchived(false)} loading={bulk.isPending}>
-                <ArchiveRestore className="h-4 w-4" aria-hidden />
-                Repor
-              </Button>
-            ) : (
-              <Button variant="outline" onClick={() => void setArchived(true)} loading={bulk.isPending}>
-                <Archive className="h-4 w-4" aria-hidden />
-                Arquivar
-              </Button>
-            )}
-            <DropdownRoot>
-              <DropdownTrigger className={buttonClasses('outline', 'icon')} aria-label="Mais ações">
-                <MoreHorizontal className="h-4 w-4" aria-hidden />
-              </DropdownTrigger>
-              <DropdownContent>
-                <DropdownItem onSelect={() => setDialog('merge')} disabled={Boolean(lead.anonymized_at)}>
-                  <GitMerge className="h-4 w-4" aria-hidden /> Juntar com outro lead…
-                </DropdownItem>
-                <DropdownSeparator />
-                <DropdownItem onSelect={() => setDialog('anonymize')} disabled={Boolean(lead.anonymized_at)}>
-                  <ShieldOff className="h-4 w-4" aria-hidden /> Anonimizar (RGPD)…
-                </DropdownItem>
-                <DropdownItem onSelect={() => setDialog('delete')} danger>
-                  <Trash2 className="h-4 w-4" aria-hidden /> Apagar lead…
-                </DropdownItem>
-              </DropdownContent>
-            </DropdownRoot>
+            <div className="flex min-w-0 gap-2 lg:contents">
+              {!lead.anonymized_at ? (
+                <Link href={leadPath(lead, '/editar')} className={buttonClasses('outline', 'md', 'min-w-0 flex-1 max-lg:px-3')}>
+                  <Edit3 className="h-4 w-4" aria-hidden />
+                  Editar
+                </Link>
+              ) : null}
+              {/* No telemóvel, Arquivar/Repor fica no menu "⋯" para a grelha não ter buracos. */}
+              {lead.archived_at ? (
+                <Button variant="outline" className="max-lg:hidden" onClick={() => void setArchived(false)} loading={bulk.isPending}>
+                  <ArchiveRestore className="h-4 w-4" aria-hidden />
+                  Repor
+                </Button>
+              ) : (
+                <Button variant="outline" className="max-lg:hidden" onClick={() => void setArchived(true)} loading={bulk.isPending}>
+                  <Archive className="h-4 w-4" aria-hidden />
+                  Arquivar
+                </Button>
+              )}
+              <DropdownRoot>
+                <DropdownTrigger className={buttonClasses('outline', 'icon', 'h-10 w-10 shrink-0')} aria-label="Mais ações">
+                  <MoreHorizontal className="h-4 w-4" aria-hidden />
+                </DropdownTrigger>
+                <DropdownContent>
+                  <DropdownItem className="lg:hidden" onSelect={() => void setArchived(!lead.archived_at)}>
+                    {lead.archived_at ? <ArchiveRestore className="h-4 w-4" aria-hidden /> : <Archive className="h-4 w-4" aria-hidden />}
+                    {lead.archived_at ? 'Repor' : 'Arquivar'}
+                  </DropdownItem>
+                  <DropdownItem onSelect={() => setDialog('merge')} disabled={Boolean(lead.anonymized_at)}>
+                    <GitMerge className="h-4 w-4" aria-hidden /> Juntar com outro lead…
+                  </DropdownItem>
+                  <DropdownSeparator />
+                  <DropdownItem onSelect={() => setDialog('anonymize')} disabled={Boolean(lead.anonymized_at)}>
+                    <ShieldOff className="h-4 w-4" aria-hidden /> Anonimizar (RGPD)…
+                  </DropdownItem>
+                  <DropdownItem onSelect={() => setDialog('delete')} danger>
+                    <Trash2 className="h-4 w-4" aria-hidden /> Apagar lead…
+                  </DropdownItem>
+                </DropdownContent>
+              </DropdownRoot>
+            </div>
             {/* Telemóvel/tablet: tarefas e linha do tempo ficam no fim da página. */}
             {!lead.anonymized_at ? (
-              <a href="#tarefas" className={buttonClasses('outline', 'md', 'lg:hidden')}>
+              <a href="#tarefas" className={buttonClasses('outline', 'md', 'min-w-0 px-3 lg:hidden')}>
                 <ListChecks className="h-4 w-4" aria-hidden />
                 Tarefas
                 {tasks?.length ? (
@@ -313,7 +323,7 @@ export function LeadDetail({ id }: { id: string }) {
                 ) : null}
               </a>
             ) : null}
-            <a href="#atividade" className={buttonClasses('outline', 'md', 'lg:hidden')}>
+            <a href="#atividade" className={buttonClasses('outline', 'md', 'min-w-0 px-3 lg:hidden')}>
               <History className="h-4 w-4" aria-hidden />
               Linha do tempo
             </a>

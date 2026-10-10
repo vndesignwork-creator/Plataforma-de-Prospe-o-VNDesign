@@ -69,14 +69,20 @@ export function DropdownItem({
   onSelect,
   danger,
   disabled,
+  className,
 }: {
   children: ReactNode;
   onSelect?: () => void;
   danger?: boolean;
   disabled?: boolean;
+  className?: string;
 }) {
   return (
-    <Menu.Item onSelect={onSelect} disabled={disabled} className={cn(itemClass, danger && 'text-danger data-[highlighted]:bg-danger-soft')}>
+    <Menu.Item
+      onSelect={onSelect}
+      disabled={disabled}
+      className={cn(itemClass, danger && 'text-danger data-[highlighted]:bg-danger-soft', className)}
+    >
       {children}
     </Menu.Item>
   );

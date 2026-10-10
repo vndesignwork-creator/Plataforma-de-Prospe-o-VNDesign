@@ -29,7 +29,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
-import { Card, CardHeader, Skeleton } from '@/components/ui/card';
+import { Card, Skeleton } from '@/components/ui/card';
 import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownSeparator, DropdownTrigger } from '@/components/ui/dropdown';
 import { Input } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
@@ -505,11 +505,16 @@ export function TasksCard({ lead }: { lead: Lead }) {
 
   return (
     <Card id="tarefas" className="scroll-mt-20">
-      <CardHeader
-        title="Tarefas"
-        description={total ? <TaskProgress progress={{ total, done: done.length }} long /> : 'Os próximos passos deste lead ou do projeto.'}
-        actions={templates ? <TemplateMenu templates={templates} suggested={suggested} onApply={(t) => void applyTemplate(t)} /> : null}
-      />
+      {/* Título e "Usar lista" na mesma linha (também no telemóvel); o progresso fica por baixo, a toda a largura. */}
+      <div className="border-b border-border px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-base font-semibold">Tarefas</h2>
+          {templates ? <TemplateMenu templates={templates} suggested={suggested} onApply={(t) => void applyTemplate(t)} /> : null}
+        </div>
+        <p className="mt-0.5 text-sm text-muted">
+          {total ? <TaskProgress progress={{ total, done: done.length }} long /> : 'Os próximos passos deste lead ou do projeto.'}
+        </p>
+      </div>
 
       <form onSubmit={add} className="flex flex-wrap items-center gap-2 border-b border-border p-3">
         <Input

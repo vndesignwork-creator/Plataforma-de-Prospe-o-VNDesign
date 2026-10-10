@@ -14,6 +14,7 @@ export default function LeadsPage() {
       <PageHeader
         title="Pipeline de leads"
         description="Todos os leads de prospeção, com filtros e pesquisa."
+        actionsClassName="ml-auto"
         actions={
           <Link href="/leads/novo" className={buttonClasses('primary')}>
             <Plus className="h-4 w-4" aria-hidden />
