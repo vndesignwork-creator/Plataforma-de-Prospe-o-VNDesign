@@ -9,11 +9,10 @@ import {
   type ApiTokenCreated,
   type ApiTokenScope,
 } from '@vndesign/core';
-import { Copy, KeyRound } from 'lucide-react';
-import Link from 'next/link';
+import { BookOpen, Copy, ExternalLink, KeyRound } from 'lucide-react';
 import { useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { Button, buttonClasses } from '@/components/ui/button';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
@@ -131,13 +130,15 @@ export function ApiSettings() {
     <Card id="api">
       <CardHeader
         title="API e integrações"
-        description={
-          <>
-            Tokens para outras ferramentas enviarem leads — por exemplo, a tua tarefa semanal de prospeção com o Claude.{' '}
-            <Link href="/docs/api" className="text-accent-text underline">
-              Documentação da API
-            </Link>
-          </>
+        description="Tokens para outras ferramentas enviarem leads — por exemplo, a tua tarefa semanal de prospeção com o Claude."
+        actions={
+          // A documentação técnica (endpoints e exemplos) abre à parte: é para quem liga outra ferramenta.
+          <a href="/docs/api" target="_blank" rel="noreferrer" className={buttonClasses('outline', 'sm')}>
+            <BookOpen className="h-3.5 w-3.5" aria-hidden />
+            Documentação da API
+            <ExternalLink className="h-3.5 w-3.5 text-muted" aria-hidden />
+            <span className="sr-only">(abre num novo separador)</span>
+          </a>
         }
       />
 

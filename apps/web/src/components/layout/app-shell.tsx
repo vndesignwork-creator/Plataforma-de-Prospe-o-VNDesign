@@ -1,7 +1,7 @@
 'use client';
 
 import * as RadixDialog from '@radix-ui/react-dialog';
-import { BarChart3, BookOpen, Columns3, FileUp, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Settings, Sun, Users, X } from 'lucide-react';
+import { BarChart3, Columns3, FileUp, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Settings, Sun, Users, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
@@ -45,18 +45,6 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
           </li>
         );
       })}
-      <li>
-        <a
-          href="/docs/api"
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted hover:bg-surface-2 hover:text-fg"
-        >
-          <BookOpen className="h-4 w-4" aria-hidden />
-          API
-          <span className="sr-only">(abre num novo separador)</span>
-        </a>
-      </li>
     </ul>
   );
 }
