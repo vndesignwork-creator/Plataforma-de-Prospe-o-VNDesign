@@ -24,7 +24,7 @@ import {
   type LeadTask,
   type TaskTemplate,
 } from '@vndesign/core';
-import { Bell, CalendarDays, ChevronRight, GripVertical, ListPlus, Pencil, Plus, X } from 'lucide-react';
+import { Bell, CalendarDays, Check, ChevronRight, GripVertical, ListPlus, Pencil, Plus, X } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -558,8 +558,19 @@ export function TasksCard({ lead }: { lead: Lead }) {
               min={today}
               autoFocus
               onChange={(e) => setDue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setShowDueInput(false);
+                }
+              }}
               className="w-auto"
             />
+            {/* Fecha só o calendário: a data escolhida fica no botão "Prazo" (para tirar: Prazo → Sem prazo). */}
+            <Button type="button" size="sm" variant={due ? 'secondary' : 'ghost'} onClick={() => setShowDueInput(false)}>
+              {due ? <Check className="h-4 w-4" aria-hidden /> : <X className="h-4 w-4" aria-hidden />}
+              {due ? 'OK' : 'Fechar'}
+            </Button>
             <p className="w-full text-xs text-muted">Com prazo, a tarefa aparece em “Hoje” no dashboard e nos resumos diários.</p>
           </div>
         ) : null}

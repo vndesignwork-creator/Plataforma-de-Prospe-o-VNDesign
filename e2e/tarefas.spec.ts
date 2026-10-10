@@ -74,7 +74,14 @@ test('ficha: acrescentar, reordenar com o teclado, concluir e editar tarefas', a
   await card.getByRole('button', { name: 'Prazo (opcional)' }).click();
   await page.getByRole('menuitem', { name: 'Escolher data…' }).click();
   await card.getByLabel('Prazo', { exact: true }).fill(iso(10));
+  await card.getByRole('button', { name: 'OK' }).click();
+  await expect(card.getByLabel('Prazo', { exact: true })).toHaveCount(0);
   await card.getByLabel('Nova tarefa').press('Enter');
+  // "Escolher data…" e fechar sem escolher nada.
+  await card.getByRole('button', { name: 'Prazo (opcional)' }).click();
+  await page.getByRole('menuitem', { name: 'Escolher data…' }).click();
+  await card.getByRole('button', { name: 'Fechar' }).click();
+  await expect(card.getByLabel('Prazo', { exact: true })).toHaveCount(0);
   await expect
     .poll(async () => {
       const tasks = (await (await page.request.get(`/api/v1/leads/${lead.id}/tasks`)).json()).data as { title: string; due_on: string | null }[];
