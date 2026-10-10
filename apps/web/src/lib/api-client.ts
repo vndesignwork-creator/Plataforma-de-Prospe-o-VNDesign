@@ -34,17 +34,30 @@ export function toQueryString(query?: Record<string, QueryValue>): string {
   return s ? `?${s}` : '';
 }
 
+/** Avisa o UpdateWatcher de que um pedido falhou (pode ser uma publicação em curso). */
+function notifyApiFailure() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('vnd:api-failure'));
+}
+
 export async function api<T>(
   path: string,
   options: { method?: string; body?: unknown; query?: Record<string, QueryValue>; signal?: AbortSignal } = {},
 ): Promise<T> {
-  const res = await fetch(`/api/v1${path}${toQueryString(options.query)}`, {
-    method: options.method ?? 'GET',
-    headers: options.body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-    credentials: 'same-origin',
-    signal: options.signal,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`/api/v1${path}${toQueryString(options.query)}`, {
+      method: options.method ?? 'GET',
+      headers: options.body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      credentials: 'same-origin',
+      signal: options.signal,
+    });
+  } catch (error) {
+    if (!(error instanceof Error && error.name === 'AbortError')) notifyApiFailure();
+    throw error;
+  }
+  // 502/503/504: o servidor está a reiniciar (publicação em curso) — o aviso explica.
+  if (res.status >= 502 && res.status <= 504) notifyApiFailure();
   if (res.status === 204) return undefined as T;
   const payload = await res.json().catch(() => null);
   if (!res.ok) {

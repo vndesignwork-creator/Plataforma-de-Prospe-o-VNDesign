@@ -1,11 +1,13 @@
 /*
  * Service worker da VNDesign Leads (PWA).
  *  - Página "Sem ligação" quando a navegação falha (os dados nunca ficam em cache).
+ *  - Página "A atualizar" quando o servidor está a reiniciar (publicação na Hostinger).
  *  - Notificações push (follow-ups do dia) e abertura do lead ao tocar.
  */
-const CACHE = 'vnd-shell-v1';
+const CACHE = 'vnd-shell-v2';
 const OFFLINE_URL = '/offline';
-const PRECACHE = [OFFLINE_URL, '/icons/icon-192.png', '/icons/badge-96.png'];
+const UPDATING_URL = '/a-atualizar';
+const PRECACHE = [OFFLINE_URL, UPDATING_URL, '/icons/icon-192.png', '/icons/badge-96.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -25,11 +27,18 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Só as navegações (páginas): rede primeiro; sem rede, a página "Sem ligação".
+// Só as navegações (páginas): rede primeiro.
+//  - 502/503/504 ou servidor sem resposta (com internet): "A atualizar" (volta sozinha);
+//  - sem internet: "Sem ligação".
 self.addEventListener('fetch', (event) => {
   if (event.request.mode !== 'navigate') return;
   event.respondWith(
-    fetch(event.request).catch(async () => (await caches.match(OFFLINE_URL)) || Response.error()),
+    fetch(event.request)
+      .then(async (res) => (res.status >= 502 && res.status <= 504 ? (await caches.match(UPDATING_URL)) || res : res))
+      .catch(async () => {
+        const page = self.navigator.onLine === false ? OFFLINE_URL : UPDATING_URL;
+        return (await caches.match(page)) || (await caches.match(OFFLINE_URL)) || Response.error();
+      }),
   );
 });
 

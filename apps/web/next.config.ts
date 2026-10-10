@@ -1,5 +1,25 @@
+import { execSync } from 'node:child_process';
 import path from 'node:path';
 import type { NextConfig } from 'next';
+
+/**
+ * Identificador desta versão (o commit, ou a hora do build). Fica em
+ * NEXT_PUBLIC_BUILD_ID (os processos do build herdam-no, por isso é igual em todos)
+ * e serve para a plataforma perceber que foi publicada uma versão nova.
+ */
+function buildId(): string {
+  if (process.env.NEXT_PUBLIC_BUILD_ID) return process.env.NEXT_PUBLIC_BUILD_ID;
+  let id = '';
+  try {
+    id = execSync('git rev-parse --short=12 HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+  } catch {
+    // Sem git (ex.: build a partir de um zip): usa a hora.
+  }
+  id ||= `t${Date.now().toString(36)}`;
+  process.env.NEXT_PUBLIC_BUILD_ID = id;
+  return id;
+}
+const BUILD_ID = buildId();
 
 const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -23,6 +43,9 @@ const nextConfig: NextConfig = {
   // Permite fixar a raiz do monorepo (evita avisos com vários lockfiles).
   turbopack: { root: path.join(__dirname, '..', '..') },
   poweredByHeader: false,
+  // Versão desta publicação: um separador aberto com a versão anterior recarrega a
+  // página em vez de pedir ficheiros que já não existem ("This page couldn't load").
+  deploymentId: BUILD_ID,
   // Imagem Docker (Coolify): BUILD_STANDALONE=1 gera um servidor Node autónomo.
   output: process.env.BUILD_STANDALONE ? 'standalone' : undefined,
   async headers() {

@@ -8,7 +8,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { authCookieOptions } from '@/lib/env';
 import { publicUrl } from '@/lib/public-url';
 
-const PUBLIC_PATHS = ['/login', '/auth/', '/api/', '/docs/', '/offline'];
+const PUBLIC_PATHS = ['/login', '/auth/', '/api/', '/docs/', '/offline', '/a-atualizar'];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
