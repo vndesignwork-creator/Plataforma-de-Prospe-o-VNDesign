@@ -242,6 +242,8 @@ const env = {
   SMTP_FROM: saved.SMTP_FROM || local.SMTP_FROM || 'VNDesign Leads <leads@vndesign.pt>',
 };
 
+// Variável sem valor fica comentada: a Hostinger não aceita campos vazios no "Import .env".
+const line = (k) => (env[k] ? `${k}=${env[k]}` : `# ${k}=   (por preencher: acrescentar no hPanel quando tiveres o valor)`);
 const lines = [
   '# Variáveis para a Hostinger (hPanel → o teu site Node.js → Variáveis de ambiente).',
   '# Gerado por "npm run publicar". NÃO enviar a ninguém nem pôr no GitHub (está no .gitignore).',
@@ -249,17 +251,17 @@ const lines = [
   '# NUNCA acrescentar as variáveis de teste (AUDIT_ALLOW_PRIVATE, AUDIT_SKIP_PAGESPEED, AI_BASE_URL, GEOCODER_URL, MAILPIT_URL).',
   '',
   '# --- Obrigatórias ---',
-  ...['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_SECRET_KEY', 'HOSTNAME', 'APP_URL', 'CRON_SECRET'].map((k) => `${k}=${env[k]}`),
+  ...['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_SECRET_KEY', 'HOSTNAME', 'APP_URL', 'CRON_SECRET'].map(line),
   '',
   '# --- Notificações no telemóvel (não mudar estas chaves depois de publicar) ---',
-  ...['VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY', 'VAPID_SUBJECT'].map((k) => `${k}=${env[k]}`),
+  ...['VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY', 'VAPID_SUBJECT'].map(line),
   '',
   '# --- Email com IA e auditor de sites (vazio = funcionalidade desligada) ---',
-  `ANTHROPIC_API_KEY=${env.ANTHROPIC_API_KEY}`,
-  `PAGESPEED_API_KEY=${env.PAGESPEED_API_KEY}`,
+  line('ANTHROPIC_API_KEY'),
+  line('PAGESPEED_API_KEY'),
   '',
   '# --- Resumo diário por email (SMTP da Hostinger; preenche SMTP_USER e SMTP_PASS com a caixa de email) ---',
-  ...['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM'].map((k) => `${k}=${env[k]}`),
+  ...['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM'].map(line),
   '',
 ];
 writeFileSync(OUT_FILE, lines.join('\n'), 'utf8');
