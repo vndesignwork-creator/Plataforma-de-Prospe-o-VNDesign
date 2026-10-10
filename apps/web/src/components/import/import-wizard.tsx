@@ -78,13 +78,18 @@ function ImportHistory() {
       <CardHeader title="Importações anteriores" />
       <ul className="divide-y divide-border">
         {jobs.map((job) => (
-          <li key={job.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm">
-            <span className="flex items-center gap-2">
-              <FileSpreadsheet className="h-4 w-4 text-muted" aria-hidden />
-              {job.filename ?? (job.source === 'api' ? 'API de integração' : 'Ficheiro')}
-              <span className="text-muted">· {formatDateTime(job.created_at)}</span>
+          <li key={job.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 text-sm">
+            {/* Nome por cima e data por baixo: um nome de ficheiro comprido parte-se em vez de empurrar a data. */}
+            <span className="flex min-w-0 items-start gap-2">
+              <FileSpreadsheet className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden />
+              <span className="min-w-0">
+                <span className="block font-medium break-all">
+                  {job.filename ?? (job.source === 'api' ? 'API de integração' : 'Ficheiro')}
+                </span>
+                <span className="block text-xs text-muted tabular">{formatDateTime(job.created_at)}</span>
+              </span>
             </span>
-            <span className="text-muted">
+            <span className="pl-6 text-muted sm:pl-0">
               {count(job.stats.created, 'criado', 'criados')} · {count(job.stats.merged, 'juntado', 'juntados')} ·{' '}
               {count(job.stats.skipped, 'ignorado', 'ignorados')}
               {job.stats.blocked ? ` · ${count(job.stats.blocked, 'bloqueado', 'bloqueados')}` : ''}
