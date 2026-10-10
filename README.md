@@ -139,7 +139,7 @@ português) com as mesmas colunas — pode ser reimportado sem mapear nada.
 ## Tarefas (projetos dos clientes)
 
 - **Cartão "Tarefas" na ficha** (coluna da direita; no telemóvel, botão *Tarefas* no topo):
-  escreve e carrega Enter, prazo opcional, marca a caixa quando está feito (passa para
+  escreve e carrega Enter, prazo opcional no botão **Prazo** (Hoje, Amanhã, Próxima semana ou outra data), marca a caixa quando está feito (passa para
   *Concluídas*), arrasta pela pega ⠿ para mudar a ordem (com o teclado: Espaço + setas).
 - **Listas prontas por serviço** (Site Institucional, Landing Page, Identidade Visual, Flyers…):
   a ficha sugere as dos serviços do lead; *Usar lista* acrescenta-as sem repetir tarefas.

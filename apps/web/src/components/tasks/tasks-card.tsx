@@ -15,6 +15,7 @@ import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities';
 import { useQueryClient } from '@tanstack/react-query';
 import {
+  addDays,
   formatDate,
   splitTasks,
   suggestTaskTemplates,
@@ -23,7 +24,7 @@ import {
   type LeadTask,
   type TaskTemplate,
 } from '@vndesign/core';
-import { Bell, ChevronRight, GripVertical, ListPlus, Pencil, Plus, X } from 'lucide-react';
+import { Bell, CalendarDays, ChevronRight, GripVertical, ListPlus, Pencil, Plus, X } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -74,6 +75,68 @@ export function ReminderChip({ task }: { task: Pick<LeadTask, 'remind_at' | 'rem
       <span className="sr-only">Lembrete: </span>
       {formatReminder(task.remind_at)}
     </span>
+  );
+}
+
+const WEEKDAYS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+const weekday = (iso: string) => WEEKDAYS[new Date(`${iso}T12:00:00Z`).getUTCDay()]!;
+const dayMonth = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+
+/** "Hoje", "Amanhã" ou "15/10" — o texto do botão do prazo. */
+export function dueLabel(due: string, today: string): string {
+  if (due === today) return 'Hoje';
+  if (due === addDays(today, 1)) return 'Amanhã';
+  return dayMonth(due);
+}
+
+/** Próxima segunda-feira (sempre a seguir a hoje). */
+export function nextMonday(today: string): string {
+  const dow = new Date(`${today}T12:00:00Z`).getUTCDay();
+  return addDays(today, (8 - dow) % 7 || 7);
+}
+
+/** Botão "📅 Prazo" com atalhos (Hoje, Amanhã, Próxima semana) e "Escolher data…". */
+function DuePicker({ value, today, onChange, onCustom }: { value: string; today: string; onChange: (v: string) => void; onCustom: () => void }) {
+  const options = [
+    { label: 'Hoje', date: today },
+    { label: 'Amanhã', date: addDays(today, 1) },
+    { label: 'Próxima semana', date: nextMonday(today) },
+  ];
+  return (
+    <DropdownRoot>
+      <DropdownTrigger
+        className={buttonClasses(value ? 'secondary' : 'outline', 'sm', 'min-h-9')}
+        aria-label={value ? `Prazo: ${dueLabel(value, today)} (${formatDate(value)})` : 'Prazo (opcional)'}
+        title="Prazo: aparece em “Hoje” e nos resumos diários"
+      >
+        <CalendarDays className="h-4 w-4" aria-hidden />
+        {value ? dueLabel(value, today) : 'Prazo'}
+      </DropdownTrigger>
+      <DropdownContent>
+        <DropdownLabel>Prazo</DropdownLabel>
+        {options.map((o) => (
+          <DropdownItem key={o.label} onSelect={() => onChange(o.date)}>
+            <span className="flex-1">{o.label}</span>
+            <span className="text-xs text-muted tabular">
+              {weekday(o.date)} {dayMonth(o.date)}
+            </span>
+          </DropdownItem>
+        ))}
+        <DropdownItem onSelect={onCustom}>
+          <CalendarDays className="h-4 w-4 text-muted" aria-hidden />
+          Escolher data…
+        </DropdownItem>
+        {value ? (
+          <>
+            <DropdownSeparator />
+            <DropdownItem onSelect={() => onChange('')}>
+              <X className="h-4 w-4 text-muted" aria-hidden />
+              Sem prazo
+            </DropdownItem>
+          </>
+        ) : null}
+      </DropdownContent>
+    </DropdownRoot>
   );
 }
 
@@ -300,6 +363,7 @@ export function TasksCard({ lead }: { lead: Lead }) {
   const [due, setDue] = useState('');
   const [remind, setRemind] = useState('');
   const [showRemind, setShowRemind] = useState(false);
+  const [showDueInput, setShowDueInput] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
 
@@ -341,6 +405,7 @@ export function TasksCard({ lead }: { lead: Lead }) {
     setDue('');
     setRemind('');
     setShowRemind(false);
+    setShowDueInput(false);
     try {
       await api(`/leads/${lead.id}/tasks`, {
         method: 'POST',
@@ -453,9 +518,17 @@ export function TasksCard({ lead }: { lead: Lead }) {
           placeholder="Nova tarefa…"
           aria-label="Nova tarefa"
           maxLength={300}
-          className="min-w-0 flex-[1_1_10rem]"
+          className="min-w-0 basis-full sm:flex-[1_1_10rem] sm:basis-auto"
         />
-        <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} aria-label="Prazo (opcional)" className="w-auto flex-[0_1_9.5rem]" />
+        <DuePicker
+          value={due}
+          today={today}
+          onChange={(v) => {
+            setDue(v);
+            setShowDueInput(false);
+          }}
+          onCustom={() => setShowDueInput(true)}
+        />
         <Button
           type="button"
           size="icon"
@@ -468,10 +541,28 @@ export function TasksCard({ lead }: { lead: Lead }) {
           <Bell className="h-4 w-4" aria-hidden />
         </Button>
         {/* Sem "a carregar": o Enter tem de continuar a funcionar enquanto a anterior grava. */}
-        <Button type="submit" size="sm" disabled={!title.trim()}>
+        <Button type="submit" size="sm" disabled={!title.trim()} className="max-sm:ml-auto">
           <Plus className="h-4 w-4" aria-hidden />
-          Acrescentar
+          {/* Em ecrãs muito estreitos fica só o "+", para caber na mesma linha que o prazo e o lembrete. */}
+          <span className="max-[380px]:sr-only">Acrescentar</span>
         </Button>
+        {showDueInput ? (
+          <div className="flex w-full flex-wrap items-center gap-2 text-sm">
+            <label htmlFor={`due-${lead.id}`} className="text-muted">
+              Prazo
+            </label>
+            <Input
+              id={`due-${lead.id}`}
+              type="date"
+              value={due}
+              min={today}
+              autoFocus
+              onChange={(e) => setDue(e.target.value)}
+              className="w-auto"
+            />
+            <p className="w-full text-xs text-muted">Com prazo, a tarefa aparece em “Hoje” no dashboard e nos resumos diários.</p>
+          </div>
+        ) : null}
         {showRemind ? (
           <div className="flex w-full flex-wrap items-center gap-2 text-sm">
             <label htmlFor={`remind-${lead.id}`} className="text-muted">

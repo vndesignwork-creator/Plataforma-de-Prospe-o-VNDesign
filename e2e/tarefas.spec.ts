@@ -63,10 +63,29 @@ test('ficha: acrescentar, reordenar com o teclado, concluir e editar tarefas', a
   await expect(card.getByRole('list', { name: 'Tarefas por fazer' }).getByText('Segunda rápida')).toBeVisible();
   await expect(card.getByLabel('Nova tarefa')).toHaveValue('');
 
+  // Prazo pelos atalhos do botão "Prazo" e por "Escolher data…".
+  await card.getByLabel('Nova tarefa').fill('Enviar orçamento');
+  await card.getByRole('button', { name: 'Prazo (opcional)' }).click();
+  await page.getByRole('menuitem', { name: /Amanhã/ }).click();
+  await expect(card.getByRole('button', { name: /^Prazo: Amanhã/ })).toBeVisible();
+  await card.getByLabel('Nova tarefa').press('Enter');
+  await expect(card.getByRole('button', { name: 'Prazo (opcional)' })).toBeVisible();
+  await card.getByLabel('Nova tarefa').fill('Rever textos');
+  await card.getByRole('button', { name: 'Prazo (opcional)' }).click();
+  await page.getByRole('menuitem', { name: 'Escolher data…' }).click();
+  await card.getByLabel('Prazo', { exact: true }).fill(iso(10));
+  await card.getByLabel('Nova tarefa').press('Enter');
+  await expect
+    .poll(async () => {
+      const tasks = (await (await page.request.get(`/api/v1/leads/${lead.id}/tasks`)).json()).data as { title: string; due_on: string | null }[];
+      return ['Enviar orçamento', 'Rever textos'].map((t) => tasks.find((x) => x.title === t)?.due_on);
+    })
+    .toEqual([iso(1), iso(10)]);
+
   // Apagar.
   await card.getByRole('button', { name: 'Apagar: Publicar site' }).click();
   await expect(page.getByText('Tarefa apagada.')).toBeVisible();
-  await expect(pending).toHaveCount(4);
+  await expect(pending).toHaveCount(6);
 });
 
 test('lista pronta sugerida pelos serviços do lead (sem repetir tarefas)', async ({ page }) => {
