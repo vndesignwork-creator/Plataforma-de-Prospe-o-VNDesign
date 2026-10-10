@@ -255,7 +255,7 @@ preços, quantidades e desconto. O texto inicial pode ser sugerido a partir da a
 
 ## Mapa
 
-**Mapa** (menu): os leads com coordenadas, coloridos pelo estado, com filtros por estado e setor.
+**Mapa** (Leads → botão *Mapa*, ou *Ver no mapa* na ficha): os leads com coordenadas, coloridos pelo estado, com filtros por estado e setor.
 
 - **Localizar N leads** procura as moradas no OpenStreetMap (gratuito; 1 pesquisa por segundo,
   por isso 25 leads demoram cerca de meio minuto). Tenta a morada, depois o nome + cidade e,

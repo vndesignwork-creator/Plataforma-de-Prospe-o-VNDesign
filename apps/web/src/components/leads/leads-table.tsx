@@ -29,6 +29,7 @@ import {
   ArrowUpDown,
   Columns3,
   Download,
+  Map as MapIcon,
   Search,
   SlidersHorizontal,
   Trash2,
@@ -469,6 +470,10 @@ export function LeadsTable() {
             <DropdownItem onSelect={() => saveTablePref.mutate({ hidden: [] })}>Mostrar todas</DropdownItem>
           </DropdownContent>
         </DropdownRoot>
+        <Link href="/mapa" className={buttonClasses('outline', 'md')} aria-label="Ver os leads no mapa">
+          <MapIcon className="h-4 w-4" aria-hidden />
+          <span className="hidden sm:inline">Mapa</span>
+        </Link>
         <DropdownRoot>
           <DropdownTrigger className={buttonClasses('outline', 'md')} aria-label="Exportar leads">
             <Download className="h-4 w-4" aria-hidden />
