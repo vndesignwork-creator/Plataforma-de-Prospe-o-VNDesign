@@ -103,7 +103,7 @@ export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
   created: 'Lead criado',
   updated: 'Lead editado',
   status_changed: 'Estado alterado',
-  note: 'Nota',
+  note: 'Registo',
   email_copied: 'Email copiado',
   email_mailto: 'Email aberto no cliente de email',
   email_sent: 'Email enviado',

@@ -32,9 +32,14 @@ test('criar lead, abrir a ficha e passar a "Contactado" agenda follow-up', async
   await page.getByRole('button', { name: 'Copiar tudo' }).click();
   await expect(page.getByLabel('Atividade do lead').getByText('Email copiado')).toBeVisible();
 
-  // Nota na linha do tempo
+  // Registar uma chamada na linha do tempo (o formulário abre no botão "Registar"; o email vem escolhido).
+  await page.getByRole('button', { name: 'Registar', exact: true }).click();
+  await expect(page.getByLabel('Tipo de registo')).toHaveValue('email_sent');
+  await page.getByLabel('Tipo de registo').selectOption('call_logged');
   await page.getByLabel('Texto do registo').fill('Liguei e pediram para enviar por email.');
-  await page.getByRole('button', { name: 'Registar' }).click();
+  await page.getByRole('form', { name: 'Registar contacto' }).getByRole('button', { name: 'Registar' }).click();
+  await expect(page.getByText('Registado na linha do tempo.')).toBeVisible();
+  await expect(page.getByLabel('Texto do registo')).toHaveCount(0);
   await expect(page.getByLabel('Atividade do lead').getByText('Liguei e pediram para enviar por email.')).toBeVisible();
 });
 

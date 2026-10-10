@@ -128,26 +128,34 @@ function describe(a: Activity): string | null {
   }
 }
 
+/** "Registar contacto": o email primeiro (o caso mais comum); "Outro registo" é uma nota com data. */
 const LOG_TYPES = [
-  { value: 'note', label: 'Nota' },
-  { value: 'call_logged', label: 'Chamada' },
   { value: 'email_sent', label: 'Email enviado' },
+  { value: 'call_logged', label: 'Chamada' },
+  { value: 'note', label: 'Outro registo' },
 ];
 
 export function ActivityTimeline({ leadId, currentUserId }: { leadId: string; currentUserId?: string }) {
   const { data, isLoading } = useActivities(leadId);
   const log = useLogActivity(leadId);
   const qc = useQueryClient();
-  const [type, setType] = useState('note');
+  const [open, setOpen] = useState(false);
+  const [type, setType] = useState('email_sent');
   const [body, setBody] = useState('');
+
+  function close() {
+    setOpen(false);
+    setBody('');
+    setType('email_sent');
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (type === 'note' && !body.trim()) return;
     try {
       await log.mutateAsync({ type, body: body.trim() || undefined });
-      setBody('');
-      toast.success(type === 'note' ? 'Nota adicionada.' : 'Registado.');
+      close();
+      toast.success('Registado na linha do tempo.');
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -157,7 +165,7 @@ export function ActivityTimeline({ leadId, currentUserId }: { leadId: string; cu
     try {
       await api(`/leads/${leadId}/activities/${activityId}`, { method: 'DELETE' });
       void qc.invalidateQueries({ queryKey: ['activities', leadId] });
-      toast.success('Nota apagada.');
+      toast.success('Registo apagado.');
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -165,31 +173,59 @@ export function ActivityTimeline({ leadId, currentUserId }: { leadId: string; cu
 
   return (
     <Card>
-      <CardHeader title="Linha do tempo" as="h2" />
-      <form onSubmit={submit} className="flex flex-col gap-2 border-b border-border p-4">
-        <label htmlFor="activity-body" className="sr-only">
-          Texto do registo
-        </label>
-        <Textarea
-          id="activity-body"
-          rows={3}
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder={type === 'note' ? 'Escreve uma nota…' : 'Detalhes (opcional)…'}
-        />
-        <div className="flex gap-2">
-          <Select value={type} onChange={(e) => setType(e.target.value)} aria-label="Tipo de registo" className="h-9 flex-1">
+      <CardHeader
+        title="Linha do tempo"
+        as="h2"
+        actions={
+          open ? null : (
+            <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+              <Plus className="h-3.5 w-3.5" aria-hidden />
+              Registar
+            </Button>
+          )
+        }
+      />
+      {open ? (
+        <form
+          onSubmit={submit}
+          onKeyDown={(e) => e.key === 'Escape' && close()}
+          aria-label="Registar contacto"
+          className="flex flex-col gap-2 border-b border-border p-4"
+        >
+          <Select value={type} onChange={(e) => setType(e.target.value)} aria-label="Tipo de registo" className="h-9">
             {LOG_TYPES.map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}
               </option>
             ))}
           </Select>
-          <Button type="submit" size="sm" className="h-9" loading={log.isPending} disabled={type === 'note' && !body.trim()}>
-            Registar
-          </Button>
-        </div>
-      </form>
+          <label htmlFor="activity-body" className="sr-only">
+            Texto do registo
+          </label>
+          <Textarea
+            id="activity-body"
+            rows={3}
+            autoFocus
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder={
+              type === 'note'
+                ? 'O que aconteceu? (ex.: encontrei o dono na feira, pediu portefólio)'
+                : type === 'call_logged'
+                  ? 'O que aconteceu? (ex.: liguei, pediu para voltar a ligar em março)'
+                  : 'O que enviaste? (ex.: proposta do site, com 2 opções de preço)'
+            }
+          />
+          <div className="flex justify-end gap-2">
+            <Button type="button" size="sm" variant="ghost" onClick={close}>
+              Cancelar
+            </Button>
+            <Button type="submit" size="sm" loading={log.isPending} disabled={type === 'note' && !body.trim()}>
+              Registar
+            </Button>
+          </div>
+        </form>
+      ) : null}
       {isLoading ? (
         <div className="flex flex-col gap-3 p-4">
           <Skeleton className="h-10" />
@@ -214,7 +250,7 @@ export function ActivityTimeline({ leadId, currentUserId }: { leadId: string; cu
                         type="button"
                         onClick={() => removeNote(a.id)}
                         className="rounded p-0.5 text-muted hover:text-danger"
-                        aria-label="Apagar nota"
+                        aria-label="Apagar registo"
                       >
                         <Trash2 className="h-3.5 w-3.5" aria-hidden />
                       </button>
