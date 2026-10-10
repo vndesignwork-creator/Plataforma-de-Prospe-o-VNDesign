@@ -348,6 +348,11 @@ Invoke-RestMethod "http://localhost:3000/api/v1/leads?status=contactado&due=over
 O projeto tem um build "standalone" pensado para isto (`npm run build:standalone`).
 A base de dados fica no **Supabase na nuvem** (ver Opção A acima).
 
+**Assistente:** `npm run publicar` verifica o projeto Supabase na nuvem (chaves, migrações,
+registo público desligado), cria o teu utilizador se faltar e escreve as variáveis da
+Hostinger em `.env.hostinger.local` (só no teu computador). Depois de publicar,
+`npm run publicar -- --verificar` confirma o site no ar (login, API, HTTPS, PWA e cron).
+
 1. hPanel → **Websites → Adicionar website → Node.js Apps** → ligar o **GitHub** e escolher
    este repositório e o ramo a publicar.
 2. **Definições de build** (se a Hostinger detetar `apps/web` como pasta, muda para a raiz):

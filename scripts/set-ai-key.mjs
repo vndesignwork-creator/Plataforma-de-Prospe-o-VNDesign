@@ -9,39 +9,14 @@
  * se for aceite. Nunca é mostrada por inteiro.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import readline from 'node:readline';
+import { askHidden, cleanSecret, secretHint } from './lib.mjs';
 
 const ENV_FILE = 'apps/web/.env.local';
 const API = process.env.AI_BASE_URL || 'https://api.anthropic.com';
 const testOnly = process.argv.includes('--test');
 
-/** Remove aspas, espaços e carateres invisíveis (erros comuns ao colar). */
-const clean = (value) => value.replace(/["'“”‘’]/g, '').replace(/[^\x21-\x7E]/g, '');
-const hint = (key) => `${key.slice(0, 12)}…${key.slice(-4)} (${key.length} carateres)`;
-
-/** Pergunta sem mostrar o que se escreve/cola (aparecem asteriscos). */
-function askHidden(question) {
-  return new Promise((resolve) => {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: process.stdin.isTTY });
-    if (process.stdin.isTTY) {
-      let shown = false;
-      rl._writeToOutput = (text) => {
-        if (!shown) {
-          rl.output.write(text);
-          shown = true;
-        } else if (text.includes('\n') || text.includes('\r')) {
-          rl.output.write('\n');
-        } else {
-          rl.output.write('*'.repeat(Math.min(text.length, 1)));
-        }
-      };
-    }
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer);
-    });
-  });
-}
+const clean = cleanSecret;
+const hint = secretHint;
 
 async function testKey(key) {
   try {
