@@ -90,6 +90,20 @@ export function fromPostgrest(error: PostgrestError, notFound = 'Registo não en
       return new ApiError(409, 'Já existe', 'Já existe um registo com estes dados.');
     case '42501':
       return new ApiError(403, 'Sem permissão', 'Não tens permissão para esta operação.');
+    // Tabela, coluna ou função que a base de dados ainda não tem: a versão nova da
+    // plataforma foi publicada antes de aplicar as migrações (npx supabase db push).
+    case 'PGRST202':
+    case 'PGRST204':
+    case 'PGRST205':
+    case '42P01':
+    case '42703':
+    case '42883':
+      console.error('[api] base de dados por atualizar', error);
+      return new ApiError(
+        503,
+        'Base de dados por atualizar',
+        'Esta funcionalidade precisa de uma atualização da base de dados. No computador: git pull e depois npx supabase db push.',
+      );
     default:
       console.error('[api] erro do Postgres', error);
       return new ApiError(500, 'Erro interno', 'Ocorreu um erro inesperado. Tenta novamente.');

@@ -224,7 +224,7 @@ export function TasksCard({ lead }: { lead: Lead }) {
   const qc = useQueryClient();
   const key = ['tasks', lead.id];
   const invalidate = useInvalidateTasks();
-  const { data: tasks, isLoading } = useLeadTasks(lead.id);
+  const { data: tasks, isLoading, error: loadError } = useLeadTasks(lead.id);
   const { data: templates } = useTaskTemplates();
   const [title, setTitle] = useState('');
   const [due, setDue] = useState('');
@@ -381,6 +381,10 @@ export function TasksCard({ lead }: { lead: Lead }) {
 
       {isLoading ? (
         <Skeleton className="m-3 h-20" />
+      ) : loadError ? (
+        <p role="alert" className="m-3 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">
+          {errorMessage(loadError)}
+        </p>
       ) : total === 0 ? (
         <div className="p-4 text-sm text-muted">
           <p>Ainda não há tarefas.</p>
