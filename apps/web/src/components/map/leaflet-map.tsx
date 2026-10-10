@@ -11,12 +11,10 @@ import { SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 /** Amadora — centro por omissão. */
 const DEFAULT_CENTER: LatLngExpression = [38.7538, -9.2308];
 
-const TILES = {
-  dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-  light: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-};
-const ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+// Mapas do OpenStreetMap (sem chave; o CARTO passou a pedir uma). No tema escuro
+// os mosaicos são invertidos por CSS (.vnd-tiles-dark em globals.css).
+const TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
 function FitBounds({ leads, focusId }: { leads: MapLead[]; focusId: string | null }) {
   const map = useMap();
@@ -61,7 +59,13 @@ export default function LeafletMap({ leads, theme, focusId, placing, onPlace }: 
       className={`h-full w-full ${placing ? 'cursor-crosshair' : ''}`}
       style={{ background: theme === 'dark' ? '#1a1a1a' : '#e8e4dc' }}
     >
-      <TileLayer key={theme} url={TILES[theme]} attribution={ATTRIBUTION} subdomains="abcd" maxZoom={19} />
+      <TileLayer
+        key={theme}
+        url={TILES}
+        attribution={ATTRIBUTION}
+        maxZoom={19}
+        className={theme === 'dark' ? 'vnd-tiles-dark' : undefined}
+      />
       <FitBounds leads={leads} focusId={focusId} />
       {placing ? <ClickToPlace onPlace={onPlace} /> : null}
       {leads.map((lead) => {

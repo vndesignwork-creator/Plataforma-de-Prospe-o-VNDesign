@@ -2,7 +2,7 @@
 
 import { LEAD_STATUSES, LEAD_STATUS_META, type GeocodeBatchResult, leadPath } from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { Crosshair, MapPinned } from 'lucide-react';
+import { ChevronRight, Crosshair, MapPinned } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -98,21 +98,33 @@ export function MapView() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filtros">
-        <MultiSelectFilter label="Estado" options={STATUS_OPTIONS} value={status} onChange={setStatus} />
-        <MultiSelectFilter label="Setor" options={sectorOptions} value={sector} onChange={setSector} />
-        <span className="ml-auto text-sm text-muted" aria-live="polite">
-          {counts
-            ? `${leads.length} no mapa${counts.missing ? ` · ${counts.missing} por localizar` : ''}${
-                counts.not_found ? ` · ${counts.not_found} sem morada encontrada` : ''
-              }`
-            : ''}
-        </span>
-        {counts && counts.missing > 0 ? (
-          <Button size="sm" onClick={geocodeAll} loading={progress !== null}>
-            <MapPinned className="h-3.5 w-3.5" aria-hidden /> Localizar {counts.missing} leads
-          </Button>
-        ) : null}
+      {/* Filtros à esquerda; contagem e "Localizar" à direita (no telemóvel, por baixo e a toda a largura). */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-3">
+        <div className="flex gap-2" role="group" aria-label="Filtros">
+          <MultiSelectFilter label="Estado" options={STATUS_OPTIONS} value={status} onChange={setStatus} />
+          <MultiSelectFilter label="Setor" options={sectorOptions} value={sector} onChange={setSector} />
+        </div>
+        <div className="flex w-full flex-wrap items-center justify-between gap-2 sm:ml-auto sm:w-auto sm:justify-end">
+          <p className="text-sm text-muted" aria-live="polite">
+            {counts ? (
+              <>
+                <span className="font-medium text-fg tabular">{leads.length}</span> no mapa
+                {counts.missing ? (
+                  <>
+                    {' · '}
+                    <span className="tabular">{counts.missing}</span> por localizar
+                  </>
+                ) : null}
+                {counts.not_found ? ` · ${counts.not_found} sem morada encontrada` : ''}
+              </>
+            ) : null}
+          </p>
+          {counts && counts.missing > 0 ? (
+            <Button size="sm" onClick={geocodeAll} loading={progress !== null} className="max-sm:w-full">
+              <MapPinned className="h-3.5 w-3.5" aria-hidden /> Localizar {counts.missing} lead{counts.missing === 1 ? '' : 's'}
+            </Button>
+          ) : null}
+        </div>
       </div>
       {progress ? (
         <p className="text-sm text-muted" aria-live="polite">
@@ -134,27 +146,40 @@ export function MapView() {
         </div>
       ) : null}
 
-      <Card className="h-[65vh] min-h-[22rem] overflow-hidden">
+      {/* "isolate": o mapa (Leaflet usa z-index altos) não pode ficar por cima do menu do telemóvel. */}
+      <Card className="relative isolate h-[60vh] min-h-[22rem] overflow-hidden sm:h-[65vh]">
         {isLoading ? (
           <Skeleton className="h-full w-full" />
         ) : (
           <LeafletMap leads={leads} theme={theme} focusId={focusId} placing={placing} onPlace={place} />
         )}
+        {!isLoading && !leads.length && counts?.missing ? (
+          <p className="pointer-events-none absolute inset-x-4 top-4 z-[1000] mx-auto max-w-sm rounded-lg bg-surface/95 px-3 py-2 text-center text-sm shadow-card">
+            Ainda não há leads no mapa. Toca em <span className="font-medium">Localizar</span> para os pôr pela morada ou cidade.
+          </p>
+        ) : null}
       </Card>
 
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted" aria-label="Legenda">
+      <ul className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-muted sm:flex sm:flex-wrap" aria-label="Legenda">
         {LEAD_STATUSES.map((s) => (
-          <span key={s} className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: LEAD_STATUS_META[s].color }} aria-hidden />
+          <li key={s} className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: LEAD_STATUS_META[s].color }} aria-hidden />
             {LEAD_STATUS_META[s].label}
-          </span>
+          </li>
         ))}
-        <span>· círculo tracejado = posição aproximada</span>
-      </div>
+        <li className="col-span-2 flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-dashed border-muted" aria-hidden />
+          Círculo tracejado = posição aproximada
+        </li>
+      </ul>
 
-      <details className="rounded-xl border border-border bg-surface">
-        <summary className="cursor-pointer px-4 py-3 text-sm font-medium">Lista dos leads no mapa ({leads.length})</summary>
-        <ul className="divide-y divide-border">
+      <details className="group rounded-xl border border-border bg-surface">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
+          <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" aria-hidden />
+          Lista dos leads no mapa <span className="font-normal text-muted tabular">({leads.length})</span>
+        </summary>
+        {!leads.length ? <p className="border-t border-border px-4 py-3 text-sm text-muted">Nenhum lead no mapa com estes filtros.</p> : null}
+        <ul className="divide-y divide-border border-t border-border empty:hidden">
           {leads.map((l) => (
             <li key={l.id} className="flex items-center justify-between gap-3 px-4 py-2 text-sm">
               <Link href={leadPath(l)} className="min-w-0 truncate hover:underline">

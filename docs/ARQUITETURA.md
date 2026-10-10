@@ -287,7 +287,7 @@ um “Lead editado”. O resumo diário usa a chave de serviço só no servidor
   - User-Agent identificado e 1 pedido por segundo;
   - tenta, por ordem, a morada, depois o nome + a cidade e, por fim, só a cidade (`approx`).
 - `set_lead_location()` grava a posição sem gerar "Lead editado".
-- No browser, Leaflet com mapas CARTO (escuro ou claro, conforme o tema).
+- No browser, Leaflet com mapas do OpenStreetMap (sem chave; no tema escuro invertidos por CSS — o CARTO passou a exigir chave).
 
 ## Serviços (Web Design / Design Gráfico)
 

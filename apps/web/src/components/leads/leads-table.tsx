@@ -29,7 +29,6 @@ import {
   ArrowUpDown,
   Columns3,
   Download,
-  Plus,
   Search,
   SlidersHorizontal,
   Trash2,
@@ -403,7 +402,8 @@ export function LeadsTable() {
     <div className="flex flex-col gap-4">
       {/* Pesquisa e ações */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-0 flex-1 basis-64">
+        {/* Telemóvel: pesquisa numa linha; por baixo, Filtros · Ordenar · Exportar alinhados. */}
+        <div className="relative min-w-0 flex-1 basis-full sm:basis-64">
           <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
           <Input
             type="search"
@@ -424,6 +424,23 @@ export function LeadsTable() {
           <SlidersHorizontal className="h-4 w-4" aria-hidden />
           Filtros{activeFilters ? ` (${activeFilters})` : ''}
         </Button>
+        {/* No telemóvel não há cabeçalhos de tabela para ordenar: escolhe-se aqui. */}
+        <Select
+          value={`${sort}:${order}`}
+          onChange={(e) => {
+            const [field, dir] = e.target.value.split(':');
+            setParams({ sort: field === 'number' && dir === 'desc' ? null : field!, order: dir === 'desc' ? null : dir! });
+          }}
+          aria-label="Ordenar leads"
+          className="min-w-0 flex-1 md:w-auto md:flex-none lg:hidden"
+        >
+          {MOBILE_SORTS.some((o) => o.value === `${sort}:${order}`) ? null : <option value={`${sort}:${order}`}>Ordenação da tabela</option>}
+          {MOBILE_SORTS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </Select>
         <DropdownRoot>
           {/* Só faz sentido com a tabela (no telemóvel a lista é em cartões). */}
           <DropdownTrigger className={buttonClasses('outline', 'md', 'max-lg:hidden')} aria-label="Escolher colunas visíveis">
@@ -463,10 +480,6 @@ export function LeadsTable() {
             <DropdownItem onSelect={() => download('csv')}>CSV (Excel em português)</DropdownItem>
           </DropdownContent>
         </DropdownRoot>
-        <Link href="/leads/novo" className={buttonClasses('primary')}>
-          <Plus className="h-4 w-4" aria-hidden />
-          Novo lead
-        </Link>
       </div>
 
       {/* Filtros */}
@@ -563,29 +576,10 @@ export function LeadsTable() {
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-muted" role="status" aria-live="polite">
-          {isLoading ? 'A carregar leads…' : `${total} lead${total === 1 ? '' : 's'}${activeFilters ? ' com estes filtros' : ''}`}
-          {isFetching && !isLoading ? ' · a atualizar…' : ''}
-        </p>
-        {/* No telemóvel não há cabeçalhos de tabela para ordenar: escolhe-se aqui. */}
-        <Select
-          value={`${sort}:${order}`}
-          onChange={(e) => {
-            const [field, dir] = e.target.value.split(':');
-            setParams({ sort: field === 'number' && dir === 'desc' ? null : field!, order: dir === 'desc' ? null : dir! });
-          }}
-          aria-label="Ordenar leads"
-          className="w-auto lg:hidden"
-        >
-          {MOBILE_SORTS.some((o) => o.value === `${sort}:${order}`) ? null : <option value={`${sort}:${order}`}>Ordenação da tabela</option>}
-          {MOBILE_SORTS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </Select>
-      </div>
+      <p className="text-sm text-muted" role="status" aria-live="polite">
+        {isLoading ? 'A carregar leads…' : `${total} lead${total === 1 ? '' : 's'}${activeFilters ? ' com estes filtros' : ''}`}
+        {isFetching && !isLoading ? ' · a atualizar…' : ''}
+      </p>
 
       {error ? (
         <p role="alert" className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">

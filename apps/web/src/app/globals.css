@@ -132,3 +132,12 @@
 @utility tabular {
   font-variant-numeric: tabular-nums;
 }
+
+/* Mapa: mosaicos do OpenStreetMap em versão escura (no tema escuro). */
+.vnd-tiles-dark {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+/* Atribuição do mapa legível (contraste AA). */
+.leaflet-control-attribution a {
+  color: #0b5d82;
+}
