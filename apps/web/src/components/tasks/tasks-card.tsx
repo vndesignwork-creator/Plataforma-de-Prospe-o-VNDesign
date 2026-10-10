@@ -25,6 +25,7 @@ import {
 } from '@vndesign/core';
 import { Bell, ChevronRight, GripVertical, ListPlus, Pencil, Plus, X } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Card, CardHeader, Skeleton } from '@/components/ui/card';
@@ -73,6 +74,34 @@ export function ReminderChip({ task }: { task: Pick<LeadTask, 'remind_at' | 'rem
       <span className="sr-only">Lembrete: </span>
       {formatReminder(task.remind_at)}
     </span>
+  );
+}
+
+/** Diz se este dispositivo vai mesmo receber a notificação do lembrete (push ativo) e, se não, onde ativar. */
+function PushHint() {
+  const [active, setActive] = useState<boolean | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+    (supported ? navigator.serviceWorker.ready.then((reg) => reg.pushManager.getSubscription()) : Promise.resolve(null))
+      .then((sub) => !cancelled && setActive(!!sub && Notification.permission === 'granted'))
+      .catch(() => !cancelled && setActive(false));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (active === null) return null;
+  if (active) {
+    return <p className="w-full text-xs text-muted">Recebes uma notificação a essa hora, mesmo com a plataforma fechada.</p>;
+  }
+  return (
+    <p className="w-full rounded-lg bg-warning-soft px-3 py-2 text-xs text-warning">
+      Este dispositivo ainda não tem as notificações ativas — só verás o aviso quando abrires a plataforma.{' '}
+      <Link href="/definicoes/lembretes" className="font-medium underline">
+        Ativar notificações
+      </Link>
+    </p>
   );
 }
 
@@ -455,9 +484,7 @@ export function TasksCard({ lead }: { lead: Lead }) {
               onChange={(e) => setRemind(e.target.value)}
               className="w-auto"
             />
-            <p className="w-full text-xs text-muted">
-              Recebes uma notificação a essa hora nos dispositivos com as notificações ativas (Definições → Follow-up e lembretes).
-            </p>
+            <PushHint />
           </div>
         ) : null}
       </form>
