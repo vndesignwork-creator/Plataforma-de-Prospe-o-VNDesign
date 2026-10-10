@@ -297,6 +297,11 @@ um “Lead editado”. O resumo diário usa a chave de serviço só no servidor
 - Validação por triggers (`vnd_check_lead_services`, `vnd_check_row_service`): a chave tem de existir no
   workspace (escondidos incluídos). Apagar só sem leads (`service_lead_counts`); os pacotes e as listas
   desse serviço ficam sem serviço (`vnd_services_before_delete`).
+- Categorias: tabela `service_categories` (migração `20261021000100`; `key`, `label`, `icon`, `sort_order`,
+  `design_portfolio` → portefólio de design no email com IA). `services.category` e
+  `service_packages.category` validadas por `vnd_check_row_category`; apagar só vazia. Num workspace
+  novo os triggers semeiam por ordem: `workspaces_seed_0_categories` → `workspaces_seed_1_services` →
+  pacotes → listas de tarefas. API `/service-categories` (+ `/{id}`, `/reorder`).
 - API `/services` (+ `/{id}`, `/reorder`); `server/services/service-catalog.ts`. Importação, exportação e
   email com IA usam `loadServiceCatalog()` (cai para `DEFAULT_SERVICES` se a tabela ainda não existir).
 - Core (`packages/core/src/services.ts`): `DEFAULT_SERVICES`, `serviceLabel/serviceCategory/parseServices`

@@ -7,11 +7,11 @@
  */
 import {
   DEFAULT_SERVICES,
-  SERVICE_CATEGORIES,
-  SERVICE_CATEGORY_LABELS,
+  DEFAULT_SERVICE_CATEGORIES,
+  categoryLabel,
   serviceLabel,
   serviceShortLabel,
-  type ServiceCategory,
+  type ServiceCategoryInfo,
   type ServiceIconKey,
   type ServiceInfo,
 } from '@vndesign/core';
@@ -21,11 +21,13 @@ import {
   Building2,
   Camera,
   FileImage,
+  Heart,
   Images,
   LayoutGrid,
   LayoutTemplate,
   Mail,
   Megaphone,
+  Music,
   Monitor,
   Newspaper,
   Package,
@@ -43,7 +45,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useMemo } from 'react';
-import { useServices } from '@/lib/queries';
+import { useServiceCategories, useServices } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
 export const SERVICE_ICON_COMPONENTS: Record<ServiceIconKey, LucideIcon> = {
@@ -69,21 +71,20 @@ export const SERVICE_ICON_COMPONENTS: Record<ServiceIconKey, LucideIcon> = {
   presentation: Presentation,
   wrench: Wrench,
   briefcase: Briefcase,
+  grid: LayoutGrid,
+  heart: Heart,
+  music: Music,
   sparkles: Sparkles,
 };
 
-export const CATEGORY_ICONS: Record<ServiceCategory, LucideIcon> = {
-  web: Monitor,
-  grafico: Palette,
-  outros: LayoutGrid,
-};
-
-/** Cores das etiquetas por categoria. */
-const CATEGORY_CHIP: Record<ServiceCategory, string> = {
-  web: 'bg-surface-3 text-fg',
-  grafico: 'bg-accent-soft text-accent-text',
-  outros: 'border border-border-strong text-fg',
-};
+/** Cores das etiquetas: Web Design neutro, Design Gráfico laranja, as outras com contorno. */
+export function categoryChipClass(category: string): string {
+  return category === 'web'
+    ? 'bg-surface-3 text-fg'
+    : category === 'grafico'
+      ? 'bg-accent-soft text-accent-text'
+      : 'border border-border-strong text-fg';
+}
 
 export interface ServiceCatalog {
   /** Todos (também os escondidos), pela ordem definida. */
@@ -91,16 +92,29 @@ export interface ServiceCatalog {
   /** Só os visíveis (para escolher). */
   active: ServiceInfo[];
   get: (key: string) => ServiceInfo | undefined;
+  /** Categorias pela ordem definida. */
+  categories: ServiceCategoryInfo[];
+  categoryLabel: (key: string) => string;
+  categoryIcon: (key: string) => string | null | undefined;
 }
 
-/** Serviços do workspace (com os escondidos, para mostrar os leads antigos). */
+/** Serviços e categorias do workspace (com os escondidos, para mostrar os leads antigos). */
 export function useServiceCatalog(): ServiceCatalog {
   const { data } = useServices(true);
+  const { data: cats } = useServiceCategories();
   return useMemo(() => {
     const all: ServiceInfo[] = data ?? DEFAULT_SERVICES;
+    const categories: ServiceCategoryInfo[] = cats ?? DEFAULT_SERVICE_CATEGORIES;
     const byKey = new Map(all.map((s) => [s.key, s]));
-    return { all, active: all.filter((s) => !s.archived_at), get: (key: string) => byKey.get(key) };
-  }, [data]);
+    return {
+      all,
+      active: all.filter((s) => !s.archived_at),
+      get: (key: string) => byKey.get(key),
+      categories,
+      categoryLabel: (key: string) => categoryLabel(key, categories),
+      categoryIcon: (key: string) => categories.find((c) => c.key === key)?.icon,
+    };
+  }, [data, cats]);
 }
 
 const iconKey = (icon: string | null | undefined): ServiceIconKey =>
@@ -129,7 +143,7 @@ export function ServiceChips({ services, className }: { services?: readonly stri
           key={s}
           className={cn(
             'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap',
-            CATEGORY_CHIP[catalog.get(s)!.category],
+            categoryChipClass(catalog.get(s)!.category),
           )}
         >
           <ServiceIcon service={s} className="h-3.5 w-3.5" />
@@ -162,18 +176,17 @@ export function ServicePicker({
     onChange(order.filter((k) => next.has(k)));
   }
 
-  const groups = SERVICE_CATEGORIES.map((category) => ({ category, items: shown.filter((s) => s.category === category) })).filter(
-    (g) => g.items.length,
-  );
+  const groups = catalog.categories
+    .map((c) => ({ category: c.key, items: shown.filter((s) => s.category === c.key) }))
+    .filter((g) => g.items.length);
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {groups.map(({ category, items }) => {
-        const CategoryIcon = CATEGORY_ICONS[category];
         return (
           <fieldset key={category} className="flex flex-col gap-2">
             <legend className="mb-1 flex items-center gap-1.5 text-sm font-semibold">
-              <CategoryIcon className="h-4 w-4 text-muted" aria-hidden />
-              {SERVICE_CATEGORY_LABELS[category]}
+              <ServiceGlyph icon={catalog.categoryIcon(category)} className="text-muted" />
+              {catalog.categoryLabel(category)}
             </legend>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {items.map((s) => {
@@ -237,7 +250,7 @@ export function ServiceIcons({
             className={cn(
               'inline-flex h-6 items-center justify-center gap-1 rounded-md',
               labeled ? 'px-1.5 text-xs font-medium' : 'w-6',
-              CATEGORY_CHIP[info.category],
+              categoryChipClass(info.category),
             )}
           >
             <ServiceGlyph icon={info.icon} className="h-3.5 w-3.5" />
@@ -256,7 +269,7 @@ export function useServiceFilterOptions() {
   return [
     ...catalog.all.map((s) => ({
       value: s.key,
-      label: `${s.label} · ${SERVICE_CATEGORY_LABELS[s.category]}${s.archived_at ? ' (escondido)' : ''}`,
+      label: `${s.label} · ${catalog.categoryLabel(s.category)}${s.archived_at ? ' (escondido)' : ''}`,
       icon: <ServiceGlyph icon={s.icon} className="text-muted" />,
     })),
     { value: 'none', label: 'Sem serviço definido' },
@@ -264,9 +277,10 @@ export function useServiceFilterOptions() {
 }
 
 /** Seletor de serviço (pacotes, listas de tarefas): agrupado por categoria. */
-export function ServiceOptions({ catalog, category }: { catalog: ServiceCatalog; category?: ServiceCategory }) {
-  const groups = SERVICE_CATEGORIES.filter((c) => !category || c === category)
-    .map((c) => ({ c, items: catalog.all.filter((s) => s.category === c && !s.archived_at) }))
+export function ServiceOptions({ catalog, category }: { catalog: ServiceCatalog; category?: string }) {
+  const groups = catalog.categories
+    .filter((c) => !category || c.key === category)
+    .map((c) => ({ c: c.key, items: catalog.all.filter((s) => s.category === c.key && !s.archived_at) }))
     .filter((g) => g.items.length);
   return (
     <>
@@ -278,7 +292,7 @@ export function ServiceOptions({ catalog, category }: { catalog: ServiceCatalog;
             </option>
           ))
         ) : (
-          <optgroup key={c} label={SERVICE_CATEGORY_LABELS[c]}>
+          <optgroup key={c} label={catalog.categoryLabel(c)}>
             {items.map((s) => (
               <option key={s.key} value={s.key}>
                 {s.label}

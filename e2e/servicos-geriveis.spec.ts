@@ -11,6 +11,7 @@ test('criar um serviço novo e usá-lo num lead', async ({ page }) => {
   const dialog = page.getByRole('dialog', { name: 'Novo serviço' });
   await dialog.getByRole('textbox', { name: 'Nome', exact: true }).fill(name);
   await dialog.getByLabel('Nome curto (opcional)').fill('Fotos');
+  await dialog.getByLabel('Categoria').selectOption({ label: 'Outros serviços' });
   await dialog.getByRole('radio', { name: 'Fotografia' }).click();
   await dialog.getByRole('button', { name: 'Guardar' }).click();
   await expect(page.getByText('Serviço criado.')).toBeVisible();
@@ -69,4 +70,51 @@ test('API: serviço desconhecido é recusado; apagar um serviço sem leads', asy
   await expect(page.getByText('Serviço apagado.')).toBeVisible();
   await expect(list.getByText(`Consultoria ${run}`)).toHaveCount(0);
   expect((await page.request.delete(`/api/v1/services/${service.id}`)).status()).toBe(404);
+});
+
+test('categorias: criar, usar num serviço, mudar o nome e apagar só vazia', async ({ page }) => {
+  const cat = `Foto e Vídeo ${run}`;
+  await page.goto('/definicoes/servicos');
+  const cats = page.getByRole('list', { name: 'Categorias' });
+  await page.getByRole('button', { name: 'Nova categoria' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Nova categoria' });
+  await dialog.getByRole('textbox', { name: 'Nome', exact: true }).fill(cat);
+  await dialog.getByRole('radio', { name: 'Vídeo' }).click();
+  await dialog.getByLabel('Usar o portefólio de design no email com IA').check();
+  await dialog.getByRole('button', { name: 'Guardar' }).click();
+  await expect(page.getByText('Categoria criada.')).toBeVisible();
+  const row = cats.getByRole('listitem').filter({ hasText: cat });
+  await expect(row.getByText('0 serviços · portefólio de design no email')).toBeVisible();
+
+  // Um serviço nesta categoria: aparece no grupo dela e o lead mostra-o no formulário.
+  await page.getByRole('button', { name: 'Novo serviço' }).click();
+  const svc = page.getByRole('dialog', { name: 'Novo serviço' });
+  await svc.getByRole('textbox', { name: 'Nome', exact: true }).fill(`Reels ${run}`);
+  await svc.getByLabel('Categoria').selectOption({ label: cat });
+  await svc.getByRole('button', { name: 'Guardar' }).click();
+  await expect(page.getByText('Serviço criado.')).toBeVisible();
+  await expect(row.getByText('1 serviço')).toBeVisible();
+  await expect(row.getByRole('button', { name: `${cat} tem serviços ou pacotes: muda-os primeiro` })).toBeDisabled();
+
+  const lead = (await (await page.request.post('/api/v1/leads', { data: { company_name: `Categoria ${run}` } })).json()).data;
+  await page.goto(`/leads/${lead.id}/editar`);
+  await expect(page.getByRole('group', { name: cat }).getByLabel(`Reels ${run}`)).toBeVisible();
+
+  // Mudar o nome da categoria.
+  await page.goto('/definicoes/servicos');
+  await row.getByRole('button', { name: `Editar ${cat}` }).click();
+  await page.getByRole('dialog', { name: 'Editar categoria' }).getByRole('textbox', { name: 'Nome', exact: true }).fill(`${cat} 2`);
+  await page.getByRole('dialog', { name: 'Editar categoria' }).getByRole('button', { name: 'Guardar' }).click();
+  await expect(page.getByText('Categoria guardada.')).toBeVisible();
+  await expect(cats.getByText(`${cat} 2`)).toBeVisible();
+
+  // API: categoria desconhecida é recusada; vazia apaga-se.
+  const bad = await page.request.post('/api/v1/services', { data: { label: `X ${run}`, category: 'nao_existe' } });
+  expect(bad.status()).toBe(400);
+  const empty = (await (await page.request.post('/api/v1/service-categories', { data: { label: `Vazia ${run}` } })).json()).data;
+  await page.reload();
+  await cats.getByRole('button', { name: `Apagar Vazia ${run}` }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar' }).click();
+  await expect(page.getByText('Categoria apagada.')).toBeVisible();
+  expect((await page.request.delete(`/api/v1/service-categories/${empty.id}`)).status()).toBe(404);
 });

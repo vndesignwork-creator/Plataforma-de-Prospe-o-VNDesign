@@ -4,7 +4,7 @@
  */
 import { z } from 'zod';
 import type { AuditIssue } from './audit';
-import { SERVICE_CATEGORIES, ServiceKeySchema } from './services';
+import { ServiceCategoryKeySchema, ServiceKeySchema } from './services';
 
 const money = z
   .number({ error: 'Indica um valor.' })
@@ -35,8 +35,8 @@ export const ServicePackageSchema = z
     recommended: z.boolean(),
     sort_order: z.int(),
     archived_at: z.string().nullable(),
-    /** Web Design, Design Gráfico ou Outros (agrupa os pacotes nas definições e nas propostas). */
-    category: z.enum(SERVICE_CATEGORIES),
+    /** Categoria do serviço (agrupa os pacotes nas definições e nas propostas). */
+    category: z.string(),
     /** Serviço do catálogo (opcional): sugere o pacote para leads com esse interesse. */
     service: z.string().nullable(),
   })
@@ -56,7 +56,7 @@ export const ServicePackageCreateSchema = z
     delivery_days: z.int().min(1).max(365).nullish().transform((v) => v ?? null),
     recommended: z.boolean().default(false),
     sort_order: z.int().min(0).max(1000).optional(),
-    category: z.enum(SERVICE_CATEGORIES).default('web'),
+    category: ServiceCategoryKeySchema.default('web'),
     service: ServiceKeySchema.nullish().transform((v) => v ?? null),
   })
   .meta({ id: 'ServicePackageCreate' });
@@ -73,7 +73,7 @@ export const ServicePackageUpdateSchema = ServicePackageCreateSchema.partial()
       .transform((f) => f.filter(Boolean))
       .optional(),
     recommended: z.boolean().optional(),
-    category: z.enum(SERVICE_CATEGORIES).optional(),
+    category: ServiceCategoryKeySchema.optional(),
     archived: z.boolean().optional(),
   })
   .meta({ id: 'ServicePackageUpdate' });

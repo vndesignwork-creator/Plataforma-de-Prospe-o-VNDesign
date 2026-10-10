@@ -19,6 +19,7 @@ import type {
   Proposal,
   ServicePackage,
   Service,
+  ServiceCategoryItem,
   Activity,
   ApiToken,
   ApiTokenCreate,
@@ -82,11 +83,20 @@ export function useServices(includeArchived = false) {
   });
 }
 
-/** Depois de mudar serviços: listas, fichas e estatísticas mostram os nomes novos. */
+/** Categorias de serviços (Definições → Serviços), pela ordem definida. */
+export function useServiceCategories() {
+  return useQuery({
+    queryKey: ['service-categories'],
+    queryFn: () => api<{ data: ServiceCategoryItem[] }>('/service-categories').then((r) => r.data),
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** Depois de mudar serviços ou categorias: listas, fichas e estatísticas mostram os nomes novos. */
 export function useInvalidateServices() {
   const qc = useQueryClient();
   return () => {
-    for (const key of ['services', 'leads', 'lead', 'board', 'dashboard', 'packages', 'task-templates']) {
+    for (const key of ['services', 'service-categories', 'leads', 'lead', 'board', 'dashboard', 'packages', 'task-templates']) {
       void qc.invalidateQueries({ queryKey: [key] });
     }
   };

@@ -3,8 +3,6 @@
 import {
   PROPOSAL_STATUSES,
   PROPOSAL_STATUS_LABELS,
-  SERVICE_CATEGORIES,
-  SERVICE_CATEGORY_LABELS,
   formatCurrency,
   formatDate,
   isRecurringPackage,
@@ -28,7 +26,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button, buttonClasses } from '@/components/ui/button';
-import { CATEGORY_ICONS } from '@/components/services/services';
+import { ServiceGlyph, useServiceCatalog } from '@/components/services/services';
 import { Badge, Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
@@ -74,11 +72,16 @@ const fromDraft = (d: DraftItem): ProposalItem => ({
 });
 
 function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
+  const catalog = useServiceCatalog();
   const router = useRouter();
   const qc = useQueryClient();
   const invalidateLead = useInvalidateLead();
   const log = useLogActivity(lead.id);
   const { data: packages } = usePackages();
+  // Grupos pela ordem das categorias (e, por segurança, alguma que só exista nos pacotes).
+  const packageCategories = [
+    ...new Set([...catalog.categories.map((c) => c.key), ...(packages ?? []).map((p) => p.category ?? 'web')]),
+  ];
   const { data: audits } = useAudits(lead.id);
   const latestAudit = audits?.find((a) => a.status === 'done');
 
@@ -270,15 +273,14 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
             <div className="flex flex-col gap-4 p-4">
               {packages?.length ? (
                 <div className="flex flex-col gap-4" role="group" aria-label="Acrescentar pacote">
-                  {SERVICE_CATEGORIES.map((category) => {
+                  {packageCategories.map((category) => {
                     const group = packages.filter((p) => (p.category ?? 'web') === category);
                     if (!group.length) return null;
-                    const Icon = CATEGORY_ICONS[category];
                     return (
-                      <section key={category} aria-label={SERVICE_CATEGORY_LABELS[category]}>
+                      <section key={category} aria-label={catalog.categoryLabel(category)}>
                         <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted uppercase">
-                          <Icon className="h-3.5 w-3.5" aria-hidden />
-                          {SERVICE_CATEGORY_LABELS[category]}
+                          <ServiceGlyph icon={catalog.categoryIcon(category)} className="h-3.5 w-3.5" />
+                          {catalog.categoryLabel(category)}
                         </h3>
                         {/* Grelha: todos os pacotes com a mesma largura, nome à esquerda e preço à direita. */}
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

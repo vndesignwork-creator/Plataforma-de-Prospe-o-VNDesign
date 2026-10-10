@@ -126,9 +126,11 @@ português) com as mesmas colunas — pode ser reimportado sem mapear nada.
 
 ## Serviços: Web Design, Design Gráfico e outros
 
-- **Definições → Serviços:** acrescentar, mudar o nome, a categoria (Web Design, Design Gráfico ou
-  Outros serviços), o nome curto dos cartões e o ícone; mudar a ordem; **esconder** (os leads que já o
-  têm ficam com ele) ou **apagar** (só sem leads). Começa com os 8 do site: Landing Pages, Sites
+- **Definições → Serviços → Categorias:** criar categorias (ex.: Fotografia & Vídeo), mudar o nome, o
+  ícone e a ordem, e escolher se o email com IA usa o portefólio de design; apagar só vazias. Começa com
+  Web Design, Design Gráfico e Outros serviços.
+- **Definições → Serviços:** acrescentar, mudar o nome, a categoria, o nome curto dos cartões e o
+  ícone; mudar a ordem; **esconder** (os leads que já o têm ficam com ele) ou **apagar** (só sem leads). Começa com os 8 do site: Landing Pages, Sites
   Institucionais, Blogs, Pequenas Lojas · Identidade Visual, Flyers e Cartazes, Posts Rede Social, Estampas T-shirts.
 - **Serviços de interesse** em cada lead (formulário e ficha), escolhidos da lista acima.
 - **Filtro "Serviço"** na lista e no Kanban; ícones nos leads; gráfico **Por serviço** no dashboard.

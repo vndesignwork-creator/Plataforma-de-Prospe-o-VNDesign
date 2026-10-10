@@ -1,8 +1,6 @@
 'use client';
 
 import {
-  SERVICE_CATEGORIES,
-  SERVICE_CATEGORY_LABELS,
   formatCurrency,
   parseEuroAmount,
   serviceLabel,
@@ -20,7 +18,7 @@ import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input, Select, Textarea } from '@/components/ui/input';
-import { CATEGORY_ICONS, ServiceIcon, useServiceCatalog } from '@/components/services/services';
+import { ServiceGlyph, ServiceIcon, useServiceCatalog } from '@/components/services/services';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { usePackages, useSettings, type SettingsWithMail } from '@/lib/queries';
 
@@ -129,9 +127,9 @@ function PackageDialog({ draft, onClose }: { draft: PackageDraft | null; onClose
               setForm({ ...form, category, service: form.service && servicesOf(category, catalog.all).includes(form.service) ? form.service : '' });
             }}
           >
-            {SERVICE_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {SERVICE_CATEGORY_LABELS[c]}
+            {catalog.categories.map((c) => (
+              <option key={c.key} value={c.key}>
+                {c.label}
               </option>
             ))}
           </Select>
@@ -239,17 +237,16 @@ export function ProposalSettings() {
         }
       />
       <ul className="divide-y divide-border" aria-label="Pacotes">
-        {SERVICE_CATEGORIES.map((category) => {
+        {[...new Set([...catalog.categories.map((c) => c.key), ...(packages ?? []).map((p) => p.category ?? 'web')])].map((category) => {
           const group = (packages ?? []).filter((p) => (p.category ?? 'web') === category);
           if (!group.length) return null;
-          const CategoryIcon = CATEGORY_ICONS[category];
           return [
             <li
               key={`h-${category}`}
               className="flex items-center gap-1.5 bg-surface-2 px-4 py-1.5 text-xs font-semibold tracking-wide text-muted uppercase"
             >
-              <CategoryIcon className="h-3.5 w-3.5" aria-hidden />
-              {SERVICE_CATEGORY_LABELS[category]}
+              <ServiceGlyph icon={catalog.categoryIcon(category)} className="h-3.5 w-3.5" />
+              {catalog.categoryLabel(category)}
             </li>,
             ...group.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-3">

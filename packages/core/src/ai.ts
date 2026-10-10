@@ -3,7 +3,14 @@
  * A chamada à API é feita no servidor; aqui fica só a parte "pura" e testável.
  */
 import { z } from 'zod';
-import { ServiceKeyListSchema, serviceCategory, serviceLabel, type ServiceInfo } from './services';
+import {
+  DEFAULT_SERVICE_CATEGORIES,
+  ServiceKeyListSchema,
+  serviceCategory,
+  serviceLabel,
+  type ServiceCategoryInfo,
+  type ServiceInfo,
+} from './services';
 import type { AuditIssue } from './audit';
 import { formatDate } from './format';
 
@@ -86,6 +93,8 @@ export interface AiEmailContext {
   sectorArguments?: string | null;
   /** Serviços do workspace (nomes e categorias); por omissão, os de origem. */
   services?: readonly ServiceInfo[];
+  /** Categorias do workspace: as marcadas com `design_portfolio` usam o portefólio de design. */
+  categories?: readonly ServiceCategoryInfo[];
   auditIssues?: readonly Pick<AuditIssue, 'message'>[];
   auditCms?: string | null;
   sender: {
@@ -168,8 +177,10 @@ export function buildAiEmailPrompt(request: AiEmailRequest, ctx: AiEmailContext)
   // Serviços a propor: os escolhidos no pedido, senão os do lead, senão um site.
   const services = (request.services?.length ? request.services : (l.services ?? [])).filter(Boolean);
   const proposing = services.length ? services : ['site_institucional'];
-  const graphic = proposing.some((s) => serviceCategory(s, ctx.services) === 'grafico');
-  const web = proposing.some((s) => serviceCategory(s, ctx.services) === 'web');
+  const categories = ctx.categories ?? DEFAULT_SERVICE_CATEGORIES;
+  const usesDesign = (s: string) => categories.find((c) => c.key === serviceCategory(s, ctx.services))?.design_portfolio ?? false;
+  const graphic = proposing.some(usesDesign);
+  const web = proposing.some((s) => !usesDesign(s));
 
   const sender = [
     line('Nome', ctx.sender.name),

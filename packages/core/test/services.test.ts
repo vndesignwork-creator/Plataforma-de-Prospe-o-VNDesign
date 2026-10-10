@@ -5,7 +5,10 @@ import { ServicePackageUpdateSchema, suggestPackages } from '../src/proposals';
 import { LeadCreateSchema } from '../src/schemas';
 import {
   SERVICE_KEYS,
+  ServiceCategoryCreateSchema,
+  ServiceCategoryUpdateSchema,
   ServiceCreateSchema,
+  categoryLabel,
   ServiceUpdateSchema,
   parseServices,
   serviceCategory,
@@ -96,6 +99,10 @@ describe('serviços geridos em Definições', () => {
     expect(ServiceCreateSchema.safeParse({ label: '' }).success).toBe(false);
     expect(ServiceCreateSchema.safeParse({ label: 'X', icon: 'foguetao' }).success).toBe(false);
     expect(ServiceUpdateSchema.parse({ archived: true })).toEqual({ archived: true });
+    expect(ServiceCategoryCreateSchema.parse({ label: 'Vídeo' })).toEqual({ label: 'Vídeo', icon: 'grid', design_portfolio: false });
+    expect(ServiceCategoryUpdateSchema.parse({ design_portfolio: true })).toEqual({ design_portfolio: true });
+    expect(categoryLabel('grafico')).toBe('Design Gráfico');
+    expect(categoryLabel('video', [{ key: 'video', label: 'Vídeo' }])).toBe('Vídeo');
   });
 });
 
@@ -123,6 +130,20 @@ describe('email com IA por serviço', () => {
       services: [{ key: 'fotografia', label: 'Fotografia de produto', category: 'outros' }],
     });
     expect(prompt).toContain('Serviços a propor: Fotografia de produto');
+  });
+
+  it('o portefólio de design segue a opção da categoria', () => {
+    const services = [{ key: 'reels', label: 'Reels', category: 'video' }];
+    const request = AiEmailRequestSchema.parse({ services: ['reels'] });
+    const withDesign = buildAiEmailPrompt(request, {
+      ...ctx,
+      services,
+      categories: [{ key: 'video', label: 'Vídeo', design_portfolio: true }],
+    });
+    expect(withDesign).toContain('Portefólio de design gráfico: https://vndesign.pt/design');
+    const without = buildAiEmailPrompt(request, { ...ctx, services, categories: [{ key: 'video', label: 'Vídeo' }] });
+    expect(without).not.toContain('Portefólio de design gráfico');
+    expect(without).toContain('Portefólio: https://vndesign.pt');
   });
 
   it('os serviços do pedido mandam sobre os do lead', () => {

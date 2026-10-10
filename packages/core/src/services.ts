@@ -9,14 +9,35 @@
 import { z } from 'zod';
 import { slugify } from './normalize';
 
+/** Categorias de origem; cada workspace pode acrescentar outras (Definições → Serviços). */
 export const SERVICE_CATEGORIES = ['web', 'grafico', 'outros'] as const;
-export type ServiceCategory = (typeof SERVICE_CATEGORIES)[number];
+/** Chave de uma categoria ("web", "grafico", "fotografia_video"…). */
+export type ServiceCategory = string;
 
-export const SERVICE_CATEGORY_LABELS: Record<ServiceCategory, string> = {
+export const SERVICE_CATEGORY_LABELS: Record<string, string> = {
   web: 'Web Design',
   grafico: 'Design Gráfico',
   outros: 'Outros serviços',
 };
+
+/** O que as funções precisam de saber de uma categoria (da API ou de origem). */
+export interface ServiceCategoryInfo {
+  key: string;
+  label: string;
+  icon?: string | null;
+  /** O email com IA usa o portefólio de design gráfico para os serviços desta categoria. */
+  design_portfolio?: boolean;
+}
+
+export const DEFAULT_SERVICE_CATEGORIES: ServiceCategoryInfo[] = [
+  { key: 'web', label: 'Web Design', icon: 'monitor', design_portfolio: false },
+  { key: 'grafico', label: 'Design Gráfico', icon: 'palette', design_portfolio: true },
+  { key: 'outros', label: 'Outros serviços', icon: 'grid', design_portfolio: false },
+];
+
+export function categoryLabel(key: string, categories: readonly ServiceCategoryInfo[] = DEFAULT_SERVICE_CATEGORIES): string {
+  return categories.find((c) => c.key === key)?.label ?? SERVICE_CATEGORY_LABELS[key] ?? key;
+}
 
 /** Os 8 serviços de origem (as chaves que a migração semeia em cada workspace). */
 export const SERVICES = {
@@ -28,7 +49,7 @@ export const SERVICES = {
   flyers_cartazes: { label: 'Flyers e Cartazes', category: 'grafico', short: 'Flyers', icon: 'file-image' },
   posts_redes: { label: 'Posts Rede Social', category: 'grafico', short: 'Posts', icon: 'images' },
   estampas: { label: 'Estampas T-shirts', category: 'grafico', short: 'T-shirts', icon: 'shirt' },
-} as const satisfies Record<string, { label: string; category: ServiceCategory; short: string; icon: string }>;
+} as const satisfies Record<string, { label: string; category: (typeof SERVICE_CATEGORIES)[number]; short: string; icon: string }>;
 
 /** Chave de um serviço ("landing_page", "fotografia"…): minúsculas, números e "_". */
 export type ServiceKey = string;
@@ -59,6 +80,9 @@ export const SERVICE_ICONS = {
   presentation: 'Apresentação',
   wrench: 'Manutenção',
   briefcase: 'Consultoria',
+  grid: 'Grelha',
+  heart: 'Coração',
+  music: 'Música',
   sparkles: 'Outro',
 } as const;
 export type ServiceIconKey = keyof typeof SERVICE_ICONS;
@@ -134,7 +158,11 @@ export const ServiceKeyListSchema = z
   .max(50)
   .transform((list) => [...new Set(list)]);
 
-export const ServiceCategorySchema = z.enum(SERVICE_CATEGORIES, { error: 'Categoria inválida.' });
+export const ServiceCategoryKeySchema = z
+  .string()
+  .trim()
+  .regex(/^[a-z0-9_]{1,48}$/, { error: 'Categoria inválida.' })
+  .meta({ description: 'Chave da categoria (ver GET /service-categories)' });
 
 export const ServiceSchema = z
   .object({
@@ -142,7 +170,7 @@ export const ServiceSchema = z
     key: z.string(),
     label: z.string(),
     short_label: z.string().nullable(),
-    category: ServiceCategorySchema,
+    category: ServiceCategoryKeySchema,
     icon: z.string().nullable(),
     sort_order: z.int(),
     archived_at: z.string().nullable(),
@@ -164,7 +192,7 @@ export const ServiceCreateSchema = z
   .object({
     label: serviceLabelField,
     short_label: shortLabelField,
-    category: ServiceCategorySchema.default('outros'),
+    category: ServiceCategoryKeySchema.default('outros'),
     icon: iconField.default('sparkles'),
   })
   .meta({ id: 'ServiceCreate' });
@@ -175,13 +203,52 @@ export const ServiceUpdateSchema = z
   .object({
     label: serviceLabelField.optional(),
     short_label: shortLabelField.optional(),
-    category: ServiceCategorySchema.optional(),
+    category: ServiceCategoryKeySchema.optional(),
     icon: iconField.optional(),
     archived: z.boolean().optional().meta({ description: 'Esconder (true) ou voltar a mostrar (false)' }),
   })
   .meta({ id: 'ServiceUpdate' });
 export type ServiceUpdate = z.output<typeof ServiceUpdateSchema>;
 
+// -----------------------------------------------------------------------------
+// Categorias (Definições → Serviços → Categorias)
+// -----------------------------------------------------------------------------
+
+export const ServiceCategorySchema = z
+  .object({
+    id: z.uuid(),
+    key: z.string(),
+    label: z.string(),
+    icon: z.string().nullable(),
+    design_portfolio: z.boolean().meta({ description: 'O email com IA usa o portefólio de design gráfico' }),
+    sort_order: z.int(),
+    service_count: z.int(),
+    package_count: z.int(),
+  })
+  .meta({ id: 'ServiceCategory' });
+export type ServiceCategoryItem = z.infer<typeof ServiceCategorySchema>;
+
+const categoryLabelField = z.string().trim().min(1, { error: 'Indica o nome da categoria.' }).max(60, { error: 'Máximo de 60 caracteres.' });
+
+export const ServiceCategoryCreateSchema = z
+  .object({
+    label: categoryLabelField,
+    icon: iconField.default('grid'),
+    design_portfolio: z.boolean().default(false),
+  })
+  .meta({ id: 'ServiceCategoryCreate' });
+export type ServiceCategoryCreate = z.output<typeof ServiceCategoryCreateSchema>;
+
+export const ServiceCategoryUpdateSchema = z
+  .object({
+    label: categoryLabelField.optional(),
+    icon: iconField.optional(),
+    design_portfolio: z.boolean().optional(),
+  })
+  .meta({ id: 'ServiceCategoryUpdate' });
+export type ServiceCategoryUpdate = z.output<typeof ServiceCategoryUpdateSchema>;
+
+/** Nova ordem (serviços ou categorias): os ids pela ordem pretendida. */
 export const ServiceReorderSchema = z
   .object({ ids: z.array(z.uuid()).min(1).max(200) })
   .meta({ id: 'ServiceReorder' });

@@ -1,14 +1,6 @@
 'use client';
 
-import {
-  SERVICE_CATEGORIES,
-  SERVICE_CATEGORY_LABELS,
-  SERVICE_ICONS,
-  SERVICE_ICON_KEYS,
-  type Service,
-  type ServiceCategory,
-  type ServiceIconKey,
-} from '@vndesign/core';
+import { SERVICE_ICONS, SERVICE_ICON_KEYS, type Service, type ServiceCategoryItem, type ServiceIconKey } from '@vndesign/core';
 import { ArrowDown, ArrowUp, Edit3, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -17,23 +9,59 @@ import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input, Select } from '@/components/ui/input';
-import { CATEGORY_ICONS, SERVICE_ICON_COMPONENTS, ServiceGlyph } from '@/components/services/services';
+import { SERVICE_ICON_COMPONENTS, ServiceGlyph, useServiceCatalog } from '@/components/services/services';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
-import { useInvalidateServices, useServices } from '@/lib/queries';
+import { useInvalidateServices, useServiceCategories, useServices } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
 interface Draft {
   id: string | null;
   label: string;
   short_label: string;
-  category: ServiceCategory;
+  category: string;
   icon: ServiceIconKey;
+}
+
+const toIconKey = (icon: string | null | undefined, fallback: ServiceIconKey): ServiceIconKey =>
+  icon && icon in SERVICE_ICON_COMPONENTS ? (icon as ServiceIconKey) : fallback;
+
+/** Grelha de ícones (serviços e categorias). */
+function IconPicker({ value, onChange, label }: { value: ServiceIconKey; onChange: (icon: ServiceIconKey) => void; label: string }) {
+  return (
+    <fieldset className="sm:col-span-2">
+      <legend className="mb-1.5 text-sm font-medium">Ícone</legend>
+      <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1.5">
+        {SERVICE_ICON_KEYS.map((key) => {
+          const Icon = SERVICE_ICON_COMPONENTS[key];
+          const selected = value === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              aria-label={SERVICE_ICONS[key]}
+              title={SERVICE_ICONS[key]}
+              onClick={() => onChange(key)}
+              className={cn(
+                'inline-flex h-10 w-10 items-center justify-center rounded-lg border transition-colors',
+                selected ? 'border-accent bg-accent-soft text-accent-text' : 'border-border text-muted hover:border-border-strong hover:text-fg',
+              )}
+            >
+              <Icon className="h-4 w-4" aria-hidden />
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
 }
 
 const emptyDraft: Draft = { id: null, label: '', short_label: '', category: 'outros', icon: 'sparkles' };
 
 function ServiceDialog({ draft, onClose }: { draft: Draft; onClose: () => void }) {
   const invalidate = useInvalidateServices();
+  const catalog = useServiceCatalog();
   const [form, setForm] = useState<Draft>(draft);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [saving, setSaving] = useState(false);
@@ -84,10 +112,10 @@ function ServiceDialog({ draft, onClose }: { draft: Draft; onClose: () => void }
           <Input value={form.label} maxLength={60} autoFocus onChange={(e) => setForm({ ...form, label: e.target.value })} />
         </Field>
         <Field label="Categoria" error={errors.category?.[0]}>
-          <Select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as ServiceCategory })}>
-            {SERVICE_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {SERVICE_CATEGORY_LABELS[c]}
+          <Select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+            {catalog.categories.map((c) => (
+              <option key={c.key} value={c.key}>
+                {c.label}
               </option>
             ))}
           </Select>
@@ -95,40 +123,15 @@ function ServiceDialog({ draft, onClose }: { draft: Draft; onClose: () => void }
         <Field label="Nome curto (opcional)" error={errors.short_label?.[0]} hint="Nos cartões do Kanban. Sem nome curto, usa a 1.ª palavra.">
           <Input value={form.short_label} maxLength={14} onChange={(e) => setForm({ ...form, short_label: e.target.value })} />
         </Field>
-        <fieldset className="sm:col-span-2">
-          <legend className="mb-1.5 text-sm font-medium">Ícone</legend>
-          <div role="radiogroup" aria-label="Ícone do serviço" className="flex flex-wrap gap-1.5">
-            {SERVICE_ICON_KEYS.map((key) => {
-              const Icon = SERVICE_ICON_COMPONENTS[key];
-              const selected = form.icon === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  aria-label={SERVICE_ICONS[key]}
-                  title={SERVICE_ICONS[key]}
-                  onClick={() => setForm({ ...form, icon: key })}
-                  className={cn(
-                    'inline-flex h-10 w-10 items-center justify-center rounded-lg border transition-colors',
-                    selected ? 'border-accent bg-accent-soft text-accent-text' : 'border-border text-muted hover:border-border-strong hover:text-fg',
-                  )}
-                >
-                  <Icon className="h-4 w-4" aria-hidden />
-                </button>
-              );
-            })}
-          </div>
-        </fieldset>
+        <IconPicker label="Ícone do serviço" value={form.icon} onChange={(icon) => setForm({ ...form, icon })} />
         <button type="submit" hidden />
       </form>
     </Dialog>
   );
 }
 
-/** Definições → Serviços: os serviços que se escolhem nos leads, filtros, propostas e listas de tarefas. */
-export function ServicesSettings() {
+/** Lista de serviços, agrupada pelas categorias. */
+function ServicesList() {
   const invalidate = useInvalidateServices();
   const { data: services, isLoading } = useServices(true);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -159,7 +162,8 @@ export function ServicesSettings() {
     void run(() => api('/services/reorder', { method: 'POST', body: { ids } }), 'Ordem atualizada.');
   }
 
-  const groups = SERVICE_CATEGORIES.map((category) => ({ category, items: (services ?? []).filter((s) => s.category === category) }));
+  const catalog = useServiceCatalog();
+  const groups = catalog.categories.map((c) => ({ category: c.key, items: (services ?? []).filter((s) => s.category === c.key) }));
 
   return (
     <Card id="servicos">
@@ -167,7 +171,7 @@ export function ServicesSettings() {
         title="Serviços"
         description="Os serviços que ofereces. Aparecem nos leads (serviços de interesse), nos filtros, nas propostas e nas listas de tarefas."
         actions={
-          <Button size="sm" variant="outline" onClick={() => setDraft({ ...emptyDraft })}>
+          <Button size="sm" variant="outline" onClick={() => setDraft({ ...emptyDraft, category: catalog.categories.at(-1)?.key ?? 'outros' })}>
             <Plus className="h-3.5 w-3.5" aria-hidden /> Novo serviço
           </Button>
         }
@@ -177,14 +181,13 @@ export function ServicesSettings() {
       ) : (
         <ul className="divide-y divide-border" aria-label="Serviços">
           {groups.map(({ category, items }) => {
-            const CategoryIcon = CATEGORY_ICONS[category];
             return [
               <li
                 key={`h-${category}`}
                 className="flex items-center gap-1.5 bg-surface-2 px-4 py-1.5 text-xs font-semibold tracking-wide text-muted uppercase"
               >
-                <CategoryIcon className="h-3.5 w-3.5" aria-hidden />
-                {SERVICE_CATEGORY_LABELS[category]}
+                <ServiceGlyph icon={catalog.categoryIcon(category)} className="h-3.5 w-3.5" />
+                {catalog.categoryLabel(category)}
               </li>,
               ...(items.length
                 ? items.map((s, i) => (
@@ -233,7 +236,7 @@ export function ServicesSettings() {
                               label: s.label,
                               short_label: s.short_label ?? '',
                               category: s.category,
-                              icon: (s.icon && s.icon in SERVICE_ICON_COMPONENTS ? s.icon : 'sparkles') as ServiceIconKey,
+                              icon: toIconKey(s.icon, 'sparkles'),
                             })
                           }
                         >
@@ -314,5 +317,228 @@ export function ServicesSettings() {
         }
       />
     </Card>
+  );
+}
+
+interface CategoryDraft {
+  id: string | null;
+  label: string;
+  icon: ServiceIconKey;
+  design_portfolio: boolean;
+}
+
+function CategoryDialog({ draft, onClose }: { draft: CategoryDraft; onClose: () => void }) {
+  const invalidate = useInvalidateServices();
+  const [form, setForm] = useState<CategoryDraft>(draft);
+  const [errors, setErrors] = useState<Record<string, string[]>>({});
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    setErrors({});
+    try {
+      await api(form.id ? `/service-categories/${form.id}` : '/service-categories', {
+        method: form.id ? 'PATCH' : 'POST',
+        body: { label: form.label, icon: form.icon, design_portfolio: form.design_portfolio },
+      });
+      toast.success(form.id ? 'Categoria guardada.' : 'Categoria criada.');
+      invalidate();
+      onClose();
+    } catch (error) {
+      if (error instanceof ApiClientError && error.problem.errors) setErrors(error.problem.errors as Record<string, string[]>);
+      else toast.error(errorMessage(error));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => (!open ? onClose() : undefined)}
+      title={form.id ? 'Editar categoria' : 'Nova categoria'}
+      className="max-w-xl"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={save} loading={saving}>
+            Guardar
+          </Button>
+        </>
+      }
+    >
+      <form
+        className="grid gap-4 sm:grid-cols-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save();
+        }}
+        noValidate
+      >
+        <Field label="Nome" required error={errors.label?.[0]} className="sm:col-span-2" hint="Ex.: Fotografia & Vídeo, Marketing Digital.">
+          <Input value={form.label} maxLength={60} autoFocus onChange={(e) => setForm({ ...form, label: e.target.value })} />
+        </Field>
+        <IconPicker label="Ícone da categoria" value={form.icon} onChange={(icon) => setForm({ ...form, icon })} />
+        <label className="flex items-start gap-2 text-sm sm:col-span-2">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4"
+            checked={form.design_portfolio}
+            onChange={(e) => setForm({ ...form, design_portfolio: e.target.checked })}
+          />
+          <span>
+            Usar o portefólio de design no email com IA
+            <span className="block text-xs text-muted">
+              Para os serviços desta categoria, o email inclui o link do portefólio de design gráfico (Definições → Assinatura).
+            </span>
+          </span>
+        </label>
+        <button type="submit" hidden />
+      </form>
+    </Dialog>
+  );
+}
+
+/** Categorias: criar, mudar o nome/ícone, ordenar e apagar (só vazias). */
+function CategoriesList() {
+  const invalidate = useInvalidateServices();
+  const { data: categories, isLoading } = useServiceCategories();
+  const [draft, setDraft] = useState<CategoryDraft | null>(null);
+  const [confirm, setConfirm] = useState<ServiceCategoryItem | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function run(action: () => Promise<unknown>, success: string) {
+    setBusy(true);
+    try {
+      await action();
+      toast.success(success);
+      invalidate();
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function move(index: number, direction: -1 | 1) {
+    const list = [...(categories ?? [])];
+    const other = index + direction;
+    if (!list[other]) return;
+    [list[index], list[other]] = [list[other]!, list[index]!];
+    void run(() => api('/service-categories/reorder', { method: 'POST', body: { ids: list.map((c) => c.id) } }), 'Ordem atualizada.');
+  }
+
+  const usage = (c: ServiceCategoryItem) =>
+    [
+      `${c.service_count} serviço${c.service_count === 1 ? '' : 's'}`,
+      c.package_count ? `${c.package_count} pacote${c.package_count === 1 ? '' : 's'}` : null,
+      c.design_portfolio ? 'portefólio de design no email' : null,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+
+  return (
+    <Card id="categorias">
+      <CardHeader
+        title="Categorias"
+        description="Agrupam os serviços no formulário do lead, nos filtros e nos pacotes das propostas."
+        actions={
+          <Button size="sm" variant="outline" onClick={() => setDraft({ id: null, label: '', icon: 'grid', design_portfolio: false })}>
+            <Plus className="h-3.5 w-3.5" aria-hidden /> Nova categoria
+          </Button>
+        }
+      />
+      {isLoading ? (
+        <Skeleton className="m-4 h-24" />
+      ) : (
+        <ul className="divide-y divide-border" aria-label="Categorias">
+          {(categories ?? []).map((c, i, list) => {
+            const inUse = c.service_count > 0 || c.package_count > 0;
+            return (
+              <li
+                key={c.id}
+                className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-1 px-4 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto]"
+              >
+                <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-surface-2 text-accent-text">
+                  <ServiceGlyph icon={c.icon} />
+                </span>
+                <div className="min-w-0">
+                  <p className="font-medium break-words">{c.label}</p>
+                  <p className="text-sm text-muted">{usage(c)}</p>
+                </div>
+                <div className="col-start-2 -ml-2 flex flex-wrap gap-0.5 sm:col-start-auto sm:ml-0">
+                  <Button size="icon" variant="ghost" aria-label={`Subir ${c.label}`} disabled={busy || i === 0} onClick={() => move(i, -1)}>
+                    <ArrowUp className="h-4 w-4" aria-hidden />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`Descer ${c.label}`}
+                    disabled={busy || i === list.length - 1}
+                    onClick={() => move(i, 1)}
+                  >
+                    <ArrowDown className="h-4 w-4" aria-hidden />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`Editar ${c.label}`}
+                    onClick={() => setDraft({ id: c.id, label: c.label, icon: toIconKey(c.icon, 'grid'), design_portfolio: c.design_portfolio })}
+                  >
+                    <Edit3 className="h-4 w-4" aria-hidden />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label={inUse ? `${c.label} tem serviços ou pacotes: muda-os primeiro` : `Apagar ${c.label}`}
+                    title={inUse ? 'Tem serviços ou pacotes — muda-os de categoria primeiro' : undefined}
+                    disabled={busy || inUse}
+                    onClick={() => setConfirm(c)}
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden />
+                  </Button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {draft ? <CategoryDialog key={draft.id ?? 'nova'} draft={draft} onClose={() => setDraft(null)} /> : null}
+      <Dialog
+        open={confirm !== null}
+        onOpenChange={(open) => (!open ? setConfirm(null) : undefined)}
+        title={`Apagar "${confirm?.label ?? ''}"?`}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setConfirm(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                const c = confirm;
+                setConfirm(null);
+                if (c) void run(() => api(`/service-categories/${c.id}`, { method: 'DELETE' }), 'Categoria apagada.');
+              }}
+            >
+              Apagar
+            </Button>
+          </>
+        }
+      />
+    </Card>
+  );
+}
+
+/** Definições → Serviços: os serviços (e as suas categorias) que se escolhem nos leads, filtros, propostas e listas de tarefas. */
+export function ServicesSettings() {
+  return (
+    <div className="flex flex-col gap-5">
+      <CategoriesList />
+      <ServicesList />
+    </div>
   );
 }

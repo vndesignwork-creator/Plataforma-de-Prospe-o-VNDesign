@@ -71,6 +71,9 @@ import {
   PreferenceValueSchema,
   ProblemSchema,
   SectorCreateSchema,
+  ServiceCategoryCreateSchema,
+  ServiceCategorySchema,
+  ServiceCategoryUpdateSchema,
   ServiceCreateSchema,
   ServiceReorderSchema,
   ServiceSchema,
@@ -461,6 +464,42 @@ export function getOpenApiDocument() {
           summary: 'Apagar setor sem leads',
           requestParams: { path: idParam },
           responses: { '204': { description: 'Apagado' }, ...withNotFound, '409': problem('Setor com leads') },
+        }),
+      },
+      '/service-categories': {
+        get: op({
+          tags: ['Serviços'],
+          summary: 'Listar categorias de serviços',
+          responses: { '200': ok(data(z.array(ServiceCategorySchema))), ...common },
+        }),
+        post: op({
+          tags: ['Serviços'],
+          summary: 'Criar categoria (a chave é gerada a partir do nome)',
+          requestBody: body(ServiceCategoryCreateSchema),
+          responses: { '201': ok(data(ServiceCategorySchema), 'Criada'), ...common, '409': problem('Nome repetido') },
+        }),
+      },
+      '/service-categories/reorder': {
+        post: op({
+          tags: ['Serviços'],
+          summary: 'Mudar a ordem das categorias',
+          requestBody: body(ServiceReorderSchema),
+          responses: { '200': ok(data(z.array(ServiceCategorySchema))), ...common },
+        }),
+      },
+      '/service-categories/{id}': {
+        patch: op({
+          tags: ['Serviços'],
+          summary: 'Editar categoria (nome, ícone, portefólio de design no email com IA)',
+          requestParams: { path: idParam },
+          requestBody: body(ServiceCategoryUpdateSchema),
+          responses: { '200': ok(data(ServiceCategorySchema)), ...withNotFound, '409': problem('Nome repetido') },
+        }),
+        delete: op({
+          tags: ['Serviços'],
+          summary: 'Apagar categoria sem serviços nem pacotes',
+          requestParams: { path: idParam },
+          responses: { '204': { description: 'Apagada' }, ...withNotFound, '409': problem('Categoria em uso') },
         }),
       },
       '/services': {
