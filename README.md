@@ -97,7 +97,7 @@ npm run dev        # http://localhost:3000
 ## Importar a folha atual
 
 1. No Google Sheets (“Leads_Prospeccao_VNDesign”): **Ficheiro → Transferir → Microsoft Excel (.xlsx)**.
-2. Na plataforma: **Importar** → escolhe o ficheiro. A folha “🎯 Pipeline de Leads”, o cabeçalho
+2. Na plataforma: **Leads → Importar / Exportar → Folha CSV ou Excel…** → escolhe o ficheiro. A folha “🎯 Pipeline de Leads”, o cabeçalho
    (linha 2) e as colunas são detetados automaticamente; valores como “🔍 Identificado”,
    “✅ Sim”, “--”, “08/10/2026” ou “1.250,00 €” são convertidos.
 3. Revê: linhas repetidas no ficheiro, leads que já existem (podes **juntar** — só preenche

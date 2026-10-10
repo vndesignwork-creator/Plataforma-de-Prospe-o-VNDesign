@@ -125,7 +125,7 @@ test('Dashboard: o essencial e "Hoje"; o resto em Estatísticas', async ({ page 
 
 test('exportar leads para Excel', async ({ page }) => {
   await page.goto('/leads');
-  await page.getByRole('button', { name: 'Exportar leads' }).click();
+  await page.getByRole('button', { name: 'Importar ou exportar leads' }).click();
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('menuitem', { name: 'Excel (.xlsx)' }).click(),

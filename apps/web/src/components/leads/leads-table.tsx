@@ -28,7 +28,9 @@ import {
   ArrowUp,
   ArrowUpDown,
   Columns3,
+  ArrowDownUp,
   Download,
+  Upload,
   Map as MapIcon,
   Search,
   SlidersHorizontal,
@@ -477,14 +479,27 @@ export function LeadsTable() {
           <span className="hidden sm:inline">Mapa</span>
         </Link>
         <DropdownRoot>
-          <DropdownTrigger className={buttonClasses('outline', 'md')} aria-label="Exportar leads">
-            <Download className="h-4 w-4" aria-hidden />
-            <span className="hidden sm:inline">Exportar</span>
+          {/* Importar e exportar juntos (usa-se pouco: não precisa de lugar no menu lateral). */}
+          <DropdownTrigger className={buttonClasses('outline', 'md')} aria-label="Importar ou exportar leads">
+            <ArrowDownUp className="h-4 w-4" aria-hidden />
+            <span className="hidden sm:inline">Importar / Exportar</span>
           </DropdownTrigger>
           <DropdownContent>
+            <DropdownLabel>Importar</DropdownLabel>
+            <DropdownItem onSelect={() => router.push('/importar')}>
+              <Upload className="h-4 w-4 text-muted" aria-hidden />
+              Folha CSV ou Excel…
+            </DropdownItem>
+            <DropdownSeparator />
             <DropdownLabel>{activeFilters ? 'Exportar leads filtrados' : 'Exportar todos os leads'}</DropdownLabel>
-            <DropdownItem onSelect={() => download('xlsx')}>Excel (.xlsx)</DropdownItem>
-            <DropdownItem onSelect={() => download('csv')}>CSV (Excel em português)</DropdownItem>
+            <DropdownItem onSelect={() => download('xlsx')}>
+              <Download className="h-4 w-4 text-muted" aria-hidden />
+              Excel (.xlsx)
+            </DropdownItem>
+            <DropdownItem onSelect={() => download('csv')}>
+              <Download className="h-4 w-4 text-muted" aria-hidden />
+              CSV (Excel em português)
+            </DropdownItem>
           </DropdownContent>
         </DropdownRoot>
       </div>
