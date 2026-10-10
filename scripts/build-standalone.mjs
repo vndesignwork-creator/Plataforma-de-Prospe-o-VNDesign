@@ -26,6 +26,13 @@ if (!existsSync(`${target}/server.js`)) {
   console.error('✖ Não foi gerado o servidor standalone (apps/web/.next/standalone).');
   process.exit(1);
 }
+// O gerador de PDF precisa das fontes base do pdfkit (require dinâmico); sem elas,
+// "Ver PDF" dá erro 500 em produção. Ver outputFileTracingIncludes em next.config.ts.
+const pdfFont = 'apps/web/.next/standalone/node_modules/pdfkit/js/standard-fonts/Helvetica.cjs';
+if (!existsSync(pdfFont)) {
+  console.error(`✖ Falta ${pdfFont} no servidor standalone: o PDF das propostas não funcionaria.`);
+  process.exit(1);
+}
 cpSync('apps/web/.next/static', `${target}/.next/static`, { recursive: true });
 cpSync('apps/web/public', `${target}/public`, { recursive: true });
 console.log(`✔ Servidor pronto: node ${target}/server.js`);

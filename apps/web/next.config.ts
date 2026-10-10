@@ -15,6 +15,11 @@ const nextConfig: NextConfig = {
   transpilePackages: ['@vndesign/core'],
   // Gerador de PDF das propostas: corre como pacote Node normal (não é empacotado).
   serverExternalPackages: ['@react-pdf/renderer'],
+  // O pdfkit (usado pelo gerador de PDF) carrega as fontes base com require() dinâmico,
+  // que o "standalone" não deteta: sem isto, o PDF dá erro 500 em produção (Hostinger).
+  outputFileTracingIncludes: {
+    '/api/v1/proposals/**': ['../../node_modules/pdfkit/js/standard-fonts/**/*', '../../node_modules/pdfkit/js/data/**/*'],
+  },
   // Permite fixar a raiz do monorepo (evita avisos com vários lockfiles).
   turbopack: { root: path.join(__dirname, '..', '..') },
   poweredByHeader: false,
