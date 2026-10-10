@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import { handleError, json, problemResponse } from '@/server/http';
+import { publicOrigin } from '@/lib/public-url';
 import { createSupabaseAdminClient } from '@/server/supabase-admin';
 import { sendDailyDigests } from '@/server/services/digest';
 import { autoArchiveLeads } from '@/server/services/leads';
@@ -31,7 +32,7 @@ async function handler(req: Request) {
     // Primeiro o arquivo automático, para o resumo já não contar esses leads.
     const archived = await autoArchiveLeads(createSupabaseAdminClient(), dryRun);
     const [results, push] = await Promise.all([
-      sendDailyDigests({ appUrl: process.env.APP_URL ?? url.origin, dryRun }),
+      sendDailyDigests({ appUrl: publicOrigin(req), dryRun }),
       sendDailyPushes({ dryRun }),
     ]);
     return json({ data: results, push, archived });

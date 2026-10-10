@@ -6,6 +6,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { authCookieOptions } from '@/lib/env';
+import { publicUrl } from '@/lib/public-url';
 
 const PUBLIC_PATHS = ['/login', '/auth/', '/api/', '/docs/', '/offline'];
 
@@ -39,16 +40,11 @@ export async function proxy(request: NextRequest) {
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p));
 
   if (!user && !isPublic) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    url.search = pathname === '/' ? '' : `?next=${encodeURIComponent(pathname + search)}`;
-    return NextResponse.redirect(url);
+    const next = pathname === '/' ? '' : `?next=${encodeURIComponent(pathname + search)}`;
+    return NextResponse.redirect(publicUrl(`/login${next}`, request));
   }
   if (user && pathname === '/login') {
-    const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
-    url.search = '';
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(publicUrl('/dashboard', request));
   }
   return response;
 }
