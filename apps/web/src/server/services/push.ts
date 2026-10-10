@@ -8,6 +8,7 @@ import { ApiError, fromPostgrest } from '../http';
 import { isPushConfigured, sendPush, vapidPublicKey, type PushPayload, type StoredSubscription } from '../push';
 import { createSupabaseAdminClient } from '../supabase-admin';
 import { fetchToday } from './dashboard';
+import { urgentTasks } from './digest';
 
 export async function getPushStatus(ctx: ApiContext) {
   const { data, error } = await ctx.supabase
@@ -77,16 +78,26 @@ export async function sendTestPush(ctx: ApiContext) {
 /** Texto da notificação diária (null = nada para avisar). */
 export function buildDailyPush(today: Today): PushPayload | null {
   const urgent = [...today.overdue, ...today.due_today];
-  if (!urgent.length) return null;
+  const tasks = urgentTasks(today);
+  if (!urgent.length && !tasks.length) return null;
   const parts = [
     today.overdue.length ? `${today.overdue.length} em atraso` : null,
     today.due_today.length ? `${today.due_today.length} para hoje` : null,
+    tasks.length ? `${tasks.length} tarefa${tasks.length === 1 ? '' : 's'}` : null,
   ].filter(Boolean);
-  const names = urgent.slice(0, 3).map((l) => l.company_name).join(', ');
+  const names = [...new Set([...urgent.map((l) => l.company_name), ...tasks.map((t) => t.lead.company_name)])];
+  const single = urgent.length === 1 && !tasks.length ? urgent[0]!.id : !urgent.length && new Set(tasks.map((t) => t.lead.id)).size === 1 ? tasks[0]!.lead.id : null;
+  const title = !urgent.length
+    ? tasks.length === 1
+      ? '1 tarefa para hoje'
+      : `${tasks.length} tarefas para hoje`
+    : urgent.length === 1
+      ? '1 follow-up à tua espera'
+      : `${urgent.length} follow-ups à tua espera`;
   return {
-    title: urgent.length === 1 ? '1 follow-up à tua espera' : `${urgent.length} follow-ups à tua espera`,
-    body: `${parts.join(' · ')} — ${names}${urgent.length > 3 ? '…' : ''}`,
-    url: urgent.length === 1 ? `/leads/${urgent[0]!.id}` : '/dashboard',
+    title,
+    body: `${parts.join(' · ')} — ${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''}`,
+    url: single ? `/leads/${single}` : '/dashboard',
     tag: 'daily-follow-ups',
   };
 }

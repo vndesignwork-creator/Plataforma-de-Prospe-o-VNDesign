@@ -35,6 +35,8 @@ import type {
   DuplicateCheckResult,
   Lead,
   LeadCreateInput,
+  LeadTask,
+  TaskTemplate,
   Me,
   Sector,
 } from '@vndesign/core';
@@ -118,6 +120,7 @@ export function useInvalidateLead() {
       void qc.invalidateQueries({ queryKey: qk.lead(id) });
       void qc.invalidateQueries({ queryKey: qk.activities(id) });
       void qc.invalidateQueries({ queryKey: ['proposals', id] });
+      void qc.invalidateQueries({ queryKey: ['tasks', id] });
     }
   };
 }
@@ -346,4 +349,34 @@ export function useMapData(query: Record<string, string | string[] | undefined>)
     queryFn: () => api<{ data: MapData }>('/map', { query }).then((r) => r.data),
     placeholderData: keepPreviousData,
   });
+}
+
+// -----------------------------------------------------------------------------
+// Tarefas
+// -----------------------------------------------------------------------------
+export function useLeadTasks(leadId: string) {
+  return useQuery({
+    queryKey: ['tasks', leadId],
+    queryFn: () => api<{ data: LeadTask[] }>(`/leads/${leadId}/tasks`).then((r) => r.data),
+  });
+}
+
+export function useTaskTemplates() {
+  return useQuery({
+    queryKey: ['task-templates'],
+    queryFn: () => api<{ data: TaskTemplate[] }>('/task-templates').then((r) => r.data),
+    staleTime: 60_000,
+  });
+}
+
+/** Depois de mudar tarefas: o progresso aparece na lista e no Kanban, e as datas em "Hoje". */
+export function useInvalidateTasks() {
+  const qc = useQueryClient();
+  return (leadId: string) => {
+    void qc.invalidateQueries({ queryKey: ['tasks', leadId] });
+    void qc.invalidateQueries({ queryKey: qk.activities(leadId) });
+    void qc.invalidateQueries({ queryKey: ['leads'] });
+    void qc.invalidateQueries({ queryKey: ['board'] });
+    void qc.invalidateQueries({ queryKey: ['today'] });
+  };
 }

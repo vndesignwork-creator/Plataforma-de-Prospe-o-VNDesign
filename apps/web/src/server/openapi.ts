@@ -4,6 +4,14 @@
  * Servido em /api/v1/openapi.json e apresentado em /docs/api.
  */
 import {
+  ApplyTaskTemplateSchema,
+  LeadTaskCreateSchema,
+  LeadTaskReorderSchema,
+  LeadTaskSchema,
+  LeadTaskUpdateSchema,
+  TaskTemplateCreateSchema,
+  TaskTemplateSchema,
+  TaskTemplateUpdateSchema,
   AiEmailRequestSchema,
   AiEmailResultSchema,
   GeocodeBatchResultSchema,
@@ -137,6 +145,7 @@ export function getOpenApiDocument() {
       { name: 'Auditor de sites' },
       { name: 'Integrações' },
       { name: 'Notificações' },
+      { name: 'Tarefas' },
       { name: 'Propostas' },
       { name: 'Email com IA' },
       { name: 'Mapa' },
@@ -637,6 +646,68 @@ export function getOpenApiDocument() {
           requestParams: { path: idParam },
           responses: { '200': ok(data(z.object({ proposal: ProposalSchema, lead: LeadSchema }))), ...withNotFound },
         }),
+      },
+      '/leads/{id}/tasks': {
+        get: op({
+          tags: ['Tarefas'],
+          summary: 'Tarefas do lead',
+          requestParams: { path: leadId },
+          responses: { '200': ok(data(z.array(LeadTaskSchema))), ...withNotFound },
+        }),
+        post: op({
+          tags: ['Tarefas'],
+          summary: 'Nova tarefa (fica no fim da lista)',
+          requestParams: { path: leadId },
+          requestBody: body(LeadTaskCreateSchema),
+          responses: { '201': ok(data(LeadTaskSchema), 'Criada'), ...withNotFound },
+        }),
+      },
+      '/leads/{id}/tasks/reorder': {
+        post: op({
+          tags: ['Tarefas'],
+          summary: 'Mudar a ordem das tarefas',
+          requestParams: { path: leadId },
+          requestBody: body(LeadTaskReorderSchema),
+          responses: { '200': ok(data(z.array(LeadTaskSchema))), ...withNotFound },
+        }),
+      },
+      '/leads/{id}/tasks/template': {
+        post: op({
+          tags: ['Tarefas'],
+          summary: 'Acrescentar as tarefas de uma lista-modelo (sem repetir as que já existem)',
+          requestParams: { path: leadId },
+          requestBody: body(ApplyTaskTemplateSchema),
+          responses: { '200': ok(data(z.array(LeadTaskSchema))), ...withNotFound },
+        }),
+      },
+      '/tasks/{id}': {
+        patch: op({
+          tags: ['Tarefas'],
+          summary: 'Editar, concluir ({ done: true }) ou reabrir uma tarefa',
+          requestParams: { path: idParam },
+          requestBody: body(LeadTaskUpdateSchema),
+          responses: { '200': ok(data(LeadTaskSchema)), ...withNotFound },
+        }),
+        delete: op({ tags: ['Tarefas'], summary: 'Apagar tarefa', requestParams: { path: idParam }, responses: { '204': { description: 'Apagada' }, ...withNotFound } }),
+      },
+      '/task-templates': {
+        get: op({ tags: ['Tarefas'], summary: 'Listas-modelo de tarefas', responses: { '200': ok(data(z.array(TaskTemplateSchema))), ...common } }),
+        post: op({
+          tags: ['Tarefas'],
+          summary: 'Nova lista-modelo',
+          requestBody: body(TaskTemplateCreateSchema),
+          responses: { '201': ok(data(TaskTemplateSchema), 'Criada'), ...common },
+        }),
+      },
+      '/task-templates/{id}': {
+        patch: op({
+          tags: ['Tarefas'],
+          summary: 'Editar lista-modelo',
+          requestParams: { path: idParam },
+          requestBody: body(TaskTemplateUpdateSchema),
+          responses: { '200': ok(data(TaskTemplateSchema)), ...withNotFound },
+        }),
+        delete: op({ tags: ['Tarefas'], summary: 'Apagar lista-modelo', requestParams: { path: idParam }, responses: { '204': { description: 'Apagada' }, ...withNotFound } }),
       },
       '/leads/{id}/ai-email': {
         post: op({

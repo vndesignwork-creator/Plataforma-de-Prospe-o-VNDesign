@@ -21,6 +21,7 @@ import {
 } from '@vndesign/core';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ApiContext } from '../context';
+import { withTaskProgress } from './tasks';
 import { ApiError, fromPostgrest, unwrap } from '../http';
 
 export const LEAD_SELECT = [
@@ -122,7 +123,7 @@ export async function listLeads(ctx: ApiContext, query: LeadListQuery) {
     if (error.code === 'PGRST103') return { data: [] as Lead[], total: count ?? 0 };
     throw fromPostgrest(error);
   }
-  return { data: (data ?? []) as unknown as Lead[], total: count ?? 0 };
+  return { data: await withTaskProgress(ctx.supabase, ctx.workspaceId, (data ?? []) as unknown as Lead[]), total: count ?? 0 };
 }
 
 export async function getLead(ctx: ApiContext, id: string): Promise<Lead> {

@@ -1,6 +1,7 @@
-import type { Lead, Today } from '@vndesign/core';
+import type { Lead, Today, TodayTask } from '@vndesign/core';
 import { describe, expect, it } from 'vitest';
 import { appendProblems } from './audits';
+import { buildDigestEmail } from './digest';
 import { buildDailyPush } from './push';
 
 const lead = (id: string, company_name: string) => ({ id, company_name }) as Lead;
@@ -33,5 +34,50 @@ describe('buildDailyPush', () => {
     expect(p.title).toBe('4 follow-ups à tua espera');
     expect(p.body).toBe('2 em atraso · 2 para hoje — A, B, C…');
     expect(p.url).toBe('/dashboard');
+  });
+});
+
+const task = (id: string, title: string, due_on: string, leadId = 'l1', company = 'Café Central'): TodayTask => ({
+  id,
+  lead_id: leadId,
+  title,
+  due_on,
+  done_at: null,
+  position: 1,
+  created_at: '',
+  updated_at: '',
+  lead: { id: leadId, number: 7, company_name: company, status: 'cliente' },
+});
+
+describe('tarefas no aviso e no resumo diário', () => {
+  const withTasks = (tasks: TodayTask[]): Today => ({
+    ...today([], []),
+    tasks: {
+      overdue: tasks.filter((t) => t.due_on! < '2026-10-09'),
+      due_today: tasks.filter((t) => t.due_on === '2026-10-09'),
+      upcoming: tasks.filter((t) => t.due_on! > '2026-10-09'),
+    },
+  });
+
+  it('só tarefas: avisa e abre o lead quando são todas do mesmo', () => {
+    const p = buildDailyPush(withTasks([task('t1', 'Enviar maquete', '2026-10-09'), task('t2', 'Pedir fotos', '2026-10-08')]))!;
+    expect(p.title).toBe('2 tarefas para hoje');
+    expect(p.body).toBe('2 tarefas — Café Central');
+    expect(p.url).toBe('/leads/l1');
+  });
+
+  it('tarefas só da semana não geram aviso', () => {
+    expect(buildDailyPush(withTasks([task('t1', 'Publicar site', '2026-10-12')]))).toBeNull();
+  });
+
+  it('o resumo por email lista as tarefas com o lead', () => {
+    const email = buildDigestEmail({
+      workspaceName: 'VNDesign',
+      today: withTasks([task('t1', 'Enviar maquete', '2026-10-09')]),
+      appUrl: 'https://leads.vndesign.pt',
+    });
+    expect(email.subject).toContain('1 tarefa para hoje');
+    expect(email.text).toContain('- Enviar maquete — #7 Café Central (09/10/2026) https://leads.vndesign.pt/leads/l1');
+    expect(email.html).toContain('Tarefas (1)');
   });
 });

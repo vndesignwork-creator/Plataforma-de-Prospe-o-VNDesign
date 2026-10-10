@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ApiContext } from '../context';
 import { fromPostgrest } from '../http';
 import { LEAD_SELECT } from './leads';
+import { fetchTodayTasks } from './tasks';
 
 export async function getDashboard(ctx: ApiContext): Promise<Dashboard> {
   const { data, error } = await ctx.supabase.rpc('dashboard_summary', { p_workspace_id: ctx.workspaceId });
@@ -47,7 +48,13 @@ export async function fetchToday(client: SupabaseClient, workspaceId: string): P
   ]);
   for (const r of [overdue, dueToday, upcoming]) if (r.error) throw fromPostgrest(r.error);
   const rows = (r: { data: unknown }) => (r.data ?? []) as unknown as Lead[];
-  return { today, overdue: rows(overdue), due_today: rows(dueToday), upcoming: rows(upcoming) };
+  return {
+    today,
+    overdue: rows(overdue),
+    due_today: rows(dueToday),
+    upcoming: rows(upcoming),
+    tasks: await fetchTodayTasks(client, workspaceId, today),
+  };
 }
 
 /** Lista "Hoje": follow-ups em atraso, para hoje e nos próximos 7 dias. */

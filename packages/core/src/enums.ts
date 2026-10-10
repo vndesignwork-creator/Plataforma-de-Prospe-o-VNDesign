@@ -83,6 +83,8 @@ export const ACTIVITY_TYPES = [
   'anonymized',
   'archived',
   'unarchived',
+  'task_completed',
+  'tasks_added',
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
@@ -117,6 +119,8 @@ export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
   anonymized: 'Dados anonimizados',
   archived: 'Arquivado',
   unarchived: 'Reposto do arquivo',
+  task_completed: 'Tarefa concluída',
+  tasks_added: 'Lista de tarefas criada',
 };
 
 export const TEMPLATE_KINDS = [

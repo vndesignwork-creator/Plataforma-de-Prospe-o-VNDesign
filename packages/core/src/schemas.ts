@@ -17,6 +17,7 @@ import {
 } from './enums';
 import { ensureUrlProtocol } from './normalize';
 import { SERVICE_KEYS } from './services';
+import { TodayTasksSchema } from './tasks';
 
 // Mensagens genéricas de validação em português (as específicas estão em cada campo).
 z.config(z.locales.pt());
@@ -183,6 +184,8 @@ export const LeadSchema = z
     anonymized_at: z.string().nullable(),
     /** Arquivado: fora da lista, do Kanban, do mapa e de "Hoje" (histórico e estatísticas mantêm-se). */
     archived_at: z.string().nullable().optional(),
+    /** Tarefas do lead (total e concluídas); só nas listas, no Kanban e na ficha. */
+    task_progress: z.object({ total: z.int(), done: z.int() }).nullable().optional(),
     created_by: z.uuid().nullable(),
     created_at: z.string(),
     updated_at: z.string(),
@@ -566,6 +569,7 @@ export const TodaySchema = z
     overdue: z.array(LeadSchema),
     due_today: z.array(LeadSchema),
     upcoming: z.array(LeadSchema).meta({ description: 'Próximos 7 dias' }),
+    tasks: TodayTasksSchema.optional().meta({ description: 'Tarefas com prazo (em atraso, hoje e próximos 7 dias)' }),
   })
   .meta({ id: 'Today' });
 export type Today = z.infer<typeof TodaySchema>;

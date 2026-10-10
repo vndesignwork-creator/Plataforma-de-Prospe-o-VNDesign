@@ -31,6 +31,7 @@ import {
 } from '@vndesign/core';
 import { ArrowLeftRight, GripVertical, Search } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { MultiSelectFilter } from '@/components/leads/multi-select';
@@ -43,6 +44,7 @@ import { useBoard, useInvalidateLead, useSectors } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 import { ChannelIcon, SectorIconView } from '@/components/icons/lead-icons';
 import { ServiceIcons, serviceFilterOptions } from '@/components/services/services';
+import { TaskProgress } from '@/components/tasks/task-progress';
 
 type Columns = Record<LeadStatus, Lead[]>;
 
@@ -111,6 +113,7 @@ function LeadCard({
             {lead.city ? <span>{lead.city}</span> : null}
           </p>
           <ServiceIcons services={lead.services} className="mt-1.5" labeled />
+          <TaskProgress progress={lead.task_progress} className="mt-1.5" />
           {lead.next_action_on || lead.next_action_text ? (
             <p className={cn('mt-1.5 text-xs', overdue ? 'font-medium text-danger' : 'text-fg')}>
               {lead.next_action_text ?? 'Próxima ação'}
@@ -312,6 +315,7 @@ function ColumnNav({
 export function KanbanBoard() {
   const today = todayIso();
   const qc = useQueryClient();
+  const router = useRouter();
   const invalidate = useInvalidateLead();
   const [search, setSearch] = useState('');
   const [sector, setSector] = useState<string[]>([]);
@@ -430,6 +434,9 @@ export function KanbanBoard() {
         const scheduled = to === 'contactado' && updated.next_action_on && updated.next_action_on !== original.next_action_on;
         toast.success(
           `#${updated.number} → ${LEAD_STATUS_META[to].label}${scheduled ? `. Follow-up agendado para ${formatDate(updated.next_action_on)}.` : '.'}`,
+          to === 'cliente'
+            ? { description: 'Novo cliente! 🎉', action: { label: 'Criar tarefas', onClick: () => router.push(`/leads/${original.id}#tarefas`) } }
+            : undefined,
         );
       }
     } catch (error) {

@@ -21,6 +21,7 @@ import {
   GitMerge,
   Globe,
   History,
+  ListChecks,
   Mail,
   MessageCircle,
   MoreHorizontal,
@@ -46,6 +47,7 @@ import {
   useInvalidateLead,
   useLead,
   useLeads,
+  useLeadTasks,
   useLogActivity,
   useMe,
   useUpdateLead,
@@ -59,6 +61,7 @@ import { SiteAuditPanel } from './site-audit';
 import { AiEmailCard } from './ai-email-card';
 import { LeadLocation } from './lead-location';
 import { ProposalsCard } from '@/components/proposals/proposals-card';
+import { TasksCard } from '@/components/tasks/tasks-card';
 import { SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 import { ServiceChips } from '@/components/services/services';
 
@@ -135,6 +138,7 @@ export function LeadDetail({ id }: { id: string }) {
   const router = useRouter();
   const { data: lead, isLoading, error } = useLead(id);
   const { data: me } = useMe();
+  const { data: tasks } = useLeadTasks(id);
   const update = useUpdateLead(id);
   const bulk = useBulkLeadAction();
   const log = useLogActivity(id);
@@ -170,7 +174,12 @@ export function LeadDetail({ id }: { id: string }) {
       toast.success(
         scheduled
           ? `Estado: ${LEAD_STATUS_META[status].label}. Follow-up agendado para ${formatDate(updated.next_action_on)}.`
-          : `Estado: ${LEAD_STATUS_META[status].label}.`,
+          : status === 'cliente'
+            ? 'Novo cliente! 🎉 Organiza o projeto nas tarefas.'
+            : `Estado: ${LEAD_STATUS_META[status].label}.`,
+        status === 'cliente'
+          ? { action: { label: 'Ver tarefas', onClick: () => document.getElementById('tarefas')?.scrollIntoView({ behavior: 'smooth' }) } }
+          : undefined,
       );
     } catch (err) {
       toast.error(errorMessage(err));
@@ -290,7 +299,18 @@ export function LeadDetail({ id }: { id: string }) {
                 </DropdownItem>
               </DropdownContent>
             </DropdownRoot>
-            {/* Telemóvel/tablet: a linha do tempo (registar notas e chamadas) fica no fim da página. */}
+            {/* Telemóvel/tablet: tarefas e linha do tempo ficam no fim da página. */}
+            {!lead.anonymized_at ? (
+              <a href="#tarefas" className={buttonClasses('outline', 'md', 'lg:hidden')}>
+                <ListChecks className="h-4 w-4" aria-hidden />
+                Tarefas
+                {tasks?.length ? (
+                  <span className="text-xs text-muted tabular">
+                    {tasks.filter((t) => t.done_at).length}/{tasks.length}
+                  </span>
+                ) : null}
+              </a>
+            ) : null}
             <a href="#atividade" className={buttonClasses('outline', 'md', 'lg:hidden')}>
               <History className="h-4 w-4" aria-hidden />
               Linha do tempo
@@ -494,7 +514,8 @@ export function LeadDetail({ id }: { id: string }) {
         </div>
 
         {/* Coluna lateral (computador): o que se consulta durante uma chamada — notas, propostas e atividade. */}
-        <aside aria-label="Notas, propostas e atividade" className="flex flex-col gap-5">
+        <aside aria-label="Tarefas, notas, propostas e atividade" className="flex flex-col gap-5">
+          {!lead.anonymized_at ? <TasksCard lead={lead} /> : null}
           <Card>
             <CardHeader
               title="Notas"

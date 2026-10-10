@@ -59,6 +59,7 @@ import { ChannelLabel, MobileLabel, PageSpeedScore, StatusBadge } from './badges
 import { MultiSelectFilter } from './multi-select';
 import { ChannelIcon, SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 import { ServiceIcons, serviceFilterOptions } from '@/components/services/services';
+import { TaskProgress } from '@/components/tasks/task-progress';
 
 const PAGE_SIZE = 50;
 
@@ -122,6 +123,7 @@ function buildColumns(today: string): Col[] {
             {row.original.company_name}
           </Link>
           {row.original.archived_at ? <ArchivedBadge /> : null}
+          <TaskProgress progress={row.original.task_progress} className="mt-1 flex w-fit" />
         </>
       ),
     },
@@ -780,6 +782,7 @@ export function LeadsTable() {
                       {lead.estimated_value !== null ? <span className="tabular">{formatCurrency(lead.estimated_value)}</span> : null}
                     </span>
                     <ServiceIcons services={lead.services} labeled />
+                    <TaskProgress progress={lead.task_progress} />
                     {lead.next_action_on || lead.next_action_text ? (
                       <span className="text-sm">
                         <NextAction lead={lead} today={today} />

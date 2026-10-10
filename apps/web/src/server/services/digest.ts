@@ -3,22 +3,32 @@
  * Corre a partir de /api/v1/cron/daily-digest (Vercel Cron, tarefa agendada no
  * Coolify/Hostinger) ou de um envio de teste nas Definições.
  */
-import { formatDate, LEAD_STATUS_META, type Lead, type Today } from '@vndesign/core';
+import { formatDate, LEAD_STATUS_META, type Lead, type Today, type TodayTask } from '@vndesign/core';
 import { isMailConfigured, sendMail } from '../mailer';
 import { createSupabaseAdminClient } from '../supabase-admin';
 import { fetchToday } from './dashboard';
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
+/** Tarefas em atraso e para hoje (as que pedem atenção no resumo e no aviso). */
+export function urgentTasks(today: Today): TodayTask[] {
+  return [...(today.tasks?.overdue ?? []), ...(today.tasks?.due_today ?? [])];
+}
+
 export function buildDigestEmail(input: { workspaceName: string; today: Today; appUrl: string }) {
   const { today, appUrl } = input;
   const total = today.overdue.length + today.due_today.length;
+  const tasksUrgent = urgentTasks(today);
+  const tasksAll = [...tasksUrgent, ...(today.tasks?.upcoming ?? [])];
+  const taskNote = tasksUrgent.length ? ` · ${tasksUrgent.length} tarefa${tasksUrgent.length === 1 ? '' : 's'}` : '';
   const subject =
     total === 0
-      ? `VNDesign Leads · sem follow-ups para hoje (${formatDate(today.today)})`
+      ? tasksUrgent.length
+        ? `VNDesign Leads · ${tasksUrgent.length} tarefa${tasksUrgent.length === 1 ? '' : 's'} para hoje · ${formatDate(today.today)}`
+        : `VNDesign Leads · sem follow-ups para hoje (${formatDate(today.today)})`
       : `VNDesign Leads · ${total} follow-up${total === 1 ? '' : 's'} para hoje${
           today.overdue.length ? ` (${today.overdue.length} em atraso)` : ''
-        } · ${formatDate(today.today)}`;
+        }${taskNote} · ${formatDate(today.today)}`;
 
   const sections: { title: string; leads: Lead[]; color: string }[] = [
     { title: 'Em atraso', leads: today.overdue, color: '#c22a2a' },
@@ -37,7 +47,27 @@ export function buildDigestEmail(input: { workspaceName: string; today: Today; a
     }
     textParts.push('');
   }
+  if (tasksAll.length) {
+    textParts.push(`TAREFAS (${tasksAll.length})`);
+    for (const t of tasksAll) {
+      textParts.push(`- ${t.title} — #${t.lead.number} ${t.lead.company_name} (${formatDate(t.due_on)}) ${appUrl}/leads/${t.lead.id}`);
+    }
+    textParts.push('');
+  }
   textParts.push(`Abrir o dashboard: ${appUrl}/dashboard`);
+
+  const taskColor = (t: TodayTask) => (t.due_on! < today.today ? '#c22a2a' : t.due_on === today.today ? '#EF5C32' : '#5f5b53');
+  const taskRows = tasksAll
+    .map(
+      (t) => `<tr>
+  <td style="padding:8px 0;border-bottom:1px solid #e7e3db;">
+    <span style="color:#141414;font-weight:600;">☐ ${esc(t.title)}</span><br>
+    <a href="${esc(`${appUrl}/leads/${t.lead.id}`)}" style="color:#5f5b53;font-size:13px;text-decoration:none;">#${t.lead.number} ${esc(t.lead.company_name)}</a>
+  </td>
+  <td style="padding:8px 0;border-bottom:1px solid #e7e3db;text-align:right;white-space:nowrap;color:${taskColor(t)};font-weight:600;font-size:13px;">${esc(formatDate(t.due_on))}</td>
+</tr>`,
+    )
+    .join('');
 
   const rows = (leads: Lead[], color: string) =>
     leads
@@ -61,15 +91,19 @@ export function buildDigestEmail(input: { workspaceName: string; today: Today; a
 </td></tr>
 <tr><td style="padding:16px 24px 8px;">
 ${
-  total + today.upcoming.length === 0
-    ? '<p style="color:#141414;">Não há follow-ups agendados para os próximos 7 dias.</p>'
+  total + today.upcoming.length + tasksAll.length === 0
+    ? '<p style="color:#141414;">Não há follow-ups nem tarefas para os próximos 7 dias.</p>'
     : sections
         .filter((s) => s.leads.length)
         .map(
           (s) => `<h2 style="font-size:15px;margin:16px 0 4px;color:${s.color};">${s.title} (${s.leads.length})</h2>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows(s.leads, s.color)}</table>`,
         )
-        .join('')
+        .join('') +
+      (tasksAll.length
+        ? `<h2 style="font-size:15px;margin:16px 0 4px;color:#141414;">Tarefas (${tasksAll.length})</h2>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${taskRows}</table>`
+        : '')
 }
 </td></tr>
 <tr><td style="padding:16px 24px 24px;">
@@ -89,6 +123,7 @@ export interface DigestResult {
   overdue: number;
   due_today: number;
   upcoming: number;
+  tasks?: number;
   error?: string;
 }
 
@@ -106,8 +141,9 @@ export async function sendDailyDigests(options: { appUrl: string; dryRun?: boole
       overdue: today.overdue.length,
       due_today: today.due_today.length,
       upcoming: today.upcoming.length,
+      tasks: urgentTasks(today).length,
     };
-    if (base.overdue + base.due_today === 0) {
+    if (base.overdue + base.due_today + base.tasks === 0) {
       results.push({ ...base, status: 'skipped' });
       continue;
     }

@@ -13,4 +13,5 @@ export * from './proposals';
 export * from './ai';
 export * from './geo';
 export * from './services';
+export * from './tasks';
 export { DIRECTORY_HOSTS, SOCIAL_HOSTS, isDirectoryUrl, isSocialUrl, fixDirectoryWebsite, type LeadLinks } from './links';

@@ -297,3 +297,17 @@ um “Lead editado”. O resumo diário usa a chave de serviço só no servidor
 - `service_packages.category` + `service`; `suggestPackages()` escolhe os pacotes de uma proposta nova.
 - Importação: `import_lead_services()` acrescenta os serviços da folha depois de `import_leads()`.
 - `merge_leads` junta os serviços dos duplicados; `dashboard_summary.by_service` conta leads e clientes.
+
+## Tarefas
+
+- `lead_tasks` (por lead: `title`, `due_on`, `done_at`, `position`), RLS por membro do workspace;
+  apagar o lead apaga as tarefas; `merge_leads` move-as para o principal; anonimizar apaga-as (trigger).
+- Concluir (`done_at` de null para data) regista `task_completed` na atividade (trigger);
+  aplicar uma lista regista `tasks_added` (API).
+- `task_templates` (nome, serviço opcional, `items text[]`), 8 listas criadas por workspace
+  (`seed_task_templates`); `suggestTaskTemplates()` escolhe as dos serviços do lead.
+- API: `/leads/{id}/tasks` (+ `/reorder`, `/template`), `/tasks/{id}`, `/task-templates`.
+- Progresso (`task_progress: {total, done}`) junto aos leads em `GET /leads` e `GET /board`
+  (`withTaskProgress`); `GET /dashboard/today` devolve `tasks` (em atraso, hoje, 7 dias), usado
+  também pelo resumo por email e pela notificação diária.
+

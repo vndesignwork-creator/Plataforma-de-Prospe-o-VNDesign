@@ -6,7 +6,7 @@ describe('OpenAPI', () => {
     const doc = getOpenApiDocument();
     const paths = Object.keys(doc.paths ?? {});
     expect(paths.length).toBeGreaterThanOrEqual(45);
-    for (const p of ['/leads/import', '/leads/{id}/audits', '/leads/{id}/proposals', '/proposals/{id}/pdf', '/leads/{id}/ai-email', '/map']) {
+    for (const p of ['/leads/import', '/leads/{id}/audits', '/leads/{id}/proposals', '/proposals/{id}/pdf', '/leads/{id}/ai-email', '/map', '/leads/{id}/tasks', '/tasks/{id}', '/task-templates']) {
       expect(paths).toContain(p);
     }
   });

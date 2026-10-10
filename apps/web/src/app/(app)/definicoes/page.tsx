@@ -7,15 +7,16 @@ import { PreferencesSettings } from '@/components/settings/preferences-settings'
 import { ProposalSettings } from '@/components/settings/proposal-settings';
 import { SectorsSettings } from '@/components/settings/sectors-settings';
 import { SignatureSettings } from '@/components/settings/signature-settings';
+import { TaskTemplateSettings } from '@/components/settings/task-template-settings';
 
 export const metadata: Metadata = { title: 'Definições' };
 
 export default function SettingsPage() {
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-5 [&>[id]]:scroll-mt-32 lg:[&>[id]]:scroll-mt-16">
+    <div className="mx-auto flex max-w-4xl flex-col gap-5 [&>[id]]:scroll-mt-32 lg:[&>[id]]:scroll-mt-28">
       <PageHeader
         title="Definições"
-        description="Assinatura, lembretes, propostas e IA, setores, lista “não contactar”, API e conta."
+        description="Assinatura, lembretes, propostas e IA, listas de tarefas, setores, lista “não contactar”, API e conta."
       />
       {/* Índice preso ao topo: numa página comprida, salta-se de secção sem voltar ao início. */}
       <nav
@@ -36,6 +37,11 @@ export default function SettingsPage() {
           <li>
             <a href="#propostas" className="inline-flex min-h-8 items-center rounded-md bg-surface-2 px-3 hover:bg-surface-3 pointer-coarse:min-h-10">
               Propostas e IA
+            </a>
+          </li>
+          <li>
+            <a href="#listas-tarefas" className="inline-flex min-h-8 items-center rounded-md bg-surface-2 px-3 hover:bg-surface-3 pointer-coarse:min-h-10">
+              Listas de tarefas
             </a>
           </li>
           <li>
@@ -63,6 +69,7 @@ export default function SettingsPage() {
       <SignatureSettings />
       <PreferencesSettings />
       <ProposalSettings />
+      <TaskTemplateSettings />
       <SectorsSettings />
       <DoNotContactSettings />
       <ApiSettings />

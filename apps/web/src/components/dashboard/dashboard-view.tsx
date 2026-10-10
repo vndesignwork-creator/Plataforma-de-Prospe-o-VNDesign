@@ -8,10 +8,13 @@ import {
   formatPercent,
   serviceLabel,
   type Lead,
+  type TodayTask,
 } from '@vndesign/core';
-import { AlertCircle, CalendarClock, CalendarDays } from 'lucide-react';
+import { AlertCircle, CalendarClock, CalendarDays, ListChecks } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ServiceIcon } from '@/components/services/services';
 import { BarList } from '@/components/charts/bar-list';
 import { ColumnChart } from '@/components/charts/column-chart';
@@ -19,7 +22,8 @@ import { StatTile } from '@/components/charts/stat-tile';
 import { FollowUpActions } from '@/components/follow-up/follow-up-actions';
 import { StatusBadge } from '@/components/leads/badges';
 import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
-import { errorMessage } from '@/lib/api-client';
+import { api, errorMessage } from '@/lib/api-client';
+import { DueChip } from '@/components/tasks/tasks-card';
 import { useDashboard, useSectors, useToday } from '@/lib/queries';
 import { ChannelIcon, SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 
@@ -55,12 +59,73 @@ function TodayGroup({ title, icon, leads, tone }: { title: string; icon: ReactNo
   );
 }
 
+/** Tarefas com prazo (em atraso, hoje e próximos 7 dias): marcar como feita aqui mesmo. */
+function TodayTasks({ title, today, tasks }: { title: string; today: string; tasks: TodayTask[] }) {
+  const qc = useQueryClient();
+  const [doneIds, setDoneIds] = useState<string[]>([]);
+  if (!tasks.length) return null;
+  const overdue = tasks.filter((t) => t.due_on! < today).length;
+  async function complete(task: TodayTask) {
+    setDoneIds((ids) => [...ids, task.id]);
+    try {
+      await api(`/tasks/${task.id}`, { method: 'PATCH', body: { done: true } });
+      toast.success(`Tarefa concluída: ${task.title}`);
+    } catch (error) {
+      setDoneIds((ids) => ids.filter((id) => id !== task.id));
+      toast.error(errorMessage(error));
+    } finally {
+      void qc.invalidateQueries({ queryKey: ['today'] });
+      void qc.invalidateQueries({ queryKey: ['tasks', task.lead.id] });
+      void qc.invalidateQueries({ queryKey: ['board'] });
+      void qc.invalidateQueries({ queryKey: ['leads'] });
+    }
+  }
+  return (
+    <section aria-label={title}>
+      <h3 className={`mb-1 flex items-center gap-1.5 text-sm font-semibold ${overdue ? 'text-danger' : ''}`}>
+        <ListChecks className="h-4 w-4" aria-hidden />
+        {title} <span className="font-normal text-muted">({tasks.length}{overdue ? `, ${overdue} em atraso` : ''})</span>
+      </h3>
+      <ul className="divide-y divide-border">
+        {tasks.map((t) => {
+          const done = doneIds.includes(t.id);
+          return (
+            <li key={t.id} className="flex items-start gap-2 px-2 py-2">
+              <input
+                type="checkbox"
+                checked={done}
+                disabled={done}
+                onChange={() => void complete(t)}
+                aria-label={`Concluir: ${t.title}`}
+                className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer"
+              />
+              <span className="min-w-0 flex-1">
+                <span className={`block text-sm font-medium break-words ${done ? 'text-muted line-through' : ''}`}>{t.title}</span>
+                <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+                  <DueChip due={t.due_on} today={today} done={done} />
+                  <Link href={`/leads/${t.lead.id}#tarefas`} className="hover:text-fg hover:underline">
+                    <span className="tabular">#{t.lead.number}</span> {t.lead.company_name}
+                  </Link>
+                </span>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 function TodayCard({ className }: { className?: string }) {
   const { data, isLoading } = useToday();
-  const empty = data && !data.overdue.length && !data.due_today.length && !data.upcoming.length;
+  // Tarefas em atraso e de hoje logo a seguir aos follow-ups de hoje; as da semana no fim.
+  const urgentTasks = data?.tasks ? [...data.tasks.overdue, ...data.tasks.due_today] : [];
+  const weekTasks = data?.tasks?.upcoming ?? [];
+  const empty =
+    data && !data.overdue.length && !data.due_today.length && !data.upcoming.length && !urgentTasks.length && !weekTasks.length;
   return (
     <Card className={className}>
-      <CardHeader title="Hoje" description={data ? `Follow-ups e próximas ações · ${formatDate(data.today)}` : undefined} />
+      <CardHeader title="Hoje" description={data ? `Follow-ups, próximas ações e tarefas · ${formatDate(data.today)}` : undefined} />
       <div className="flex max-h-[26rem] flex-col gap-4 overflow-y-auto p-3">
         {isLoading ? <Skeleton className="h-40" /> : null}
         {empty ? <p className="px-2 py-6 text-center text-sm text-muted">Nada agendado para os próximos 7 dias. 🎉</p> : null}
@@ -68,7 +133,9 @@ function TodayCard({ className }: { className?: string }) {
           <>
             <TodayGroup title="Em atraso" tone="danger" icon={<AlertCircle className="h-4 w-4" aria-hidden />} leads={data.overdue} />
             <TodayGroup title="Para hoje" icon={<CalendarClock className="h-4 w-4" aria-hidden />} leads={data.due_today} />
+            <TodayTasks title="Tarefas para hoje" today={data.today} tasks={urgentTasks} />
             <TodayGroup title="Próximos 7 dias" icon={<CalendarDays className="h-4 w-4" aria-hidden />} leads={data.upcoming} />
+            <TodayTasks title="Tarefas nos próximos 7 dias" today={data.today} tasks={weekTasks} />
           </>
         ) : null}
       </div>

@@ -22,6 +22,8 @@ import {
   Edit3,
   FileText,
   Gauge,
+  ListPlus,
+  SquareCheck,
   Sparkles,
   GitMerge,
   Mail,
@@ -61,6 +63,8 @@ const ICONS: Partial<Record<Activity['type'], LucideIcon>> = {
   audit_run: Gauge,
   proposal_generated: FileText,
   ai_email_generated: Sparkles,
+  task_completed: SquareCheck,
+  tasks_added: ListPlus,
 };
 
 const fieldLabel = (f: string) => (LEAD_FIELD_LABELS as Record<string, string>)[f] ?? f;
@@ -111,6 +115,12 @@ function describe(a: Activity): string | null {
       return p.kind ? AI_EMAIL_KIND_LABELS[p.kind as AiEmailKind] ?? null : null;
     case 'archived':
       return p.auto ? 'Automático: em "Sem interesse" há mais tempo do que o definido' : null;
+    case 'task_completed':
+      return p.title ? String(p.title) : null;
+    case 'tasks_added':
+      return [p.template ? `Lista "${String(p.template)}"` : null, typeof p.count === 'number' ? `${p.count} tarefa${p.count === 1 ? '' : 's'}` : null]
+        .filter(Boolean)
+        .join(' · ') || null;
     case 'anonymized':
       return p.added_to_do_not_contact ? 'Acrescentado à lista "não contactar"' : null;
     default:
