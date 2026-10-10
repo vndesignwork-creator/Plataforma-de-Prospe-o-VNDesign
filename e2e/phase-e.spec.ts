@@ -112,3 +112,20 @@ test('definições: pacotes de serviços e textos das propostas', async ({ page 
   await card.getByRole('button', { name: `Apagar Loja online ${run}` }).click();
   await expect(page.getByText(`Pacote "Loja online ${run}" apagado.`)).toBeVisible();
 });
+
+test('ficha: sem morada não há "Localizar" — pede para acrescentar a morada', async ({ page }) => {
+  const stamp = Date.now().toString(36);
+  const onlyCity = (await (await page.request.post('/api/v1/leads', { data: { company_name: `Só cidade ${stamp}`, city: 'Lisboa' } })).json()).data;
+  await page.goto(`/leads/${onlyCity.id}`);
+  await expect(page.getByText('Sem morada')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Acrescentar morada' })).toHaveAttribute('href', new RegExp(`/leads/${onlyCity.number}-.*/editar$`));
+  await expect(page.getByRole('button', { name: 'Localizar' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Marcar no mapa' })).toHaveCount(0);
+
+  const withAddress = (
+    await (await page.request.post('/api/v1/leads', { data: { company_name: `Com morada ${stamp}`, address: 'Rua Augusta 1', city: 'Lisboa' } })).json()
+  ).data;
+  await page.goto(`/leads/${withAddress.id}`);
+  await expect(page.getByText('Ainda não localizado')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Localizar' })).toBeVisible();
+});
