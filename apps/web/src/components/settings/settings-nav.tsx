@@ -21,7 +21,7 @@ export function SettingsNav() {
   const pathname = usePathname();
   return (
     <nav aria-label="Secções das definições" className="-mx-4 border-b border-border px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
-      <ul className="-mb-px flex gap-1 overflow-x-auto text-sm whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <ul className="-mb-px flex gap-1 overflow-x-auto text-sm whitespace-nowrap [scrollbar-width:none] lg:flex-wrap lg:gap-x-0 [&::-webkit-scrollbar]:hidden">
         {SETTINGS_SECTIONS.map(({ slug, label }) => {
           const href = `/definicoes/${slug}`;
           const active = pathname === href;
