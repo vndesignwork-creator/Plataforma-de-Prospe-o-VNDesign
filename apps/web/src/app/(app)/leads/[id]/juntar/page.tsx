@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { resolveLeadRoute } from '@/server/lead-route';
 import { PageHeader } from '@/components/layout/page-header';
 import { MergeView } from '@/components/leads/merge-view';
 
@@ -11,8 +12,10 @@ export default async function MergePage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ com?: string; rascunho?: string }>;
 }) {
-  const { id } = await params;
-  const { com, rascunho } = await searchParams;
+  const { id: ref } = await params;
+  const search = await searchParams;
+  const id = await resolveLeadRoute(ref, { suffix: '/juntar', search });
+  const { com, rascunho } = search;
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader

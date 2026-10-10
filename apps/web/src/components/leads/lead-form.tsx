@@ -17,6 +17,7 @@ import {
   type Lead,
   type LeadCreate,
   type LeadCreateInput,
+  leadPath,
 } from '@vndesign/core';
 import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
@@ -118,11 +119,11 @@ export function LeadForm({ lead }: { lead?: Lead }) {
   function goMerge(match: DuplicateMatch) {
     if (lead) {
       // Edição: junta o outro lead a este (este fica como principal).
-      router.push(`/leads/${lead.id}/juntar?com=${match.lead_id}`);
+      router.push(`${leadPath(lead, '/juntar')}?com=${match.lead_id}`);
     } else {
       // Criação: leva os dados escritos para juntar ao lead existente.
       sessionStorage.setItem(MERGE_DRAFT_KEY, JSON.stringify(getValues()));
-      router.push(`/leads/${match.lead_id}/juntar?rascunho=1`);
+      router.push(`${leadPath(match, '/juntar')}?rascunho=1`);
     }
   }
 
@@ -134,7 +135,7 @@ export function LeadForm({ lead }: { lead?: Lead }) {
         : await api<{ data: Lead }>('/leads', { method: 'POST', body: values, query: { force: force || undefined } });
       invalidate(result.data.id);
       toast.success(isEdit ? 'Lead atualizado.' : `Lead #${result.data.number} criado.`);
-      router.push(`/leads/${result.data.id}`);
+      router.push(leadPath(result.data));
       router.refresh();
     } catch (error) {
       if (error instanceof ApiClientError) {
@@ -338,7 +339,7 @@ export function LeadForm({ lead }: { lead?: Lead }) {
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur lg:left-60">
         <div className="mx-auto flex max-w-5xl items-center justify-end gap-2">
           {isEdit && isDirty ? <span className="mr-auto text-sm text-muted">Alterações por gravar</span> : null}
-          <Link href={lead ? `/leads/${lead.id}` : '/leads'} className={buttonClasses('ghost')}>
+          <Link href={lead ? leadPath(lead) : '/leads'} className={buttonClasses('ghost')}>
             Cancelar
           </Link>
           <Button type="submit" loading={isSubmitting}>

@@ -1,6 +1,6 @@
 'use client';
 
-import { DUPLICATE_REASON_LABELS, type DoNotContact, type DuplicateMatch } from '@vndesign/core';
+import { DUPLICATE_REASON_LABELS, type DoNotContact, type DuplicateMatch, leadPath } from '@vndesign/core';
 import { AlertTriangle, Ban, ExternalLink, GitMerge } from 'lucide-react';
 import { Badge } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -68,7 +68,7 @@ export function DuplicatePanel({
                 </span>
                 <span className="flex gap-2">
                   <a
-                    href={`/leads/${d.lead_id}`}
+                    href={leadPath(d)}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-1 text-sm text-accent-text hover:underline"

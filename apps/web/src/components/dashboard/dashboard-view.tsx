@@ -9,6 +9,7 @@ import {
   serviceLabel,
   type Lead,
   type TodayTask,
+  leadPath,
 } from '@vndesign/core';
 import { AlertCircle, CalendarClock, CalendarDays, ListChecks } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -41,7 +42,7 @@ function TodayGroup({ title, icon, leads, tone }: { title: string; icon: ReactNo
         {leads.map((l) => (
           <li key={l.id} className="flex items-center gap-1">
             {/* Nome numa linha só para ele; data, ação e estado por baixo (no telemóvel o nome não fica cortado). */}
-            <Link href={`/leads/${l.id}`} className="min-w-0 flex-1 rounded-md px-2 py-2 hover:bg-surface-2">
+            <Link href={leadPath(l)} className="min-w-0 flex-1 rounded-md px-2 py-2 hover:bg-surface-2">
               <span className="block truncate text-sm font-medium">
                 <span className="text-muted tabular">#{l.number}</span> {l.company_name}
               </span>
@@ -103,7 +104,7 @@ function TodayTasks({ title, today, tasks }: { title: string; today: string; tas
                 <span className={`block text-sm font-medium break-words ${done ? 'text-muted line-through' : ''}`}>{t.title}</span>
                 <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
                   <DueChip due={t.due_on} today={today} done={done} />
-                  <Link href={`/leads/${t.lead.id}#tarefas`} className="hover:text-fg hover:underline">
+                  <Link href={`${leadPath(t.lead)}#tarefas`} className="hover:text-fg hover:underline">
                     <span className="tabular">#{t.lead.number}</span> {t.lead.company_name}
                   </Link>
                 </span>

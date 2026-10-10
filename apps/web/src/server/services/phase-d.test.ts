@@ -4,7 +4,7 @@ import { appendProblems } from './audits';
 import { buildDigestEmail } from './digest';
 import { buildDailyPush } from './push';
 
-const lead = (id: string, company_name: string) => ({ id, company_name }) as Lead;
+const lead = (id: string, company_name: string, number = 4) => ({ id, number, company_name }) as Lead;
 const today = (overdue: Lead[], due_today: Lead[]): Today => ({ today: '2026-10-09', overdue, due_today, upcoming: [] });
 
 describe('appendProblems', () => {
@@ -24,7 +24,7 @@ describe('buildDailyPush', () => {
     expect(buildDailyPush(today([], [lead('a', 'Clínica Sá')]))).toEqual({
       title: '1 follow-up à tua espera',
       body: '1 para hoje — Clínica Sá',
-      url: '/leads/a',
+      url: '/leads/4-clinica-sa',
       tag: 'daily-follow-ups',
     });
   });
@@ -63,7 +63,7 @@ describe('tarefas no aviso e no resumo diário', () => {
     const p = buildDailyPush(withTasks([task('t1', 'Enviar maquete', '2026-10-09'), task('t2', 'Pedir fotos', '2026-10-08')]))!;
     expect(p.title).toBe('2 tarefas para hoje');
     expect(p.body).toBe('2 tarefas — Café Central');
-    expect(p.url).toBe('/leads/l1');
+    expect(p.url).toBe('/leads/7-cafe-central');
   });
 
   it('tarefas só da semana não geram aviso', () => {
@@ -77,7 +77,7 @@ describe('tarefas no aviso e no resumo diário', () => {
       appUrl: 'https://leads.vndesign.pt',
     });
     expect(email.subject).toContain('1 tarefa para hoje');
-    expect(email.text).toContain('- Enviar maquete — #7 Café Central (09/10/2026) https://leads.vndesign.pt/leads/l1');
+    expect(email.text).toContain('- Enviar maquete — #7 Café Central (09/10/2026) https://leads.vndesign.pt/leads/7-cafe-central');
     expect(email.html).toContain('Tarefas (1)');
   });
 });

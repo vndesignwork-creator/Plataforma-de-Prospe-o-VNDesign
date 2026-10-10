@@ -1,6 +1,6 @@
 'use client';
 
-import { LEAD_STATUSES, LEAD_STATUS_META, type GeocodeBatchResult } from '@vndesign/core';
+import { LEAD_STATUSES, LEAD_STATUS_META, type GeocodeBatchResult, leadPath } from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { Crosshair, MapPinned } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -123,7 +123,7 @@ export function MapView() {
       {focusId && focusLead ? (
         <div className="flex flex-wrap items-center gap-2 rounded-lg bg-surface-2 px-3 py-2 text-sm">
           <span>
-            <Link href={`/leads/${focusLead.id}`} className="font-medium hover:underline">
+            <Link href={leadPath(focusLead)} className="font-medium hover:underline">
               #{focusLead.number} {focusLead.company_name}
             </Link>
             {placing ? ' — clica no mapa onde fica o negócio.' : ''}
@@ -157,7 +157,7 @@ export function MapView() {
         <ul className="divide-y divide-border">
           {leads.map((l) => (
             <li key={l.id} className="flex items-center justify-between gap-3 px-4 py-2 text-sm">
-              <Link href={`/leads/${l.id}`} className="min-w-0 truncate hover:underline">
+              <Link href={leadPath(l)} className="min-w-0 truncate hover:underline">
                 <span className="text-muted tabular">#{l.number}</span> {l.company_name}
               </Link>
               <span className="shrink-0 text-xs text-muted">

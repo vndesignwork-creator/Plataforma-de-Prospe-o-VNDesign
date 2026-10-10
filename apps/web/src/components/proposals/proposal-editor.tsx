@@ -18,6 +18,7 @@ import {
   type Proposal,
   type ProposalItem,
   type ProposalStatus,
+  leadPath,
 } from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowDown, ArrowUp, Download, FileText, Mail, Plus, Send, Trash2, Wand2 } from 'lucide-react';
@@ -159,7 +160,7 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
       qc.setQueryData(['proposal', data.id], data);
       void qc.invalidateQueries({ queryKey: ['proposals', lead.id] });
       toast.success(proposal ? 'Proposta guardada.' : `Proposta ${data.code} criada.`);
-      if (!proposal) router.replace(`/leads/${lead.id}/propostas/${data.id}`);
+      if (!proposal) router.replace(leadPath(lead, `/propostas/${data.id}`));
       return data;
     } catch (error) {
       if (error instanceof ApiClientError && error.problem.errors) setErrors(error.problem.errors);
@@ -207,7 +208,7 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
       await api(`/proposals/${proposal.id}`, { method: 'DELETE' });
       void qc.invalidateQueries({ queryKey: ['proposals', lead.id] });
       toast.success('Proposta apagada.');
-      router.push(`/leads/${lead.id}`);
+      router.push(leadPath(lead));
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -219,7 +220,7 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
     <div className="mx-auto flex max-w-5xl flex-col gap-5 max-lg:pb-24">
       <PageHeader
         eyebrow={
-          <Link href={`/leads/${lead.id}`} className="hover:text-fg hover:underline">
+          <Link href={leadPath(lead)} className="hover:text-fg hover:underline">
             #{lead.number} {lead.company_name}
           </Link>
         }

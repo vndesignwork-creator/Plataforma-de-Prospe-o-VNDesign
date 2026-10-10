@@ -19,6 +19,7 @@ import {
   type LeadArchiveFilter,
   type LeadBulkAction,
   type LeadSortField,
+  leadPath,
 } from '@vndesign/core';
 import {
   Archive,
@@ -117,7 +118,7 @@ function buildColumns(today: string): Col[] {
       cell: ({ row }) => (
         <>
           <Link
-            href={`/leads/${row.original.id}`}
+            href={leadPath(row.original)}
             className="font-semibold text-fg hover:text-accent-text hover:underline"
           >
             {row.original.company_name}
@@ -722,7 +723,7 @@ export function LeadsTable() {
                       )}
                       onClick={(e) => {
                         if ((e.target as HTMLElement).closest('a,button,input,label')) return;
-                        router.push(`/leads/${row.id}`);
+                        router.push(leadPath(row.original));
                       }}
                     >
                       <td className="py-2 pr-1 pl-3 align-top">
@@ -762,7 +763,7 @@ export function LeadsTable() {
                       className="h-4 w-4"
                     />
                   </label>
-                  <Link href={`/leads/${lead.id}`} className="flex min-w-0 flex-1 flex-col gap-1.5 py-3 pr-4 pl-2 hover:bg-surface-2">
+                  <Link href={leadPath(lead)} className="flex min-w-0 flex-1 flex-col gap-1.5 py-3 pr-4 pl-2 hover:bg-surface-2">
                     <span className="flex items-start justify-between gap-3">
                       <span className="font-semibold">
                         <span className="mr-1.5 text-muted tabular">#{lead.number}</span>

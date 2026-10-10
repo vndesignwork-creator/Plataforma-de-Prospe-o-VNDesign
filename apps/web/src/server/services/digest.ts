@@ -3,7 +3,7 @@
  * Corre a partir de /api/v1/cron/daily-digest (Vercel Cron, tarefa agendada no
  * Coolify/Hostinger) ou de um envio de teste nas Definições.
  */
-import { formatDate, LEAD_STATUS_META, type Lead, type Today, type TodayTask } from '@vndesign/core';
+import { formatDate, LEAD_STATUS_META, type Lead, type Today, type TodayTask, leadPath } from '@vndesign/core';
 import { isMailConfigured, sendMail } from '../mailer';
 import { createSupabaseAdminClient } from '../supabase-admin';
 import { fetchToday } from './dashboard';
@@ -42,7 +42,7 @@ export function buildDigestEmail(input: { workspaceName: string; today: Today; a
     textParts.push(`${s.title.toUpperCase()} (${s.leads.length})`);
     for (const l of s.leads) {
       textParts.push(
-        `- #${l.number} ${l.company_name} — ${l.next_action_text ?? 'Próxima ação'} (${formatDate(l.next_action_on)}) ${appUrl}/leads/${l.id}`,
+        `- #${l.number} ${l.company_name} — ${l.next_action_text ?? 'Próxima ação'} (${formatDate(l.next_action_on)}) ${appUrl}${leadPath(l)}`,
       );
     }
     textParts.push('');
@@ -50,7 +50,7 @@ export function buildDigestEmail(input: { workspaceName: string; today: Today; a
   if (tasksAll.length) {
     textParts.push(`TAREFAS (${tasksAll.length})`);
     for (const t of tasksAll) {
-      textParts.push(`- ${t.title} — #${t.lead.number} ${t.lead.company_name} (${formatDate(t.due_on)}) ${appUrl}/leads/${t.lead.id}`);
+      textParts.push(`- ${t.title} — #${t.lead.number} ${t.lead.company_name} (${formatDate(t.due_on)}) ${appUrl}${leadPath(t.lead)}`);
     }
     textParts.push('');
   }
@@ -62,7 +62,7 @@ export function buildDigestEmail(input: { workspaceName: string; today: Today; a
       (t) => `<tr>
   <td style="padding:8px 0;border-bottom:1px solid #e7e3db;">
     <span style="color:#141414;font-weight:600;">☐ ${esc(t.title)}</span><br>
-    <a href="${esc(`${appUrl}/leads/${t.lead.id}`)}" style="color:#5f5b53;font-size:13px;text-decoration:none;">#${t.lead.number} ${esc(t.lead.company_name)}</a>
+    <a href="${esc(`${appUrl}${leadPath(t.lead)}`)}" style="color:#5f5b53;font-size:13px;text-decoration:none;">#${t.lead.number} ${esc(t.lead.company_name)}</a>
   </td>
   <td style="padding:8px 0;border-bottom:1px solid #e7e3db;text-align:right;white-space:nowrap;color:${taskColor(t)};font-weight:600;font-size:13px;">${esc(formatDate(t.due_on))}</td>
 </tr>`,
@@ -74,7 +74,7 @@ export function buildDigestEmail(input: { workspaceName: string; today: Today; a
       .map(
         (l) => `<tr>
   <td style="padding:8px 0;border-bottom:1px solid #e7e3db;">
-    <a href="${esc(`${appUrl}/leads/${l.id}`)}" style="color:#141414;font-weight:600;text-decoration:none;">#${l.number} ${esc(l.company_name)}</a><br>
+    <a href="${esc(`${appUrl}${leadPath(l)}`)}" style="color:#141414;font-weight:600;text-decoration:none;">#${l.number} ${esc(l.company_name)}</a><br>
     <span style="color:#5f5b53;font-size:13px;">${esc(l.next_action_text ?? 'Próxima ação')} · ${esc(LEAD_STATUS_META[l.status].label)}${l.city ? ` · ${esc(l.city)}` : ''}</span>
   </td>
   <td style="padding:8px 0;border-bottom:1px solid #e7e3db;text-align:right;white-space:nowrap;color:${color};font-weight:600;font-size:13px;">${esc(formatDate(l.next_action_on))}</td>

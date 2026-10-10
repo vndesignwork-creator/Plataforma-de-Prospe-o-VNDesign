@@ -28,6 +28,7 @@ import {
   type BoardColumn,
   type Lead,
   type LeadStatus,
+  leadPath,
 } from '@vndesign/core';
 import { ArrowLeftRight, GripVertical, Search } from 'lucide-react';
 import Link from 'next/link';
@@ -97,7 +98,7 @@ function LeadCard({
         {handle ?? <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden />}
         <div className="min-w-0 flex-1">
           <Link
-            href={`/leads/${lead.id}`}
+            href={leadPath(lead)}
             className="block font-semibold leading-snug hover:text-accent-text hover:underline"
             draggable={false}
           >
@@ -435,7 +436,7 @@ export function KanbanBoard() {
         toast.success(
           `#${updated.number} → ${LEAD_STATUS_META[to].label}${scheduled ? `. Follow-up agendado para ${formatDate(updated.next_action_on)}.` : '.'}`,
           to === 'cliente'
-            ? { description: 'Novo cliente! 🎉', action: { label: 'Criar tarefas', onClick: () => router.push(`/leads/${original.id}#tarefas`) } }
+            ? { description: 'Novo cliente! 🎉', action: { label: 'Criar tarefas', onClick: () => router.push(`${leadPath(original)}#tarefas`) } }
             : undefined,
         );
       }

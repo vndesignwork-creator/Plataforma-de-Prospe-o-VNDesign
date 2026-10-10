@@ -11,6 +11,7 @@ import {
   todayIso,
   type Lead,
   type LeadStatus,
+  leadPath,
 } from '@vndesign/core';
 import {
   Archive,
@@ -266,7 +267,7 @@ export function LeadDetail({ id }: { id: string }) {
               </Select>
             </span>
             {!lead.anonymized_at ? (
-              <Link href={`/leads/${lead.id}/editar`} className={buttonClasses('outline')}>
+              <Link href={leadPath(lead, '/editar')} className={buttonClasses('outline')}>
                 <Edit3 className="h-4 w-4" aria-hidden />
                 Editar
               </Link>
@@ -357,7 +358,7 @@ export function LeadDetail({ id }: { id: string }) {
                 {lead.services?.length ? (
                   <ServiceChips services={lead.services} />
                 ) : !lead.anonymized_at ? (
-                  <Link href={`/leads/${lead.id}/editar`} className="text-accent-text hover:underline">
+                  <Link href={leadPath(lead, '/editar')} className="text-accent-text hover:underline">
                     Escolher serviços de interesse
                   </Link>
                 ) : (
@@ -500,7 +501,7 @@ export function LeadDetail({ id }: { id: string }) {
               <p className="p-4 text-sm text-muted">
                 Ainda não há email de prospeção.{' '}
                 {!lead.anonymized_at ? (
-                  <Link href={`/leads/${lead.id}/editar`} className="text-accent-text underline">
+                  <Link href={leadPath(lead, '/editar')} className="text-accent-text underline">
                     Escrever agora
                   </Link>
                 ) : null}
@@ -521,7 +522,7 @@ export function LeadDetail({ id }: { id: string }) {
               title="Notas"
               actions={
                 !lead.anonymized_at ? (
-                  <Link href={`/leads/${lead.id}/editar`} className="text-sm text-accent-text hover:underline">
+                  <Link href={leadPath(lead, '/editar')} className="text-sm text-accent-text hover:underline">
                     Editar
                   </Link>
                 ) : null
@@ -694,7 +695,7 @@ function MergePickerDialog({ lead, open, onOpenChange }: { lead: Lead; open: boo
           <li key={l.id}>
             <button
               type="button"
-              onClick={() => router.push(`/leads/${lead.id}/juntar?com=${l.id}`)}
+              onClick={() => router.push(`${leadPath(lead, '/juntar')}?com=${l.id}`)}
               className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-surface-2"
             >
               <span>

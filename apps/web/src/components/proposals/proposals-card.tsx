@@ -1,6 +1,6 @@
 'use client';
 
-import { PROPOSAL_STATUS_LABELS, formatCurrency, formatDate, type Lead, type ProposalStatus } from '@vndesign/core';
+import { PROPOSAL_STATUS_LABELS, formatCurrency, formatDate, type Lead, type ProposalStatus, leadPath } from '@vndesign/core';
 import { FileText, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { buttonClasses } from '@/components/ui/button';
@@ -25,7 +25,7 @@ export function ProposalsCard({ lead }: { lead: Lead }) {
         description="Proposta em PDF com os teus pacotes, pronta a enviar."
         actions={
           !lead.anonymized_at ? (
-            <Link href={`/leads/${lead.id}/propostas/nova`} className={buttonClasses('outline', 'sm')}>
+            <Link href={leadPath(lead, '/propostas/nova')} className={buttonClasses('outline', 'sm')}>
               <Plus className="h-3.5 w-3.5" aria-hidden /> Nova proposta
             </Link>
           ) : null
@@ -40,7 +40,7 @@ export function ProposalsCard({ lead }: { lead: Lead }) {
           {data.map((p) => (
             <li key={p.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
-                <Link href={`/leads/${lead.id}/propostas/${p.id}`} className="font-medium hover:underline">
+                <Link href={leadPath(lead, `/propostas/${p.id}`)} className="font-medium hover:underline">
                   <span className="text-muted tabular">{p.code}</span> {p.title}
                 </Link>
                 <p className="flex flex-wrap items-center gap-2 text-xs text-muted">

@@ -8,6 +8,7 @@ import {
   renderTemplate,
   type ContactTemplate,
   type Lead,
+  leadPath,
 } from '@vndesign/core';
 import { Copy, Mail, MessageSquareText, Phone, RotateCcw, Save, Send } from 'lucide-react';
 import Link from 'next/link';
@@ -238,7 +239,7 @@ export function ContactScriptsCard({ lead }: { lead: Lead }) {
         {isEmail && !lead.email ? (
           <p className="text-xs text-muted">
             Este lead não tem email — “Abrir no email” abre a mensagem sem destinatário.{' '}
-            <Link href={`/leads/${lead.id}/editar`} className="text-accent-text underline">
+            <Link href={leadPath(lead, '/editar')} className="text-accent-text underline">
               Acrescentar email
             </Link>
           </p>

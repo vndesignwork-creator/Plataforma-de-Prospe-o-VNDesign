@@ -1,7 +1,7 @@
 'use client';
 
 import 'leaflet/dist/leaflet.css';
-import { LEAD_STATUS_META, formatCurrency, type MapLead } from '@vndesign/core';
+import { LEAD_STATUS_META, formatCurrency, type MapLead, leadPath } from '@vndesign/core';
 import type { LatLngBoundsExpression, LatLngExpression } from 'leaflet';
 import Link from 'next/link';
 import { useEffect } from 'react';
@@ -100,7 +100,7 @@ export default function LeafletMap({ leads, theme, focusId, placing, onPlace }: 
                 {lead.address || lead.city ? <span>{lead.address ?? lead.city}</span> : null}
                 {lead.geocode_status === 'approx' ? <em>Posição aproximada (cidade)</em> : null}
                 {lead.estimated_value ? <span>Valor: {formatCurrency(lead.estimated_value, { decimals: false })}</span> : null}
-                <Link href={`/leads/${lead.id}`} style={{ color: '#c2410c', fontWeight: 600 }}>
+                <Link href={leadPath(lead)} style={{ color: '#c2410c', fontWeight: 600 }}>
                   Abrir lead →
                 </Link>
               </div>

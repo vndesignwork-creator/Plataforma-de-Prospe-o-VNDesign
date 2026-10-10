@@ -2,7 +2,7 @@
  * Subscrições de notificações push (uma por browser/dispositivo) e o aviso
  * diário de follow-ups enviado pelo cron.
  */
-import type { PushSubscriptionCreate, Today } from '@vndesign/core';
+import { leadPath, type PushSubscriptionCreate, type Today } from '@vndesign/core';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
 import { isPushConfigured, sendPush, vapidPublicKey, type PushPayload, type StoredSubscription } from '../push';
@@ -86,7 +86,8 @@ export function buildDailyPush(today: Today): PushPayload | null {
     tasks.length ? `${tasks.length} tarefa${tasks.length === 1 ? '' : 's'}` : null,
   ].filter(Boolean);
   const names = [...new Set([...urgent.map((l) => l.company_name), ...tasks.map((t) => t.lead.company_name)])];
-  const single = urgent.length === 1 && !tasks.length ? urgent[0]!.id : !urgent.length && new Set(tasks.map((t) => t.lead.id)).size === 1 ? tasks[0]!.lead.id : null;
+  const single =
+    urgent.length === 1 && !tasks.length ? urgent[0]! : !urgent.length && new Set(tasks.map((t) => t.lead.id)).size === 1 ? tasks[0]!.lead : null;
   const title = !urgent.length
     ? tasks.length === 1
       ? '1 tarefa para hoje'
@@ -97,7 +98,7 @@ export function buildDailyPush(today: Today): PushPayload | null {
   return {
     title,
     body: `${parts.join(' · ')} — ${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''}`,
-    url: single ? `/leads/${single}` : '/dashboard',
+    url: single ? leadPath(single) : '/dashboard',
     tag: 'daily-follow-ups',
   };
 }
