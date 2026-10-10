@@ -52,6 +52,7 @@ import {
   DropdownTrigger,
 } from '@/components/ui/dropdown';
 import { Input, Select } from '@/components/ui/input';
+import { DateInput } from '@/components/ui/date-input';
 import { errorMessage, toQueryString } from '@/lib/api-client';
 import { useDebouncedValue } from '@/lib/hooks';
 import { bulkResultMessage, useBulkLeadAction, usePreference, useLeads, useSectors, useSetPreference } from '@/lib/queries';
@@ -549,22 +550,20 @@ export function LeadsTable() {
           <span className="text-sm text-muted" aria-hidden>
             Sugerido
           </span>
-          <Input
-            type="date"
+          <DateInput
             value={query.suggested_from ?? ''}
-            onChange={(e) => setParams({ de: e.target.value || null })}
+            onChange={(v) => setParams({ de: v || null })}
             aria-label="Sugerido desde"
-            className="w-auto min-w-0 flex-1 sm:w-38 sm:flex-none"
+            className="w-auto min-w-0 flex-1 sm:w-40 sm:flex-none"
           />
           <span className="text-sm text-muted" aria-hidden>
             a
           </span>
-          <Input
-            type="date"
+          <DateInput
             value={query.suggested_to ?? ''}
-            onChange={(e) => setParams({ ate: e.target.value || null })}
+            onChange={(v) => setParams({ ate: v || null })}
             aria-label="Sugerido até"
-            className="w-auto min-w-0 flex-1 sm:w-38 sm:flex-none"
+            className="w-auto min-w-0 flex-1 sm:w-40 sm:flex-none"
           />
         </fieldset>
         {activeFilters ? (

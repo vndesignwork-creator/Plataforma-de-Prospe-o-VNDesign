@@ -31,6 +31,7 @@ import { Badge, Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/c
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input, Select, Textarea } from '@/components/ui/input';
+import { DateInput } from '@/components/ui/date-input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import { useAudits, useInvalidateLead, useLead, useLogActivity, usePackages, useProposal } from '@/lib/queries';
@@ -397,7 +398,7 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
             <CardHeader title="Condições" />
             <div className="grid gap-3 p-4 sm:grid-cols-2">
               <Field label="Válida até" hint={proposal ? undefined : 'Vazio = validade das Definições (30 dias).'}>
-                <Input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
+                <DateInput value={validUntil} onChange={setValidUntil} />
               </Field>
               <Field label="Desconto (€)">
                 <Input inputMode="decimal" value={discount} onChange={(e) => setDiscount(e.target.value)} />

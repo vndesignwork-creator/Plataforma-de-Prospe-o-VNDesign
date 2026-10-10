@@ -31,6 +31,7 @@ import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Card, Skeleton } from '@/components/ui/card';
 import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownSeparator, DropdownTrigger } from '@/components/ui/dropdown';
+import { DateInput, DateTimeInput } from '@/components/ui/date-input';
 import { Input } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
 import { useInvalidateTasks, useLeadTasks, useTaskTemplates } from '@/lib/queries';
@@ -197,17 +198,8 @@ function TaskEditor({
         autoFocus
         className="min-w-40 flex-[1_1_12rem]"
       />
-      <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} aria-label="Prazo da tarefa" className="w-auto" />
-      <span className="relative inline-flex items-center">
-        <Bell className="pointer-events-none absolute left-3 h-4 w-4 text-muted" aria-hidden />
-        <Input
-          type="datetime-local"
-          value={remind}
-          onChange={(e) => setRemind(e.target.value)}
-          aria-label="Lembrete (dia e hora)"
-          className="w-auto pl-9"
-        />
-      </span>
+      <DateInput value={due} onChange={setDue} aria-label="Prazo da tarefa" className="w-40" />
+      <DateTimeInput value={remind} onChange={setRemind} aria-label="Lembrete (dia e hora)" placeholder="🔔 lembrete" className="w-48" />
       <Button type="submit" size="sm" loading={saving}>
         Guardar
       </Button>
@@ -556,20 +548,19 @@ export function TasksCard({ lead }: { lead: Lead }) {
             <label htmlFor={`due-${lead.id}`} className="text-muted">
               Prazo
             </label>
-            <Input
+            <DateInput
               id={`due-${lead.id}`}
-              type="date"
               value={due}
               min={today}
               autoFocus
-              onChange={(e) => setDue(e.target.value)}
+              onChange={setDue}
               onKeyDown={(e) => {
                 if (e.key === 'Escape') {
                   e.preventDefault();
                   setShowDueInput(false);
                 }
               }}
-              className="w-auto"
+              className="w-40"
             />
             {/* Fecha só o calendário: a data escolhida fica no botão "Prazo" (para tirar: Prazo → Sem prazo). */}
             <Button type="button" size="sm" variant={due ? 'secondary' : 'ghost'} onClick={() => setShowDueInput(false)}>
@@ -584,13 +575,7 @@ export function TasksCard({ lead }: { lead: Lead }) {
             <label htmlFor={`remind-${lead.id}`} className="text-muted">
               Lembrar em
             </label>
-            <Input
-              id={`remind-${lead.id}`}
-              type="datetime-local"
-              value={remind}
-              onChange={(e) => setRemind(e.target.value)}
-              className="w-auto"
-            />
+            <DateTimeInput id={`remind-${lead.id}`} value={remind} onChange={setRemind} className="w-52" />
             <PushHint />
           </div>
         ) : null}

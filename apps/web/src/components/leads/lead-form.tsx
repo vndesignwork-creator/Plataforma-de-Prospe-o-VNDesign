@@ -23,13 +23,14 @@ import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
-import { Controller, useForm, useWatch, type FieldPath } from 'react-hook-form';
+import { Controller, useForm, useWatch, type Control, type FieldPath } from 'react-hook-form';
 import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input, Select, Textarea } from '@/components/ui/input';
+import { DateInput } from '@/components/ui/date-input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useDebouncedValue } from '@/lib/hooks';
 import { checkDuplicates, useInvalidateLead, useSectors } from '@/lib/queries';
@@ -58,6 +59,27 @@ function toFormValues(lead?: Lead): FormInput {
   };
   for (const f of TEXT_FIELDS) values[f] = (lead?.[f] as string | null | undefined) ?? '';
   return values as FormInput;
+}
+
+/** Data com o calendário próprio, ligada ao formulário (o Field passa-lhe o id e o ARIA). */
+function DateControl({
+  control,
+  name,
+  ...aria
+}: {
+  control: Control<FormInput>;
+  name: 'next_action_on' | 'suggested_on' | 'first_contact_on' | 'last_follow_up_on';
+  id?: string;
+  'aria-invalid'?: boolean;
+  'aria-describedby'?: string;
+}) {
+  return (
+    <Controller
+      control={control}
+      name={name}
+      render={({ field }) => <DateInput {...aria} value={(field.value as string | null | undefined) ?? ''} onChange={field.onChange} />}
+    />
+  );
 }
 
 const emptyToNull = (v: unknown) => (v === '' || v === undefined ? null : v);
@@ -264,7 +286,7 @@ export function LeadForm({ lead }: { lead?: Lead }) {
           <Input placeholder="Ex.: Ligar a perguntar pelo email" {...register('next_action_text')} />
         </Field>
         <Field label="Data da próxima ação" error={e('next_action_on')}>
-          <Input type="date" {...register('next_action_on')} />
+          <DateControl control={control} name="next_action_on" />
         </Field>
       </Section>
 
@@ -294,15 +316,15 @@ export function LeadForm({ lead }: { lead?: Lead }) {
               <Input type="url" inputMode="url" autoComplete="off" {...register('source_url')} />
             </Field>
             <Field label="Sugerido em" error={e('suggested_on')}>
-              <Input type="date" {...register('suggested_on')} />
+              <DateControl control={control} name="suggested_on" />
             </Field>
           </Section>
           <Section title="Datas de contacto" description="Preenchidas sozinhas quando mudas o estado; só precisas de as escrever para registar contactos antigos.">
             <Field label="1.º contacto" error={e('first_contact_on')}>
-              <Input type="date" {...register('first_contact_on')} />
+              <DateControl control={control} name="first_contact_on" />
             </Field>
             <Field label="Último follow-up" error={e('last_follow_up_on')}>
-              <Input type="date" {...register('last_follow_up_on')} />
+              <DateControl control={control} name="last_follow_up_on" />
             </Field>
           </Section>
           <Section title="Diagnóstico do site">
