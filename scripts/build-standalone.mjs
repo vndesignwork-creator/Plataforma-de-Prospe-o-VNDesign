@@ -11,7 +11,10 @@
 import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync } from 'node:fs';
 
-const result = spawnSync('npm', ['run', 'build', '-w', '@vndesign/web'], {
+// --webpack: o compilador clássico. O Turbopack (o predefinido no Next 16) lança
+// processos auxiliares para o CSS que o alojamento partilhado da Hostinger mata
+// ("node process exited before we could connect to it").
+const result = spawnSync('npm', ['run', 'build', '-w', '@vndesign/web', '--', '--webpack'], {
   stdio: 'inherit',
   shell: process.platform === 'win32',
   env: { ...process.env, BUILD_STANDALONE: '1', NEXT_TELEMETRY_DISABLED: '1' },
