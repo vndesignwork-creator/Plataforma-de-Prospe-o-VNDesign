@@ -58,6 +58,7 @@ import { cn, displayHost } from '@/lib/utils';
 import { ChannelLabel, MobileLabel, PageSpeedScore, StatusBadge } from './badges';
 import { MultiSelectFilter } from './multi-select';
 import { ChannelIcon, SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
+import { ServiceIcons, serviceFilterOptions } from '@/components/services/services';
 
 const PAGE_SIZE = 50;
 
@@ -136,6 +137,11 @@ function buildColumns(today: string): Col[] {
         ) : (
           muted
         ),
+    },
+    {
+      id: 'services',
+      meta: { label: 'Serviços' },
+      cell: ({ row }) => (row.original.services?.length ? <ServiceIcons services={row.original.services} /> : muted),
     },
     {
       id: 'website',
@@ -274,6 +280,7 @@ export function LeadsTable() {
     sector: getList('sector'),
     status: getList('status'),
     channel: getList('channel'),
+    service: getList('servico'),
     city: get('city') || undefined,
     due: get('due') || undefined,
     suggested_from: get('de') || undefined,
@@ -306,7 +313,7 @@ export function LeadsTable() {
   });
 
   const activeFilters =
-    query.sector.length + query.status.length + query.channel.length +
+    query.sector.length + query.status.length + query.channel.length + query.service.length +
     [query.q, query.city, query.due, query.suggested_from, query.suggested_to, query.archived].filter(Boolean).length;
   const [showFilters, setShowFilters] = useState(false);
 
@@ -479,6 +486,12 @@ export function LeadsTable() {
             ...LEAD_CHANNELS.map((c) => ({ value: c, label: LEAD_CHANNEL_META[c].label, icon: <ChannelIcon channel={c} className="text-muted" /> })),
             { value: 'none', label: 'Sem canal' },
           ]}
+        />
+        <MultiSelectFilter
+          label="Serviço"
+          value={query.service}
+          onChange={(v) => setParams({ servico: v })}
+          options={serviceFilterOptions()}
         />
         <Input
           value={city}
@@ -736,6 +749,7 @@ export function LeadsTable() {
                       ) : null}
                       {lead.city ? <span>{lead.city}</span> : null}
                       {lead.estimated_value !== null ? <span className="tabular">{formatCurrency(lead.estimated_value)}</span> : null}
+                      <ServiceIcons services={lead.services} />
                     </span>
                     {lead.next_action_on || lead.next_action_text ? (
                       <span className="text-sm">

@@ -28,6 +28,7 @@ function toForm(s: Signature | undefined): FormInput {
     email: s?.email ?? '',
     website: s?.website ?? '',
     portfolio_url: s?.portfolio_url ?? '',
+    design_portfolio_url: s?.design_portfolio_url ?? '',
     projects: (s?.project_links ?? []).join('\n'),
   };
 }
@@ -98,6 +99,13 @@ export function SignatureSettings() {
         </Field>
         <Field label="Link do portfólio" error={errors.portfolio_url?.message}>
           <Input type="url" {...register('portfolio_url')} />
+        </Field>
+        <Field
+          label="Portfólio de design gráfico"
+          hint="Usado nos emails sobre logótipos, flyers e posts (variável {{portfolio_design}})."
+          error={errors.design_portfolio_url?.message}
+        >
+          <Input type="url" {...register('design_portfolio_url')} />
         </Field>
         <Field label="Projetos (um link por linha)" error={errors.projects?.message}>
           <Textarea rows={4} {...register('projects')} />

@@ -3,6 +3,8 @@
 import {
   PROPOSAL_STATUSES,
   PROPOSAL_STATUS_LABELS,
+  SERVICE_CATEGORIES,
+  SERVICE_CATEGORY_LABELS,
   formatCurrency,
   formatDate,
   isRecurringPackage,
@@ -10,6 +12,7 @@ import {
   mailtoUrl,
   parseEuroAmount,
   proposalTotals,
+  suggestPackages,
   suggestProposalIntro,
   type Lead,
   type Proposal,
@@ -102,8 +105,9 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
   const [seeded, setSeeded] = useState(!!proposal);
   if (!seeded && packages) {
     setSeeded(true);
-    const rec = packages.find((p) => p.recommended && !isRecurringPackage(p));
-    if (rec) setItems([toDraft(itemFromPackage(rec))]);
+    // Um pacote por serviço de interesse do lead (ou o recomendado).
+    const suggested = suggestPackages(packages, lead.services ?? []);
+    if (suggested.length) setItems(suggested.map((p) => toDraft(itemFromPackage(p))));
   }
 
   const parsedItems = items.map(fromDraft);
@@ -263,21 +267,33 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
             <CardHeader title="Itens" description="Escolhe pacotes ou acrescenta itens à medida. Os preços podem ser ajustados." />
             <div className="flex flex-col gap-4 p-4">
               {packages?.length ? (
-                <div className="flex flex-wrap gap-2" role="group" aria-label="Acrescentar pacote">
-                  {packages.map((p) => (
-                    <Button
-                      key={p.id}
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setItems((list) => [...list, toDraft(itemFromPackage(p, isRecurringPackage(p)))])}
-                    >
-                      <Plus className="h-3.5 w-3.5" aria-hidden /> {p.name}
-                      <span className="text-muted tabular">
-                        {formatCurrency(p.price, { decimals: false })}
-                        {isRecurringPackage(p) ? '/mês' : ''}
-                      </span>
-                    </Button>
-                  ))}
+                <div className="flex flex-col gap-2" role="group" aria-label="Acrescentar pacote">
+                  {SERVICE_CATEGORIES.map((category) => {
+                    const group = packages.filter((p) => (p.category ?? 'web') === category);
+                    if (!group.length) return null;
+                    return (
+                      <div key={category} className="flex flex-wrap items-center gap-2">
+                        <span className="w-full text-xs font-semibold tracking-wide text-muted uppercase sm:w-28">
+                          {SERVICE_CATEGORY_LABELS[category]}
+                        </span>
+                        {group.map((p) => (
+                          <Button
+                            key={p.id}
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setItems((list) => [...list, toDraft(itemFromPackage(p, isRecurringPackage(p)))])}
+                          >
+                            <Plus className="h-3.5 w-3.5" aria-hidden /> {p.name}
+                            <span className="text-muted tabular">
+                              {formatCurrency(p.price, { decimals: false })}
+                              {isRecurringPackage(p) ? '/mês' : ''}
+                            </span>
+                          </Button>
+                        ))}
+                      </div>
+                    );
+                  })}
+                  <div>
                   <Button
                     size="sm"
                     variant="ghost"
@@ -290,6 +306,7 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
                   >
                     <Plus className="h-3.5 w-3.5" aria-hidden /> Item à medida
                   </Button>
+                  </div>
                 </div>
               ) : null}
 

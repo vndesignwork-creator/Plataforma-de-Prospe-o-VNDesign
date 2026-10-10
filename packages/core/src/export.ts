@@ -4,6 +4,7 @@
  */
 import { LEAD_CHANNEL_META, LEAD_STATUS_META, MOBILE_STATUS_META } from './enums';
 import type { Lead } from './schemas';
+import { serviceLabel } from './services';
 
 export type ExportValue = string | number | null;
 export type ExportKind = 'text' | 'number' | 'integer' | 'date' | 'currency' | 'url';
@@ -63,6 +64,8 @@ export const EXPORT_COLUMNS: ExportColumn[] = [
   { header: 'Sugerido em', kind: 'date', width: 12, value: (l) => l.suggested_on },
   { header: 'Assunto do email', kind: 'text', width: 34, value: (l) => l.email_subject },
   { header: 'Email de prospeção', kind: 'text', width: 60, value: (l) => l.email_body },
+  // Volta a ser lida pela importação (coluna "Serviços").
+  { header: 'Serviços', kind: 'text', width: 30, value: (l) => (l.services?.length ? l.services.map(serviceLabel).join('; ') : null) },
 ];
 
 /** "2026-10-08" → "08/10/2026" (formato da folha). */

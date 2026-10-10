@@ -3,6 +3,7 @@
  * mapeamento de colunas e conversão de cada linha num lead válido.
  * Funções puras — usadas pela API (pré-visualização) e testadas com Vitest.
  */
+import { parseServices } from './services';
 import { fixDirectoryWebsite, type LeadLinks } from './links';
 import { LeadCreateSchema, type LeadCreate } from './schemas';
 import {
@@ -51,6 +52,7 @@ export const IMPORT_FIELDS = [
   'suggested_on',
   'email_subject',
   'email_body',
+  'services',
 ] as const;
 export type ImportField = (typeof IMPORT_FIELDS)[number];
 export type ImportTarget = ImportField | 'ignore';
@@ -81,6 +83,7 @@ export const IMPORT_FIELD_LABELS: Record<ImportField, string> = {
   suggested_on: 'Sugerido em',
   email_subject: 'Assunto do email',
   email_body: 'Email de prospeção',
+  services: 'Serviços de interesse',
 };
 
 /** Nomes de coluna reconhecidos (já em forma "slug": sem acentos/emoji/pontuação). */
@@ -110,6 +113,7 @@ const HEADER_ALIASES: Record<ImportField, string[]> = {
   suggested_on: ['sugerido-em', 'data-sugestao', 'adicionado-em', 'data'],
   email_subject: ['assunto-do-email', 'assunto'],
   email_body: ['email-de-prospecao', 'email-de-prospeccao', 'corpo-do-email', 'mensagem', 'texto-do-email'],
+  services: ['servicos', 'servico', 'servicos-de-interesse', 'interesse', 'services', 'oportunidade'],
 };
 
 const ALIAS_INDEX = new Map<string, ImportField>();
@@ -290,6 +294,13 @@ export function mapImportRow(
     const v = parseEuroAmount(value);
     if (v !== null) lead.estimated_value = v;
     else warnings.push(`Valor "${value}" inválido — ignorado.`);
+  }
+
+  const services = get('services');
+  if (services) {
+    const keys = parseServices(services);
+    if (keys.length) lead.services = keys;
+    else warnings.push(`Serviços "${services}" não reconhecidos — ignorados.`);
   }
 
   // Um diretório (TripAdvisor, Sluurpy, Google Maps…) não é o site da empresa: vai para "Fonte".

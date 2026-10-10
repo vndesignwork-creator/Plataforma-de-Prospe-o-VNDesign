@@ -74,7 +74,7 @@ export async function updateSettings(
 // -----------------------------------------------------------------------------
 // Assinatura do utilizador atual
 // -----------------------------------------------------------------------------
-const SIGNATURE_SELECT = 'full_name, role_title, company, phone, email, website, portfolio_url, project_links';
+const SIGNATURE_SELECT = 'full_name, role_title, company, phone, email, website, portfolio_url, design_portfolio_url, project_links';
 
 export async function getSignature(ctx: ApiContext): Promise<Signature> {
   const { data, error } = await ctx.supabase
@@ -95,6 +95,7 @@ export async function getSignature(ctx: ApiContext): Promise<Signature> {
       email: ctx.user.email,
       website: null,
       portfolio_url: null,
+      design_portfolio_url: null,
       project_links: [],
     };
   }

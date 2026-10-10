@@ -288,3 +288,12 @@ um “Lead editado”. O resumo diário usa a chave de serviço só no servidor
   - tenta, por ordem, a morada, depois o nome + a cidade e, por fim, só a cidade (`approx`).
 - `set_lead_location()` grava a posição sem gerar "Lead editado".
 - No browser, Leaflet com mapas CARTO (escuro ou claro, conforme o tema).
+
+## Serviços (Web Design / Design Gráfico)
+
+- Catálogo fixo em `packages/core/src/services.ts` (`SERVICES`: chave, nome, categoria `web`/`grafico`).
+  A mesma lista está na verificação de `leads.services` (migração `20261016000100`): mudar as duas.
+- `leads.services text[]` (índice GIN; filtro `?service=a,b` usa interseção `ov`, `none` = sem serviço).
+- `service_packages.category` + `service`; `suggestPackages()` escolhe os pacotes de uma proposta nova.
+- Importação: `import_lead_services()` acrescenta os serviços da folha depois de `import_leads()`.
+- `merge_leads` junta os serviços dos duplicados; `dashboard_summary.by_service` conta leads e clientes.

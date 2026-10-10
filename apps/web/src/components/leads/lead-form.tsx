@@ -21,7 +21,7 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
-import { useForm, useWatch, type FieldPath } from 'react-hook-form';
+import { Controller, useForm, useWatch, type FieldPath } from 'react-hook-form';
 import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
@@ -33,6 +33,7 @@ import { useDebouncedValue } from '@/lib/hooks';
 import { checkDuplicates, useInvalidateLead, useSectors } from '@/lib/queries';
 import { DuplicatePanel } from './duplicate-panel';
 import { MERGE_DRAFT_KEY } from './merge-view';
+import { ServicePicker } from '@/components/services/services';
 
 type FormInput = LeadCreateInput;
 
@@ -51,6 +52,7 @@ function toFormValues(lead?: Lead): FormInput {
     mobile: lead?.mobile ?? 'desconhecido',
     status: lead?.status ?? 'identificado',
     channel: lead?.channel ?? null,
+    services: lead?.services ?? [],
   };
   for (const f of TEXT_FIELDS) values[f] = (lead?.[f] as string | null | undefined) ?? '';
   return values as FormInput;
@@ -204,6 +206,16 @@ export function LeadForm({ lead }: { lead?: Lead }) {
         <Field label="Sugerido em" error={e('suggested_on')}>
           <Input type="date" {...register('suggested_on')} />
         </Field>
+      </Section>
+
+      <Section title="Serviços de interesse" description="O que podes propor a esta empresa — site, imagem gráfica ou ambos.">
+        <div className="md:col-span-2">
+          <Controller
+            control={control}
+            name="services"
+            render={({ field }) => <ServicePicker value={field.value ?? []} onChange={field.onChange} />}
+          />
+        </div>
       </Section>
 
       <Section title="Contacto">

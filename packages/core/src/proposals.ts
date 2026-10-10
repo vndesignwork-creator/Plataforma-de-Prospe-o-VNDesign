@@ -4,6 +4,7 @@
  */
 import { z } from 'zod';
 import type { AuditIssue } from './audit';
+import { SERVICE_CATEGORIES, SERVICE_KEYS } from './services';
 
 const money = z
   .number({ error: 'Indica um valor.' })
@@ -34,6 +35,10 @@ export const ServicePackageSchema = z
     recommended: z.boolean(),
     sort_order: z.int(),
     archived_at: z.string().nullable(),
+    /** Web Design ou Design Gráfico (agrupa os pacotes nas definições e nas propostas). */
+    category: z.enum(SERVICE_CATEGORIES),
+    /** Serviço do catálogo (opcional): sugere o pacote para leads com esse interesse. */
+    service: z.enum(SERVICE_KEYS).nullable(),
   })
   .meta({ id: 'ServicePackage' });
 export type ServicePackage = z.infer<typeof ServicePackageSchema>;
@@ -51,6 +56,8 @@ export const ServicePackageCreateSchema = z
     delivery_days: z.int().min(1).max(365).nullish().transform((v) => v ?? null),
     recommended: z.boolean().default(false),
     sort_order: z.int().min(0).max(1000).optional(),
+    category: z.enum(SERVICE_CATEGORIES).default('web'),
+    service: z.enum(SERVICE_KEYS).nullish().transform((v) => v ?? null),
   })
   .meta({ id: 'ServicePackageCreate' });
 export type ServicePackageCreateInput = z.input<typeof ServicePackageCreateSchema>;
@@ -66,6 +73,7 @@ export const ServicePackageUpdateSchema = ServicePackageCreateSchema.partial()
       .transform((f) => f.filter(Boolean))
       .optional(),
     recommended: z.boolean().optional(),
+    category: z.enum(SERVICE_CATEGORIES).optional(),
     archived: z.boolean().optional(),
   })
   .meta({ id: 'ServicePackageUpdate' });
@@ -194,6 +202,27 @@ export function itemFromPackage(pkg: Pick<ServicePackage, 'id' | 'name' | 'descr
 /** Pacotes com preço mensal (ex.: "Manutenção mensal") entram como recorrentes. */
 export function isRecurringPackage(pkg: Pick<ServicePackage, 'name'>): boolean {
   return /mensal|mês|manuten/i.test(pkg.name);
+}
+
+/**
+ * Pacotes para começar uma proposta nova: um por cada serviço de interesse do lead
+ * (o recomendado desse serviço, senão o primeiro não mensal). Sem correspondência,
+ * fica o pacote recomendado (como antes).
+ */
+export function suggestPackages<P extends Pick<ServicePackage, 'id' | 'name' | 'recommended' | 'service' | 'archived_at'>>(
+  packages: readonly P[],
+  services: readonly string[] = [],
+): P[] {
+  const active = packages.filter((p) => !p.archived_at && !isRecurringPackage(p));
+  const picked: P[] = [];
+  for (const service of services) {
+    const options = active.filter((p) => p.service === service);
+    const choice = options.find((p) => p.recommended) ?? options[0];
+    if (choice && !picked.includes(choice)) picked.push(choice);
+  }
+  if (picked.length) return picked;
+  const rec = active.find((p) => p.recommended);
+  return rec ? [rec] : [];
 }
 
 /**

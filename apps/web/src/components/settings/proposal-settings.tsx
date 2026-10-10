@@ -1,6 +1,16 @@
 'use client';
 
-import { formatCurrency, parseEuroAmount, type ServicePackage } from '@vndesign/core';
+import {
+  SERVICE_CATEGORIES,
+  SERVICE_CATEGORY_LABELS,
+  formatCurrency,
+  parseEuroAmount,
+  serviceLabel,
+  servicesOf,
+  type ServiceCategory,
+  type ServiceKey,
+  type ServicePackage,
+} from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Sparkles, Star, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -9,7 +19,8 @@ import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
-import { Input, Textarea } from '@/components/ui/input';
+import { Input, Select, Textarea } from '@/components/ui/input';
+import { CATEGORY_ICONS, ServiceIcon } from '@/components/services/services';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { usePackages, useSettings, type SettingsWithMail } from '@/lib/queries';
 
@@ -21,9 +32,21 @@ interface PackageDraft {
   delivery_days: string;
   features: string;
   recommended: boolean;
+  category: ServiceCategory;
+  service: ServiceKey | '';
 }
 
-const emptyDraft: PackageDraft = { id: null, name: '', description: '', price: '', delivery_days: '', features: '', recommended: false };
+const emptyDraft: PackageDraft = {
+  id: null,
+  name: '',
+  description: '',
+  price: '',
+  delivery_days: '',
+  features: '',
+  recommended: false,
+  category: 'web',
+  service: '',
+};
 const toDraft = (p: ServicePackage): PackageDraft => ({
   id: p.id,
   name: p.name,
@@ -32,6 +55,8 @@ const toDraft = (p: ServicePackage): PackageDraft => ({
   delivery_days: p.delivery_days ? String(p.delivery_days) : '',
   features: p.features.join('\n'),
   recommended: p.recommended,
+  category: p.category ?? 'web',
+  service: p.service ?? '',
 });
 
 function PackageDialog({ draft, onClose }: { draft: PackageDraft | null; onClose: () => void }) {
@@ -55,6 +80,8 @@ function PackageDialog({ draft, onClose }: { draft: PackageDraft | null; onClose
       delivery_days: form.delivery_days ? Number(form.delivery_days) : null,
       features: form.features.split('\n').map((f) => f.trim()).filter(Boolean),
       recommended: form.recommended,
+      category: form.category,
+      service: form.service || null,
     };
     try {
       if (form.id) await api(`/packages/${form.id}`, { method: 'PATCH', body });
@@ -92,6 +119,32 @@ function PackageDialog({ draft, onClose }: { draft: PackageDraft | null; onClose
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </Field>
         </div>
+        <Field label="Categoria">
+          <Select
+            value={form.category}
+            onChange={(e) => {
+              const category = e.target.value as ServiceCategory;
+              // O serviço tem de pertencer à categoria escolhida.
+              setForm({ ...form, category, service: form.service && servicesOf(category).includes(form.service) ? form.service : '' });
+            }}
+          >
+            {SERVICE_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {SERVICE_CATEGORY_LABELS[c]}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Serviço" hint="Sugere este pacote para leads com este interesse.">
+          <Select value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value as ServiceKey | '' })}>
+            <option value="">Geral (toda a categoria)</option>
+            {servicesOf(form.category).map((k) => (
+              <option key={k} value={k}>
+                {serviceLabel(k)}
+              </option>
+            ))}
+          </Select>
+        </Field>
         <Field label="Preço (€)" required error={errors.price?.[0]} hint="Sem IVA. Para manutenção, o preço mensal.">
           <Input inputMode="decimal" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
         </Field>
@@ -176,7 +229,7 @@ export function ProposalSettings() {
     <Card id="propostas">
       <CardHeader
         title="Propostas e IA"
-        description="Pacotes que aparecem nas propostas, textos do PDF e o gerador de emails com IA."
+        description="Pacotes de Web Design e de Design Gráfico, textos do PDF e o gerador de emails com IA."
         actions={
           <Button size="sm" variant="outline" onClick={() => setEditing({ ...emptyDraft })}>
             <Plus className="h-3.5 w-3.5" aria-hidden /> Novo pacote
@@ -184,32 +237,48 @@ export function ProposalSettings() {
         }
       />
       <ul className="divide-y divide-border" aria-label="Pacotes">
-        {(packages ?? []).map((p) => (
-          <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-3">
-            <div className="min-w-0">
-              <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                {p.name}
-                {p.recommended ? (
-                  <Badge tone="accent">
-                    <Star className="h-3 w-3" aria-hidden /> Recomendado
-                  </Badge>
-                ) : null}
-              </p>
-              <p className="text-xs text-muted">
-                <span className="tabular">{formatCurrency(p.price)}</span> · {p.features.length} pontos
-                {p.delivery_days ? ` · ${p.delivery_days} dias` : ''}
-              </p>
-            </div>
-            <div className="flex shrink-0 gap-1">
-              <Button size="icon" variant="ghost" onClick={() => setEditing(toDraft(p))} aria-label={`Editar ${p.name}`}>
-                <Pencil className="h-4 w-4" aria-hidden />
-              </Button>
-              <Button size="icon" variant="ghost" onClick={() => remove(p)} aria-label={`Apagar ${p.name}`}>
-                <Trash2 className="h-4 w-4" aria-hidden />
-              </Button>
-            </div>
-          </li>
-        ))}
+        {SERVICE_CATEGORIES.map((category) => {
+          const group = (packages ?? []).filter((p) => (p.category ?? 'web') === category);
+          if (!group.length) return null;
+          const CategoryIcon = CATEGORY_ICONS[category];
+          return [
+            <li
+              key={`h-${category}`}
+              className="flex items-center gap-1.5 bg-surface-2 px-4 py-1.5 text-xs font-semibold tracking-wide text-muted uppercase"
+            >
+              <CategoryIcon className="h-3.5 w-3.5" aria-hidden />
+              {SERVICE_CATEGORY_LABELS[category]}
+            </li>,
+            ...group.map((p) => (
+              <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                    {p.service ? <ServiceIcon service={p.service} className="text-muted" /> : null}
+                    {p.name}
+                    {p.recommended ? (
+                      <Badge tone="accent">
+                        <Star className="h-3 w-3" aria-hidden /> Recomendado
+                      </Badge>
+                    ) : null}
+                  </p>
+                  <p className="text-xs text-muted">
+                    <span className="tabular">{formatCurrency(p.price)}</span> · {p.features.length} pontos
+                    {p.delivery_days ? ` · ${p.delivery_days} dias` : ''}
+                    {p.service ? ` · ${serviceLabel(p.service)}` : ''}
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => setEditing(toDraft(p))} aria-label={`Editar ${p.name}`}>
+                    <Pencil className="h-4 w-4" aria-hidden />
+                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => remove(p)} aria-label={`Apagar ${p.name}`}>
+                    <Trash2 className="h-4 w-4" aria-hidden />
+                  </Button>
+                </div>
+              </li>
+            )),
+          ];
+        })}
       </ul>
 
       <form onSubmit={saveTexts} className="grid gap-3 border-t border-border p-4 md:grid-cols-2" noValidate>

@@ -80,6 +80,7 @@ export async function generateAiEmail(ctx: ApiContext, leadId: string, request: 
       notes: lead.notes,
       first_contact_on: lead.first_contact_on,
       previous_subject: request.kind === 'follow_up' ? lead.email_subject : null,
+      services: lead.services ?? [],
     },
     sectorArguments: sector?.sales_arguments ?? null,
     auditIssues: audit?.issues ?? [],
@@ -89,6 +90,7 @@ export async function generateAiEmail(ctx: ApiContext, leadId: string, request: 
       company: signature.company,
       website: signature.website,
       portfolio: signature.portfolio_url,
+      designPortfolio: signature.design_portfolio_url ?? null,
     },
     proposal: proposal
       ? { code: proposalCode(proposal.number, proposal.created_at), total: formatCurrency(Number(proposal.total)) }

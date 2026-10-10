@@ -8,13 +8,17 @@ import {
   AI_EMAIL_TONES,
   AI_EMAIL_TONE_LABELS,
   mailtoUrl,
+  serviceLabel,
   type AiEmailKind,
   type AiEmailLength,
   type AiEmailTone,
   type Lead,
+  type ServiceKey,
 } from '@vndesign/core';
 import { Copy, Mail, RefreshCw, Save, Sparkles } from 'lucide-react';
 import { useState } from 'react';
+import { MultiSelectFilter } from './multi-select';
+import { serviceFilterOptions } from '@/components/services/services';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
@@ -40,6 +44,8 @@ export function AiEmailCard({ lead }: { lead: Lead }) {
   const [length, setLength] = useState<AiEmailLength>('curto');
   const [useAudit, setUseAudit] = useState(true);
   const [instructions, setInstructions] = useState('');
+  // Serviços a propor: por omissão, os de interesse do lead (vazio = um site).
+  const [services, setServices] = useState<string[]>(() => [...(lead.services ?? [])]);
   const [draft, setDraft] = useState<{ subject: string; body: string } | null>(null);
 
   if (lead.anonymized_at) return null;
@@ -53,6 +59,7 @@ export function AiEmailCard({ lead }: { lead: Lead }) {
         length,
         use_audit: useAudit,
         instructions: instructions.trim() || undefined,
+        services: services as ServiceKey[],
       });
       setDraft({ subject: result.subject, body: result.body });
       toast.success('Email gerado. Revê e ajusta antes de enviar.');
@@ -135,6 +142,17 @@ export function AiEmailCard({ lead }: { lead: Lead }) {
                 ))}
               </Select>
             </Field>
+            <div className="flex flex-wrap items-center gap-2 sm:col-span-3">
+              <MultiSelectFilter
+                label="Serviços a propor"
+                value={services}
+                onChange={setServices}
+                options={serviceFilterOptions().filter((o) => o.value !== 'none')}
+              />
+              <span className="text-sm text-muted">
+                {services.length ? services.map(serviceLabel).join(', ') : 'Um site (por omissão)'}
+              </span>
+            </div>
             <div className="sm:col-span-3">
               <Field label="Indicações (opcional)" hint="Ex.: “mencionar que também sou da Amadora” ou “focar nas reservas online”.">
                 <Textarea rows={2} maxLength={1000} value={instructions} onChange={(e) => setInstructions(e.target.value)} />

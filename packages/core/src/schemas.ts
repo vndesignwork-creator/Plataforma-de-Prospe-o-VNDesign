@@ -16,6 +16,7 @@ import {
   type SectorIcon,
 } from './enums';
 import { ensureUrlProtocol } from './normalize';
+import { SERVICE_KEYS } from './services';
 
 // Mensagens genéricas de validação em português (as específicas estão em cada campo).
 z.config(z.locales.pt());
@@ -111,6 +112,11 @@ const leadFields = {
   suggested_on: nullableDate,
   email_subject: nullableText(300),
   email_body: nullableText(20_000),
+  /** Serviços de interesse (Web Design e/ou Design Gráfico). */
+  services: z
+    .array(z.enum(SERVICE_KEYS, { error: 'Serviço desconhecido.' }))
+    .max(SERVICE_KEYS.length)
+    .transform((list) => SERVICE_KEYS.filter((k) => list.includes(k))),
 };
 
 export const EDITABLE_LEAD_FIELDS = Object.keys(leadFields) as (keyof typeof leadFields)[];
@@ -165,6 +171,7 @@ export const LeadSchema = z
     next_action_text: z.string().nullable(),
     next_action_on: z.string().nullable(),
     estimated_value: z.number().nullable(),
+    services: z.array(z.enum(SERVICE_KEYS)).optional(),
     notes: z.string().nullable(),
     approach_angle: z.string().nullable(),
     source_url: z.string().nullable(),
@@ -223,6 +230,9 @@ export const LeadListQuerySchema = z
     sector: csvList(z.union([z.uuid(), z.literal('none')])).optional().meta({ description: 'IDs de setor separados por vírgula ("none" = sem setor)' }),
     status: csvList(LeadStatusSchema).optional(),
     channel: csvList(z.union([LeadChannelSchema, z.literal('none')])).optional(),
+    service: csvList(z.union([z.enum(SERVICE_KEYS), z.literal('none')]))
+      .optional()
+      .meta({ description: 'Serviços de interesse separados por vírgula ("none" = sem serviço); basta um coincidir' }),
     city: z.string().trim().max(120).optional(),
     suggested_from: z.iso.date().optional(),
     suggested_to: z.iso.date().optional(),
@@ -539,6 +549,10 @@ export const DashboardSchema = z
       z.object({ id: z.uuid().nullable(), name: z.string(), emoji: z.string().nullable(), count: z.int(), value: z.number() }),
     ),
     by_status: z.array(z.object({ status: LeadStatusSchema, count: z.int() })),
+    by_service: z
+      .array(z.object({ service: z.enum(SERVICE_KEYS), count: z.int(), won: z.int() }))
+      .optional()
+      .meta({ description: 'Leads com interesse em cada serviço e quantos são clientes' }),
     by_channel: z.array(z.object({ channel: LeadChannelSchema.nullable(), count: z.int() })),
     funnel: z.array(z.object({ stage: LeadStatusSchema, count: z.int() })),
     weekly: z.array(z.object({ week_start: z.string(), count: z.int() })),
@@ -604,6 +618,7 @@ export const SignatureSchema = z
     email: z.string().nullable(),
     website: z.string().nullable(),
     portfolio_url: z.string().nullable(),
+    design_portfolio_url: z.string().nullable().optional(),
     project_links: z.array(z.string()),
   })
   .meta({ id: 'Signature' });
@@ -618,6 +633,7 @@ export const SignatureUpdateSchema = z
     email: nullableEmail,
     website: nullableUrl,
     portfolio_url: nullableUrl,
+    design_portfolio_url: nullableUrl.optional(),
     project_links: z
       .array(z.string().trim().max(500))
       .max(10)

@@ -276,6 +276,18 @@ export async function commitImport(ctx: ApiContext, input: CommitImportInput): P
   }
   const blockedRows = new Set(toWrite.filter((_, i) => blockedIdx.has(i)).map((i) => i.index));
 
+  // Serviços de interesse (coluna "Serviços"): a função de importação não os conhece.
+  const withServices = allowed
+    .map((item) => ({ lead_id: written.get(item.index)?.lead_id, services: item.lead.services ?? [] }))
+    .filter((x) => x.lead_id && x.services.length);
+  if (withServices.length) {
+    const { error: servicesError } = await ctx.supabase.rpc('import_lead_services', {
+      p_workspace_id: ctx.workspaceId,
+      p_items: withServices,
+    });
+    if (servicesError) throw fromPostgrest(servicesError);
+  }
+
   const report: ImportJob['report'] = input.items.map((item) => {
     const w = written.get(item.index);
     return {

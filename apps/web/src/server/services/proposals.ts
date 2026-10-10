@@ -21,7 +21,7 @@ import { getSettings } from './workspace';
 // -----------------------------------------------------------------------------
 // Pacotes
 // -----------------------------------------------------------------------------
-const PACKAGE_SELECT = 'id, name, description, price, features, delivery_days, recommended, sort_order, archived_at';
+const PACKAGE_SELECT = 'id, name, description, price, features, delivery_days, recommended, sort_order, archived_at, category, service';
 
 const toPackage = (row: Record<string, unknown>) => ({ ...row, price: Number(row.price) }) as ServicePackage;
 

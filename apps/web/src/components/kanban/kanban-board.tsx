@@ -41,6 +41,7 @@ import { useDebouncedValue } from '@/lib/hooks';
 import { useBoard, useInvalidateLead, useSectors } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 import { ChannelIcon, SectorIconView } from '@/components/icons/lead-icons';
+import { ServiceIcons, serviceFilterOptions } from '@/components/services/services';
 
 type Columns = Record<LeadStatus, Lead[]>;
 
@@ -105,6 +106,7 @@ function LeadCard({
             ) : null}
             {lead.city ? <span>{lead.city}</span> : null}
           </p>
+          <ServiceIcons services={lead.services} className="mt-1.5" />
           {lead.next_action_on || lead.next_action_text ? (
             <p className={cn('mt-1.5 text-xs', overdue ? 'font-medium text-danger' : 'text-fg')}>
               {lead.next_action_text ?? 'Próxima ação'}
@@ -197,8 +199,9 @@ export function KanbanBoard() {
   const [search, setSearch] = useState('');
   const [sector, setSector] = useState<string[]>([]);
   const [channel, setChannel] = useState<string[]>([]);
+  const [service, setService] = useState<string[]>([]);
   const q = useDebouncedValue(search.trim());
-  const query = { q: q || undefined, sector, channel };
+  const query = { q: q || undefined, sector, channel, service };
   const { data: board, isLoading } = useBoard(query);
   const { data: sectors } = useSectors();
 
@@ -324,6 +327,7 @@ export function KanbanBoard() {
             onChange={setSector}
             options={[...(sectors ?? []).map((s) => ({ value: s.id, label: s.name, icon: <SectorIconView sector={s} className="text-muted" /> })), { value: 'none', label: 'Sem setor' }]}
           />
+          <MultiSelectFilter label="Serviço" value={service} onChange={setService} options={serviceFilterOptions()} />
           <MultiSelectFilter
             label="Canal"
             value={channel}

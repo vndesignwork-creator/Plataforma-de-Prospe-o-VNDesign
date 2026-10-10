@@ -6,11 +6,13 @@ import {
   formatCurrency,
   formatDate,
   formatPercent,
+  serviceLabel,
   type Lead,
 } from '@vndesign/core';
 import { AlertCircle, CalendarClock, CalendarDays } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { ServiceIcon } from '@/components/services/services';
 import { BarList } from '@/components/charts/bar-list';
 import { ColumnChart } from '@/components/charts/column-chart';
 import { StatTile } from '@/components/charts/stat-tile';
@@ -205,6 +207,25 @@ export function DashboardView() {
                 ) : undefined,
                 value: s.count,
               }))}
+            />
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader title="Por serviço" description="Leads com interesse em cada serviço (e quantos já são clientes)." />
+          <div className="p-4">
+            <BarList
+              caption="Leads por serviço de interesse"
+              emptyText="Ainda não há leads com serviços de interesse."
+              items={(data.by_service ?? [])
+                .filter((s) => s.count > 0)
+                .map((s) => ({
+                  key: s.service,
+                  label: serviceLabel(s.service),
+                  mark: <ServiceIcon service={s.service} className="h-3.5 w-3.5 text-muted" />,
+                  value: s.count,
+                  note: s.won ? (s.won === 1 ? '1 cliente' : `${s.won} clientes`) : undefined,
+                }))}
             />
           </div>
         </Card>

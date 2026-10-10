@@ -28,7 +28,7 @@ export const LEAD_SELECT = [
   'website', 'city', 'address', 'latitude', 'longitude', 'geocode_status', 'problems', 'pagespeed', 'mobile',
   'email', 'phone', 'contact_name', 'status', 'channel', 'first_contact_on', 'last_follow_up_on',
   'next_action_text', 'next_action_on', 'estimated_value', 'notes', 'approach_angle', 'source_url',
-  'suggested_on', 'email_subject', 'email_body', 'kanban_position', 'status_changed_at',
+  'suggested_on', 'email_subject', 'email_body', 'services', 'kanban_position', 'status_changed_at',
   'anonymized_at', 'archived_at', 'created_by', 'created_at', 'updated_at',
 ].join(', ');
 
@@ -52,7 +52,7 @@ type LeadQueryBuilder = ReturnType<typeof baseLeadQuery>;
 export type LeadFilters = Partial<
   Pick<
     LeadListQuery,
-    'q' | 'sector' | 'status' | 'channel' | 'city' | 'suggested_from' | 'suggested_to' | 'due' | 'include_anonymized' | 'archived'
+    'q' | 'sector' | 'status' | 'channel' | 'city' | 'suggested_from' | 'suggested_to' | 'due' | 'include_anonymized' | 'archived' | 'service'
   >
 >;
 
@@ -80,6 +80,15 @@ function applyLeadFilters(q: LeadQueryBuilder, query: LeadFilters): LeadQueryBui
     const parts = [
       ...(channels.length ? [`channel.in.(${channels.join(',')})`] : []),
       ...(query.channel.includes('none') ? ['channel.is.null'] : []),
+    ];
+    q = q.or(parts.join(','));
+  }
+  if (query.service?.length) {
+    // Basta um dos serviços escolhidos coincidir ("ov" = interseção de arrays).
+    const keys = query.service.filter((k) => k !== 'none');
+    const parts = [
+      ...(keys.length ? [`services.ov.{${keys.join(',')}}`] : []),
+      ...(query.service.includes('none') ? ['services.eq.{}'] : []),
     ];
     q = q.or(parts.join(','));
   }

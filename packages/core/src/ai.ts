@@ -3,6 +3,7 @@
  * A chamada à API é feita no servidor; aqui fica só a parte "pura" e testável.
  */
 import { z } from 'zod';
+import { SERVICE_KEYS, serviceCategory, serviceLabel } from './services';
 import type { AuditIssue } from './audit';
 import { formatDate } from './format';
 
@@ -36,6 +37,11 @@ export const AiEmailRequestSchema = z
     tone: z.enum(AI_EMAIL_TONES).default('proximo'),
     length: z.enum(AI_EMAIL_LENGTHS).default('curto'),
     use_audit: z.boolean().default(true).meta({ description: 'Usar os problemas da última análise do site' }),
+    services: z
+      .array(z.enum(SERVICE_KEYS))
+      .max(SERVICE_KEYS.length)
+      .optional()
+      .meta({ description: 'Serviços a propor; por omissão, os serviços de interesse do lead (ou um site)' }),
     instructions: z
       .string()
       .trim()
@@ -77,11 +83,18 @@ export interface AiEmailContext {
     notes?: string | null;
     first_contact_on?: string | null;
     previous_subject?: string | null;
+    services?: readonly string[] | null;
   };
   sectorArguments?: string | null;
   auditIssues?: readonly Pick<AuditIssue, 'message'>[];
   auditCms?: string | null;
-  sender: { name?: string | null; company?: string | null; website?: string | null; portfolio?: string | null };
+  sender: {
+    name?: string | null;
+    company?: string | null;
+    website?: string | null;
+    portfolio?: string | null;
+    designPortfolio?: string | null;
+  };
   proposal?: { code: string; total: string } | null;
 }
 
@@ -89,14 +102,15 @@ export interface AiEmailContext {
  * Instruções fixas (iguais em todos os pedidos — ficam em cache na API).
  * As regras de estilo vêm da forma como a VNDesign escreve aos clientes.
  */
-export const AI_EMAIL_SYSTEM_PROMPT = `És o assistente de escrita da VNDesign, um estúdio de web design freelance na Amadora (Portugal) que faz sites para pequenos negócios locais: restaurantes, clínicas, oficinas, cabeleireiros, lojas.
+export const AI_EMAIL_SYSTEM_PROMPT = `És o assistente de escrita da VNDesign, um estúdio freelance na Amadora (Portugal) de web design (landing pages, sites institucionais, blogs, pequenas lojas online) e de design gráfico (identidade visual e logótipos, flyers e cartazes, posts para redes sociais, estampas para t-shirts) para pequenos negócios locais: restaurantes, clínicas, oficinas, cabeleireiros, lojas, associações.
 
 Escreves emails de prospeção em português europeu (de Portugal), como o próprio designer os escreveria a um dono de negócio que não o conhece.
 
 Regras:
 - Português de Portugal: "telemóvel", "ecrã", "equipa", "contactar", "registo". Nada de expressões do Brasil ("você", "celular", "tela", "time", "entrar em contato"). Trata a pessoa pelo nome se o souberes ("Olá Sr. Manuel,") ou com "Olá," e usa a 3.ª pessoa de cortesia em vez de "você".
 - Usa só factos dos dados fornecidos. Nunca inventes números, prémios, clientes, prazos ou resultados garantidos (nada de "vai triplicar as reservas" ou "1.º lugar no Google").
-- Menciona 1 a 3 problemas concretos do site e o efeito no negócio (clientes que desistem no telemóvel, aviso "Não seguro", menos pedidos de contacto). Sem jargão técnico — se usares um termo como "PageSpeed", explica-o em poucas palavras.
+- Propõe só os serviços indicados em "Serviços a propor". Se forem de web design, menciona 1 a 3 problemas concretos do site e o efeito no negócio (clientes que desistem no telemóvel, aviso "Não seguro", menos pedidos de contacto). Se forem de design gráfico, fala da imagem do negócio (logótipo, coerência visual, redes sociais, materiais impressos) e do efeito em quem o descobre — usando só o que os dados dizem; se não houver dados sobre a imagem, faz uma observação genérica e honesta em vez de inventar defeitos.
+- Sem jargão técnico — se usares um termo como "PageSpeed", explica-o em poucas palavras.
 - Um único pedido no fim, simples e de baixo compromisso (ex.: "Posso enviar-lhe um relatório curto com o que encontrei?" ou "Tem 10 minutos esta semana para uma chamada?").
 - Assunto até 60 carateres, específico do negócio, sem maiúsculas a gritar, sem emojis e sem "Re:" falso.
 - Não escrevas assinatura, despedida com nome, nem linha de remoção/RGPD: são acrescentadas automaticamente. Termina com uma despedida curta ("Cumprimentos,") sem nome.
@@ -151,15 +165,23 @@ export function buildAiEmailPrompt(request: AiEmailRequest, ctx: AiEmailContext)
     ctx.proposal ? `Proposta: n.º ${ctx.proposal.code}, total ${ctx.proposal.total}` : null,
   ].filter(Boolean);
 
+  // Serviços a propor: os escolhidos no pedido, senão os do lead, senão um site.
+  const services = (request.services?.length ? request.services : (l.services ?? [])).filter(Boolean);
+  const proposing = services.length ? services : ['site_institucional'];
+  const graphic = proposing.some((s) => serviceCategory(s) === 'grafico');
+  const web = proposing.some((s) => serviceCategory(s) === 'web');
+
   const sender = [
     line('Nome', ctx.sender.name),
     line('Empresa', ctx.sender.company ?? 'VNDesign'),
     line('Site', ctx.sender.website),
-    line('Portefólio', ctx.sender.portfolio),
+    web || !ctx.sender.designPortfolio ? line('Portefólio', ctx.sender.portfolio) : null,
+    graphic ? line('Portefólio de design gráfico', ctx.sender.designPortfolio ?? ctx.sender.portfolio) : null,
   ].filter(Boolean);
 
   return [
     `Tipo de email: ${KIND_BRIEF[request.kind]}`,
+    `Serviços a propor: ${proposing.map(serviceLabel).join(', ')}`,
     TONE_BRIEF[request.tone],
     LENGTH_BRIEF[request.length],
     request.instructions ? `Indicações do designer: ${request.instructions}` : null,

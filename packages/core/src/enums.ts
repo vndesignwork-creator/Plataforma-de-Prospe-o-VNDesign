@@ -178,6 +178,7 @@ export const LEAD_FIELD_LABELS = {
   suggested_on: 'Sugerido em',
   email_subject: 'Assunto do email',
   email_body: 'Email de prospeção',
+  services: 'Serviços de interesse',
 } as const;
 export type LeadField = keyof typeof LEAD_FIELD_LABELS;
 

@@ -28,6 +28,7 @@ export const TEMPLATE_VARIABLES = [
   { key: 'meu_email', label: 'O teu email' },
   { key: 'meu_site', label: 'O teu site' },
   { key: 'portfolio', label: 'Link do portfólio' },
+  { key: 'portfolio_design', label: 'Link do portfólio de design gráfico' },
   { key: 'projetos', label: 'Projetos (links separados por ·)' },
   { key: 'assinatura', label: 'Assinatura completa' },
   { key: 'opt_out', label: 'Linha de opt-out (RGPD)' },
@@ -46,6 +47,7 @@ export interface SignatureInfo {
   email?: string | null;
   website?: string | null;
   portfolio_url?: string | null;
+  design_portfolio_url?: string | null;
   project_links?: readonly string[] | null;
 }
 
@@ -98,6 +100,7 @@ export function buildTemplateContext(input: {
     meu_email: sig?.email ?? null,
     meu_site: sig?.website ?? null,
     portfolio: sig?.portfolio_url ?? sig?.website ?? null,
+    portfolio_design: sig?.design_portfolio_url ?? sig?.portfolio_url ?? sig?.website ?? null,
     projetos: sig?.project_links?.length ? sig.project_links.join(' · ') : null,
     assinatura: formatSignature(sig) || null,
     opt_out: input.optOutLine ?? null,

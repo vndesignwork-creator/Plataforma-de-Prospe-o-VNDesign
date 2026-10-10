@@ -58,6 +58,7 @@ import { AiEmailCard } from './ai-email-card';
 import { LeadLocation } from './lead-location';
 import { ProposalsCard } from '@/components/proposals/proposals-card';
 import { SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
+import { ServiceChips } from '@/components/services/services';
 
 function Row({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
@@ -297,6 +298,17 @@ export function LeadDetail({ id }: { id: string }) {
               }
             />
             <dl className="grid px-4 py-2 md:grid-cols-2 md:gap-x-6">
+              <Row label="Serviços" className="md:col-span-2">
+                {lead.services?.length ? (
+                  <ServiceChips services={lead.services} />
+                ) : !lead.anonymized_at ? (
+                  <Link href={`/leads/${lead.id}/editar`} className="text-accent-text hover:underline">
+                    Escolher serviços de interesse
+                  </Link>
+                ) : (
+                  dash
+                )}
+              </Row>
               <Row label="Próxima ação">
                 {lead.next_action_text || lead.next_action_on ? (
                   <span className={cn(overdue && 'font-medium text-danger')}>
