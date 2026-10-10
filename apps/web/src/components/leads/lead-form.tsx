@@ -18,6 +18,7 @@ import {
   type LeadCreate,
   type LeadCreateInput,
 } from '@vndesign/core';
+import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
@@ -64,6 +65,11 @@ const toNumber = (v: unknown) => {
   if (v === '' || v === null || v === undefined) return null;
   return parseEuroAmount(v) ?? Number.NaN;
 };
+
+const MORE_FIELDS = [
+  'address', 'source_url', 'suggested_on', 'first_contact_on', 'last_follow_up_on',
+  'problems', 'pagespeed', 'mobile', 'approach_angle', 'email_subject', 'email_body',
+] as const;
 
 function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   return (
@@ -146,6 +152,15 @@ export function LeadForm({ lead }: { lead?: Lead }) {
     }
   }
 
+  // "Mais detalhes": aberto na edição; na criação abre se houver erros lá dentro.
+  const [moreOpen, setMoreOpen] = useState(isEdit);
+  const moreHasErrors = MORE_FIELDS.some((f) => errors[f]);
+  const [hadErrors, setHadErrors] = useState(false);
+  if (moreHasErrors !== hadErrors) {
+    setHadErrors(moreHasErrors);
+    if (moreHasErrors) setMoreOpen(true);
+  }
+
   const onSubmit = handleSubmit((values) => save(values));
   const e = (f: keyof FormInput) => errors[f]?.message as string | undefined;
 
@@ -197,25 +212,6 @@ export function LeadForm({ lead }: { lead?: Lead }) {
         >
           <Input type="url" inputMode="url" autoComplete="off" {...register('website')} />
         </Field>
-        <Field label="Morada" error={e('address')} hint="Morada comercial (para o mapa, mais tarde)">
-          <Input autoComplete="off" {...register('address')} />
-        </Field>
-        <Field label="Fonte (origem dos dados)" error={e('source_url')} hint="URL onde encontraste a empresa">
-          <Input type="url" inputMode="url" autoComplete="off" {...register('source_url')} />
-        </Field>
-        <Field label="Sugerido em" error={e('suggested_on')}>
-          <Input type="date" {...register('suggested_on')} />
-        </Field>
-      </Section>
-
-      <Section title="Serviços de interesse" description="O que podes propor a esta empresa — site, imagem gráfica ou ambos.">
-        <div className="md:col-span-2">
-          <Controller
-            control={control}
-            name="services"
-            render={({ field }) => <ServicePicker value={field.value ?? []} onChange={field.onChange} />}
-          />
-        </div>
       </Section>
 
       <Section title="Contacto">
@@ -240,22 +236,14 @@ export function LeadForm({ lead }: { lead?: Lead }) {
         </Field>
       </Section>
 
-      <Section title="Diagnóstico do site">
-        <Field label="Problemas" error={e('problems')} className="md:col-span-2">
-          <Textarea rows={3} {...register('problems')} />
-        </Field>
-        <Field label="PageSpeed (0–100)" error={e('pagespeed')} hint="Mobile, do PageSpeed Insights">
-          <Input type="number" inputMode="numeric" min={0} max={100} step={1} {...register('pagespeed', { setValueAs: toNumber })} />
-        </Field>
-        <Field label="Mobile?" error={e('mobile')}>
-          <Select {...register('mobile')}>
-            {MOBILE_STATUSES.map((m) => (
-              <option key={m} value={m}>
-                {m === 'desconhecido' ? '-- (por verificar)' : MOBILE_STATUS_META[m].label}
-              </option>
-            ))}
-          </Select>
-        </Field>
+      <Section title="Serviços de interesse" description="O que podes propor a esta empresa — site, imagem gráfica ou ambos.">
+        <div className="md:col-span-2">
+          <Controller
+            control={control}
+            name="services"
+            render={({ field }) => <ServicePicker value={field.value ?? []} onChange={field.onChange} />}
+          />
+        </div>
       </Section>
 
       <Section title="Pipeline" description='Ao passar a "Contactado", é agendado um follow-up a +3 dias.'>
@@ -271,12 +259,6 @@ export function LeadForm({ lead }: { lead?: Lead }) {
         <Field label="Valor estimado (€)" error={e('estimated_value')}>
           <Input inputMode="decimal" placeholder="0,00" {...register('estimated_value', { setValueAs: toNumber })} />
         </Field>
-        <Field label="1.º contacto" error={e('first_contact_on')}>
-          <Input type="date" {...register('first_contact_on')} />
-        </Field>
-        <Field label="Último follow-up" error={e('last_follow_up_on')}>
-          <Input type="date" {...register('last_follow_up_on')} />
-        </Field>
         <Field label="Próxima ação" error={e('next_action_text')}>
           <Input placeholder="Ex.: Ligar a perguntar pelo email" {...register('next_action_text')} />
         </Field>
@@ -285,23 +267,73 @@ export function LeadForm({ lead }: { lead?: Lead }) {
         </Field>
       </Section>
 
-      <Section title="Abordagem e email de prospeção">
-        <Field label="Ângulo de abordagem" error={e('approach_angle')} className="md:col-span-2">
-          <Textarea rows={2} {...register('approach_angle')} />
-        </Field>
-        <Field label="Assunto do email" error={e('email_subject')} className="md:col-span-2">
-          <Input {...register('email_subject')} />
-        </Field>
-        <Field label="Email de prospeção" error={e('email_body')} className="md:col-span-2">
-          <Textarea rows={10} className="font-mono text-[13px]" {...register('email_body')} />
-        </Field>
-      </Section>
-
       <Section title="Notas">
         <Field label="Notas" error={e('notes')} className="md:col-span-2">
           <Textarea rows={4} {...register('notes')} />
         </Field>
       </Section>
+
+      {/* Campos que raramente se preenchem ao criar: fechados por omissão (abrem sozinhos se tiverem erros). */}
+      <details
+        open={moreOpen}
+        onToggle={(ev) => setMoreOpen(ev.currentTarget.open)}
+        className="group [&[open]>summary]:mb-5"
+      >
+        <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center gap-x-2 gap-y-0.5 rounded-xl border border-dashed border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2 [&::-webkit-details-marker]:hidden">
+          <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" aria-hidden />
+          Mais detalhes
+          <span className="font-normal text-muted">morada e origem, datas de contacto, diagnóstico do site, email de prospeção</span>
+        </summary>
+        <div className="flex flex-col gap-5">
+          <Section title="Morada e origem">
+            <Field label="Morada" error={e('address')} hint="Morada comercial (para o mapa, mais tarde)">
+              <Input autoComplete="off" {...register('address')} />
+            </Field>
+            <Field label="Fonte (origem dos dados)" error={e('source_url')} hint="URL onde encontraste a empresa">
+              <Input type="url" inputMode="url" autoComplete="off" {...register('source_url')} />
+            </Field>
+            <Field label="Sugerido em" error={e('suggested_on')}>
+              <Input type="date" {...register('suggested_on')} />
+            </Field>
+          </Section>
+          <Section title="Datas de contacto" description="Preenchidas sozinhas quando mudas o estado; só precisas de as escrever para registar contactos antigos.">
+            <Field label="1.º contacto" error={e('first_contact_on')}>
+              <Input type="date" {...register('first_contact_on')} />
+            </Field>
+            <Field label="Último follow-up" error={e('last_follow_up_on')}>
+              <Input type="date" {...register('last_follow_up_on')} />
+            </Field>
+          </Section>
+          <Section title="Diagnóstico do site">
+            <Field label="Problemas" error={e('problems')} className="md:col-span-2">
+              <Textarea rows={3} {...register('problems')} />
+            </Field>
+            <Field label="PageSpeed (0–100)" error={e('pagespeed')} hint="Mobile, do PageSpeed Insights">
+              <Input type="number" inputMode="numeric" min={0} max={100} step={1} {...register('pagespeed', { setValueAs: toNumber })} />
+            </Field>
+            <Field label="Mobile?" error={e('mobile')}>
+              <Select {...register('mobile')}>
+                {MOBILE_STATUSES.map((m) => (
+                  <option key={m} value={m}>
+                    {m === 'desconhecido' ? '-- (por verificar)' : MOBILE_STATUS_META[m].label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </Section>
+          <Section title="Abordagem e email de prospeção">
+            <Field label="Ângulo de abordagem" error={e('approach_angle')} className="md:col-span-2">
+              <Textarea rows={2} {...register('approach_angle')} />
+            </Field>
+            <Field label="Assunto do email" error={e('email_subject')} className="md:col-span-2">
+              <Input {...register('email_subject')} />
+            </Field>
+            <Field label="Email de prospeção" error={e('email_body')} className="md:col-span-2">
+              <Textarea rows={10} className="font-mono text-[13px]" {...register('email_body')} />
+            </Field>
+          </Section>
+        </div>
+      </details>
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur lg:left-60">
         <div className="mx-auto flex max-w-5xl items-center justify-end gap-2">

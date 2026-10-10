@@ -61,3 +61,26 @@ test('no telemóvel deslizar no Kanban faz scroll e não arrasta cartões; mante
   await swipe(first.x + 120, first.y + 20, viewport.width - 10, first.y + 40, 450);
   await expect(page.getByText(/→ /)).toBeVisible();
 });
+
+test('no telemóvel: contacto rápido na ficha, ordenar a lista e formulário curto', async ({ page }) => {
+  const run = Date.now().toString(36);
+  const lead = (
+    await (await page.request.post('/api/v1/leads', { data: { company_name: `Contacto Rápido ${run}`, phone: '912 345 678' } })).json()
+  ).data;
+  await page.goto(`/leads/${lead.id}`);
+  const contact = page.getByRole('navigation', { name: 'Contactar' });
+  await expect(contact.getByRole('link', { name: 'Ligar' })).toHaveAttribute('href', 'tel:912345678');
+  await expect(contact.getByRole('link', { name: /WhatsApp/ })).toHaveAttribute('href', 'https://wa.me/351912345678');
+
+  await page.goto('/leads');
+  await expect(page.getByLabel('Ordenar leads')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Escolher colunas visíveis' })).toBeHidden();
+  await page.getByLabel('Ordenar leads').selectOption('company_name:asc');
+  await expect(page).toHaveURL(/sort=company_name&order=asc/);
+
+  await page.goto('/leads/novo');
+  await expect(page.getByLabel('Telefone')).toBeVisible();
+  await expect(page.getByLabel('Assunto do email')).toBeHidden();
+  await page.locator('summary').filter({ hasText: 'Mais detalhes' }).click();
+  await expect(page.getByLabel('Assunto do email')).toBeVisible();
+});

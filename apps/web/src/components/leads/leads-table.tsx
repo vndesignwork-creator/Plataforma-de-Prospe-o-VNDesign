@@ -239,6 +239,15 @@ const DUE_OPTIONS = [
   { value: 'week', label: 'Próximos 7 dias' },
 ];
 
+const MOBILE_SORTS = [
+  { value: 'number:desc', label: 'Mais recentes' },
+  { value: 'next_action_on:asc', label: 'Próxima ação' },
+  { value: 'company_name:asc', label: 'Empresa (A–Z)' },
+  { value: 'estimated_value:desc', label: 'Valor estimado' },
+  { value: 'status:asc', label: 'Estado' },
+  { value: 'number:asc', label: 'Mais antigos' },
+];
+
 export function LeadsTable() {
   const router = useRouter();
   const pathname = usePathname();
@@ -413,7 +422,8 @@ export function LeadsTable() {
           Filtros{activeFilters ? ` (${activeFilters})` : ''}
         </Button>
         <DropdownRoot>
-          <DropdownTrigger className={buttonClasses('outline', 'md')} aria-label="Escolher colunas visíveis">
+          {/* Só faz sentido com a tabela (no telemóvel a lista é em cartões). */}
+          <DropdownTrigger className={buttonClasses('outline', 'md', 'max-lg:hidden')} aria-label="Escolher colunas visíveis">
             <Columns3 className="h-4 w-4" aria-hidden />
             <span className="hidden sm:inline">Colunas</span>
           </DropdownTrigger>
@@ -550,10 +560,29 @@ export function LeadsTable() {
         ) : null}
       </div>
 
-      <p className="text-sm text-muted" role="status" aria-live="polite">
-        {isLoading ? 'A carregar leads…' : `${total} lead${total === 1 ? '' : 's'}${activeFilters ? ' com estes filtros' : ''}`}
-        {isFetching && !isLoading ? ' · a atualizar…' : ''}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted" role="status" aria-live="polite">
+          {isLoading ? 'A carregar leads…' : `${total} lead${total === 1 ? '' : 's'}${activeFilters ? ' com estes filtros' : ''}`}
+          {isFetching && !isLoading ? ' · a atualizar…' : ''}
+        </p>
+        {/* No telemóvel não há cabeçalhos de tabela para ordenar: escolhe-se aqui. */}
+        <Select
+          value={`${sort}:${order}`}
+          onChange={(e) => {
+            const [field, dir] = e.target.value.split(':');
+            setParams({ sort: field === 'number' && dir === 'desc' ? null : field!, order: dir === 'desc' ? null : dir! });
+          }}
+          aria-label="Ordenar leads"
+          className="w-auto lg:hidden"
+        >
+          {MOBILE_SORTS.some((o) => o.value === `${sort}:${order}`) ? null : <option value={`${sort}:${order}`}>Ordenação da tabela</option>}
+          {MOBILE_SORTS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </Select>
+      </div>
 
       {error ? (
         <p role="alert" className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">

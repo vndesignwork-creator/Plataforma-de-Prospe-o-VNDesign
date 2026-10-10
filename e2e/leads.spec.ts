@@ -15,6 +15,8 @@ test('criar lead, abrir a ficha e passar a "Contactado" agenda follow-up', async
   const name = `Restaurante Teste ${run}`;
   await createLead(page, { name, city: 'Amadora', website: `teste-${run}.pt`, email: `geral@teste-${run}.pt` });
   await page.getByLabel('Setor').selectOption({ label: 'Restauração' });
+  // Os campos menos usados estão em "Mais detalhes" (fechado ao criar).
+  await page.locator('summary').filter({ hasText: 'Mais detalhes' }).click();
   await page.getByLabel('Email de prospeção').fill('Boa tarde,\n\nEmail de teste.\n\nCumprimentos');
   await page.getByLabel('Assunto do email').fill('Uma sugestão para o vosso site');
   await page.getByRole('button', { name: 'Criar lead' }).click();

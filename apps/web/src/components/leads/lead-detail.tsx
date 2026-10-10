@@ -19,8 +19,10 @@ import {
   Edit3,
   ExternalLink,
   GitMerge,
+  Globe,
   History,
   Mail,
+  MessageCircle,
   MoreHorizontal,
   Phone,
   ShieldOff,
@@ -48,7 +50,7 @@ import {
   useMe,
   useUpdateLead,
 } from '@/lib/queries';
-import { cn, displayHost } from '@/lib/utils';
+import { cn, displayHost, telUrl, whatsappUrl } from '@/lib/utils';
 import { FollowUpActions } from '@/components/follow-up/follow-up-actions';
 import { ContactScriptsCard } from '@/components/scripts/contact-scripts-card';
 import { ActivityTimeline } from './activity-timeline';
@@ -95,6 +97,37 @@ function ExternalUrl({ url }: { url: string | null }) {
       <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
       <span className="sr-only">(abre num novo separador)</span>
     </a>
+  );
+}
+
+/** Atalhos para contactar o lead (no telemóvel: ligar ou abrir o WhatsApp com um toque). */
+function QuickContact({ lead }: { lead: Lead }) {
+  const whatsapp = whatsappUrl(lead.phone);
+  const links = [
+    lead.phone ? { key: 'tel', href: telUrl(lead.phone), label: 'Ligar', icon: Phone, external: false } : null,
+    whatsapp ? { key: 'wa', href: whatsapp, label: 'WhatsApp', icon: MessageCircle, external: true } : null,
+    lead.email ? { key: 'email', href: `mailto:${lead.email}`, label: 'Email', icon: Mail, external: false } : null,
+    lead.website ? { key: 'site', href: lead.website, label: 'Site', icon: Globe, external: true } : null,
+  ].filter((l) => l !== null);
+  if (!links.length) return null;
+  return (
+    <nav aria-label="Contactar" className="mb-5 -mt-2">
+      <ul className="grid grid-cols-[repeat(auto-fit,minmax(5.5rem,1fr))] gap-2 sm:flex sm:flex-wrap">
+        {links.map(({ key, href, label, icon: Icon, external }) => (
+          <li key={key}>
+            <a
+              href={href}
+              {...(external ? { target: '_blank', rel: 'noreferrer' } : {})}
+              className={buttonClasses('outline', 'sm', 'w-full justify-center pointer-coarse:min-h-11')}
+            >
+              <Icon className="h-4 w-4 text-accent-text" aria-hidden />
+              {label}
+              {external ? <span className="sr-only">(abre num novo separador)</span> : null}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }
 
@@ -266,6 +299,8 @@ export function LeadDetail({ id }: { id: string }) {
         }
       />
 
+      {!lead.anonymized_at ? <QuickContact lead={lead} /> : null}
+
       {lead.archived_at ? (
         <div
           role="status"
@@ -354,7 +389,7 @@ export function LeadDetail({ id }: { id: string }) {
               </Row>
               <Row label="Telefone">
                 {lead.phone ? (
-                  <a href={`tel:${lead.phone.replace(/\s/g, '')}`} className="inline-flex items-center gap-1 text-accent-text hover:underline">
+                  <a href={telUrl(lead.phone)} className="inline-flex items-center gap-1 text-accent-text hover:underline">
                     <Phone className="h-3.5 w-3.5" aria-hidden />
                     {lead.phone}
                   </a>
@@ -391,8 +426,6 @@ export function LeadDetail({ id }: { id: string }) {
           {!lead.anonymized_at ? <ContactScriptsCard lead={lead} /> : null}
 
           <AiEmailCard lead={lead} />
-
-          <ProposalsCard lead={lead} />
 
           <Card>
             <CardHeader
@@ -455,18 +488,30 @@ export function LeadDetail({ id }: { id: string }) {
             )}
           </Card>
 
-          <Card>
-            <CardHeader title="Notas" />
-            <p className="p-4 text-sm break-words whitespace-pre-line">{lead.notes ?? <span className="text-muted">Sem notas.</span>}</p>
-          </Card>
-
           <p className="text-xs text-muted">
             Criado em {formatDateTime(lead.created_at)} · atualizado em {formatDateTime(lead.updated_at)}
           </p>
         </div>
 
-        <aside id="atividade" aria-label="Atividade" className="scroll-mt-20">
-          <ActivityTimeline leadId={lead.id} currentUserId={me?.user.id} />
+        {/* Coluna lateral (computador): o que se consulta durante uma chamada — notas, propostas e atividade. */}
+        <aside aria-label="Notas, propostas e atividade" className="flex flex-col gap-5">
+          <Card>
+            <CardHeader
+              title="Notas"
+              actions={
+                !lead.anonymized_at ? (
+                  <Link href={`/leads/${lead.id}/editar`} className="text-sm text-accent-text hover:underline">
+                    Editar
+                  </Link>
+                ) : null
+              }
+            />
+            <p className="p-4 text-sm break-words whitespace-pre-line">{lead.notes ?? <span className="text-muted">Sem notas.</span>}</p>
+          </Card>
+          <ProposalsCard lead={lead} />
+          <div id="atividade" className="scroll-mt-20">
+            <ActivityTimeline leadId={lead.id} currentUserId={me?.user.id} />
+          </div>
         </aside>
       </div>
 

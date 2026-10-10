@@ -106,7 +106,7 @@ test('Dashboard mostra o resumo, o funil e a lista "Hoje"', async ({ page }) => 
     await expect(page.getByText(label, { exact: true })).toBeVisible();
   }
   await expect(page.getByRole('heading', { name: 'Funil de conversão' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Hoje' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Hoje', exact: true })).toBeVisible();
   await expect(page.getByRole('table', { name: 'Leads por estado' })).toBeAttached();
 });
 

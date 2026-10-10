@@ -46,7 +46,8 @@ export function LeadLocation({ lead }: { lead: Lead }) {
         </Link>
       ) : null}
       {canLocate && lead.geocode_status !== 'ok' && lead.geocode_status !== 'manual' ? (
-        <Button size="sm" variant="ghost" onClick={locate} loading={busy}>
+        <Button size="sm" variant="outline" onClick={locate} loading={busy}>
+          <MapPin className="h-3.5 w-3.5" aria-hidden />
           {lead.geocode_status ? 'Procurar outra vez' : 'Localizar'}
         </Button>
       ) : null}

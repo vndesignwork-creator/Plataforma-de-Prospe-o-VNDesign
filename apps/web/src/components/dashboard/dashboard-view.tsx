@@ -55,11 +55,11 @@ function TodayGroup({ title, icon, leads, tone }: { title: string; icon: ReactNo
   );
 }
 
-function TodayCard() {
+function TodayCard({ className }: { className?: string }) {
   const { data, isLoading } = useToday();
   const empty = data && !data.overdue.length && !data.due_today.length && !data.upcoming.length;
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader title="Hoje" description={data ? `Follow-ups e próximas ações · ${formatDate(data.today)}` : undefined} />
       <div className="flex max-h-[26rem] flex-col gap-4 overflow-y-auto p-3">
         {isLoading ? <Skeleton className="h-40" /> : null}
@@ -136,8 +136,9 @@ export function DashboardView() {
         <StatTile label="Valor total estimado" value={euros(t.value_total)} hint="Soma de todos os leads" />
       </section>
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-2 xl:grid-cols-3">
-        <TodayCard />
+      {/* No telemóvel os cartões ficam numa só coluna ("contents") e o "Hoje" passa para o topo: é o que se abre o dia a ver. */}
+      <div className="contents lg:grid lg:grid-cols-2 lg:gap-5 xl:grid-cols-3">
+        <TodayCard className="max-lg:order-first" />
 
         <Card>
           <CardHeader title="Funil de conversão" description="Etapa mais avançada a que cada lead já chegou" />
@@ -177,8 +178,10 @@ export function DashboardView() {
             />
           </div>
         </Card>
+      </div>
 
-
+      {/* Distribuições: 2 × 2 no computador (cada uma com largura para os nomes). */}
+      <div className="contents lg:grid lg:grid-cols-2 lg:gap-5">
         <Card>
           <CardHeader title="Por estado" />
           <div className="p-4">
@@ -235,7 +238,8 @@ export function DashboardView() {
           <div className="p-4">
             <BarList
               caption="Leads por canal"
-              items={data.by_channel.map((c) => ({
+              emptyText="Ainda não há leads com canal."
+              items={data.by_channel.filter((c) => c.count > 0).map((c) => ({
                 key: c.channel ?? 'none',
                 label: c.channel ? LEAD_CHANNEL_META[c.channel].label : 'Sem canal',
                 mark: c.channel ? <ChannelIcon channel={c.channel} className="h-3.5 w-3.5 text-muted" /> : undefined,
