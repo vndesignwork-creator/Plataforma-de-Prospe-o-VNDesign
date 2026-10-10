@@ -109,7 +109,10 @@
   }
   /* Caixas de seleção: na cor da marca e, em ecrãs tácteis, maiores (mais fáceis de acertar). */
   input[type='checkbox'],
-  input[type='radio'] {
+  input[type='radio'],
+  input[type='date'],
+  input[type='datetime-local'] {
+    /* Também o dia escolhido no calendário do browser (em vez do azul do sistema). */
     accent-color: var(--accent);
   }
   @media (pointer: coarse) {

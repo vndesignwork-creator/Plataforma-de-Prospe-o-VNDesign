@@ -112,6 +112,26 @@ export function DropdownCheckboxItem({
   );
 }
 
+/** Escolha única (um dos itens marcado com um ponto). */
+export function DropdownRadioGroup({ value, onValueChange, children }: { value: string; onValueChange: (value: string) => void; children: ReactNode }) {
+  return (
+    <Menu.RadioGroup value={value} onValueChange={onValueChange}>
+      {children}
+    </Menu.RadioGroup>
+  );
+}
+
+export function DropdownRadioItem({ value, children }: { value: string; children: ReactNode }) {
+  return (
+    <Menu.RadioItem value={value} className={cn(itemClass, 'relative pl-7')}>
+      <Menu.ItemIndicator className="absolute left-2 inline-flex">
+        <Check className="h-4 w-4 text-accent-text" aria-hidden />
+      </Menu.ItemIndicator>
+      {children}
+    </Menu.RadioItem>
+  );
+}
+
 export function DropdownLabel({ children }: { children: ReactNode }) {
   return <Menu.Label className="px-2 py-1.5 text-xs font-semibold tracking-wide text-muted uppercase">{children}</Menu.Label>;
 }

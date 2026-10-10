@@ -57,7 +57,7 @@ import { useDebouncedValue } from '@/lib/hooks';
 import { bulkResultMessage, useBulkLeadAction, usePreference, useLeads, useSectors, useSetPreference } from '@/lib/queries';
 import { cn, displayHost } from '@/lib/utils';
 import { ChannelLabel, MobileLabel, PageSpeedScore, StatusBadge } from './badges';
-import { MultiSelectFilter } from './multi-select';
+import { MultiSelectFilter, SingleSelectFilter } from './multi-select';
 import { ChannelIcon, SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 import { ServiceIcons, useServiceFilterOptions } from '@/components/services/services';
 import { TaskProgress } from '@/components/tasks/task-progress';
@@ -532,25 +532,18 @@ export function LeadsTable() {
           aria-label="Filtrar por cidade"
           className="w-36"
         />
-        <Select value={query.due ?? ''} onChange={(e) => setParams({ due: e.target.value || null })} aria-label="Próxima ação" className="w-auto">
-          {DUE_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </Select>
-        <Select
+        <SingleSelectFilter
+          label="Próxima ação"
+          value={query.due ?? ''}
+          onChange={(v) => setParams({ due: v || null })}
+          options={DUE_OPTIONS}
+        />
+        <SingleSelectFilter
+          label="Leads arquivados"
           value={query.archived ?? ''}
-          onChange={(e) => setParams({ arquivo: e.target.value || null })}
-          aria-label="Leads arquivados"
-          className="w-auto"
-        >
-          {ARCHIVE_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </Select>
+          onChange={(v) => setParams({ arquivo: v || null })}
+          options={ARCHIVE_OPTIONS}
+        />
         <fieldset className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
           <legend className="sr-only">Sugerido em</legend>
           <span className="text-sm text-muted" aria-hidden>

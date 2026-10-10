@@ -17,7 +17,8 @@ test('arquivar na ficha: sai da lista, aparece no filtro de arquivados e repõe-
   await page.goto(`/leads?q=${encodeURIComponent(name)}`);
   await expect(page.getByText('Nenhum lead com estes filtros')).toBeVisible();
   // …mas no filtro "Só os arquivados".
-  await page.getByLabel('Leads arquivados').selectOption('only');
+  await page.getByRole('button', { name: /^Leads arquivados:/ }).click();
+  await page.getByRole('menuitemradio', { name: 'Só os arquivados' }).click();
   await expect(page.getByRole('link', { name }).first()).toBeVisible();
 
   // Fora do Kanban.
@@ -50,14 +51,16 @@ test('lista: selecionar vários leads, arquivar, repor e apagar', async ({ page 
   await expect(page.getByText('1 lead com estes filtros')).toBeVisible();
 
   // Repor um a partir do filtro de arquivados.
-  await page.getByLabel('Leads arquivados').selectOption('only');
+  await page.getByRole('button', { name: /^Leads arquivados:/ }).click();
+  await page.getByRole('menuitemradio', { name: 'Só os arquivados' }).click();
   await expect(page.getByText('2 leads com estes filtros')).toBeVisible();
   await page.getByRole('checkbox', { name: new RegExp(`${prefix} 1$`) }).check();
   await page.getByRole('region', { name: 'Ações nos leads selecionados' }).getByRole('button', { name: 'Repor' }).click();
   await expect(page.getByText('1 lead reposto.')).toBeVisible();
 
   // Apagar todos os da pesquisa (com confirmação).
-  await page.getByLabel('Leads arquivados').selectOption('include');
+  await page.getByRole('button', { name: /^Leads arquivados:/ }).click();
+  await page.getByRole('menuitemradio', { name: 'Com os arquivados' }).click();
   await expect(page.getByText('3 leads com estes filtros')).toBeVisible();
   await page.getByRole('checkbox', { name: 'Selecionar todos os leads desta página' }).check();
   await page.getByRole('region', { name: 'Ações nos leads selecionados' }).getByRole('button', { name: 'Apagar' }).click();
