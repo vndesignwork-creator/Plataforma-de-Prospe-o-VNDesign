@@ -21,3 +21,17 @@ test('caminho na proposta e Voltar mantém os filtros da lista', async ({ page }
   await crumbs.getByRole('link', { name: 'Voltar' }).click();
   await expect(page.getByRole('heading', { level: 1, name: `Caminho ${run}` })).toBeVisible();
 });
+
+test('linha do tempo: apagar uma chamada registada (com confirmação); o histórico automático fica', async ({ page }) => {
+  const lead = (await (await page.request.post('/api/v1/leads', { data: { company_name: `Registos ${run}` } })).json()).data;
+  await page.request.post(`/api/v1/leads/${lead.id}/activities`, { data: { type: 'call_logged', body: `Chamada a apagar ${run}` } });
+  await page.goto(`/leads/${lead.id}`);
+  const timeline = page.getByRole('list', { name: 'Atividade do lead' });
+  const call = timeline.getByRole('listitem').filter({ hasText: `Chamada a apagar ${run}` });
+  await call.getByRole('button', { name: 'Apagar registo' }).click();
+  await call.getByRole('button', { name: 'Sim' }).click();
+  await expect(page.getByText('Registo apagado.')).toBeVisible();
+  await expect(timeline.getByText(`Chamada a apagar ${run}`)).toHaveCount(0);
+  // "Lead criado" é automático: não tem botão de apagar.
+  await expect(timeline.getByRole('listitem').filter({ hasText: 'Lead criado' }).getByRole('button', { name: 'Apagar registo' })).toHaveCount(0);
+});

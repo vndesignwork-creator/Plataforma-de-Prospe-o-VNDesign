@@ -432,7 +432,7 @@ export function getOpenApiDocument() {
       '/leads/{id}/activities/{activityId}': {
         delete: op({
           tags: ['Atividade'],
-          summary: 'Apagar uma nota própria',
+          summary: 'Apagar um registo manual próprio (nota, chamada, email enviado)',
           requestParams: { path: z.object({ id: z.uuid(), activityId: z.uuid() }) },
           responses: { '204': { description: 'Apagada' }, ...withNotFound },
         }),

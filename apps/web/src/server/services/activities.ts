@@ -39,16 +39,20 @@ export async function createActivity(
   return unwrap(result) as Activity;
 }
 
-/** Só as notas do próprio utilizador podem ser apagadas (garantido também pelo RLS). */
-export async function deleteNote(ctx: ApiContext, leadId: string, activityId: string): Promise<void> {
+/** Registos que se podem apagar: os escritos à mão (nota, chamada, email enviado). */
+const DELETABLE_TYPES = ['note', 'call_logged', 'email_sent'];
+
+/** Só os registos manuais do próprio utilizador podem ser apagados (garantido também pelo RLS). */
+export async function deleteManualActivity(ctx: ApiContext, leadId: string, activityId: string): Promise<void> {
   const { data, error } = await ctx.supabase
     .from('lead_activities')
     .delete()
     .eq('workspace_id', ctx.workspaceId)
     .eq('lead_id', leadId)
     .eq('id', activityId)
-    .eq('type', 'note')
+    .in('type', DELETABLE_TYPES)
+    .eq('actor_user_id', ctx.user.id)
     .select('id');
   if (error) throw fromPostgrest(error);
-  if (!data?.length) throw new ApiError(404, 'Nota não encontrada');
+  if (!data?.length) throw new ApiError(404, 'Registo não encontrado', 'Só se apagam os registos que fizeste à mão.');
 }

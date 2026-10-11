@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/page-header';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
@@ -141,6 +141,8 @@ export function LeadDetail({ id }: { id: string }) {
   const router = useRouter();
   const { data: lead, isLoading, error } = useLead(id);
   const { data: me } = useMe();
+  // Coluna principal: no computador, a linha do tempo (coluna lateral) não passa do fim dela.
+  const mainColumn = useRef<HTMLDivElement>(null);
   const { data: tasks } = useLeadTasks(id);
   const update = useUpdateLead(id);
   const bulk = useBulkLeadAction();
@@ -358,8 +360,8 @@ export function LeadDetail({ id }: { id: string }) {
         </p>
       ) : null}
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
-        <div className="flex flex-col gap-5">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+        <div ref={mainColumn} className="flex flex-col gap-5">
           <Card>
             <CardHeader
               title="Pipeline"
@@ -534,7 +536,7 @@ export function LeadDetail({ id }: { id: string }) {
           <NotesCard lead={lead} />
           <ProposalsCard lead={lead} />
           <div id="atividade" className="scroll-mt-20">
-            <ActivityTimeline leadId={lead.id} currentUserId={me?.user.id} />
+            <ActivityTimeline leadId={lead.id} currentUserId={me?.user.id} fitTo={mainColumn} />
           </div>
         </aside>
       </div>
