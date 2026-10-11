@@ -263,7 +263,7 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
               >
                 <Textarea rows={9} value={intro} onChange={(e) => setIntro(e.target.value)} />
               </Field>
-              <div>
+              <div className="flex justify-end">
                 <Button size="sm" variant="ghost" onClick={suggestIntro} className="h-auto py-1.5 text-left whitespace-normal">
                   <Wand2 className="h-3.5 w-3.5" aria-hidden />
                   {latestAudit ? 'Sugerir texto com a análise do site' : 'Sugerir texto com os problemas do lead'}
@@ -309,7 +309,7 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
                       </section>
                     );
                   })}
-                  <div className="border-t border-border pt-3">
+                  <div className="flex justify-end border-t border-border pt-3">
                   <Button
                     size="sm"
                     variant="ghost"

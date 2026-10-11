@@ -363,7 +363,7 @@ export function ImportWizard() {
               />
               Manter a numeração (#) da folha, quando estiver livre
             </label>
-            <div className="flex gap-2">
+            <div className="ml-auto flex gap-2">
               <Button variant="ghost" onClick={reset}>
                 Outro ficheiro
               </Button>

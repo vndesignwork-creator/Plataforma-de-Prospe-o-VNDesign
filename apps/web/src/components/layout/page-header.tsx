@@ -22,7 +22,7 @@ export function PageHeader({
         <h1 className="text-2xl font-bold break-words sm:text-3xl">{title}</h1>
         {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
       </div>
-      {actions ? <div className={cn('flex flex-wrap items-center gap-2', actionsClassName)}>{actions}</div> : null}
+      {actions ? <div className={cn('ml-auto flex flex-wrap items-center justify-end gap-2', actionsClassName)}>{actions}</div> : null}
     </div>
   );
 }

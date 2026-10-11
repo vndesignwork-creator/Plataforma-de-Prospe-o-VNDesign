@@ -175,7 +175,7 @@ export function ApiSettings() {
             ))}
           </div>
         </fieldset>
-        <div className="md:col-span-2">
+        <div className="flex justify-end md:col-span-2">
           <Button type="submit" size="sm" loading={create.isPending} disabled={!scopes.length}>
             <KeyRound className="h-3.5 w-3.5" aria-hidden />
             Criar token

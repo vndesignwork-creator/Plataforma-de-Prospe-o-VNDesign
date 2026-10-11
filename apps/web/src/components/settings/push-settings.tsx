@@ -217,7 +217,7 @@ export function PushSettings() {
           </div>
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {active ? (
             <>
               <Badge tone="success">Ativas neste dispositivo</Badge>

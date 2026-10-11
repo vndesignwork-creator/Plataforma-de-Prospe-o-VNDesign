@@ -136,7 +136,7 @@ export function PreferencesSettings() {
           <Field label="Enviar para" hint={`Vazio = ${me?.user.email ?? 'o teu email'}`}>
             <Input type="email" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder={me?.user.email ?? ''} />
           </Field>
-          <div>
+          <div className="flex justify-end">
             <Button type="button" size="sm" variant="outline" onClick={sendTest} loading={testing} disabled={!settings.mail_configured}>
               Enviar um resumo de teste agora
             </Button>

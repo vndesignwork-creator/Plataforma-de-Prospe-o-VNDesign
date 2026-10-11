@@ -70,7 +70,7 @@ export function DoNotContactSettings() {
         <Field label="Email" error={errors.email?.message}>
           <Input type="email" {...register('email')} />
         </Field>
-        <div className="md:col-span-2">
+        <div className="flex justify-end md:col-span-2">
           <Button type="submit" size="sm" loading={isSubmitting}>
             Acrescentar à lista
           </Button>

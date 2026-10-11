@@ -25,7 +25,8 @@ export function CardHeader({
         <Heading className="text-base font-semibold">{title}</Heading>
         {description ? <p className="mt-0.5 text-sm text-muted">{description}</p> : null}
       </div>
-      {actions ? <div className="flex max-w-full flex-wrap items-center gap-2">{actions}</div> : null}
+      {/* ml-auto: se não couberem ao lado do título, passam para baixo encostadas à direita. */}
+      {actions ? <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">{actions}</div> : null}
     </div>
   );
 }

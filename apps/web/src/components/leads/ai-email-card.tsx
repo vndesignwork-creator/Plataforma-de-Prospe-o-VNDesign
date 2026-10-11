@@ -168,7 +168,7 @@ export function AiEmailCard({ lead }: { lead: Lead }) {
               />
               Usar os problemas da última análise do site
             </label>
-            <div className="sm:text-right">
+            <div className="flex justify-end">
               <Button type="submit" size="sm" loading={generate.isPending}>
                 {draft ? <RefreshCw className="h-3.5 w-3.5" aria-hidden /> : <Sparkles className="h-3.5 w-3.5" aria-hidden />}
                 {draft ? 'Gerar outra versão' : 'Gerar email'}
@@ -193,7 +193,7 @@ export function AiEmailCard({ lead }: { lead: Lead }) {
                   className="leading-relaxed"
                 />
               </Field>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap justify-end gap-2">
                 <Button size="sm" onClick={onCopy}>
                   <Copy className="h-3.5 w-3.5" aria-hidden /> Copiar
                 </Button>

@@ -195,7 +195,7 @@ function AuditResult({ audit, lead }: { audit: SiteAudit; lead: Lead }) {
                 ) : null}
               </div>
             ) : null}
-            <div>
+            <div className="flex justify-end">
               <Button
                 size="sm"
                 onClick={onApply}
@@ -241,7 +241,14 @@ export function SiteAuditPanel({ lead }: { lead: Lead }) {
           Análise automática do site
         </h3>
         {lead.website ? (
-          <Button size="sm" variant="outline" onClick={() => onRun()} loading={run.isPending} disabled={!!lead.anonymized_at}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="ml-auto"
+            onClick={() => onRun()}
+            loading={run.isPending}
+            disabled={!!lead.anonymized_at}
+          >
             {audits?.length ? 'Analisar outra vez' : 'Analisar site'}
           </Button>
         ) : null}
@@ -261,7 +268,7 @@ export function SiteAuditPanel({ lead }: { lead: Lead }) {
             onChange={(e) => setUrl(e.target.value)}
             required
           />
-          <Button type="submit" size="sm" loading={run.isPending}>
+          <Button type="submit" size="sm" loading={run.isPending} className="self-end sm:self-auto">
             Analisar site
           </Button>
         </form>

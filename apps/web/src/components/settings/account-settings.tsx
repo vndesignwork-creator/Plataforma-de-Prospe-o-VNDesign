@@ -51,7 +51,7 @@ export function AccountSettings() {
           <Field label="Confirmar" error={errors.confirm?.message}>
             <Input type="password" autoComplete="new-password" {...register('confirm')} />
           </Field>
-          <div>
+          <div className="flex justify-end">
             <Button type="submit" size="sm" loading={isSubmitting}>
               Alterar palavra-passe
             </Button>
