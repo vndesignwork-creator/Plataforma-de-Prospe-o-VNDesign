@@ -35,3 +35,23 @@ test('linha do tempo: apagar uma chamada registada (com confirmação); o histó
   // "Lead criado" é automático: não tem botão de apagar.
   await expect(timeline.getByRole('listitem').filter({ hasText: 'Lead criado' }).getByRole('button', { name: 'Apagar registo' })).toHaveCount(0);
 });
+
+test('diagnóstico do site: recolhido quando o lead só tem serviços fora do Web Design', async ({ page }) => {
+  const post = async (data: object) => (await (await page.request.post('/api/v1/leads', { data })).json()).data;
+  const grafico = await post({ company_name: `Só gráfico ${run}`, services: ['identidade_visual'], approach_angle: `Ângulo ${run}` });
+  const web = await post({ company_name: `Com site ${run}`, services: ['identidade_visual', 'landing_page'] });
+
+  await page.goto(`/leads/${grafico.id}`);
+  await expect(page.getByText('Não é relevante para os serviços escolhidos.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Análise automática do site' })).toHaveCount(0);
+  // O ângulo de abordagem já não está dentro do diagnóstico: vê-se sempre.
+  await expect(page.getByText(`Ângulo ${run}`, { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Mostrar' }).click();
+  await expect(page.getByRole('heading', { name: 'Análise automática do site' })).toBeVisible();
+  await page.getByRole('button', { name: 'Esconder' }).click();
+  await expect(page.getByRole('heading', { name: 'Análise automática do site' })).toHaveCount(0);
+
+  await page.goto(`/leads/${web.id}`);
+  await expect(page.getByRole('heading', { name: 'Análise automática do site' })).toBeVisible();
+  await expect(page.getByText('Não é relevante para os serviços escolhidos.')).toHaveCount(0);
+});

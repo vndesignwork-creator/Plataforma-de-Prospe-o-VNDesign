@@ -16,6 +16,7 @@ import {
 import {
   Archive,
   ArchiveRestore,
+  ChevronDown,
   Copy,
   Edit3,
   ExternalLink,
@@ -66,7 +67,7 @@ import { ProposalsCard } from '@/components/proposals/proposals-card';
 import { TasksCard } from '@/components/tasks/tasks-card';
 import { NotesCard } from './notes-card';
 import { SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
-import { ServiceChips } from '@/components/services/services';
+import { ServiceChips, useServiceCatalog } from '@/components/services/services';
 
 function Row({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
@@ -381,6 +382,9 @@ export function LeadDetail({ id }: { id: string }) {
                   dash
                 )}
               </Row>
+              <Row label="Ângulo de abordagem" className="md:col-span-2">
+                {lead.approach_angle ? <span className="whitespace-pre-line">{lead.approach_angle}</span> : dash}
+              </Row>
               <Row label="Próxima ação">
                 {lead.next_action_text || lead.next_action_on ? (
                   <span className={cn(overdue && 'font-medium text-danger')}>
@@ -440,25 +444,7 @@ export function LeadDetail({ id }: { id: string }) {
             </dl>
           </Card>
 
-          <Card>
-            <CardHeader title="Diagnóstico do site" />
-            {/* Cada linha (<div> com <dt>/<dd>) é filha direta do <dl>, como pede o HTML. */}
-            <dl className="grid px-4 py-2 md:grid-cols-2 md:gap-x-6">
-              <Row label="PageSpeed (mobile)">
-                <PageSpeedScore value={lead.pagespeed} />
-              </Row>
-              <Row label="Mobile?">
-                <MobileLabel mobile={lead.mobile} />
-              </Row>
-              <Row label="Problemas" className="md:col-span-2">
-                {lead.problems ? <span className="whitespace-pre-line">{lead.problems}</span> : dash}
-              </Row>
-              <Row label="Ângulo de abordagem" className="md:col-span-2">
-                {lead.approach_angle ? <span className="whitespace-pre-line">{lead.approach_angle}</span> : dash}
-              </Row>
-            </dl>
-            <SiteAuditPanel lead={lead} />
-          </Card>
+          <SiteDiagnosisCard lead={lead} />
 
           {!lead.anonymized_at ? <ContactScriptsCard lead={lead} /> : null}
 
@@ -714,5 +700,52 @@ function MergePickerDialog({ lead, open, onOpenChange }: { lead: Lead; open: boo
         {!isFetching && results.length === 0 ? <li className="px-3 py-2 text-sm text-muted">Sem resultados.</li> : null}
       </ul>
     </Dialog>
+  );
+}
+
+/**
+ * Diagnóstico do site. Aberto se o lead tem algum serviço de Web Design ou ainda não
+ * tem serviços; com só outras categorias fica recolhido numa linha (pode abrir-se).
+ */
+function SiteDiagnosisCard({ lead }: { lead: Lead }) {
+  const catalog = useServiceCatalog();
+  const [expanded, setExpanded] = useState(false);
+  const services = lead.services ?? [];
+  const relevant = !services.length || services.some((s) => catalog.get(s)?.category === 'web');
+  const open = relevant || expanded;
+
+  return (
+    <Card>
+      <CardHeader
+        title="Diagnóstico do site"
+        description={relevant ? undefined : 'Não é relevante para os serviços escolhidos.'}
+        actions={
+          relevant ? null : (
+            <Button size="sm" variant="ghost" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>
+              <ChevronDown className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')} aria-hidden />
+              {expanded ? 'Esconder' : 'Mostrar'}
+            </Button>
+          )
+        }
+        className={open ? undefined : 'border-b-0'}
+      />
+      {open ? (
+        <>
+          {/* Cada linha (<div> com <dt>/<dd>) é filha direta do <dl>, como pede o HTML. */}
+          <dl className="grid px-4 py-2 md:grid-cols-2 md:gap-x-6">
+            <Row label="PageSpeed (mobile)">
+              <PageSpeedScore value={lead.pagespeed} />
+            </Row>
+            <Row label="Mobile?">
+              <MobileLabel mobile={lead.mobile} />
+            </Row>
+            <Row label="Problemas" className="md:col-span-2">
+              {lead.problems ? <span className="whitespace-pre-line">{lead.problems}</span> : dash}
+            </Row>
+          </dl>
+          <SiteAuditPanel lead={lead} />
+        </>
+      ) : null}
+    </Card>
   );
 }
