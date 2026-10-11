@@ -85,14 +85,7 @@ export function NotesCard({ lead }: { lead: Lead }) {
           <Linkified text={lead.notes} />
         </p>
       ) : (
-        <p className="p-4 text-sm text-muted">
-          Sem notas.{' '}
-          {!readOnly ? (
-            <button type="button" onClick={start} className="text-accent-text underline">
-              Escrever uma nota
-            </button>
-          ) : null}
-        </p>
+        <p className="p-4 text-center text-sm text-muted">Sem notas.</p>
       )}
     </Card>
   );

@@ -8,7 +8,6 @@ import {
   renderTemplate,
   type ContactTemplate,
   type Lead,
-  leadPath,
 } from '@vndesign/core';
 import { Copy, Mail, MessageSquareText, Phone, RotateCcw, Save, Send } from 'lucide-react';
 import Link from 'next/link';
@@ -236,16 +235,12 @@ export function ContactScriptsCard({ lead }: { lead: Lead }) {
             {isEmail ? 'Marcar como enviado' : template.kind === 'call_script' ? 'Registar chamada' : 'Marcar como enviado'}
           </Button>
         </div>
+        {/* Notas por baixo dos botões, encostadas à direita como eles. */}
         {isEmail && !lead.email ? (
-          <p className="text-xs text-muted">
-            Este lead não tem email — “Abrir no email” abre a mensagem sem destinatário.{' '}
-            <Link href={leadPath(lead, '/editar')} className="text-accent-text underline">
-              Acrescentar email
-            </Link>
-          </p>
+          <p className="text-right text-xs text-muted">Este lead não tem email — “Abrir no email” abre a mensagem sem destinatário.</p>
         ) : null}
         {lead.status === 'identificado' ? (
-          <p className="text-xs text-muted">Ao marcar como enviado, o lead passa a “Contactado” e o follow-up fica agendado.</p>
+          <p className="text-right text-xs text-muted">Ao marcar como enviado, o lead passa a “Contactado” e o follow-up fica agendado.</p>
         ) : null}
       </div>
     </Card>

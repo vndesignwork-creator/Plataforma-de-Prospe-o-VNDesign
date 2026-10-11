@@ -22,7 +22,7 @@ test('notas editáveis no cartão da ficha', async ({ page }) => {
   const run = Date.now().toString(36);
   const lead = (await (await page.request.post('/api/v1/leads', { data: { company_name: `Notas Rápidas ${run}` } })).json()).data;
   await page.goto(`/leads/${lead.id}`);
-  await page.getByRole('button', { name: 'Escrever uma nota' }).click();
+  await page.getByRole('button', { name: 'Editar notas' }).click();
   await page.getByLabel('Notas do lead').fill('Atendeu o Sr. Rui. Menu em oquintal.pt/menu');
   await page.getByRole('button', { name: 'Guardar notas' }).click();
   await expect(page.getByText('Notas guardadas.')).toBeVisible();

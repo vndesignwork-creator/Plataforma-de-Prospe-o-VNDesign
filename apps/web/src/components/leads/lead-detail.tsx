@@ -455,18 +455,30 @@ export function LeadDetail({ id }: { id: string }) {
               title="Email de prospeção"
               description="Pronto a copiar ou abrir no teu cliente de email."
               actions={
-                lead.email_body || lead.email_subject ? (
-                  <>
-                    <Button size="sm" variant="outline" onClick={() => copy('all')}>
-                      <Copy className="h-3.5 w-3.5" aria-hidden />
-                      Copiar tudo
-                    </Button>
-                    <Button size="sm" onClick={openMailto}>
-                      <Mail className="h-3.5 w-3.5" aria-hidden />
-                      Abrir no email
-                    </Button>
-                  </>
-                ) : null
+                <>
+                  {!lead.anonymized_at ? (
+                    <Link
+                      href={leadPath(lead, '/editar')}
+                      className={buttonClasses('ghost', 'sm')}
+                      aria-label="Editar email de prospeção"
+                    >
+                      <Edit3 className="h-3.5 w-3.5" aria-hidden />
+                      Editar
+                    </Link>
+                  ) : null}
+                  {lead.email_body || lead.email_subject ? (
+                    <>
+                      <Button size="sm" variant="outline" onClick={() => copy('all')}>
+                        <Copy className="h-3.5 w-3.5" aria-hidden />
+                        Copiar tudo
+                      </Button>
+                      <Button size="sm" onClick={openMailto}>
+                        <Mail className="h-3.5 w-3.5" aria-hidden />
+                        Abrir no email
+                      </Button>
+                    </>
+                  ) : null}
+                </>
               }
             />
             {lead.email_body || lead.email_subject ? (
@@ -500,14 +512,7 @@ export function LeadDetail({ id }: { id: string }) {
                 </section>
               </div>
             ) : (
-              <p className="p-4 text-sm text-muted">
-                Ainda não há email de prospeção.{' '}
-                {!lead.anonymized_at ? (
-                  <Link href={leadPath(lead, '/editar')} className="text-accent-text underline">
-                    Escrever agora
-                  </Link>
-                ) : null}
-              </p>
+              <p className="p-4 text-center text-sm text-muted">Ainda não há email de prospeção.</p>
             )}
           </Card>
 
