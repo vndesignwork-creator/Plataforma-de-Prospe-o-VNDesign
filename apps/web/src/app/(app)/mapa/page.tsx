@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { Suspense } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
+import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { MapView } from '@/components/map/map-view';
 import { Skeleton } from '@/components/ui/card';
 
@@ -11,11 +11,7 @@ export default function MapPage() {
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-4">
       <PageHeader
-        eyebrow={
-          <Link href="/leads" className="hover:text-fg hover:underline">
-            Leads
-          </Link>
-        }
+        eyebrow={<Breadcrumbs items={[{ label: 'Leads', href: '/leads' }]} />}
         title="Mapa dos leads"
         description="Os teus leads no mapa, pela cor do estado: onde há mais oportunidades e que zonas já trabalhaste."
       />

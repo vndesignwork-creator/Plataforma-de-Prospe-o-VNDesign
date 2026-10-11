@@ -20,11 +20,11 @@ import {
 } from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowDown, ArrowUp, Download, FileText, Mail, Plus, Send, Trash2, Wand2 } from 'lucide-react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/page-header';
+import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { ServiceGlyph, useServiceCatalog } from '@/components/services/services';
 import { Badge, Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
@@ -225,9 +225,12 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
     <div className="mx-auto flex max-w-5xl flex-col gap-5 max-lg:pb-24">
       <PageHeader
         eyebrow={
-          <Link href={leadPath(lead)} className="hover:text-fg hover:underline">
-            #{lead.number} {lead.company_name}
-          </Link>
+          <Breadcrumbs
+            items={[
+              { label: 'Leads', href: '/leads' },
+              { label: `#${lead.number} ${lead.company_name}`, href: leadPath(lead) },
+            ]}
+          />
         }
         title={proposal ? `Proposta ${proposal.code}` : 'Nova proposta'}
         actions={

@@ -35,6 +35,7 @@ import { useRouter } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/page-header';
+import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
@@ -229,21 +230,23 @@ export function LeadDetail({ id }: { id: string }) {
     <>
       <PageHeader
         eyebrow={
-          <span className="tabular">
-            <Link href="/leads" className="hover:text-fg hover:underline">
-              Leads
-            </Link>{' '}
-            / #{lead.number}
-            {lead.sector ? (
+          <Breadcrumbs
+            items={[{ label: 'Leads', href: '/leads' }]}
+            meta={
               <>
-                {' · '}
-                <span className="inline-flex items-center gap-1 align-[-2px]">
-                  <SectorIconView sector={lead.sector} className="h-3.5 w-3.5" />
-                  {lead.sector.name}
-                </span>
+                #{lead.number}
+                {lead.sector ? (
+                  <>
+                    {' · '}
+                    <span className="inline-flex items-center gap-1 align-[-2px]">
+                      <SectorIconView sector={lead.sector} className="h-3.5 w-3.5" />
+                      {lead.sector.name}
+                    </span>
+                  </>
+                ) : null}
               </>
-            ) : null}
-          </span>
+            }
+          />
         }
         title={lead.company_name}
         // Telemóvel/tablet: grelha de 2 colunas sem buracos (Estado | Editar ⋯ / Tarefas | Linha do tempo);

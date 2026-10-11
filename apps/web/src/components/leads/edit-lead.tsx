@@ -1,8 +1,8 @@
 'use client';
 
 import { leadPath } from '@vndesign/core';
-import Link from 'next/link';
 import { PageHeader } from '@/components/layout/page-header';
+import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { EmptyState, Skeleton } from '@/components/ui/card';
 import { useLead } from '@/lib/queries';
 import { LeadForm } from './lead-form';
@@ -15,9 +15,12 @@ export function EditLead({ id }: { id: string }) {
     <div className="mx-auto max-w-5xl">
       <PageHeader
         eyebrow={
-          <Link href={leadPath(lead)} className="hover:text-fg hover:underline">
-            #{lead.number} {lead.company_name}
-          </Link>
+          <Breadcrumbs
+            items={[
+              { label: 'Leads', href: '/leads' },
+              { label: `#${lead.number} ${lead.company_name}`, href: leadPath(lead) },
+            ]}
+          />
         }
         title="Editar lead"
       />

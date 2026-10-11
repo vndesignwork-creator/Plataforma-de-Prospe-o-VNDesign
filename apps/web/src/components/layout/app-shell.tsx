@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 import { FollowUpNotifier } from '@/components/follow-up/follow-up-notifier';
 import { ReminderWatcher } from '@/components/tasks/reminder-watcher';
+import { NavigationTracker } from './back-link';
 import { UpdateWatcher } from './update-watcher';
 import { cn } from '@/lib/utils';
 import { Logo } from './logo';
@@ -131,6 +132,7 @@ export function AppShell({ email, children }: { email: string | null; children: 
       <FollowUpNotifier />
       <ReminderWatcher />
       <UpdateWatcher />
+      <NavigationTracker />
     </div>
   );
 }
