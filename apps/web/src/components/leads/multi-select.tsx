@@ -21,10 +21,11 @@ export interface Option {
   icon?: ReactNode;
 }
 
-const triggerClass = (active: boolean) =>
+const triggerClass = (active: boolean, className?: string) =>
   cn(
-    'inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm transition-colors hover:border-border-strong',
+    'inline-flex h-10 min-w-0 items-center justify-between gap-2 rounded-lg border px-3 text-sm transition-colors hover:border-border-strong',
     active ? 'border-accent/60 bg-accent-soft text-fg' : 'border-border-input bg-surface-2 text-fg',
+    className,
   );
 
 /**
@@ -36,19 +37,24 @@ export function SingleSelectFilter({
   options,
   value,
   onChange,
+  className,
+  neutral,
 }: {
   label: string;
   options: Option[];
   value: string;
   onChange: (value: string) => void;
+  className?: string;
+  /** Sem realce quando não é a 1.ª opção (ex.: ordenação, que não é um filtro). */
+  neutral?: boolean;
 }) {
   const current = options.find((o) => o.value === value) ?? options[0]!;
-  const active = current.value !== options[0]?.value;
+  const active = !neutral && current.value !== options[0]?.value;
   return (
     <DropdownRoot>
-      <DropdownTrigger className={triggerClass(active)} aria-label={`${label}: ${current.label}`}>
-        {current.label}
-        <ChevronDown className="h-4 w-4 text-muted" aria-hidden />
+      <DropdownTrigger className={triggerClass(active, className)} aria-label={`${label}: ${current.label}`}>
+        <span className="truncate">{current.label}</span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-muted" aria-hidden />
       </DropdownTrigger>
       <DropdownContent align="start">
         {/* Pelo índice: o valor "sem filtro" é a string vazia. */}
@@ -73,24 +79,28 @@ export function MultiSelectFilter({
   options,
   value,
   onChange,
+  className,
 }: {
   label: string;
   options: Option[];
   value: string[];
   onChange: (value: string[]) => void;
+  className?: string;
 }) {
   const count = value.length;
   return (
     <DropdownRoot>
       <DropdownTrigger
-        className={triggerClass(count > 0)}
+        className={triggerClass(count > 0, className)}
         aria-label={count ? `${label}: ${count} selecionado(s)` : label}
       >
-        {label}
-        {count ? (
-          <span className="rounded bg-accent px-1.5 text-xs font-semibold text-accent-fg tabular">{count}</span>
-        ) : null}
-        <ChevronDown className="h-4 w-4 text-muted" aria-hidden />
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate">{label}</span>
+          {count ? (
+            <span className="rounded bg-accent px-1.5 text-xs font-semibold text-accent-fg tabular">{count}</span>
+          ) : null}
+        </span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-muted" aria-hidden />
       </DropdownTrigger>
       <DropdownContent align="start">
         {options.map((o) => (

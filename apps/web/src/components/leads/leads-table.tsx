@@ -53,7 +53,7 @@ import {
   DropdownSeparator,
   DropdownTrigger,
 } from '@/components/ui/dropdown';
-import { Input, Select } from '@/components/ui/input';
+import { Input } from '@/components/ui/input';
 import { DateInput } from '@/components/ui/date-input';
 import { errorMessage, toQueryString } from '@/lib/api-client';
 import { useDebouncedValue } from '@/lib/hooks';
@@ -430,22 +430,21 @@ export function LeadsTable() {
           Filtros{activeFilters ? ` (${activeFilters})` : ''}
         </Button>
         {/* No telemóvel não há cabeçalhos de tabela para ordenar: escolhe-se aqui. */}
-        <Select
+        <SingleSelectFilter
+          label="Ordenar leads"
+          neutral
           value={`${sort}:${order}`}
-          onChange={(e) => {
-            const [field, dir] = e.target.value.split(':');
+          onChange={(v) => {
+            const [field, dir] = v.split(':');
             setParams({ sort: field === 'number' && dir === 'desc' ? null : field!, order: dir === 'desc' ? null : dir! });
           }}
-          aria-label="Ordenar leads"
-          className="min-w-0 flex-1 md:w-auto md:flex-none lg:hidden"
-        >
-          {MOBILE_SORTS.some((o) => o.value === `${sort}:${order}`) ? null : <option value={`${sort}:${order}`}>Ordenação da tabela</option>}
-          {MOBILE_SORTS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </Select>
+          options={
+            MOBILE_SORTS.some((o) => o.value === `${sort}:${order}`)
+              ? MOBILE_SORTS
+              : [...MOBILE_SORTS, { value: `${sort}:${order}`, label: 'Ordenação da tabela' }]
+          }
+          className="flex-1 md:flex-none lg:hidden"
+        />
         <DropdownRoot>
           {/* Só faz sentido com a tabela (no telemóvel a lista é em cartões). */}
           <DropdownTrigger className={buttonClasses('outline', 'md', 'max-lg:hidden')} aria-label="Escolher colunas visíveis">
@@ -474,13 +473,13 @@ export function LeadsTable() {
             <DropdownItem onSelect={() => saveTablePref.mutate({ hidden: [] })}>Mostrar todas</DropdownItem>
           </DropdownContent>
         </DropdownRoot>
-        <Link href="/mapa" className={buttonClasses('outline', 'md')} aria-label="Ver os leads no mapa">
+        <Link href="/mapa" className={buttonClasses('outline', 'md', 'max-sm:w-10 max-sm:px-0')} aria-label="Ver os leads no mapa">
           <MapIcon className="h-4 w-4" aria-hidden />
           <span className="hidden sm:inline">Mapa</span>
         </Link>
         <DropdownRoot>
           {/* Importar e exportar juntos (usa-se pouco: não precisa de lugar no menu lateral). */}
-          <DropdownTrigger className={buttonClasses('outline', 'md')} aria-label="Importar ou exportar leads">
+          <DropdownTrigger className={buttonClasses('outline', 'md', 'max-sm:w-10 max-sm:px-0')} aria-label="Importar ou exportar leads">
             <ArrowDownUp className="h-4 w-4" aria-hidden />
             <span className="hidden sm:inline">Importar / Exportar</span>
           </DropdownTrigger>
@@ -504,12 +503,12 @@ export function LeadsTable() {
         </DropdownRoot>
       </div>
 
-      {/* Filtros */}
+      {/* Filtros. Telemóvel: grelha de 2 colunas (sem buracos); a partir do tablet, em linha. */}
       <div
         id="filtros-leads"
         role="group"
         aria-label="Filtros"
-        className={cn('flex-wrap items-end gap-2', showFilters ? 'flex' : 'hidden md:flex')}
+        className={cn('gap-2 md:flex md:flex-wrap md:items-end', showFilters ? 'grid grid-cols-2' : 'hidden')}
       >
         <MultiSelectFilter
           label="Setor"
@@ -546,30 +545,32 @@ export function LeadsTable() {
           onChange={(e) => setCity(e.target.value)}
           placeholder="Cidade"
           aria-label="Filtrar por cidade"
-          className="w-36"
+          className="max-md:col-span-2 md:w-36"
         />
         <SingleSelectFilter
           label="Próxima ação"
           value={query.due ?? ''}
           onChange={(v) => setParams({ due: v || null })}
           options={DUE_OPTIONS}
+          className="max-md:col-span-2"
         />
         <SingleSelectFilter
           label="Leads arquivados"
           value={query.archived ?? ''}
           onChange={(v) => setParams({ arquivo: v || null })}
           options={ARCHIVE_OPTIONS}
+          className="max-md:col-span-2"
         />
-        <fieldset className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
+        <fieldset className="flex flex-wrap items-center gap-1.5 max-md:col-span-2">
           <legend className="sr-only">Sugerido em</legend>
-          <span className="text-sm text-muted" aria-hidden>
-            Sugerido
+          <span className="text-sm text-muted max-md:basis-full" aria-hidden>
+            Sugerido em
           </span>
           <DateInput
             value={query.suggested_from ?? ''}
             onChange={(v) => setParams({ de: v || null })}
             aria-label="Sugerido desde"
-            className="w-auto min-w-0 flex-1 sm:w-40 sm:flex-none"
+            className="w-auto min-w-0 flex-1 md:w-40 md:flex-none"
           />
           <span className="text-sm text-muted" aria-hidden>
             a
@@ -578,11 +579,11 @@ export function LeadsTable() {
             value={query.suggested_to ?? ''}
             onChange={(v) => setParams({ ate: v || null })}
             aria-label="Sugerido até"
-            className="w-auto min-w-0 flex-1 sm:w-40 sm:flex-none"
+            className="w-auto min-w-0 flex-1 md:w-40 md:flex-none"
           />
         </fieldset>
         {activeFilters ? (
-          <Button variant="ghost" onClick={clearFilters}>
+          <Button variant="ghost" onClick={clearFilters} className="max-md:col-span-2 max-md:justify-self-end">
             <X className="h-4 w-4" aria-hidden />
             Limpar filtros
           </Button>

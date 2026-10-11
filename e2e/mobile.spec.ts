@@ -75,8 +75,10 @@ test('no telemóvel: contacto rápido na ficha, ordenar a lista e formulário cu
   await page.goto('/leads');
   await expect(page.getByLabel('Ordenar leads')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Escolher colunas visíveis' })).toBeHidden();
-  await page.getByLabel('Ordenar leads').selectOption('company_name:asc');
+  await page.getByLabel('Ordenar leads').click();
+  await page.getByRole('menuitemradio', { name: 'Empresa (A–Z)' }).click();
   await expect(page).toHaveURL(/sort=company_name&order=asc/);
+  await expect(page.getByLabel('Ordenar leads')).toHaveAccessibleName('Ordenar leads: Empresa (A–Z)');
 
   await page.goto('/leads/novo');
   await expect(page.getByLabel('Telefone')).toBeVisible();
