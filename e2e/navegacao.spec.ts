@@ -55,3 +55,17 @@ test('diagnóstico do site: recolhido quando o lead só tem serviços fora do We
   await expect(page.getByRole('heading', { name: 'Análise automática do site' })).toBeVisible();
   await expect(page.getByText('Não é relevante para os serviços escolhidos.')).toHaveCount(0);
 });
+
+test('listas de escolha: menu da plataforma (não a lista do sistema) e o valor é gravado', async ({ page }) => {
+  await page.goto('/leads/novo');
+  await page.getByRole('textbox', { name: 'Empresa', exact: true }).fill(`Lista própria ${run}`);
+  // O botão visível abre o nosso menu; a lista nativa fica escondida por baixo.
+  const sector = page.getByLabel('Setor');
+  await page.locator(`select#${await sector.getAttribute('id')} + button`).click();
+  await page.getByRole('menuitemradio', { name: 'Restauração' }).click();
+  await expect(page.getByRole('menuitemradio')).toHaveCount(0);
+  await expect(sector.locator('option:checked')).toHaveText('Restauração');
+  await page.getByRole('button', { name: 'Criar lead' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: `Lista própria ${run}` })).toBeVisible();
+  await expect(page.getByText('Restauração').first()).toBeVisible();
+});

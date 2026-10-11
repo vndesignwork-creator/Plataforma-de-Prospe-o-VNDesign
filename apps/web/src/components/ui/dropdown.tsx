@@ -7,8 +7,15 @@ import { cn } from '@/lib/utils';
 
 const SetOpen = createContext<Dispatch<SetStateAction<boolean>> | null>(null);
 
-export function DropdownRoot(props: Omit<ComponentProps<typeof Menu.Root>, 'open' | 'onOpenChange'>) {
-  const [open, setOpen] = useState(false);
+export function DropdownRoot({
+  open: controlledOpen,
+  onOpenChange,
+  ...props
+}: Omit<ComponentProps<typeof Menu.Root>, 'onOpenChange'> & { onOpenChange?: Dispatch<SetStateAction<boolean>> }) {
+  const [ownOpen, setOwnOpen] = useState(false);
+  // Controlado (open/onOpenChange) ou, por omissão, com estado próprio.
+  const open = controlledOpen ?? ownOpen;
+  const setOpen = onOpenChange ?? setOwnOpen;
   return (
     <SetOpen.Provider value={setOpen}>
       <Menu.Root {...props} open={open} onOpenChange={setOpen} />
@@ -42,11 +49,22 @@ export function DropdownTrigger({ onPointerDown, onClick, ...props }: ComponentP
   );
 }
 
-export function DropdownContent({ children, className, align = 'end' }: { children: ReactNode; className?: string; align?: 'start' | 'end' }) {
+export function DropdownContent({
+  children,
+  className,
+  align = 'end',
+  onCloseAutoFocus,
+}: {
+  children: ReactNode;
+  className?: string;
+  align?: 'start' | 'end';
+  onCloseAutoFocus?: (event: Event) => void;
+}) {
   return (
     <Menu.Portal>
       <Menu.Content
         align={align}
+        onCloseAutoFocus={onCloseAutoFocus}
         sideOffset={6}
         collisionPadding={12}
         className={cn(
@@ -121,9 +139,9 @@ export function DropdownRadioGroup({ value, onValueChange, children }: { value: 
   );
 }
 
-export function DropdownRadioItem({ value, children }: { value: string; children: ReactNode }) {
+export function DropdownRadioItem({ value, children, disabled }: { value: string; children: ReactNode; disabled?: boolean }) {
   return (
-    <Menu.RadioItem value={value} className={cn(itemClass, 'relative pl-7')}>
+    <Menu.RadioItem value={value} disabled={disabled} className={cn(itemClass, 'relative pl-7')}>
       <Menu.ItemIndicator className="absolute left-2 inline-flex">
         <Check className="h-4 w-4 text-accent-text" aria-hidden />
       </Menu.ItemIndicator>
