@@ -27,10 +27,13 @@ import { useLeads, useSectors, useTemplates } from '@/lib/queries';
 import { EMAIL_KINDS, useTemplateContext } from '@/lib/template-context';
 import { cn } from '@/lib/utils';
 import { SectorIconView } from '@/components/icons/lead-icons';
+import { SingleSelectFilter } from '@/components/leads/multi-select';
+import { useServiceCatalog } from '@/components/services/services';
 
 /** Variáveis agrupadas pelo que preenchem (no editor de modelos). */
 const VARIABLE_GROUPS = [
   { label: 'Do lead', keys: ['empresa', 'contacto', 'setor', 'cidade', 'problema', 'angulo', 'website', 'argumentos'] },
+  { label: 'Dos serviços do lead', keys: ['servicos', 'categoria', 'beneficio'] },
   { label: 'Datas', keys: ['data', 'hoje'] },
   {
     label: 'Os teus dados',
@@ -41,11 +44,11 @@ const VARIABLE_GROUPS = [
 
 type FormOutput = z.output<typeof ContactTemplateCreateSchema>;
 
-const EMPTY: ContactTemplateCreateInput = { kind: 'cold_email', name: '', subject: '', body: '', sector_id: null };
+const EMPTY: ContactTemplateCreateInput = { kind: 'cold_email', name: '', subject: '', body: '', sector_id: null, category: null };
 
 function toForm(t: ContactTemplate | null): ContactTemplateCreateInput {
   if (!t) return EMPTY;
-  return { kind: t.kind, name: t.name, subject: t.subject ?? '', body: t.body, sector_id: t.sector_id };
+  return { kind: t.kind, name: t.name, subject: t.subject ?? '', body: t.body, sector_id: t.sector_id, category: t.category };
 }
 
 /** Pré-visualização com um lead real (ou só com a assinatura, sem lead). */
@@ -96,6 +99,7 @@ function Preview({ subject, body, isEmail }: { subject: string; body: string; is
 function Editor({ template, onSaved, onDeleted }: { template: ContactTemplate | null; onSaved: (t: ContactTemplate) => void; onDeleted: () => void }) {
   const qc = useQueryClient();
   const { data: sectors } = useSectors();
+  const catalog = useServiceCatalog();
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const {
@@ -204,7 +208,17 @@ function Editor({ template, onSaved, onDeleted }: { template: ContactTemplate | 
                 ))}
               </Select>
             </Field>
-            <Field label="Setor (opcional)" hint="Sugerido primeiro para leads deste setor">
+            <Field label="Categoria de serviço" hint="Sugerido primeiro aos leads com serviços desta categoria">
+              <Select {...register('category', { setValueAs: (v) => (v === '' ? null : v) })}>
+                <option value="">Todas as categorias</option>
+                {catalog.categories.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="Setor (opcional)" hint="Sugerido primeiro para leads deste setor" className="@md:col-span-2">
               <Select {...register('sector_id', { setValueAs: (v) => (v === '' ? null : v) })}>
                 <option value="">Todos os setores</option>
                 {(sectors ?? []).map((s) => (
@@ -258,7 +272,8 @@ function Editor({ template, onSaved, onDeleted }: { template: ContactTemplate | 
                 </div>
               ))}
               <p className="text-xs text-muted">
-                Dica: <code className="font-mono">{'{{contacto|equipa}}'}</code> usa “equipa” quando o lead não tem contacto.
+                Dica: <code className="font-mono">{'{{contacto|equipa}}'}</code> usa “equipa” quando o lead não tem contacto.{' '}
+                <code className="font-mono">{'{{beneficio}}'}</code> é a frase de valor do serviço (Definições → Serviços).
               </p>
             </div>
           </details>
@@ -296,6 +311,8 @@ function Editor({ template, onSaved, onDeleted }: { template: ContactTemplate | 
 export function TemplateLibrary() {
   const { data: templates, isLoading } = useTemplates();
   const { data: sectors } = useSectors(true);
+  const catalog = useServiceCatalog();
+  const [category, setCategory] = useState('');
   const [selected, setSelected] = useState<string | 'new' | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   // No telemóvel/tablet o editor fica por baixo da lista: ao escolher, desce até ele.
@@ -318,8 +335,16 @@ export function TemplateLibrary() {
         <Button onClick={() => choose('new')} variant={selected === 'new' ? 'primary' : 'outline'}>
           <Plus className="h-4 w-4" aria-hidden /> Novo modelo
         </Button>
+        {/* Uma categoria mostra os seus modelos e os de todas as categorias (que também lhe servem). */}
+        <SingleSelectFilter
+          label="Categoria dos modelos"
+          value={category}
+          onChange={setCategory}
+          options={[{ value: '', label: 'Todas as categorias' }, ...catalog.categories.map((c) => ({ value: c.key, label: c.label }))]}
+          className="w-full"
+        />
         {TEMPLATE_KINDS.map((kind: TemplateKind) => {
-          const group = (templates ?? []).filter((t) => t.kind === kind);
+          const group = (templates ?? []).filter((t) => t.kind === kind && (!category || !t.category || t.category === category));
           if (!group.length) return null;
           return (
             <div key={kind}>
@@ -340,6 +365,7 @@ export function TemplateLibrary() {
                         )}
                       >
                         {t.name}
+                        {t.category ? <Badge className="ml-1.5">{catalog.categoryLabel(t.category)}</Badge> : null}
                         {sector ? (
                           <Badge className="ml-1.5">
                             <SectorIconView sector={sector} className="h-3 w-3" />

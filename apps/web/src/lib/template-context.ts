@@ -1,6 +1,7 @@
 'use client';
 
 import { buildTemplateContext, todayIso, type Lead, type TemplateContext } from '@vndesign/core';
+import { useServiceCatalog } from '@/components/services/services';
 import { useSectors, useSettings, useSignature } from './queries';
 
 /** Contexto das variáveis ({{empresa}}, {{assinatura}}…) para pré-visualizar no browser. */
@@ -8,6 +9,7 @@ export function useTemplateContext(lead: Lead | null | undefined): TemplateConte
   const { data: signature } = useSignature();
   const { data: settings } = useSettings();
   const { data: sectors } = useSectors(true);
+  const catalog = useServiceCatalog();
   const sectorArguments = lead?.sector_id ? (sectors?.find((s) => s.id === lead.sector_id)?.sales_arguments ?? null) : null;
   return buildTemplateContext({
     lead,
@@ -15,6 +17,8 @@ export function useTemplateContext(lead: Lead | null | undefined): TemplateConte
     sectorArguments,
     optOutLine: settings?.opt_out_line ?? null,
     today: todayIso(),
+    services: catalog.all,
+    categories: catalog.categories,
   });
 }
 

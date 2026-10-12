@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { mapImportRow, suggestMapping } from '../src/import';
 import { AiEmailRequestSchema, buildAiEmailPrompt } from '../src/ai';
@@ -17,6 +18,7 @@ import {
   serviceShortLabel,
   servicesOf,
   type ServiceInfo,
+  DEFAULT_VALUE_PHRASES,
 } from '../src/services';
 
 describe('catálogo de serviços', () => {
@@ -95,7 +97,10 @@ describe('serviços geridos em Definições', () => {
       short_label: null,
       category: 'outros',
       icon: 'sparkles',
+      value_phrase: null,
     });
+    expect(ServiceUpdateSchema.parse({ value_phrase: '  uma ideia  ' })).toEqual({ value_phrase: 'uma ideia' });
+    expect(ServiceUpdateSchema.parse({ value_phrase: '' })).toEqual({ value_phrase: null });
     expect(ServiceCreateSchema.safeParse({ label: '' }).success).toBe(false);
     expect(ServiceCreateSchema.safeParse({ label: 'X', icon: 'foguetao' }).success).toBe(false);
     expect(ServiceUpdateSchema.parse({ archived: true })).toEqual({ archived: true });
@@ -170,5 +175,14 @@ describe('pacotes sugeridos para uma proposta nova', () => {
   it('não sugere pacotes mensais e, sem correspondência, usa o recomendado geral', () => {
     expect(suggestPackages(packages, ['posts_redes']).map((p) => p.id)).toEqual(['profissional']);
     expect(suggestPackages(packages, []).map((p) => p.id)).toEqual(['profissional']);
+  });
+});
+
+describe('frases de valor de origem', () => {
+  it('são iguais às da migração (vnd_default_value_phrase)', () => {
+    const sql = readFileSync(new URL('../../../supabase/migrations/20261023000100_scripts_por_categoria.sql', import.meta.url), 'utf8');
+    for (const [key, phrase] of Object.entries(DEFAULT_VALUE_PHRASES)) {
+      expect(sql).toContain(`when '${key}' then '${phrase}'`);
+    }
   });
 });

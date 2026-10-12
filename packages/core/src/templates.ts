@@ -10,6 +10,13 @@
  * arrumada ("Olá {{contacto}}," → "Olá,").
  */
 import { formatDate } from './format';
+import {
+  DEFAULT_SERVICE_CATEGORIES,
+  DEFAULT_SERVICES,
+  leadServiceCategory,
+  type ServiceCategoryInfo,
+  type ServiceInfo,
+} from './services';
 
 export const TEMPLATE_VARIABLES = [
   { key: 'empresa', label: 'Nome da empresa' },
@@ -20,6 +27,9 @@ export const TEMPLATE_VARIABLES = [
   { key: 'angulo', label: 'Ângulo de abordagem' },
   { key: 'website', label: 'Website do lead' },
   { key: 'argumentos', label: 'Argumentos de venda do setor' },
+  { key: 'servicos', label: 'Serviços de interesse do lead (ex.: identidade visual e flyers)' },
+  { key: 'categoria', label: 'Categoria dos serviços do lead (ex.: design gráfico)' },
+  { key: 'beneficio', label: 'Frase de valor do serviço (Definições → Serviços)' },
   { key: 'data', label: 'Data do 1.º contacto (ou hoje)' },
   { key: 'hoje', label: 'Data de hoje' },
   { key: 'meu_nome', label: 'O teu nome' },
@@ -60,6 +70,7 @@ export interface LeadForTemplate {
   website?: string | null;
   first_contact_on?: string | null;
   sector?: { name: string } | null;
+  services?: readonly string[] | null;
 }
 
 /** "https://vndesign.pt/" → "vndesign.pt" */
@@ -75,14 +86,55 @@ export function formatSignature(sig: SignatureInfo | null | undefined): string {
   return [sig.full_name, line2, line3].filter((l) => l && l.trim()).join('\n');
 }
 
+/** "Identidade Visual" → "identidade visual" (mantém siglas como "SEO"). */
+function lowerLabel(label: string): string {
+  return label
+    .split(/(\s+)/)
+    .map((w) => (w.length > 1 && w === w.toUpperCase() && /[A-ZÀ-Ý]/.test(w) ? w : w.toLowerCase()))
+    .join('');
+}
+
+/** ["a", "b", "c"] → "a, b e c" */
+function joinPt(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  return `${items.slice(0, -1).join(', ')} e ${items.at(-1)}`;
+}
+
+/**
+ * Variáveis que vêm dos serviços do lead: {{servicos}}, {{categoria}} e
+ * {{beneficio}} (a frase de valor do primeiro serviço que a tiver).
+ */
+export function serviceTemplateValues(
+  services: readonly string[] | null | undefined,
+  catalog: readonly ServiceInfo[] = DEFAULT_SERVICES,
+  categories: readonly ServiceCategoryInfo[] = DEFAULT_SERVICE_CATEGORIES,
+): { servicos: string | null; categoria: string | null; beneficio: string | null; category: ServiceCategoryInfo | null } {
+  const keys = new Set(services ?? []);
+  const list = catalog.filter((s) => keys.has(s.key));
+  const categoryKey = leadServiceCategory(services, catalog);
+  const category = categories.find((c) => c.key === categoryKey) ?? null;
+  return {
+    servicos: list.length ? joinPt(list.map((s) => lowerLabel(s.label))) : null,
+    categoria: category ? lowerLabel(category.label) : null,
+    beneficio: list.find((s) => s.value_phrase?.trim())?.value_phrase?.trim() ?? null,
+    category,
+  };
+}
+
 export function buildTemplateContext(input: {
   lead?: LeadForTemplate | null;
   signature?: SignatureInfo | null;
   sectorArguments?: string | null;
   optOutLine?: string | null;
   today: string;
+  /** Catálogo do workspace (Definições → Serviços); sem ele, os serviços de origem. */
+  services?: readonly ServiceInfo[];
+  categories?: readonly ServiceCategoryInfo[];
 }): TemplateContext {
   const { lead, signature: sig } = input;
+  const svc = serviceTemplateValues(lead?.services, input.services, input.categories);
+  // Leads de uma categoria com portefólio de design (ex.: Design Gráfico): {{portfolio}} usa esse.
+  const designPortfolio = svc.category?.design_portfolio ? (sig?.design_portfolio_url ?? null) : null;
   return {
     empresa: lead?.company_name ?? null,
     contacto: lead?.contact_name ?? null,
@@ -92,6 +144,9 @@ export function buildTemplateContext(input: {
     angulo: lead?.approach_angle ?? null,
     website: lead?.website ?? null,
     argumentos: input.sectorArguments ?? null,
+    servicos: svc.servicos,
+    categoria: svc.categoria,
+    beneficio: svc.beneficio,
     data: formatDate(lead?.first_contact_on ?? input.today),
     hoje: formatDate(input.today),
     meu_nome: sig?.full_name ?? null,
@@ -99,7 +154,7 @@ export function buildTemplateContext(input: {
     meu_telefone: sig?.phone ?? null,
     meu_email: sig?.email ?? null,
     meu_site: sig?.website ?? null,
-    portfolio: sig?.portfolio_url ?? sig?.website ?? null,
+    portfolio: designPortfolio ?? sig?.portfolio_url ?? sig?.website ?? null,
     portfolio_design: sig?.design_portfolio_url ?? sig?.portfolio_url ?? sig?.website ?? null,
     projetos: sig?.project_links?.length ? sig.project_links.join(' · ') : null,
     assinatura: formatSignature(sig) || null,

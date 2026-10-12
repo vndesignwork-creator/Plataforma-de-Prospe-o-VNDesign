@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
-import { Input, Select } from '@/components/ui/input';
+import { Input, Select, Textarea } from '@/components/ui/input';
 import { SERVICE_ICON_COMPONENTS, ServiceGlyph, useServiceCatalog } from '@/components/services/services';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useInvalidateServices, useServiceCategories, useServices } from '@/lib/queries';
@@ -20,6 +20,7 @@ interface Draft {
   short_label: string;
   category: string;
   icon: ServiceIconKey;
+  value_phrase: string;
 }
 
 const toIconKey = (icon: string | null | undefined, fallback: ServiceIconKey): ServiceIconKey =>
@@ -57,7 +58,7 @@ function IconPicker({ value, onChange, label }: { value: ServiceIconKey; onChang
   );
 }
 
-const emptyDraft: Draft = { id: null, label: '', short_label: '', category: 'outros', icon: 'sparkles' };
+const emptyDraft: Draft = { id: null, label: '', short_label: '', category: 'outros', icon: 'sparkles', value_phrase: '' };
 
 function ServiceDialog({ draft, onClose }: { draft: Draft; onClose: () => void }) {
   const invalidate = useInvalidateServices();
@@ -69,7 +70,13 @@ function ServiceDialog({ draft, onClose }: { draft: Draft; onClose: () => void }
   async function save() {
     setSaving(true);
     setErrors({});
-    const body = { label: form.label, short_label: form.short_label || null, category: form.category, icon: form.icon };
+    const body = {
+      label: form.label,
+      short_label: form.short_label || null,
+      category: form.category,
+      icon: form.icon,
+      value_phrase: form.value_phrase.trim() || null,
+    };
     try {
       await api(form.id ? `/services/${form.id}` : '/services', { method: form.id ? 'PATCH' : 'POST', body });
       toast.success(form.id ? 'Serviço guardado.' : 'Serviço criado.');
@@ -122,6 +129,20 @@ function ServiceDialog({ draft, onClose }: { draft: Draft; onClose: () => void }
         </Field>
         <Field label="Nome curto (opcional)" error={errors.short_label?.[0]} hint="Nos cartões do Kanban. Sem nome curto, usa a 1.ª palavra.">
           <Input value={form.short_label} maxLength={14} onChange={(e) => setForm({ ...form, short_label: e.target.value })} />
+        </Field>
+        <Field
+          label="Frase de valor (opcional)"
+          error={errors.value_phrase?.[0]}
+          className="sm:col-span-2"
+          hint="Usada nos scripts em {{beneficio}}. Completa: “Posso ajudar-vos a ter …”"
+        >
+          <Textarea
+            rows={2}
+            value={form.value_phrase}
+            maxLength={300}
+            placeholder="Ex.: uma imagem coerente que os clientes reconhecem à primeira vista"
+            onChange={(e) => setForm({ ...form, value_phrase: e.target.value })}
+          />
         </Field>
         <IconPicker label="Ícone do serviço" value={form.icon} onChange={(icon) => setForm({ ...form, icon })} />
         <button type="submit" hidden />
@@ -212,6 +233,7 @@ function ServicesList() {
                           </span>
                           {s.short_label ? ` · nos cartões: ${s.short_label}` : ''}
                         </p>
+                        {s.value_phrase ? <p className="text-sm break-words text-muted italic">“{s.value_phrase}”</p> : null}
                       </div>
                       <div className="col-start-2 -ml-2 flex flex-wrap gap-0.5 sm:col-start-auto sm:ml-0">
                         <Button size="icon" variant="ghost" aria-label={`Subir ${s.label}`} disabled={busy || i === 0} onClick={() => move(s, -1)}>
@@ -237,6 +259,7 @@ function ServicesList() {
                               short_label: s.short_label ?? '',
                               category: s.category,
                               icon: toIconKey(s.icon, 'sparkles'),
+                              value_phrase: s.value_phrase ?? '',
                             })
                           }
                         >

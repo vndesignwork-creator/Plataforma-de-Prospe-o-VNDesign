@@ -8,6 +8,7 @@ import {
   renderTemplate,
   type ContactTemplate,
   type Lead,
+  leadServiceCategory,
 } from '@vndesign/core';
 import { Copy, Mail, MessageSquareText, Phone, RotateCcw, Save, Send } from 'lucide-react';
 import Link from 'next/link';
@@ -16,6 +17,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Input, Select, Textarea } from '@/components/ui/input';
+import { useServiceCatalog } from '@/components/services/services';
 import { errorMessage } from '@/lib/api-client';
 import { useLogActivity, useTemplates, useUpdateLead } from '@/lib/queries';
 import { EMAIL_KINDS, useTemplateContext } from '@/lib/template-context';
@@ -35,14 +37,25 @@ const SENT_AS: Record<string, { activity: 'email_sent' | 'call_logged' | 'templa
 };
 
 /** Escolhe o modelo inicial: email frio do setor do lead, senão o predefinido. */
-function initialTemplate(templates: ContactTemplate[], lead: Lead): ContactTemplate | undefined {
+/**
+ * Ordem de sugestão: primeiro os modelos da categoria dos serviços do lead, depois
+ * os de todas as categorias, por fim os de outras. Lead sem serviços: tanto faz.
+ */
+function categoryRank(t: ContactTemplate, category: string | null): number {
+  if (!category) return 0;
+  return t.category === category ? 0 : t.category === null ? 1 : 2;
+}
+
+function byRelevance(lead: Lead, category: string | null) {
+  return (a: ContactTemplate, b: ContactTemplate) =>
+    categoryRank(a, category) - categoryRank(b, category) ||
+    Number(!!lead.sector_id && b.sector_id === lead.sector_id) - Number(!!lead.sector_id && a.sector_id === lead.sector_id) ||
+    Number(b.is_default) - Number(a.is_default);
+}
+
+function initialTemplate(templates: ContactTemplate[], lead: Lead, category: string | null): ContactTemplate | undefined {
   const firstKind = lead.status === 'identificado' ? 'cold_email' : 'follow_up';
-  return (
-    templates.find((t) => t.kind === firstKind && t.sector_id === lead.sector_id && lead.sector_id) ??
-    templates.find((t) => t.kind === firstKind && t.is_default) ??
-    templates.find((t) => t.kind === firstKind) ??
-    templates[0]
-  );
+  return [...templates.filter((t) => t.kind === firstKind)].sort(byRelevance(lead, category))[0] ?? templates[0];
 }
 
 async function copy(text: string) {
@@ -60,13 +73,15 @@ export function ContactScriptsCard({ lead }: { lead: Lead }) {
   const context = useTemplateContext(lead);
   const log = useLogActivity(lead.id);
   const update = useUpdateLead(lead.id);
+  const catalog = useServiceCatalog();
+  const category = leadServiceCategory(lead.services, catalog.all);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ subject: string; body: string } | null>(null);
 
   const template = useMemo(() => {
     if (!templates?.length) return undefined;
-    return templates.find((t) => t.id === templateId) ?? initialTemplate(templates, lead);
-  }, [templates, templateId, lead]);
+    return templates.find((t) => t.id === templateId) ?? initialTemplate(templates, lead, category);
+  }, [templates, templateId, lead, category]);
 
   const rendered = useMemo(() => {
     if (!template) return null;
@@ -165,7 +180,7 @@ export function ContactScriptsCard({ lead }: { lead: Lead }) {
             className="h-9 w-auto min-w-64 flex-1"
           >
             {TEMPLATE_KINDS.map((kind) => {
-              const group = templates.filter((t) => t.kind === kind);
+              const group = templates.filter((t) => t.kind === kind).sort(byRelevance(lead, category));
               if (!group.length) return null;
               return (
                 <optgroup key={kind} label={TEMPLATE_KIND_LABELS[kind]}>

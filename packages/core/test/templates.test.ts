@@ -74,3 +74,38 @@ describe('utilitários', () => {
     );
   });
 });
+
+describe('variáveis dos serviços do lead', () => {
+  const sig = { ...signature, design_portfolio_url: 'https://vndesign.pt/design/' };
+
+  it('{{servicos}}, {{categoria}} e {{beneficio}} a partir dos serviços (pela ordem do catálogo)', () => {
+    const ctx = buildTemplateContext({ lead: { ...lead, services: ['flyers_cartazes', 'identidade_visual'] }, signature: sig, today: '2026-10-11' });
+    expect(ctx.servicos).toBe('identidade visual e flyers e cartazes');
+    expect(ctx.categoria).toBe('design gráfico');
+    expect(ctx.beneficio).toBe('uma imagem coerente que os clientes reconhecem à primeira vista');
+    // Design Gráfico usa o portefólio de design.
+    expect(ctx.portfolio).toBe('https://vndesign.pt/design/');
+  });
+
+  it('três ou mais serviços: vírgulas e "e"; siglas ficam em maiúsculas', () => {
+    const services = [
+      { key: 'seo', label: 'Otimização SEO', category: 'web', value_phrase: null },
+      { key: 'blog', label: 'Blogs Personalizados', category: 'web', value_phrase: 'um blog que traz visitas' },
+      { key: 'loja_online', label: 'Pequenas Lojas', category: 'web' },
+    ];
+    const ctx = buildTemplateContext({ lead: { ...lead, services: ['loja_online', 'seo', 'blog'] }, signature: sig, today: '2026-10-11', services });
+    expect(ctx.servicos).toBe('otimização SEO, blogs personalizados e pequenas lojas');
+    expect(ctx.categoria).toBe('web design');
+    // O 1.º sem frase é ignorado: usa a do seguinte.
+    expect(ctx.beneficio).toBe('um blog que traz visitas');
+    expect(ctx.portfolio).toBe('https://vndesign.pt/');
+  });
+
+  it('sem serviços: vazias (as alternativas do modelo tomam conta)', () => {
+    const ctx = buildTemplateContext({ lead, signature: sig, today: '2026-10-11' });
+    expect(ctx.servicos).toBeNull();
+    expect(renderTemplate('Trabalho em {{servicos|design}} para ter {{beneficio|uma imagem forte}}.', ctx).text).toBe(
+      'Trabalho em design para ter uma imagem forte.',
+    );
+  });
+});

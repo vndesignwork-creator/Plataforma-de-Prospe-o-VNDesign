@@ -96,7 +96,21 @@ export interface ServiceInfo {
   short_label?: string | null;
   icon?: string | null;
   archived_at?: string | null;
+  /** Frase de valor para {{beneficio}} (completa "Posso ajudar-vos a ter …"). */
+  value_phrase?: string | null;
 }
+
+/** Frases de valor de origem (iguais às da migração 20261023000100). */
+export const DEFAULT_VALUE_PHRASES: Record<keyof typeof SERVICES, string> = {
+  landing_page: 'uma página focada que transforma visitas em pedidos de contacto',
+  site_institucional: 'um site moderno e rápido que apresenta bem os vossos serviços',
+  blog: 'um blog que vos ajuda a aparecer no Google e a ganhar a confiança dos clientes',
+  loja_online: 'uma loja online simples para venderem também fora do horário',
+  identidade_visual: 'uma imagem coerente que os clientes reconhecem à primeira vista',
+  flyers_cartazes: 'flyers e cartazes que chamam a atenção e passam a mensagem num segundo',
+  posts_redes: 'publicações com aspeto profissional e consistente nas redes sociais',
+  estampas: 't-shirts e merchandising com a vossa marca, prontos a usar ou a vender',
+};
 
 export const DEFAULT_SERVICES: ServiceInfo[] = SERVICE_KEYS.map((key) => ({
   key,
@@ -104,6 +118,7 @@ export const DEFAULT_SERVICES: ServiceInfo[] = SERVICE_KEYS.map((key) => ({
   category: SERVICES[key].category,
   short_label: SERVICES[key].short,
   icon: SERVICES[key].icon,
+  value_phrase: DEFAULT_VALUE_PHRASES[key],
 }));
 
 const find = (key: string, catalog: readonly ServiceInfo[]) =>
@@ -127,6 +142,18 @@ export function serviceCategory(key: string, catalog: readonly ServiceInfo[] = D
 }
 
 /** Serviços (ativos) de uma categoria, pela ordem do catálogo. */
+/**
+ * Categoria principal de um lead: a do primeiro dos seus serviços (pela ordem do
+ * catálogo). Sem serviços conhecidos, null.
+ */
+export function leadServiceCategory(
+  services: readonly string[] | null | undefined,
+  catalog: readonly ServiceInfo[] = DEFAULT_SERVICES,
+): ServiceCategory | null {
+  const keys = new Set(services ?? []);
+  return catalog.find((s) => keys.has(s.key))?.category ?? null;
+}
+
 export function servicesOf(category: ServiceCategory, catalog: readonly ServiceInfo[] = DEFAULT_SERVICES): string[] {
   return catalog.filter((s) => s.category === category && !s.archived_at).map((s) => s.key);
 }
@@ -172,6 +199,7 @@ export const ServiceSchema = z
     short_label: z.string().nullable(),
     category: ServiceCategoryKeySchema,
     icon: z.string().nullable(),
+    value_phrase: z.string().nullable().meta({ description: 'Frase de valor (variável {{beneficio}} dos scripts)' }),
     sort_order: z.int(),
     archived_at: z.string().nullable(),
     lead_count: z.int().meta({ description: 'Leads com este serviço de interesse' }),
@@ -186,6 +214,12 @@ const shortLabelField = z
   .max(14, { error: 'Máximo de 14 caracteres.' })
   .nullish()
   .transform((v) => v || null);
+const valuePhraseField = z
+  .string()
+  .trim()
+  .max(300, { error: 'Máximo de 300 caracteres.' })
+  .nullish()
+  .transform((v) => v || null);
 const iconField = z.enum(SERVICE_ICON_KEYS as [ServiceIconKey, ...ServiceIconKey[]], { error: 'Ícone inválido.' });
 
 export const ServiceCreateSchema = z
@@ -194,6 +228,7 @@ export const ServiceCreateSchema = z
     short_label: shortLabelField,
     category: ServiceCategoryKeySchema.default('outros'),
     icon: iconField.default('sparkles'),
+    value_phrase: valuePhraseField,
   })
   .meta({ id: 'ServiceCreate' });
 export type ServiceCreate = z.output<typeof ServiceCreateSchema>;
@@ -205,6 +240,7 @@ export const ServiceUpdateSchema = z
     short_label: shortLabelField.optional(),
     category: ServiceCategoryKeySchema.optional(),
     icon: iconField.optional(),
+    value_phrase: valuePhraseField.optional(),
     archived: z.boolean().optional().meta({ description: 'Esconder (true) ou voltar a mostrar (false)' }),
   })
   .meta({ id: 'ServiceUpdate' });

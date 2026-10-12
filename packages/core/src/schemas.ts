@@ -16,7 +16,7 @@ import {
   type SectorIcon,
 } from './enums';
 import { ensureUrlProtocol } from './normalize';
-import { ServiceKeyListSchema, ServiceKeySchema } from './services';
+import { ServiceCategoryKeySchema, ServiceKeyListSchema, ServiceKeySchema } from './services';
 import { TodayTasksSchema } from './tasks';
 
 // Mensagens genéricas de validação em português (as específicas estão em cada campo).
@@ -584,6 +584,7 @@ export const ContactTemplateSchema = z
     subject: z.string().nullable(),
     body: z.string(),
     sector_id: z.uuid().nullable(),
+    category: z.string().nullable().meta({ description: 'Categoria de serviço (vazio = todas)' }),
     is_default: z.boolean(),
     sort_order: z.int(),
     updated_at: z.string(),
@@ -597,6 +598,7 @@ const templateFields = {
   subject: nullableText(300),
   body: z.string().max(20_000, { error: 'Texto demasiado longo.' }),
   sector_id: z.uuid().nullable(),
+  category: ServiceCategoryKeySchema.nullable(),
   is_default: z.boolean(),
   sort_order: z.int().min(0).max(9999),
 };

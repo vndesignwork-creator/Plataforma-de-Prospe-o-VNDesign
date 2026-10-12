@@ -8,27 +8,35 @@ import {
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest, unwrap } from '../http';
 import { getLead } from './leads';
+import { loadServiceCatalog } from './service-catalog';
+import { loadServiceCategories } from './service-categories';
 import { getSignature, getSettings } from './workspace';
 
-const TEMPLATE_SELECT = 'id, kind, name, subject, body, sector_id, is_default, sort_order, updated_at';
+const TEMPLATE_SELECT = 'id, kind, name, subject, body, sector_id, category, is_default, sort_order, updated_at';
+// Antes da migração 20261023000100 (sem categoria): continua a funcionar.
+const LEGACY_SELECT = TEMPLATE_SELECT.replace(' category,', '');
+const missingColumn = (error: { code?: string } | null) => error?.code === '42703';
+const withCategory = (t: Omit<ContactTemplate, 'category'> & { category?: string | null }): ContactTemplate => ({
+  ...t,
+  category: t.category ?? null,
+});
 const NOT_FOUND = 'Modelo não encontrado';
 
 export async function listTemplates(ctx: ApiContext): Promise<ContactTemplate[]> {
-  const { data, error } = await ctx.supabase
-    .from('contact_templates')
-    .select(TEMPLATE_SELECT)
-    .eq('workspace_id', ctx.workspaceId)
-    .order('sort_order')
-    .order('name');
+  const query = (select: string) =>
+    ctx.supabase.from('contact_templates').select(select).eq('workspace_id', ctx.workspaceId).order('sort_order').order('name');
+  let { data, error } = await query(TEMPLATE_SELECT);
+  if (missingColumn(error)) ({ data, error } = await query(LEGACY_SELECT));
   if (error) throw fromPostgrest(error);
-  return (data ?? []) as ContactTemplate[];
+  return ((data ?? []) as unknown as ContactTemplate[]).map(withCategory);
 }
 
 export async function getTemplate(ctx: ApiContext, id: string): Promise<ContactTemplate> {
-  return unwrap(
-    await ctx.supabase.from('contact_templates').select(TEMPLATE_SELECT).eq('workspace_id', ctx.workspaceId).eq('id', id).maybeSingle(),
-    NOT_FOUND,
-  ) as ContactTemplate;
+  const query = (select: string) =>
+    ctx.supabase.from('contact_templates').select(select).eq('workspace_id', ctx.workspaceId).eq('id', id).maybeSingle();
+  let result = await query(TEMPLATE_SELECT);
+  if (missingColumn(result.error)) result = await query(LEGACY_SELECT);
+  return withCategory(unwrap(result, NOT_FOUND) as unknown as ContactTemplate);
 }
 
 export async function createTemplate(ctx: ApiContext, input: Record<string, unknown>): Promise<ContactTemplate> {
@@ -82,11 +90,13 @@ export async function renderForLead(
   leadId: string,
   input: { template_id?: string; subject?: string; body?: string },
 ): Promise<RenderedTemplate> {
-  const [lead, signature, settings, template] = await Promise.all([
+  const [lead, signature, settings, template, services, categories] = await Promise.all([
     getLead(ctx, leadId),
     getSignature(ctx),
     getSettings(ctx),
     input.template_id ? getTemplate(ctx, input.template_id) : Promise.resolve(null),
+    loadServiceCatalog(ctx),
+    loadServiceCategories(ctx),
   ]);
   let sectorArguments: string | null = null;
   if (lead.sector_id) {
@@ -99,6 +109,8 @@ export async function renderForLead(
     sectorArguments,
     optOutLine: settings.opt_out_line,
     today: todayIso(),
+    services,
+    categories,
   });
   const subject = renderTemplate(input.subject ?? template?.subject ?? '', context);
   const body = renderTemplate(input.body ?? template?.body ?? '', context);

@@ -2,7 +2,10 @@ import { DEFAULT_SERVICES, serviceKeyFromLabel, type Service, type ServiceCreate
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
 
-const SERVICE_SELECT = 'id, key, label, short_label, category, icon, sort_order, archived_at';
+const SERVICE_SELECT = 'id, key, label, short_label, category, icon, value_phrase, sort_order, archived_at';
+// Antes da migração 20261023000100 (sem a frase de valor): continua a funcionar.
+const LEGACY_SELECT = SERVICE_SELECT.replace(' value_phrase,', '');
+const missingColumn = (error: { code?: string } | null) => error?.code === '42703';
 
 type ServiceRow = Omit<Service, 'lead_count'>;
 
@@ -14,16 +17,16 @@ async function leadCounts(ctx: ApiContext): Promise<Map<string, number>> {
 
 /** Serviços do workspace pela ordem definida, com o número de leads de cada um. */
 export async function listServices(ctx: ApiContext, includeArchived = false): Promise<Service[]> {
-  let q = ctx.supabase
-    .from('services')
-    .select(SERVICE_SELECT)
-    .eq('workspace_id', ctx.workspaceId)
-    .order('sort_order')
-    .order('label');
-  if (!includeArchived) q = q.is('archived_at', null);
-  const [{ data, error }, counts] = await Promise.all([q, leadCounts(ctx)]);
+  const query = (select: string) => {
+    let q = ctx.supabase.from('services').select(select).eq('workspace_id', ctx.workspaceId).order('sort_order').order('label');
+    if (!includeArchived) q = q.is('archived_at', null);
+    return q;
+  };
+  const [first, counts] = await Promise.all([query(SERVICE_SELECT), leadCounts(ctx)]);
+  let { data, error } = first;
+  if (missingColumn(error)) ({ data, error } = await query(LEGACY_SELECT));
   if (error) throw fromPostgrest(error);
-  return ((data ?? []) as ServiceRow[]).map((s) => ({ ...s, lead_count: counts.get(s.key) ?? 0 }));
+  return ((data ?? []) as unknown as ServiceRow[]).map((s) => ({ ...s, value_phrase: s.value_phrase ?? null, lead_count: counts.get(s.key) ?? 0 }));
 }
 
 /**
@@ -31,14 +34,12 @@ export async function listServices(ctx: ApiContext, includeArchived = false): Pr
  * escondidos). Se a base de dados ainda não tiver a tabela, usa os serviços de origem.
  */
 export async function loadServiceCatalog(ctx: ApiContext): Promise<ServiceInfo[]> {
-  const { data, error } = await ctx.supabase
-    .from('services')
-    .select('key, label, short_label, category, icon, archived_at')
-    .eq('workspace_id', ctx.workspaceId)
-    .order('sort_order')
-    .order('label');
+  const query = (select: string) =>
+    ctx.supabase.from('services').select(select).eq('workspace_id', ctx.workspaceId).order('sort_order').order('label');
+  let { data, error } = await query('key, label, short_label, category, icon, value_phrase, archived_at');
+  if (missingColumn(error)) ({ data, error } = await query('key, label, short_label, category, icon, archived_at'));
   if (error || !data?.length) return DEFAULT_SERVICES;
-  return data as ServiceInfo[];
+  return data as unknown as ServiceInfo[];
 }
 
 function conflictOr(error: Parameters<typeof fromPostgrest>[0]) {
@@ -48,17 +49,15 @@ function conflictOr(error: Parameters<typeof fromPostgrest>[0]) {
 }
 
 async function getService(ctx: ApiContext, id: string): Promise<Service> {
-  const { data, error } = await ctx.supabase
-    .from('services')
-    .select(SERVICE_SELECT)
-    .eq('workspace_id', ctx.workspaceId)
-    .eq('id', id)
-    .maybeSingle();
+  const query = (select: string) =>
+    ctx.supabase.from('services').select(select).eq('workspace_id', ctx.workspaceId).eq('id', id).maybeSingle();
+  let { data, error } = await query(SERVICE_SELECT);
+  if (missingColumn(error)) ({ data, error } = await query(LEGACY_SELECT));
   if (error) throw fromPostgrest(error, 'Serviço não encontrado');
   if (!data) throw new ApiError(404, 'Serviço não encontrado');
   const counts = await leadCounts(ctx);
-  const row = data as ServiceRow;
-  return { ...row, lead_count: counts.get(row.key) ?? 0 };
+  const row = data as unknown as ServiceRow;
+  return { ...row, value_phrase: row.value_phrase ?? null, lead_count: counts.get(row.key) ?? 0 };
 }
 
 export async function createService(ctx: ApiContext, input: ServiceCreate): Promise<Service> {

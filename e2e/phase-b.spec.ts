@@ -4,13 +4,16 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 
 const run = Date.now().toString(36);
 const dir = 'test-results/fixtures';
+// Próxima ação sempre no futuro (uma data já passada é trocada pelo follow-up automático).
+const due = new Date(Date.now() + 30 * 86_400_000);
+const dueText = `${String(due.getDate()).padStart(2, '0')}/${String(due.getMonth() + 1).padStart(2, '0')}/${due.getFullYear()}`;
 
 /** CSV com o formato da folha: título na linha 1, cabeçalho na linha 2, valores com emoji e "--". */
 function sheetCsv(): string {
   const rows = [
     ['🎯  PIPELINE DE LEADS — PROSPEÇÃO DIGITAL VNDesign'],
     ['#', 'Empresa', 'Setor', 'Website', 'Cidade', 'Problemas', 'PageSpeed', 'Mobile?', 'Email', 'Telefone', 'Contacto', 'Estado', 'Canal', '1º Contacto', 'Último Follow-up', 'Próx. Ação', 'Valor Est. (€)'],
-    ['', `Oficina Import ${run}, Lda`, '🔧 Serviços Técnicos', `https://oficina-${run}.pt/`, 'Amadora', 'Sem HTTPS', '34', '❌ Não', `geral@oficina-${run}.pt`, '--', '--', '📧 Contactado', '📧 Email', '01/10/2026', '--', 'Ligar 12/10/2026', '1.250,00 €'],
+    ['', `Oficina Import ${run}, Lda`, '🔧 Serviços Técnicos', `https://oficina-${run}.pt/`, 'Amadora', 'Sem HTTPS', '34', '❌ Não', `geral@oficina-${run}.pt`, '--', '--', '📧 Contactado', '📧 Email', '01/10/2026', '--', `Ligar ${dueText}`, '1.250,00 €'],
     ['', `Restaurante Import ${run}`, '🍽️ Restauração', '--', 'Amadora', '', '--', '--', '--', '--', '--', '🔍 Identificado'],
     ['', `OFICINA IMPORT ${run}`, '🔧 Serviços Técnicos', `oficina-${run}.pt`, 'Amadora', 'Repetida', '', '', '', '', '', '🔍 Identificado'],
   ];
@@ -37,7 +40,7 @@ test('importar a folha (CSV): cabeçalho, duplicados no ficheiro e relatório', 
 
   // A ficha tem os valores convertidos da folha.
   await page.getByRole('link', { name: new RegExp(`Oficina Import ${run}`) }).click();
-  await expect(page.getByText('Ligar · 12/10/2026')).toBeVisible();
+  await expect(page.getByText(`Ligar · ${dueText}`)).toBeVisible();
   await expect(page.getByText('1250,00 €')).toBeVisible();
   await expect(page.getByLabel('Atividade do lead').getByText('Origem: import')).toBeVisible();
 

@@ -116,6 +116,12 @@ português) com as mesmas colunas — pode ser reimportado sem mapear nada.
   `{{data}}`, `{{hoje}}`, `{{meu_nome}}`, `{{meu_cargo}}`, `{{meu_telefone}}`, `{{meu_email}}`,
   `{{meu_site}}`, `{{portfolio}}`, `{{projetos}}`, `{{assinatura}}`, `{{opt_out}}`.
   `{{contacto|equipa}}` usa “equipa” quando o lead não tem contacto.
+- **Por serviço:** `{{servicos}}` (ex.: “identidade visual e flyers”), `{{categoria}}`
+  (ex.: “design gráfico”) e `{{beneficio}}` (a *frase de valor* do serviço, em
+  **Definições → Serviços**). Cada modelo pode ter uma **categoria de serviço**: na ficha, o
+  modelo sugerido é o da categoria dos serviços do lead, depois os de todas as categorias.
+  Há modelos de origem para Web Design, Design Gráfico e genéricos (servem a qualquer
+  categoria nova). Para Design Gráfico, `{{portfolio}}` usa o portfólio de design.
 - **Ficha do lead → Scripts de contacto:** escolhe o modelo, edita, copia, abre no email,
   guarda como email de prospeção ou marca como enviado (passa a “Contactado” e agenda o follow-up).
 - **Follow-up:** na ficha e na lista “Hoje” — *Feito* (com ou sem nova data) ou *Adiar*.
