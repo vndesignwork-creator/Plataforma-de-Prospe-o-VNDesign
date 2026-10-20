@@ -321,7 +321,7 @@ preços, quantidades e desconto. O texto inicial pode ser sugerido a partir da a
 
 ## API de integração (tarefa semanal com o Claude)
 
-1. **Definições → API e integrações → Criar token** (permissão `leads:import`). Copia o token
+1. **Definições → Acesso externo (API) → Criar token** (permissão `leads:import`). Copia o token
    `vnd_…` — só é mostrado uma vez.
 2. A tarefa envia os leads para `POST /api/v1/leads/import` com
    `Authorization: Bearer vnd_…`. Guia completo, exemplos em curl/PowerShell e o texto para
@@ -393,7 +393,7 @@ Supabase local — as migrações, a paridade SQL e os testes E2E.
 - Autenticação:
   - **Web:** sessão (cookies);
   - **App móvel:** `Authorization: Bearer <access token do Supabase>`;
-  - **Integrações:** tokens pessoais `vnd_…` (Definições → API e integrações), com permissões
+  - **Integrações:** tokens pessoais `vnd_…` (Definições → Acesso externo (API)), com permissões
     `leads:import` (`POST /leads/import`), `leads:read` (`GET /leads`, `/leads/{id}`, `/sectors`,
     `/meta`, `POST /leads/check-duplicates`) e `leads:write` (`POST /leads`, `PATCH /leads/{id}`).
 - Erros em `application/problem+json`, com mensagens em pt-PT. Respostas em `{ "data": … }`.

@@ -14,6 +14,7 @@ import {
   type AiProviderTestResult,
 } from '@vndesign/core';
 import { CheckCircle2, Edit3, KeyRound, Plus, Trash2, XCircle } from 'lucide-react';
+import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -286,7 +287,17 @@ export function AiSettings() {
       <Card>
         <CardHeader
           title="Chaves de IA"
-          description="Junta as tuas chaves da Anthropic (Claude), OpenAI (ChatGPT), OpenRouter ou de outro serviço compatível. Cada pedido gasta créditos da conta do fornecedor."
+          description={
+            <>
+              Junta as tuas chaves da Anthropic (Claude), OpenAI (ChatGPT), OpenRouter ou de outro serviço compatível, para a
+              plataforma usar IA. Cada pedido gasta créditos da conta do fornecedor. Para outras ferramentas enviarem leads{' '}
+              <em>para cá</em>, vai a{' '}
+              <Link href="/definicoes/api" className="text-accent-text hover:underline">
+                Acesso externo (API)
+              </Link>
+              .
+            </>
+          }
           actions={
             canEdit ? (
               <Button size="sm" onClick={() => setDraft({ id: null, kind: 'openai', label: '', api_key: '', base_url: '' })}>

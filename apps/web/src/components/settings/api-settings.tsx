@@ -10,6 +10,7 @@ import {
   type ApiTokenScope,
 } from '@vndesign/core';
 import { BookOpen, Copy, ExternalLink, KeyRound } from 'lucide-react';
+import Link from 'next/link';
 import { useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
@@ -129,8 +130,17 @@ export function ApiSettings() {
   return (
     <Card id="api">
       <CardHeader
-        title="API e integrações"
-        description="Tokens para outras ferramentas enviarem leads — por exemplo, a tua tarefa semanal de prospeção com o Claude."
+        title="Acesso externo (API)"
+        description={
+          <>
+            Tokens para outras ferramentas enviarem leads <em>para cá</em> — por exemplo, a tua tarefa semanal de prospeção
+            com o Claude. Para usar o ChatGPT ou o Claude <em>dentro</em> da plataforma, vai a{' '}
+            <Link href="/definicoes/ia" className="text-accent-text hover:underline">
+              Inteligência artificial
+            </Link>
+            .
+          </>
+        }
         actions={
           // A documentação técnica (endpoints e exemplos) abre à parte: é para quem liga outra ferramenta.
           <a href="/docs/api" target="_blank" rel="noreferrer" className={buttonClasses('outline', 'sm')}>

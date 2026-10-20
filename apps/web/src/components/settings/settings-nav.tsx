@@ -14,7 +14,7 @@ export const SETTINGS_SECTIONS = [
   { slug: 'listas-tarefas', label: 'Listas de tarefas' },
   { slug: 'setores', label: 'Setores' },
   { slug: 'nao-contactar', label: 'Não contactar' },
-  { slug: 'api', label: 'API e integrações' },
+  { slug: 'api', label: 'Acesso externo (API)' },
   { slug: 'conta', label: 'Conta' },
 ] as const;
 

@@ -15,7 +15,7 @@ test('cada secção tem a sua página e os links antigos com # redirecionam', as
 
   await page.goto('/definicoes#api');
   await expect(page).toHaveURL(/\/definicoes\/api$/);
-  await expect(page.getByRole('heading', { name: 'API e integrações' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Acesso externo (API)' })).toBeVisible();
 });
 
 test('notas editáveis no cartão da ficha', async ({ page }) => {

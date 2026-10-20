@@ -130,7 +130,7 @@ export function getOpenApiDocument() {
         '**Autenticação**',
         '- Web: sessão (cookies Supabase).',
         '- App móvel: `Authorization: Bearer <access token Supabase>`.',
-        '- Integrações: tokens pessoais `Authorization: Bearer vnd_…` (criados em Definições → API e integrações).',
+        '- Integrações: tokens pessoais `Authorization: Bearer vnd_…` (criados em Definições → Acesso externo (API)).',
         '  Só funcionam nos endpoints marcados com um scope (`leads:import`, `leads:read`, `leads:write`).',
         '',
         '**Convenções**: JSON em snake_case; datas `AAAA-MM-DD`; valores em euros; erros em `application/problem+json` com mensagens em pt-PT.',
