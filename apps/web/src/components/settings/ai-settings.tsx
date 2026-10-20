@@ -13,7 +13,8 @@ import {
   type AiProviderKind,
   type AiProviderTestResult,
 } from '@vndesign/core';
-import { CheckCircle2, Edit3, KeyRound, Plus, Trash2, XCircle } from 'lucide-react';
+import * as Popover from '@radix-ui/react-popover';
+import { Check, CheckCircle2, ChevronDown, Edit3, KeyRound, Plus, Trash2, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -132,6 +133,127 @@ function ProviderDialog({ draft, onClose }: { draft: Draft; onClose: () => void 
   );
 }
 
+/**
+ * Escolher o modelo: lista do fornecedor (carrega ao abrir) com pesquisa; dá
+ * também para usar um nome escrito à mão.
+ */
+function ModelPicker({
+  value,
+  onChange,
+  models,
+  loading,
+  onOpen,
+  defaultModel,
+  example,
+  disabled,
+  ...aria
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  models: string[] | undefined;
+  loading: boolean;
+  onOpen: () => void;
+  /** Modelo usado quando fica vazio (só na Anthropic). */
+  defaultModel: string | null;
+  example: string;
+  disabled?: boolean;
+  id?: string;
+  'aria-describedby'?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const q = query.trim().toLowerCase();
+  const filtered = (models ?? []).filter((m) => !q || m.toLowerCase().includes(q));
+  const shown = filtered.slice(0, 200);
+  const custom = query.trim() && !(models ?? []).includes(query.trim()) ? query.trim() : null;
+
+  function choose(next: string) {
+    onChange(next);
+    setOpen(false);
+    setQuery('');
+  }
+
+  return (
+    <Popover.Root
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) onOpen();
+        else setQuery('');
+      }}
+    >
+      <Popover.Trigger
+        type="button"
+        disabled={disabled}
+        {...aria}
+        className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-border-input bg-surface-2 px-3 text-left text-sm text-fg transition-colors hover:border-muted focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none disabled:opacity-60 data-[state=open]:border-accent"
+      >
+        <span className={value ? 'truncate' : 'truncate text-muted'}>
+          {value || (defaultModel ? `Por omissão (${defaultModel})` : 'Escolher modelo')}
+        </span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-muted" aria-hidden />
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          align="start"
+          sideOffset={6}
+          collisionPadding={12}
+          className="z-50 flex w-[min(var(--radix-popover-trigger-width),calc(100vw-1.5rem))] min-w-64 flex-col gap-2 rounded-xl border border-border-strong bg-surface-2 p-2 shadow-card"
+        >
+          <Input
+            autoFocus
+            value={query}
+            placeholder={`Pesquisar ou escrever (ex.: ${example})`}
+            aria-label="Pesquisar modelo"
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                const first = custom ?? shown[0];
+                if (first) choose(first);
+              }
+            }}
+          />
+          <ul role="listbox" aria-label="Modelos" className="max-h-72 overflow-y-auto">
+            {defaultModel && !q ? (
+              <li>
+                <button type="button" role="option" aria-selected={!value} onClick={() => choose('')} className={optionClass(!value)}>
+                  Por omissão ({defaultModel})
+                </button>
+              </li>
+            ) : null}
+            {custom ? (
+              <li>
+                <button type="button" role="option" aria-selected={false} onClick={() => choose(custom)} className={optionClass(false)}>
+                  Usar “{custom}”
+                </button>
+              </li>
+            ) : null}
+            {shown.map((m) => (
+              <li key={m}>
+                <button type="button" role="option" aria-selected={m === value} onClick={() => choose(m)} className={optionClass(m === value)}>
+                  <span className="truncate">{m}</span>
+                  {m === value ? <Check className="h-4 w-4 shrink-0 text-accent-text" aria-hidden /> : null}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {loading ? (
+            <p className="px-2 pb-1 text-xs text-muted">A carregar os modelos do fornecedor…</p>
+          ) : models && filtered.length > shown.length ? (
+            <p className="px-2 pb-1 text-xs text-muted">Mais {filtered.length - shown.length} — escreve para filtrar.</p>
+          ) : models && !models.length ? (
+            <p className="px-2 pb-1 text-xs text-muted">O fornecedor não devolveu a lista: escreve o nome do modelo e carrega Enter.</p>
+          ) : null}
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
+const optionClass = (active: boolean) =>
+  `flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-left text-sm hover:bg-surface-3 focus-visible:bg-surface-3 focus-visible:outline-none ${active ? 'font-medium text-accent-text' : ''}`;
+
 function FeatureRow({
   title,
   description,
@@ -159,7 +281,6 @@ function FeatureRow({
   const usable = providers.filter((p) => feature === 'email' || p.web_search);
   const current = providers.find((p) => p.id === provider);
   const dirty = provider !== setting.provider || (model.trim() || null) !== (setting.model ?? null);
-  const listId = `modelos-${feature}`;
 
   async function save() {
     setSaving(true);
@@ -199,39 +320,26 @@ function FeatureRow({
       </Field>
       <Field
         label="Modelo"
-        hint={
-          current?.kind === 'anthropic'
-            ? `Vazio = ${DEFAULT_MODELS[feature]}.`
-            : `Ex.: ${current ? AI_PROVIDER_META[current.kind].modelExample : '—'}. “Ver modelos” mostra a lista do fornecedor.`
-        }
+        hint={current?.kind === 'anthropic' ? 'A lista vem do fornecedor; podes também escrever outro nome.' : 'A lista vem do fornecedor; escreve para pesquisar.'}
       >
-        <Input
-          list={listId}
+        <ModelPicker
           value={model}
+          onChange={setModel}
+          models={models[provider]}
+          loading={loading}
+          onOpen={async () => {
+            if (models[provider] || loading) return;
+            setLoading(true);
+            await onLoadModels(provider);
+            setLoading(false);
+          }}
+          defaultModel={current?.kind === 'anthropic' ? DEFAULT_MODELS[feature] : null}
+          example={current ? AI_PROVIDER_META[current.kind].modelExample : ''}
           disabled={!canEdit}
-          placeholder={current?.kind === 'anthropic' ? DEFAULT_MODELS[feature] : current ? AI_PROVIDER_META[current.kind].modelExample : ''}
-          onChange={(e) => setModel(e.target.value)}
         />
       </Field>
-      <datalist id={listId}>
-        {(models[provider] ?? []).map((m) => (
-          <option key={m} value={m} />
-        ))}
-      </datalist>
       {canEdit ? (
-        <div className="flex flex-wrap items-center justify-end gap-2 md:col-span-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            loading={loading}
-            onClick={async () => {
-              setLoading(true);
-              await onLoadModels(provider);
-              setLoading(false);
-            }}
-          >
-            Ver modelos
-          </Button>
+        <div className="flex justify-end md:col-span-2">
           <Button size="sm" onClick={save} loading={saving} disabled={!dirty}>
             Guardar
           </Button>

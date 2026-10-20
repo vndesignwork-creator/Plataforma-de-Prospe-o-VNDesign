@@ -60,7 +60,14 @@ test('juntar uma chave da OpenAI nas Definições, testar e escolher para o emai
   // Email com IA: OpenAI · gpt-teste.
   const email = page.getByRole('region', { name: 'Email com IA' });
   await email.getByLabel('Fornecedor').selectOption({ label: `OpenAI ${run}` });
-  await email.getByLabel('Modelo').fill('gpt-teste');
+  // A lista de modelos carrega ao abrir; pesquisa e escolhe.
+  await email.getByLabel('Modelo', { exact: true }).click();
+  await page.getByLabel('Pesquisar modelo').fill('mini');
+  await expect(page.getByRole('option', { name: 'gpt-teste-mini' })).toBeVisible();
+  await expect(page.getByRole('option', { name: 'gpt-teste', exact: true })).toHaveCount(0);
+  await page.getByLabel('Pesquisar modelo').fill('');
+  await page.getByRole('option', { name: 'gpt-teste', exact: true }).click();
+  await expect(email.getByLabel('Modelo', { exact: true })).toHaveText('gpt-teste');
   await email.getByRole('button', { name: 'Guardar' }).click();
   await expect(page.getByText(`Email com IA: OpenAI ${run} guardado.`)).toBeVisible();
 
