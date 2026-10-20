@@ -255,6 +255,25 @@ O texto usa os dados do lead, a última análise do site e os argumentos de vend
 
 ---
 
+## Gerador de leads (Claude com pesquisa na internet)
+
+- Menu **Gerar leads**: descreve que empresas procuras (ex.: “restaurantes sem site ou com site
+  antigo”), a zona, o setor e os serviços a propor. O Claude (Sonnet 5.5) pesquisa na internet e
+  abre as páginas das empresas durante 1 a 3 minutos, em segundo plano — podes sair da página.
+- A lista mostra, por empresa, a oportunidade observada, o site ou a rede social, contactos
+  públicos da empresa e a **fonte** de cada dado. Duplicados e empresas da lista “não contactar”
+  ficam assinalados e não se escolhem.
+- **Adicionar como leads:** só as escolhidas; ficam “Identificado”, com a fonte, o ângulo de
+  abordagem e os serviços sugeridos. Com *Analisar os sites*, cada site é analisado e o PageSpeed,
+  o Mobile? e os Problemas ficam preenchidos.
+- **Custo:** créditos da Anthropic — tokens do Sonnet 5.5 + 10 $ por 1000 pesquisas na internet;
+  no máximo 12 pesquisas e 15 páginas por pesquisa. O custo estimado aparece em cada pesquisa.
+- **Ativar a pesquisa na internet** na conta da Anthropic: console.anthropic.com → Settings →
+  Privacy (*web search* e *web fetch*). Sem isso, a pesquisa termina com um aviso.
+- Uma pesquisa de cada vez; uma pesquisa interrompida (ex.: deploy a meio) fica como “falhou” e
+  pode repetir-se. API: `POST /api/v1/lead-generation`, `GET /api/v1/lead-generation/{id}`,
+  `POST /api/v1/lead-generation/{id}/add`.
+
 ## Propostas em PDF
 
 Na ficha do lead, **Propostas → Nova proposta**. Começa com o pacote recomendado; acrescenta

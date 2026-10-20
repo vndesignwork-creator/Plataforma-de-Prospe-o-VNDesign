@@ -41,6 +41,10 @@ import type {
   TaskTemplate,
   Me,
   Sector,
+  LeadGenerationAdd,
+  LeadGenerationAddResult,
+  LeadGenerationRequestInput,
+  LeadGenerationRun,
 } from '@vndesign/core';
 import { api } from './api-client';
 
@@ -411,4 +415,50 @@ export function useInvalidateTasks() {
     void qc.invalidateQueries({ queryKey: ['board'] });
     void qc.invalidateQueries({ queryKey: ['today'] });
   };
+}
+
+// -----------------------------------------------------------------------------
+// Gerador de leads
+// -----------------------------------------------------------------------------
+
+export function useLeadGenerationRuns() {
+  return useQuery({
+    queryKey: ['lead-generation'],
+    queryFn: () => api<{ data: LeadGenerationRun[] }>('/lead-generation').then((r) => r.data),
+  });
+}
+
+/** Uma pesquisa; enquanto corre, consulta o estado a cada 4 s. */
+export function useLeadGenerationRun(id: string | null) {
+  return useQuery({
+    queryKey: ['lead-generation', id],
+    queryFn: () => api<{ data: LeadGenerationRun }>(`/lead-generation/${id}`).then((r) => r.data),
+    enabled: !!id,
+    refetchInterval: (query) => (query.state.data?.status === 'running' ? 4_000 : false),
+  });
+}
+
+export function useStartLeadGeneration() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: LeadGenerationRequestInput) =>
+      api<{ data: LeadGenerationRun }>('/lead-generation', { method: 'POST', body }).then((r) => r.data),
+    onSuccess: (run) => {
+      qc.setQueryData(['lead-generation', run.id], run);
+      void qc.invalidateQueries({ queryKey: ['lead-generation'], exact: true });
+    },
+  });
+}
+
+export function useAddGeneratedLeads(runId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: LeadGenerationAdd) =>
+      api<{ data: LeadGenerationAddResult }>(`/lead-generation/${runId}/add`, { method: 'POST', body }).then((r) => r.data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['lead-generation'] });
+      void qc.invalidateQueries({ queryKey: ['leads'] });
+      void qc.invalidateQueries({ queryKey: ['board'] });
+    },
+  });
 }

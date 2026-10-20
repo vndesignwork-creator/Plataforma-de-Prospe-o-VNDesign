@@ -14,12 +14,82 @@ function listen(server: http.Server, port: number) {
   });
 }
 
+/**
+ * Gerador de leads: 1.º pedido pausa ("pause_turn", como numa pesquisa longa);
+ * o seguinte entrega 3 empresas válidas e 1 inválida pela ferramenta guardar_empresas.
+ * O último termo do <pedido> entra nos nomes (para cada teste ter empresas próprias).
+ */
+function leadSearch(body: { model?: string; messages?: unknown[] }, res: http.ServerResponse) {
+  const prompt = JSON.stringify(body.messages ?? '');
+  const token = /<pedido>[^<]*?(\S+)<\/pedido>/.exec(prompt)?.[1] ?? 'teste';
+  const reply = (content: unknown[], stop_reason: string) =>
+    setTimeout(() => {
+      res.writeHead(200, { 'content-type': 'application/json', 'request-id': 'req_stub_leads' });
+      res.end(
+        JSON.stringify({
+          id: 'msg_stub_leads',
+          type: 'message',
+          role: 'assistant',
+          model: body.model ?? 'claude-sonnet-5-5',
+          content,
+          stop_reason,
+          stop_sequence: null,
+          usage: { input_tokens: 20_000, output_tokens: 1_500, server_tool_use: { web_search_requests: 3 } },
+        }),
+      );
+    }, 800);
+  if ((body.messages ?? []).length === 1) {
+    reply([{ type: 'text', text: 'A pesquisar empresas…' }], 'pause_turn');
+    return;
+  }
+  const company = (o: Record<string, unknown>) => ({
+    city: 'Amadora', address: null, website: null, social_url: null, phone: null, email: null, sector: null,
+    services: ['site_institucional'], approach_angle: null, ...o,
+  });
+  reply(
+    [
+      {
+        type: 'tool_use',
+        id: 'toolu_stub_leads',
+        name: 'guardar_empresas',
+        input: {
+          empresas: [
+            company({
+              company_name: `Café Central ${token}`,
+              social_url: `https://www.facebook.com/cafecentral${token}`,
+              phone: '214 000 001',
+              opportunity: 'Sem site próprio, só página de Facebook.',
+              approach_angle: 'Propor um site simples com a carta e o horário.',
+              source_url: `https://www.facebook.com/cafecentral${token}`,
+            }),
+            company({
+              company_name: `Oficina Rápida ${token}`,
+              website: `https://oficina-${token}.invalid`,
+              email: `geral@oficina-${token}.invalid`,
+              services: ['site_institucional', 'servico_inexistente'],
+              opportunity: 'Site sem HTTPS e não adaptado a telemóvel.',
+              source_url: `https://oficina-${token}.invalid/contactos`,
+            }),
+            company({ company_name: `Duplicado ${token}`, opportunity: 'Já existe na plataforma.', source_url: 'https://exemplo.pt/duplicado' }),
+            { company_name: 'Sem fonte', opportunity: 'Falta o source_url.' },
+          ],
+        },
+      },
+    ],
+    'tool_use',
+  );
+}
+
 export async function startStubs() {
   const anthropic = http.createServer((req, res) => {
     let raw = '';
     req.on('data', (c) => (raw += c));
     req.on('end', () => {
       const body = raw ? JSON.parse(raw) : {};
+      if ((body.tools ?? []).some((t: { name?: string }) => t.name === 'guardar_empresas')) {
+        leadSearch(body, res);
+        return;
+      }
       const prompt = JSON.stringify(body.messages ?? '');
       const company = /<dados_do_lead>\\nEmpresa: ([^\\]+?)\\n/.exec(prompt)?.[1] ?? 'empresa';
       const draft = {

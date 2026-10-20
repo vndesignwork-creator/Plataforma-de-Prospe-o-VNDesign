@@ -51,6 +51,28 @@ export function anthropicClient(): Anthropic {
   return client.instance;
 }
 
+let longClient: { key: string; instance: Anthropic } | null = null;
+/**
+ * Cliente para pedidos longos (gerador de leads: o Claude pesquisa e abre páginas
+ * durante 1–3 minutos). Corre em segundo plano, por isso não tem o limite de 55 s.
+ */
+export function anthropicLongClient(): Anthropic {
+  const key = aiApiKey() ?? '';
+  if (!longClient || longClient.key !== key) {
+    longClient = {
+      key,
+      instance: new Anthropic({
+        apiKey: key,
+        authToken: null,
+        baseURL: process.env.AI_BASE_URL || 'https://api.anthropic.com',
+        timeout: 5 * 60_000,
+        maxRetries: 1,
+      }),
+    };
+  }
+  return longClient.instance;
+}
+
 /** Mensagem da API da Anthropic (ex.: "invalid x-api-key"), para mostrar no erro. */
 export function anthropicErrorMessage(error: InstanceType<typeof Anthropic.APIError>): string {
   const body = error.error as { error?: { message?: string } } | undefined;

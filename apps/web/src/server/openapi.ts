@@ -14,6 +14,10 @@ import {
   TaskTemplateUpdateSchema,
   AiEmailRequestSchema,
   AiEmailResultSchema,
+  LeadGenerationAddResultSchema,
+  LeadGenerationAddSchema,
+  LeadGenerationRequestSchema,
+  LeadGenerationRunSchema,
   GeocodeBatchResultSchema,
   LeadLocationSchema,
   MapDataSchema,
@@ -156,6 +160,7 @@ export function getOpenApiDocument() {
       { name: 'Tarefas' },
       { name: 'Propostas' },
       { name: 'Email com IA' },
+      { name: 'Gerador de leads' },
       { name: 'Mapa' },
     ],
     paths: {
@@ -802,6 +807,44 @@ export function getOpenApiDocument() {
             '503': problem('ANTHROPIC_API_KEY em falta ou inválida'),
             ...withNotFound,
           },
+        }),
+      },
+      '/lead-generation': {
+        get: op({
+          tags: ['Gerador de leads'],
+          summary: 'Últimas pesquisas do gerador de leads',
+          responses: { '200': ok(data(z.array(LeadGenerationRunSchema))), ...common },
+        }),
+        post: op({
+          tags: ['Gerador de leads'],
+          summary: 'Começar uma pesquisa de empresas com o Claude (pesquisa na internet)',
+          description:
+            'Responde logo com a pesquisa em `running`; o Claude pesquisa durante 1–3 minutos em segundo plano. Consultar `GET /lead-generation/{id}` até `done` ou `error`. Uma pesquisa de cada vez.',
+          requestBody: body(LeadGenerationRequestSchema),
+          responses: {
+            '202': ok(data(LeadGenerationRunSchema), 'Pesquisa começada'),
+            '409': problem('Já há uma pesquisa a correr'),
+            '503': problem('ANTHROPIC_API_KEY em falta ou inválida'),
+            ...common,
+          },
+        }),
+      },
+      '/lead-generation/{id}': {
+        get: op({
+          tags: ['Gerador de leads'],
+          summary: 'Estado da pesquisa e empresas encontradas (com duplicados e lista "não contactar" assinalados)',
+          requestParams: { path: idParam },
+          responses: { '200': ok(data(LeadGenerationRunSchema)), ...withNotFound },
+        }),
+      },
+      '/lead-generation/{id}/add': {
+        post: op({
+          tags: ['Gerador de leads'],
+          summary: 'Criar leads com as empresas escolhidas (pelo índice em `candidates`)',
+          description: 'Duplicados e empresas da lista "não contactar" são saltados. Com `audit`, o site de cada lead é analisado em segundo plano e os resultados aplicados.',
+          requestParams: { path: idParam },
+          requestBody: body(LeadGenerationAddSchema),
+          responses: { '200': ok(data(LeadGenerationAddResultSchema)), '409': problem('A pesquisa ainda não terminou'), ...withNotFound },
         }),
       },
       '/map': {
