@@ -255,6 +255,27 @@ O texto usa os dados do lead, a última análise do site e os argumentos de vend
 
 ---
 
+## Enviar emails pela plataforma
+
+Os botões **Enviar** (email de prospeção, scripts de contacto, Escrever com IA) e **Enviar por email (com o PDF)** na proposta enviam o email diretamente da plataforma, a partir da tua caixa de correio:
+
+- Abre uma janela com Para, Assunto e Mensagem já preenchidos: revês e carregas em **Enviar**.
+- O email sai com o teu nome; as respostas chegam à tua caixa normal.
+- Fica registado na linha do tempo do lead ("Enviado pela plataforma") e o lead avança de estado. Um lead *Identificado* passa a *Contactado*, com o follow-up agendado. A proposta passa a *Enviada*.
+- Empresas na lista **Não contactar** e leads anonimizados são recusados.
+- Há um **limite diário** (por omissão 50 emails em 24 horas), para o teu email não ser marcado como spam.
+
+**Ligar o Gmail** (Definições → **Email de envio**):
+
+1. Liga a *Verificação em dois passos* em https://myaccount.google.com/security.
+2. Abre https://myaccount.google.com/apppasswords, escreve "VNDesign Leads" e carrega em **Criar**.
+3. Na plataforma escolhe **Gmail**, escreve o teu email e cola as 16 letras em *Palavra-passe de aplicação*.
+4. Carrega em **Guardar** e depois em **Enviar email de teste**.
+
+O Gmail guarda os emails enviados na pasta "Enviados". Com o email da Hostinger (ou outro SMTP) isso não acontece: liga a opção *cópia oculta* para receberes uma cópia de cada email. A palavra-passe fica cifrada no servidor, como as chaves de IA (ver `AI_KEYS_SECRET` no `.env.example`), e nunca volta a aparecer.
+
+---
+
 ## Fornecedores de IA (Claude, ChatGPT, OpenRouter…)
 
 - **Definições → Inteligência artificial → Juntar chave:** Anthropic (Claude), OpenAI (ChatGPT),

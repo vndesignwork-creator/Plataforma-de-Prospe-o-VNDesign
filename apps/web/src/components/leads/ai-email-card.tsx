@@ -25,6 +25,7 @@ import { Field } from '@/components/ui/field';
 import { Input, Select, Textarea } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api-client';
 import { useAiEmail, useLogActivity, useSettings, useUpdateLead } from '@/lib/queries';
+import { SendEmailButton } from '@/components/email/send-email-dialog';
 
 /** Tipo de email sugerido pelo estado do lead. */
 function defaultKind(lead: Lead): AiEmailKind {
@@ -194,7 +195,8 @@ export function AiEmailCard({ lead }: { lead: Lead }) {
                 />
               </Field>
               <div className="flex flex-wrap justify-end gap-2">
-                <Button size="sm" onClick={onCopy}>
+                <SendEmailButton lead={lead} subject={draft.subject} body={draft.body} template="Email com IA" />
+                <Button size="sm" variant="outline" onClick={onCopy}>
                   <Copy className="h-3.5 w-3.5" aria-hidden /> Copiar
                 </Button>
                 <Button size="sm" variant="outline" onClick={onMailto}>

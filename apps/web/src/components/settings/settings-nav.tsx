@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 /** Secções das Definições: cada uma é uma página (/definicoes/<slug>). */
 export const SETTINGS_SECTIONS = [
   { slug: 'assinatura', label: 'Assinatura' },
+  { slug: 'email', label: 'Email de envio' },
   { slug: 'lembretes', label: 'Follow-up e lembretes' },
   { slug: 'servicos', label: 'Serviços' },
   { slug: 'propostas', label: 'Propostas' },

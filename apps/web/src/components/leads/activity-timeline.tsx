@@ -89,8 +89,19 @@ function describe(a: Activity): string | null {
       return p.source ? `Origem: ${String(p.source)}` : null;
     case 'email_copied':
       return p.template ? `Modelo: ${String(p.template)}` : p.part === 'subject' ? 'Assunto' : p.part === 'body' ? 'Corpo do email' : null;
-    case 'email_mailto':
     case 'email_sent':
+      if (p.via === 'platform') {
+        const files = Array.isArray(p.attachments) ? (p.attachments as string[]) : [];
+        return [
+          `Enviado pela plataforma para ${String(p.to)}`,
+          p.template ? `Modelo: ${String(p.template)}` : null,
+          files.length ? `Anexo: ${files.join(', ')}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ');
+      }
+      return p.template ? `Modelo: ${String(p.template)}` : null;
+    case 'email_mailto':
     case 'call_logged':
     case 'template_used':
       return p.template ? `Modelo: ${String(p.template)}` : null;

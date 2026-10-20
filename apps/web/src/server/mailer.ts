@@ -21,3 +21,39 @@ export async function sendMail(message: { to: string; subject: string; text: str
   const from = process.env.SMTP_FROM ?? (process.env.SMTP_USER ? `VNDesign Leads <${process.env.SMTP_USER}>` : 'VNDesign Leads <leads@localhost>');
   await transport.sendMail({ from, ...message });
 }
+
+/** Conta SMTP de um utilizador (Definições → Email de envio), já com a palavra-passe aberta. */
+export interface SmtpAccount {
+  fromName: string;
+  fromEmail: string;
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string | null;
+  password: string | null;
+}
+
+/** Envia pela caixa de correio do utilizador (as respostas voltam para ela). */
+export async function sendWithAccount(
+  account: SmtpAccount,
+  message: {
+    to: string;
+    bcc?: string;
+    subject: string;
+    text: string;
+    html: string;
+    attachments?: { filename: string; content: Buffer; contentType: string }[];
+  },
+) {
+  const transport = nodemailer.createTransport({
+    host: account.host,
+    port: account.port,
+    secure: account.secure,
+    auth: account.user ? { user: account.user, pass: account.password ?? '' } : undefined,
+    connectionTimeout: 20_000,
+    greetingTimeout: 20_000,
+    socketTimeout: 60_000,
+  });
+  const from = { name: account.fromName, address: account.fromEmail };
+  return transport.sendMail({ from, replyTo: from, ...message });
+}

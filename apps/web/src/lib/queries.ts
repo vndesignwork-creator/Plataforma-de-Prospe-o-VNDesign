@@ -45,6 +45,7 @@ import type {
   LeadGenerationAddResult,
   LeadGenerationRequestInput,
   LeadGenerationRun,
+  MailAccount,
 } from '@vndesign/core';
 import { api } from './api-client';
 
@@ -460,5 +461,16 @@ export function useAddGeneratedLeads(runId: string) {
       void qc.invalidateQueries({ queryKey: ['leads'] });
       void qc.invalidateQueries({ queryKey: ['board'] });
     },
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Email de envio
+// -----------------------------------------------------------------------------
+
+export function useMailAccount() {
+  return useQuery({
+    queryKey: ['mail-account'],
+    queryFn: () => api<{ data: MailAccount | null }>('/mail-account').then((r) => r.data),
   });
 }

@@ -14,6 +14,10 @@ import {
   TaskTemplateUpdateSchema,
   AiEmailRequestSchema,
   AiEmailResultSchema,
+  LeadEmailSendResultSchema,
+  LeadEmailSendSchema,
+  MailAccountSchema,
+  MailAccountUpsertSchema,
   AiProviderCreateSchema,
   AiProviderSchema,
   AiProviderTestResultSchema,
@@ -166,6 +170,7 @@ export function getOpenApiDocument() {
       { name: 'Email com IA' },
       { name: 'Gerador de leads' },
       { name: 'Fornecedores de IA' },
+      { name: 'Email' },
       { name: 'Mapa' },
     ],
     paths: {
@@ -812,6 +817,54 @@ export function getOpenApiDocument() {
             '503': problem('ANTHROPIC_API_KEY em falta ou inválida'),
             ...withNotFound,
           },
+        }),
+      },
+      '/mail-account': {
+        get: op({
+          tags: ['Email'],
+          summary: 'Conta de envio do utilizador (sem a palavra-passe), ou null',
+          responses: { '200': ok(data(MailAccountSchema.nullable())), ...common },
+        }),
+        put: op({
+          tags: ['Email'],
+          summary: 'Ligar ou mudar a conta de envio (Gmail, Hostinger ou outro SMTP)',
+          description: 'A palavra-passe fica cifrada no servidor; vazia = manter a atual.',
+          requestBody: body(MailAccountUpsertSchema),
+          responses: { '200': ok(data(MailAccountSchema)), ...common },
+        }),
+        delete: op({ tags: ['Email'], summary: 'Desligar a conta de envio', responses: { '204': { description: 'Desligada' }, ...common } }),
+      },
+      '/mail-account/test': {
+        post: op({
+          tags: ['Email'],
+          summary: 'Enviar um email de teste para o próprio',
+          responses: { '200': ok(data(z.object({ sent_to: z.string() }))), '422': problem('Sem conta ou palavra-passe recusada'), ...common },
+        }),
+      },
+      '/leads/{id}/email': {
+        post: op({
+          tags: ['Email'],
+          summary: 'Enviar um email ao lead pela conta do utilizador',
+          description:
+            'Regista "Email enviado" na linha do tempo; um lead "Identificado" passa a "Contactado" (follow-up agendado). Recusa leads anonimizados, a lista "não contactar" e acima do limite diário.',
+          requestParams: { path: leadId },
+          requestBody: body(LeadEmailSendSchema),
+          responses: {
+            '200': ok(data(LeadEmailSendResultSchema)),
+            '422': problem('Sem conta de envio, lead anonimizado ou na lista "não contactar"'),
+            '429': problem('Limite diário atingido'),
+            ...withNotFound,
+          },
+        }),
+      },
+      '/proposals/{id}/email': {
+        post: op({
+          tags: ['Email'],
+          summary: 'Enviar a proposta por email, com o PDF em anexo',
+          description: 'A proposta fica "Enviada" e o lead avança para "Proposta enviada".',
+          requestParams: { path: idParam },
+          requestBody: body(LeadEmailSendSchema),
+          responses: { '200': ok(data(LeadEmailSendResultSchema)), '429': problem('Limite diário atingido'), ...withNotFound },
         }),
       },
       '/ai-providers': {

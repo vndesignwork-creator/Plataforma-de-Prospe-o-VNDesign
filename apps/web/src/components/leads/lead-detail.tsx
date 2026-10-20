@@ -68,6 +68,7 @@ import { TasksCard } from '@/components/tasks/tasks-card';
 import { NotesCard } from './notes-card';
 import { SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 import { ServiceChips, useServiceCatalog } from '@/components/services/services';
+import { SendEmailButton } from '@/components/email/send-email-dialog';
 
 function Row({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
@@ -453,7 +454,7 @@ export function LeadDetail({ id }: { id: string }) {
           <Card>
             <CardHeader
               title="Email de prospeção"
-              description="Pronto a copiar ou abrir no teu cliente de email."
+              description="Pronto a enviar, copiar ou abrir no teu cliente de email."
               actions={
                 <>
                   {!lead.anonymized_at ? (
@@ -472,10 +473,16 @@ export function LeadDetail({ id }: { id: string }) {
                         <Copy className="h-3.5 w-3.5" aria-hidden />
                         Copiar tudo
                       </Button>
-                      <Button size="sm" onClick={openMailto}>
+                      <Button size="sm" variant="outline" onClick={openMailto}>
                         <Mail className="h-3.5 w-3.5" aria-hidden />
                         Abrir no email
                       </Button>
+                      <SendEmailButton
+                        lead={lead}
+                        subject={lead.email_subject ?? ''}
+                        body={lead.email_body ?? ''}
+                        template="Email de prospeção"
+                      />
                     </>
                   ) : null}
                 </>

@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Input, Select, Textarea } from '@/components/ui/input';
 import { useServiceCatalog } from '@/components/services/services';
+import { SendEmailButton } from '@/components/email/send-email-dialog';
 import { errorMessage } from '@/lib/api-client';
 import { useLogActivity, useTemplates, useUpdateLead } from '@/lib/queries';
 import { EMAIL_KINDS, useTemplateContext } from '@/lib/template-context';
@@ -232,7 +233,10 @@ export function ContactScriptsCard({ lead }: { lead: Lead }) {
         </div>
 
         <div className="flex flex-wrap justify-end gap-2">
-          <Button size="sm" onClick={onCopy}>
+          {isEmail ? (
+            <SendEmailButton lead={lead} subject={subject} body={body} template={template.name} onSent={() => setDraft(null)} />
+          ) : null}
+          <Button size="sm" variant={isEmail ? 'outline' : 'primary'} onClick={onCopy}>
             <Copy className="h-3.5 w-3.5" aria-hidden /> Copiar
           </Button>
           {isEmail ? (

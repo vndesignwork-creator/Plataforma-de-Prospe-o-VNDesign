@@ -5,11 +5,13 @@ import {
   PROPOSAL_STATUS_LABELS,
   formatCurrency,
   formatDate,
+  formatSignature,
   isRecurringPackage,
   itemFromPackage,
   mailtoUrl,
   parseEuroAmount,
   proposalTotals,
+  slugify,
   suggestPackages,
   suggestProposalIntro,
   type Lead,
@@ -34,7 +36,8 @@ import { Input, Select, Textarea } from '@/components/ui/input';
 import { DateInput } from '@/components/ui/date-input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
-import { useAudits, useInvalidateLead, useLead, useLogActivity, usePackages, useProposal } from '@/lib/queries';
+import { useAudits, useInvalidateLead, useLead, useLogActivity, usePackages, useProposal, useSignature } from '@/lib/queries';
+import { SendEmailButton } from '@/components/email/send-email-dialog';
 import { PROPOSAL_TONES } from './proposals-card';
 
 /** Item em edição (números como texto para o utilizador poder escrever "1.200,50"). */
@@ -78,6 +81,7 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
   const qc = useQueryClient();
   const invalidateLead = useInvalidateLead();
   const log = useLogActivity(lead.id);
+  const { data: signature } = useSignature();
   const { data: packages } = usePackages();
   // Grupos pela ordem das categorias (e, por segurança, alguma que só exista nos pacotes).
   const packageCategories = [
@@ -197,11 +201,18 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
     }
   }
 
-  function sendByEmail() {
-    if (!proposal) return;
+  /** Assunto e texto do email da proposta (sem assinatura: o programa de email junta a sua). */
+  function proposalEmail() {
+    if (!proposal) return { subject: '', body: '' };
     const subject = `Proposta ${proposal.code} — ${lead.company_name}`;
     const hello = lead.contact_name ? `Olá ${lead.contact_name},` : 'Olá,';
     const body = `${hello}\n\nSegue em anexo a proposta para o novo site da ${lead.company_name}, com o que conversámos.\n\nTotal: ${formatCurrency(proposal.total)}${proposal.valid_until ? ` · válida até ${formatDate(proposal.valid_until)}` : ''}.\n\nFico ao dispor para qualquer dúvida.\n\nCumprimentos,`;
+    return { subject, body };
+  }
+
+  function sendByEmail() {
+    if (!proposal) return;
+    const { subject, body } = proposalEmail();
     log.mutate({ type: 'email_mailto', payload: { template: `Proposta ${proposal.code}` } });
     toast.info('Não te esqueças de anexar o PDF (descarrega-o primeiro).');
     window.location.href = mailtoUrl(lead.email, subject, body);
@@ -456,8 +467,20 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
               </Button>
               {proposal ? (
                 <>
-                  <Button variant="outline" onClick={sendByEmail}>
-                    <Mail className="h-4 w-4" aria-hidden /> Enviar por email
+                  <SendEmailButton
+                    size="md"
+                    label="Enviar por email (com o PDF)"
+                    lead={lead}
+                    subject={proposalEmail().subject}
+                    body={[proposalEmail().body, formatSignature(signature)].filter(Boolean).join('\n')}
+                    proposal={{ id: proposal.id, filename: `Proposta-${proposal.code}-${slugify(lead.company_name) || 'cliente'}.pdf` }}
+                    onSent={() => {
+                      void qc.invalidateQueries({ queryKey: ['proposal', proposal.id] });
+                      void qc.invalidateQueries({ queryKey: ['proposals', lead.id] });
+                    }}
+                  />
+                  <Button variant="ghost" onClick={sendByEmail}>
+                    <Mail className="h-4 w-4" aria-hidden /> Abrir no meu programa de email
                   </Button>
                   {proposal.status === 'rascunho' ? (
                     <Button variant="secondary" onClick={() => void setStatus('enviada')} loading={busy}>
