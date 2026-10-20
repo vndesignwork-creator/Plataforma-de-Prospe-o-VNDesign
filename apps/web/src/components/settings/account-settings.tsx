@@ -8,7 +8,8 @@ import { useTheme } from '@/components/layout/theme';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
-import { Input, Select } from '@/components/ui/input';
+import { Select } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { useMe } from '@/lib/queries';
 import { getSupabaseBrowserClient } from '@/lib/supabase-browser';
 
@@ -46,10 +47,10 @@ export function AccountSettings() {
         <form onSubmit={onSubmit} className="flex flex-col gap-3" noValidate>
           <h3 className="text-sm font-semibold">Alterar palavra-passe</h3>
           <Field label="Nova palavra-passe" error={errors.password?.message}>
-            <Input type="password" autoComplete="new-password" {...register('password')} />
+            <PasswordInput autoComplete="new-password" {...register('password')} />
           </Field>
           <Field label="Confirmar" error={errors.confirm?.message}>
-            <Input type="password" autoComplete="new-password" {...register('confirm')} />
+            <PasswordInput autoComplete="new-password" {...register('confirm')} />
           </Field>
           <div className="flex justify-end">
             <Button type="submit" size="sm" loading={isSubmitting}>

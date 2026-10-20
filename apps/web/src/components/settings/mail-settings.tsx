@@ -15,6 +15,7 @@ import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input, Select } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useMailAccount, useSignature } from '@/lib/queries';
 
@@ -159,9 +160,11 @@ function MailForm({ account, defaultName }: { account: MailAccount | null; defau
               : preset.help
         }
       >
-        <Input
-          type="password"
-          autoComplete="off"
+        {/* new-password: o Chrome não preenche aqui a palavra-passe de entrada na plataforma. */}
+        <PasswordInput
+          autoComplete="new-password"
+          data-1p-ignore
+          data-lpignore="true"
           spellCheck={false}
           value={form.password}
           onChange={(e) => setForm({ ...form, password: e.target.value })}

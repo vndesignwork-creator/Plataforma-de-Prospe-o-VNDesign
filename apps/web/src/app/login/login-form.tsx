@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { getSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { safeNextPath } from '@/lib/utils';
 
@@ -70,7 +71,7 @@ export function LoginForm() {
         <Input type="email" autoComplete="email" inputMode="email" autoFocus {...register('email')} />
       </Field>
       <Field label="Palavra-passe" error={errors.password?.message} required>
-        <Input type="password" autoComplete="current-password" {...register('password')} />
+        <PasswordInput autoComplete="current-password" {...register('password')} />
       </Field>
       <Button type="submit" loading={isSubmitting} className="mt-2 w-full">
         Entrar

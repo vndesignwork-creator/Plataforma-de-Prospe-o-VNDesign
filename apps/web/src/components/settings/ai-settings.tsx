@@ -23,6 +23,7 @@ import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input, Select } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useMe, useSettings } from '@/lib/queries';
 
@@ -115,9 +116,10 @@ function ProviderDialog({ draft, onClose }: { draft: Draft; onClose: () => void 
           error={errors.api_key?.[0]}
           hint={form.id ? 'Deixa vazio para manter a chave atual.' : meta.keyHelp}
         >
-          <Input
-            type="password"
-            autoComplete="off"
+          <PasswordInput
+            autoComplete="new-password"
+            data-1p-ignore
+            data-lpignore="true"
             spellCheck={false}
             value={form.api_key}
             onChange={(e) => setForm({ ...form, api_key: e.target.value })}
