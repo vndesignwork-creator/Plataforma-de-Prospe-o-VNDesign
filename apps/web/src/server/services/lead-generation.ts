@@ -264,7 +264,7 @@ function claudeError(error: unknown): ApiError | unknown {
       return new ApiError(
         503,
         'Pesquisa na internet desativada',
-        'Ativa a pesquisa na internet em console.anthropic.com → Settings → Privacy (web search e web fetch) e tenta outra vez.',
+        'A pesquisa na internet está desligada na conta da Anthropic. Liga-a em platform.claude.com/settings/capabilities (web search e web fetch) e tenta outra vez.',
       );
     }
     console.error('[gerador] pedido recusado', message);

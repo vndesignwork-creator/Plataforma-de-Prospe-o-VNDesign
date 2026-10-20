@@ -268,8 +268,9 @@ O texto usa os dados do lead, a última análise do site e os argumentos de vend
   o Mobile? e os Problemas ficam preenchidos.
 - **Custo:** créditos da Anthropic — tokens do Sonnet 5.5 + 10 $ por 1000 pesquisas na internet;
   no máximo 12 pesquisas e 15 páginas por pesquisa. O custo estimado aparece em cada pesquisa.
-- **Ativar a pesquisa na internet** na conta da Anthropic: console.anthropic.com → Settings →
-  Privacy (*web search* e *web fetch*). Sem isso, a pesquisa termina com um aviso.
+- **Pesquisa na internet** na conta da Anthropic: vem ligada por omissão. Se alguém a desligou,
+  liga-a em platform.claude.com/settings/capabilities (*web search* e *web fetch*); sem ela, a
+  pesquisa termina com um aviso.
 - Uma pesquisa de cada vez; uma pesquisa interrompida (ex.: deploy a meio) fica como “falhou” e
   pode repetir-se. API: `POST /api/v1/lead-generation`, `GET /api/v1/lead-generation/{id}`,
   `POST /api/v1/lead-generation/{id}/add`.
