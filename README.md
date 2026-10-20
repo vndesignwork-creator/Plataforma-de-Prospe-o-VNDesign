@@ -255,11 +255,27 @@ O texto usa os dados do lead, a última análise do site e os argumentos de vend
 
 ---
 
+## Fornecedores de IA (Claude, ChatGPT, OpenRouter…)
+
+- **Definições → Inteligência artificial → Juntar chave:** Anthropic (Claude), OpenAI (ChatGPT),
+  OpenRouter ou *Outro (compatível com OpenAI)* — Groq, Mistral, DeepSeek… (indica o endereço da API).
+  A chave fica **cifrada** (AES-256-GCM) e a API só mostra os últimos 4 carateres. *Testar* confirma
+  a chave e lista os modelos.
+- **Onde usar:** escolhe o fornecedor e o modelo do **email com IA** e do **gerador de leads**.
+  O gerador precisa de pesquisa na internet: Claude, OpenAI ou OpenRouter (o “Outro” não serve).
+- A `ANTHROPIC_API_KEY` do servidor continua a funcionar e aparece como *Claude (chave do servidor)*.
+- Só o dono ou um administrador junta, altera ou apaga chaves. Apagar uma chave em uso faz as
+  funções voltarem à chave do servidor.
+- O custo estimado só aparece com o Claude; com os outros vê-se no painel do fornecedor.
+- Cifra: `AI_KEYS_SECRET` (opcional; por omissão deriva da `SUPABASE_SECRET_KEY`). Se mudar, as
+  chaves guardadas deixam de abrir e é preciso colá-las outra vez.
+
 ## Gerador de leads (Claude com pesquisa na internet)
 
 - Menu **Gerar leads**: descreve que empresas procuras (ex.: “restaurantes sem site ou com site
   antigo”), a zona, o setor e os serviços a propor. O Claude (Sonnet 5.5) pesquisa na internet e
   abre as páginas das empresas durante 1 a 3 minutos, em segundo plano — podes sair da página.
+  Também funciona com OpenAI ou OpenRouter (ver “Fornecedores de IA”).
 - A lista mostra, por empresa, a oportunidade observada, o site ou a rede social, contactos
   públicos da empresa e a **fonte** de cada dado. Duplicados e empresas da lista “não contactar”
   ficam assinalados e não se escolhem.

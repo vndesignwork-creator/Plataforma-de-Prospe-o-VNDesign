@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   formatCurrency,
   parseEuroAmount,
@@ -308,13 +309,10 @@ export function ProposalSettings() {
         <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-accent-text" aria-hidden />
         <p>
           <span className="font-medium">Gerador de emails com IA:</span>{' '}
-          {settings.ai_configured ? (
-            <Badge tone="success">Ativo</Badge>
-          ) : (
-            <span className="text-muted">
-              inativo — define <code>ANTHROPIC_API_KEY</code> no servidor (chave em console.anthropic.com, ver README).
-            </span>
-          )}
+          {settings.ai_configured ? <Badge tone="success">Ativo</Badge> : <span className="text-muted">inativo.</span>}{' '}
+          <Link href="/definicoes/ia" className="text-accent-text hover:underline">
+            Escolher fornecedor e chaves
+          </Link>
         </p>
       </div>
 

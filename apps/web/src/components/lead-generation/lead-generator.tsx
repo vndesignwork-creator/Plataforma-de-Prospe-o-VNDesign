@@ -282,7 +282,8 @@ function RunCard({ id }: { id: string }) {
           run.city,
           run.status === 'done' ? `${run.candidates.length} empresa(s)` : null,
           run.searches ? `${run.searches} pesquisa(s)` : null,
-          cost ? `custo estimado ${cost}` : null,
+          cost ? `custo estimado ${cost}` : run.status === 'done' ? 'custo no painel do fornecedor' : null,
+          run.model,
         ]
           .filter(Boolean)
           .join(' · ')}

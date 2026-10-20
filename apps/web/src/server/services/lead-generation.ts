@@ -5,15 +5,12 @@
  * As empresas só passam a leads quando o utilizador as escolhe; o site de cada
  * lead criado é analisado a seguir (também em segundo plano).
  */
-import Anthropic from '@anthropic-ai/sdk';
-import type { BetaMessageParam, BetaToolUnion } from '@anthropic-ai/sdk/resources/beta/messages/messages';
 import {
   FoundCompanySchema,
+  AI_PROVIDER_META,
   LEAD_GENERATION_DEFAULT_MODEL,
-  LEAD_GENERATION_LIMITS,
+  LEAD_GENERATION_JSON_SYSTEM_PROMPT,
   LEAD_GENERATION_SYSTEM_PROMPT,
-  LEAD_GENERATION_TOOL,
-  LEAD_GENERATION_TOOL_NAME,
   LeadCreateSchema,
   buildLeadGenerationPrompt,
   ensureUrlProtocol,
@@ -29,7 +26,8 @@ import {
   type LeadGenerationRequest,
   type LeadGenerationRun,
 } from '@vndesign/core';
-import { anthropicErrorMessage, anthropicLongClient, isAiConfigured } from '../ai/claude';
+import { searchCompanies, type AiUsage } from '../ai/generate';
+import { resolveAiFeature, type ResolvedProvider } from '../ai/providers';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
 import { createSupabaseBearerClient } from '../supabase';
@@ -37,6 +35,7 @@ import { applyAudit, runLeadAudit } from './audits';
 import { lookupConflicts } from './imports';
 import { createLead } from './leads';
 import { listSectors } from './sectors';
+import { getSettings } from './workspace';
 import { loadServiceCatalog } from './service-catalog';
 
 const RUN_SELECT =
@@ -97,8 +96,14 @@ async function detachedContext(ctx: ApiContext): Promise<ApiContext> {
 
 /** Começa uma pesquisa e devolve-a logo ("a correr"); o resultado chega depois. */
 export async function startLeadGeneration(ctx: ApiContext, request: LeadGenerationRequest): Promise<LeadGenerationRun> {
-  if (!isAiConfigured()) {
-    throw new ApiError(503, 'IA não configurada', 'Define ANTHROPIC_API_KEY no servidor para usar o gerador de leads (ver README).');
+  const settings = await getSettings(ctx);
+  const { provider, model } = await resolveAiFeature(ctx, settings.ai.lead_generation, { anthropicModel: leadGenerationModel() });
+  if (!AI_PROVIDER_META[provider.kind].webSearch) {
+    throw new ApiError(
+      422,
+      'Este fornecedor não pesquisa na internet',
+      `“${provider.label}” não tem pesquisa na internet. Escolhe Claude, OpenAI ou OpenRouter para o gerador de leads em Definições → Inteligência artificial.`,
+    );
   }
   const running = (await listLeadGenerationRuns(ctx)).find((r) => r.status === 'running');
   if (running) {
@@ -114,14 +119,15 @@ export async function startLeadGeneration(ctx: ApiContext, request: LeadGenerati
       sector_id: request.sector_id,
       services: request.services,
       max_results: request.max_results,
-      model: leadGenerationModel(),
+      // O fornecedor só aparece quando não é a chave do servidor (ex.: "OpenAI (ChatGPT) · gpt-5-mini").
+      model: provider.id === 'server' ? model : `${provider.label} · ${model}`,
     })
     .select(RUN_SELECT)
     .single();
   if (error) throw fromPostgrest(error);
   const run = toRun(data as RunRow);
   // Em segundo plano: o pedido responde já e a página vai consultando o estado.
-  void executeRun(await detachedContext(ctx), run.id, request);
+  void executeRun(await detachedContext(ctx), run.id, request, provider, model);
   return run;
 }
 
@@ -134,14 +140,20 @@ async function finishRun(ctx: ApiContext, id: string, patch: Record<string, unkn
   if (error) console.error('[gerador] não foi possível guardar o resultado', error.message);
 }
 
-async function executeRun(ctx: ApiContext, id: string, request: LeadGenerationRequest) {
-  const usage = { input_tokens: 0, output_tokens: 0, searches: 0 };
-  const model = leadGenerationModel();
+async function executeRun(
+  ctx: ApiContext,
+  id: string,
+  request: LeadGenerationRequest,
+  provider: ResolvedProvider,
+  model: string,
+) {
+  const usage: AiUsage = { input_tokens: 0, output_tokens: 0, searches: 0 };
   const totals = () => ({
     searches: usage.searches,
     input_tokens: usage.input_tokens,
     output_tokens: usage.output_tokens,
-    cost_usd: estimateLeadGenerationCost(model, usage),
+    // Só se conhece o preço dos modelos da Anthropic; nos outros vê-se no painel do fornecedor.
+    cost_usd: provider.kind === 'anthropic' ? estimateLeadGenerationCost(model, usage) : null,
   });
   try {
     const [sectors, services, existingNames] = await Promise.all([
@@ -156,7 +168,13 @@ async function executeRun(ctx: ApiContext, id: string, request: LeadGenerationRe
       services,
       existingNames,
     });
-    const found = await searchWithClaude(model, prompt, request, usage);
+    const { companies } = await searchCompanies(
+      provider,
+      model,
+      { system: LEAD_GENERATION_SYSTEM_PROMPT, jsonSystem: LEAD_GENERATION_JSON_SYSTEM_PROMPT, prompt, city: request.city },
+      usage,
+    );
+    const found = parseCompanies({ empresas: companies }, request.max_results);
     const candidates = await toCandidates(ctx, found, request, {
       sectors: sectors.map((s) => ({ id: s.id, name: s.name })),
       serviceKeys: new Set(services.filter((s) => !s.archived_at).map((s) => s.key)),
@@ -181,106 +199,6 @@ async function existingLeadNames(ctx: ApiContext, city: string | null): Promise<
   if (city) q = q.ilike('city', `%${city.replace(/[%_,()]/g, ' ').trim()}%`);
   const { data } = await q;
   return [...new Set(((data ?? []) as { company_name: string }[]).map((r) => r.company_name))];
-}
-
-async function searchWithClaude(
-  model: string,
-  prompt: string,
-  request: LeadGenerationRequest,
-  usage: { input_tokens: number; output_tokens: number; searches: number },
-): Promise<FoundCompany[]> {
-  const tools = [
-    {
-      type: 'web_search_20260209',
-      name: 'web_search',
-      max_uses: LEAD_GENERATION_LIMITS.webSearches,
-      user_location: { type: 'approximate', country: 'PT', city: request.city ?? 'Amadora', timezone: 'Europe/Lisbon' },
-    },
-    { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: LEAD_GENERATION_LIMITS.webFetches },
-    LEAD_GENERATION_TOOL,
-  ] as unknown as BetaToolUnion[];
-  const messages: BetaMessageParam[] = [{ role: 'user', content: prompt }];
-  let asked = false;
-
-  // Pesquisas longas pausam ("pause_turn"): reenvia-se a conversa e o servidor continua.
-  for (let round = 0; round < 8; round++) {
-    let response;
-    try {
-      response = await anthropicLongClient().beta.messages.create({
-        model,
-        max_tokens: 16000,
-        // Se o pedido for recusado pelos filtros de segurança, a API tenta outro modelo.
-        betas: ['server-side-fallback-2026-07-01'],
-        fallbacks: 'default',
-        output_config: { effort: 'medium' },
-        system: [{ type: 'text', text: LEAD_GENERATION_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
-        tools,
-        messages,
-      });
-    } catch (error) {
-      throw claudeError(error);
-    }
-    usage.input_tokens +=
-      response.usage.input_tokens + (response.usage.cache_creation_input_tokens ?? 0) + (response.usage.cache_read_input_tokens ?? 0);
-    usage.output_tokens += response.usage.output_tokens;
-    usage.searches += response.usage.server_tool_use?.web_search_requests ?? 0;
-
-    if (response.stop_reason === 'refusal') {
-      throw new ApiError(422, 'Pedido recusado pela IA', 'Reformula o pedido e tenta outra vez.');
-    }
-    const call = response.content.find((b) => b.type === 'tool_use' && b.name === LEAD_GENERATION_TOOL_NAME);
-    if (call && call.type === 'tool_use') return parseCompanies(call.input, request.max_results);
-
-    if (response.stop_reason === 'max_tokens') {
-      throw new ApiError(502, 'Resposta incompleta da IA', 'Pede menos empresas e tenta outra vez.');
-    }
-    messages.push({ role: 'assistant', content: response.content });
-    if (response.stop_reason !== 'pause_turn') {
-      // Terminou sem entregar a lista: pede-a uma vez.
-      if (asked) break;
-      asked = true;
-      messages.push({
-        role: 'user',
-        content: `Chama agora a ferramenta ${LEAD_GENERATION_TOOL_NAME} com as empresas que encontraste (mesmo que sejam poucas ou nenhuma).`,
-      });
-    }
-  }
-  throw new ApiError(502, 'A IA não entregou a lista', 'Tenta outra vez, com um pedido mais concreto.');
-}
-
-function claudeError(error: unknown): ApiError | unknown {
-  if (error instanceof Anthropic.AuthenticationError) {
-    return new ApiError(503, 'Chave da IA inválida', `A Anthropic recusou a chave: ${anthropicErrorMessage(error)}`);
-  }
-  if (error instanceof Anthropic.PermissionDeniedError) {
-    return new ApiError(503, 'Chave sem permissão', `A Anthropic recusou o pedido: ${anthropicErrorMessage(error)}`);
-  }
-  if (error instanceof Anthropic.BadRequestError) {
-    const message = anthropicErrorMessage(error);
-    if (/credit balance/i.test(message)) {
-      return new ApiError(402, 'Sem créditos na Anthropic', 'A conta não tem créditos. Compra créditos em console.anthropic.com → Billing.');
-    }
-    if (/web.?search|web.?fetch/i.test(message)) {
-      return new ApiError(
-        503,
-        'Pesquisa na internet desativada',
-        'A pesquisa na internet está desligada na conta da Anthropic. Liga-a em platform.claude.com/settings/capabilities (web search e web fetch) e tenta outra vez.',
-      );
-    }
-    console.error('[gerador] pedido recusado', message);
-    return new ApiError(502, 'Erro da IA', `A Anthropic respondeu: ${message}`);
-  }
-  if (error instanceof Anthropic.RateLimitError) {
-    return new ApiError(429, 'Demasiados pedidos', 'O limite da IA foi atingido. Tenta outra vez dentro de um minuto.');
-  }
-  if (error instanceof Anthropic.APIConnectionTimeoutError) {
-    return new ApiError(504, 'A IA demorou demasiado', 'Tenta outra vez, com menos empresas.');
-  }
-  if (error instanceof Anthropic.APIError) {
-    console.error('[gerador] erro da API', error.status, anthropicErrorMessage(error));
-    return new ApiError(502, 'Erro da IA', `A Anthropic respondeu ${error.status ?? 'com um erro'}: ${anthropicErrorMessage(error)}`);
-  }
-  return error;
 }
 
 /** Valida cada empresa à parte: uma mal formada não estraga as outras. */

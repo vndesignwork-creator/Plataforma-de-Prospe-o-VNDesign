@@ -14,6 +14,10 @@ import {
   TaskTemplateUpdateSchema,
   AiEmailRequestSchema,
   AiEmailResultSchema,
+  AiProviderCreateSchema,
+  AiProviderSchema,
+  AiProviderTestResultSchema,
+  AiProviderUpdateSchema,
   LeadGenerationAddResultSchema,
   LeadGenerationAddSchema,
   LeadGenerationRequestSchema,
@@ -161,6 +165,7 @@ export function getOpenApiDocument() {
       { name: 'Propostas' },
       { name: 'Email com IA' },
       { name: 'Gerador de leads' },
+      { name: 'Fornecedores de IA' },
       { name: 'Mapa' },
     ],
     paths: {
@@ -807,6 +812,43 @@ export function getOpenApiDocument() {
             '503': problem('ANTHROPIC_API_KEY em falta ou inválida'),
             ...withNotFound,
           },
+        }),
+      },
+      '/ai-providers': {
+        get: op({
+          tags: ['Fornecedores de IA'],
+          summary: 'Fornecedores de IA (chave do servidor e chaves guardadas; a chave nunca é devolvida)',
+          responses: { '200': ok(data(z.array(AiProviderSchema))), ...common },
+        }),
+        post: op({
+          tags: ['Fornecedores de IA'],
+          summary: 'Juntar uma chave (Anthropic, OpenAI, OpenRouter ou compatível com a OpenAI) — dono/administrador',
+          description: 'A chave fica cifrada no servidor. Escolhe-se onde usar em PATCH /settings (ai.email / ai.lead_generation).',
+          requestBody: body(AiProviderCreateSchema),
+          responses: { '201': ok(data(AiProviderSchema), 'Criado'), '403': problem('Só o dono ou um administrador'), '409': problem('Nome repetido'), ...common },
+        }),
+      },
+      '/ai-providers/{id}': {
+        patch: op({
+          tags: ['Fornecedores de IA'],
+          summary: 'Mudar o nome, a chave ou o endereço',
+          requestParams: { path: idParam },
+          requestBody: body(AiProviderUpdateSchema),
+          responses: { '200': ok(data(AiProviderSchema)), '403': problem('Só o dono ou um administrador'), ...withNotFound },
+        }),
+        delete: op({
+          tags: ['Fornecedores de IA'],
+          summary: 'Apagar (as funções que o usavam voltam à chave do servidor)',
+          requestParams: { path: idParam },
+          responses: { '204': { description: 'Apagado' }, '403': problem('Só o dono ou um administrador'), ...withNotFound },
+        }),
+      },
+      '/ai-providers/{id}/test': {
+        post: op({
+          tags: ['Fornecedores de IA'],
+          summary: 'Confirmar a chave e listar os modelos disponíveis (id "server" = chave do servidor)',
+          requestParams: { path: z.object({ id: z.string() }) },
+          responses: { '200': ok(data(AiProviderTestResultSchema)), ...withNotFound },
         }),
       },
       '/lead-generation': {

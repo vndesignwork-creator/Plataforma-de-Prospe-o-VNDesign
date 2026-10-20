@@ -30,47 +30,37 @@ export function aiModel(): string {
   return process.env.ANTHROPIC_MODEL || DEFAULT_AI_MODEL;
 }
 
-let client: { key: string; instance: Anthropic } | null = null;
-export function anthropicClient(): Anthropic {
-  const key = aiApiKey() ?? '';
-  // Recria o cliente se a chave mudar (ex.: corrigida no .env.local).
-  if (!client || client.key !== key) {
-    // 55 s por pedido e uma repetição: cabe no limite de 60 s das funções do Vercel.
-    client = {
-      key,
-      // Endereço fixo: uma ANTHROPIC_BASE_URL definida no sistema (por outra ferramenta) não é usada.
-      instance: new Anthropic({
-        apiKey: key,
-        authToken: null,
-        baseURL: process.env.AI_BASE_URL || 'https://api.anthropic.com',
-        timeout: 55_000,
-        maxRetries: 1,
-      }),
-    };
+const clients = new Map<string, Anthropic>();
+
+/**
+ * Cliente da Anthropic para uma chave (a do servidor ou uma das Definições).
+ * Normal: 55 s por pedido e uma repetição. Longo (gerador de leads, que pesquisa
+ * durante 1–3 minutos em segundo plano): 5 minutos.
+ */
+export function anthropicClientFor(key: string, options: { long?: boolean } = {}): Anthropic {
+  const cacheKey = `${options.long ? 'long' : 'short'}:${key}`;
+  let instance = clients.get(cacheKey);
+  if (!instance) {
+    // Endereço fixo: uma ANTHROPIC_BASE_URL definida no sistema (por outra ferramenta) não é usada.
+    instance = new Anthropic({
+      apiKey: key,
+      authToken: null,
+      baseURL: process.env.AI_BASE_URL || 'https://api.anthropic.com',
+      timeout: options.long ? 5 * 60_000 : 55_000,
+      maxRetries: 1,
+    });
+    if (clients.size > 20) clients.clear();
+    clients.set(cacheKey, instance);
   }
-  return client.instance;
+  return instance;
 }
 
-let longClient: { key: string; instance: Anthropic } | null = null;
-/**
- * Cliente para pedidos longos (gerador de leads: o Claude pesquisa e abre páginas
- * durante 1–3 minutos). Corre em segundo plano, por isso não tem o limite de 55 s.
- */
+export function anthropicClient(): Anthropic {
+  return anthropicClientFor(aiApiKey() ?? '');
+}
+
 export function anthropicLongClient(): Anthropic {
-  const key = aiApiKey() ?? '';
-  if (!longClient || longClient.key !== key) {
-    longClient = {
-      key,
-      instance: new Anthropic({
-        apiKey: key,
-        authToken: null,
-        baseURL: process.env.AI_BASE_URL || 'https://api.anthropic.com',
-        timeout: 5 * 60_000,
-        maxRetries: 1,
-      }),
-    };
-  }
-  return longClient.instance;
+  return anthropicClientFor(aiApiKey() ?? '', { long: true });
 }
 
 /** Mensagem da API da Anthropic (ex.: "invalid x-api-key"), para mostrar no erro. */

@@ -1,4 +1,5 @@
 import { WorkspaceSettingsSchema, type Me, type Signature, type WorkspaceSettings } from '@vndesign/core';
+import { assertAiProviderExists } from '../ai/providers';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest, unwrap } from '../http';
 
@@ -61,11 +62,15 @@ export async function updateSettings(
   ctx: ApiContext,
   patch: Partial<Pick<WorkspaceSettings, 'follow_up_days' | 'auto_archive_days' | 'opt_out_line' | 'proposal'>> & {
     daily_digest?: { enabled: boolean; recipient: string | null };
+    ai?: Partial<WorkspaceSettings['ai']>;
   },
 ): Promise<WorkspaceSettings> {
   if (ctx.role === 'member') throw new ApiError(403, 'Sem permissão', 'Só o dono ou um administrador pode alterar as definições.');
   const current = await getSettings(ctx);
-  const next = { ...current, ...patch };
+  for (const feature of [patch.ai?.email, patch.ai?.lead_generation]) {
+    if (feature) await assertAiProviderExists(ctx, feature.provider);
+  }
+  const next = { ...current, ...patch, ai: { ...current.ai, ...patch.ai } };
   const { error } = await ctx.supabase.from('workspaces').update({ settings: next }).eq('id', ctx.workspaceId);
   if (error) throw fromPostgrest(error);
   return WorkspaceSettingsSchema.parse(next);

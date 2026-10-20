@@ -16,6 +16,7 @@ import {
   type SectorIcon,
 } from './enums';
 import { ensureUrlProtocol } from './normalize';
+import { AiSettingsSchema, AiSettingsUpdateSchema, SERVER_AI_PROVIDER } from './ai-providers';
 import { ServiceCategoryKeySchema, ServiceKeyListSchema, ServiceKeySchema } from './services';
 import { TodayTasksSchema } from './tasks';
 
@@ -466,6 +467,11 @@ export const WorkspaceSettingsSchema = z
         next_steps:
           'Para avançar, basta responder a este email ou ligar-me. Marcamos uma reunião curta para afinar os detalhes e começo de imediato.',
       }),
+    /** Fornecedor e modelo de IA de cada função (Definições → Inteligência artificial). */
+    ai: AiSettingsSchema.default({
+      email: { provider: SERVER_AI_PROVIDER, model: null },
+      lead_generation: { provider: SERVER_AI_PROVIDER, model: null },
+    }),
   })
   .meta({ id: 'WorkspaceSettings' });
 export type WorkspaceSettings = z.infer<typeof WorkspaceSettingsSchema>;
@@ -489,6 +495,7 @@ export const WorkspaceSettingsUpdateSchema = z
       tax_note: z.string().trim().max(500),
       next_steps: z.string().trim().max(1000),
     }),
+    ai: AiSettingsUpdateSchema,
   })
   .partial()
   .meta({ id: 'WorkspaceSettingsUpdate' });
