@@ -17,7 +17,15 @@ import { cpSync, existsSync } from 'node:fs';
 const result = spawnSync('npm', ['run', 'build', '-w', '@vndesign/web', '--', '--webpack'], {
   stdio: 'inherit',
   shell: process.platform === 'win32',
-  env: { ...process.env, BUILD_STANDALONE: '1', NEXT_TELEMETRY_DISABLED: '1' },
+  env: {
+    ...process.env,
+    BUILD_STANDALONE: '1',
+    NEXT_TELEMETRY_DISABLED: '1',
+    // Menos tarefas paralelas no compilador (SWC) e no Node: a Hostinger limita o
+    // número de processos/tarefas no build (ver experimental.cpus em next.config.ts).
+    RAYON_NUM_THREADS: process.env.RAYON_NUM_THREADS || '2',
+    UV_THREADPOOL_SIZE: process.env.UV_THREADPOOL_SIZE || '4',
+  },
 });
 if (result.status !== 0) process.exit(result.status ?? 1);
 

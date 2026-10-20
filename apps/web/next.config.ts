@@ -48,6 +48,10 @@ const nextConfig: NextConfig = {
   deploymentId: BUILD_ID,
   // Imagem Docker (Coolify): BUILD_STANDALONE=1 gera um servidor Node autónomo.
   output: process.env.BUILD_STANDALONE ? 'standalone' : undefined,
+  // A máquina de build da Hostinger tem muitos processadores mas um limite baixo de
+  // processos: com um processo por processador o build rebenta ("can't spawn worker
+  // thread", SIGABRT). No build standalone usa-se no máximo 2 (NEXT_BUILD_CPUS muda-o).
+  experimental: process.env.BUILD_STANDALONE ? { cpus: Number(process.env.NEXT_BUILD_CPUS) || 2 } : undefined,
   async headers() {
     return [
       { source: '/:path*', headers: securityHeaders },
