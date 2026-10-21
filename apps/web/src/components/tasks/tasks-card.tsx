@@ -343,8 +343,12 @@ function TemplateMenu({ templates, suggested, onApply }: { templates: TaskTempla
   );
 }
 
-/** Cartão "Tarefas" da ficha: lista com caixas, por ordem (arrastar), prazos e listas prontas por serviço. */
-export function TasksCard({ lead }: { lead: Lead }) {
+/**
+ * Cartão "Tarefas" da ficha: lista com caixas, por ordem (arrastar), prazos e
+ * listas prontas por serviço. `embedded`: só o campo e a lista, sem o cartão
+ * (ex.: dentro de cada projeto na página Projetos).
+ */
+export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }) {
   const today = todayIso();
   const qc = useQueryClient();
   const key = ['tasks', lead.id];
@@ -495,19 +499,8 @@ export function TasksCard({ lead }: { lead: Lead }) {
     onDelete: () => void remove(task),
   });
 
-  return (
-    <Card id="tarefas" className="scroll-mt-20">
-      {/* Título e "Usar lista" na mesma linha (também no telemóvel); o progresso fica por baixo, a toda a largura. */}
-      <div className="border-b border-border px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold">Tarefas</h2>
-          {templates ? <TemplateMenu templates={templates} suggested={suggested} onApply={(t) => void applyTemplate(t)} /> : null}
-        </div>
-        <p className="mt-0.5 text-sm text-muted">
-          {total ? <TaskProgress progress={{ total, done: done.length }} long /> : 'Os próximos passos deste lead ou do projeto.'}
-        </p>
-      </div>
-
+  const content = (
+    <>
       <form onSubmit={add} className="flex flex-wrap items-center gap-2 border-b border-border p-3">
         <Input
           value={title}
@@ -652,6 +645,24 @@ export function TasksCard({ lead }: { lead: Lead }) {
           ) : null}
         </>
       )}
+    </>
+  );
+
+  if (embedded) return <div className="overflow-hidden rounded-lg border border-border">{content}</div>;
+  return (
+    <Card id="tarefas" className="scroll-mt-20">
+      {/* Título e "Usar lista" na mesma linha (também no telemóvel); o progresso fica por baixo, a toda a largura. */}
+      <div className="border-b border-border px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-base font-semibold">Tarefas</h2>
+          {templates ? <TemplateMenu templates={templates} suggested={suggested} onApply={(t) => void applyTemplate(t)} /> : null}
+        </div>
+        <p className="mt-0.5 text-sm text-muted">
+          {total ? <TaskProgress progress={{ total, done: done.length }} long /> : 'Os próximos passos deste lead ou do projeto.'}
+        </p>
+      </div>
+
+      {content}
     </Card>
   );
 }

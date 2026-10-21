@@ -35,6 +35,7 @@ import {
   ProjectTimeSchema,
   TimeEntrySchema,
   TimeEntryCreateSchema,
+  TimeEntryUpdateSchema,
   TimeStartSchema,
   RunningTimerSchema,
   ProjectDeliverableSchema,
@@ -984,12 +985,19 @@ export function getOpenApiDocument() {
         }),
       },
       '/time/stop': {
-        post: op({ tags: ['Projetos'], summary: 'Parar o meu temporizador', responses: { '200': ok(data(TimeEntrySchema.nullable())), ...common } }),
+        post: op({ tags: ['Projetos'], summary: 'Pausar o meu temporizador (o tempo fica registado; "start" continua a somar)', responses: { '200': ok(data(TimeEntrySchema.nullable())), ...common } }),
       },
       '/time/running': {
         get: op({ tags: ['Projetos'], summary: 'O meu temporizador a contar (com o projeto), ou null', responses: { '200': ok(data(RunningTimerSchema)), ...common } }),
       },
       '/time-entries/{id}': {
+        patch: op({
+          tags: ['Projetos'],
+          summary: 'Corrigir um registo de horas (dia, minutos, notas); mantém a hora de início',
+          requestParams: { path: idParam },
+          requestBody: body(TimeEntryUpdateSchema),
+          responses: { '200': ok(data(TimeEntrySchema)), '422': problem('O temporizador ainda está a contar'), ...withNotFound },
+        }),
         delete: op({ tags: ['Projetos'], summary: 'Apagar um registo de horas', requestParams: { path: idParam }, responses: { '204': { description: 'Apagado' }, ...withNotFound } }),
       },
       '/leads/{id}/deliverables': {

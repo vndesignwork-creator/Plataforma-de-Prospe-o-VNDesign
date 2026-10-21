@@ -431,6 +431,8 @@ export function useInvalidateTasks() {
     void qc.invalidateQueries({ queryKey: ['leads'] });
     void qc.invalidateQueries({ queryKey: ['board'] });
     void qc.invalidateQueries({ queryKey: ['today'] });
+    void qc.invalidateQueries({ queryKey: ['projects'] });
+    void qc.invalidateQueries({ queryKey: ['project-calendar'] });
   };
 }
 
@@ -671,7 +673,9 @@ export function useSaveRevision(leadId: string) {
   return useMutation({
     mutationFn: (body: { description: string; billable?: boolean }) =>
       api<{ data: ProjectRevision }>(`/leads/${leadId}/revisions`, { method: 'POST', body }).then((r) => r.data),
-    onSuccess: () => {
+    onSuccess: (revision) => {
+      // Já na lista (a seguinte abre logo com a contagem certa).
+      qc.setQueryData<ProjectRevision[]>(['revisions', leadId], (list) => (list ? [...list, revision] : list));
       void qc.invalidateQueries({ queryKey: ['revisions', leadId] });
       invalidate(leadId);
     },
@@ -727,6 +731,18 @@ export function useAddTime(leadId: string) {
   return useMutation({
     mutationFn: (body: { date: string; minutes: number; notes?: string }) =>
       api<{ data: TimeEntry }>(`/leads/${leadId}/time`, { method: 'POST', body }).then((r) => r.data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['time', leadId] });
+      void qc.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+}
+
+export function useUpdateTime(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: { date?: string; minutes?: number; notes?: string } }) =>
+      api<{ data: TimeEntry }>(`/time-entries/${id}`, { method: 'PATCH', body }).then((r) => r.data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['time', leadId] });
       void qc.invalidateQueries({ queryKey: ['projects'] });

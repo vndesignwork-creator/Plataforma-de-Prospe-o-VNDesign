@@ -9,7 +9,7 @@ import {
   PROJECT_STAGE_LABELS,
   WorkspaceSettingsSchema,
   addDays,
-  entryMinutes,
+  entrySeconds,
   hourlyRate,
   summarizePayments,
   todayIso,
@@ -26,6 +26,7 @@ import {
   type SharedProject,
   type TimeEntry,
   type TimeEntryCreate,
+  type TimeEntryUpdate,
 } from '@vndesign/core';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
@@ -149,8 +150,11 @@ export async function deleteRevision(ctx: ApiContext, id: string): Promise<void>
 // -----------------------------------------------------------------------------
 
 const TIME_SELECT = 'id, lead_id, user_id, started_at, ended_at, notes, created_at';
-type TimeRow = Omit<TimeEntry, 'minutes'>;
-const toEntry = (row: TimeRow, now = Date.now()): TimeEntry => ({ ...row, minutes: entryMinutes(row, now) });
+type TimeRow = Omit<TimeEntry, 'minutes' | 'seconds'>;
+const toEntry = (row: TimeRow, now = Date.now()): TimeEntry => {
+  const seconds = entrySeconds(row, now);
+  return { ...row, seconds, minutes: Math.floor(seconds / 60) };
+};
 
 /** Valor de cada projeto: a proposta aceite; sem ela, o total dos pagamentos; por fim, o valor estimado. */
 export async function projectValues(ctx: ApiContext, leads: { id: string; estimated_value: number | string | null }[]): Promise<Map<string, number | null>> {
@@ -189,11 +193,12 @@ export async function getProjectTime(ctx: ApiContext, leadId: string): Promise<P
   if (error) throw fromPostgrest(error);
   const now = Date.now();
   const entries = ((data ?? []) as TimeRow[]).map((r) => toEntry(r, now));
-  const total = entries.reduce((sum, e) => sum + e.minutes, 0);
+  const total = Math.floor(entries.reduce((sum, e) => sum + e.seconds, 0) / 60);
   const value = (await projectValues(ctx, [lead])).get(leadId) ?? null;
   return {
     entries,
     total_minutes: total,
+    logged_seconds: entries.filter((e) => e.ended_at).reduce((sum, e) => sum + e.seconds, 0),
     running: entries.find((e) => !e.ended_at && e.user_id === ctx.user.id) ?? null,
     value,
     hourly_rate: hourlyRate(value, total),
@@ -242,7 +247,16 @@ export async function getRunningTimer(ctx: ApiContext): Promise<RunningTimer> {
   if (error) throw fromPostgrest(error);
   if (!data) return null;
   const { lead, ...row } = data as unknown as TimeRow & { lead: { id: string; number: number; company_name: string } };
-  return { entry: toEntry(row), lead };
+  // O que já estava registado nesse projeto (para o relógio mostrar o total, não só esta sessão).
+  const { data: closed, error: closedError } = await ctx.supabase
+    .from('project_time_entries')
+    .select('started_at, ended_at')
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('lead_id', lead.id)
+    .not('ended_at', 'is', null);
+  if (closedError) throw fromPostgrest(closedError);
+  const logged = ((closed ?? []) as { started_at: string; ended_at: string }[]).reduce((sum, e) => sum + entrySeconds(e), 0);
+  return { entry: toEntry(row), lead, logged_seconds: logged };
 }
 
 export async function addTimeEntry(ctx: ApiContext, leadId: string, input: TimeEntryCreate): Promise<TimeEntry> {
@@ -262,6 +276,42 @@ export async function addTimeEntry(ctx: ApiContext, leadId: string, input: TimeE
     .select(TIME_SELECT)
     .single();
   if (error) throw fromPostgrest(error);
+  return toEntry(data as TimeRow);
+}
+
+/** Corrigir um registo já fechado: dia, duração ou o que foi feito. */
+export async function updateTimeEntry(ctx: ApiContext, id: string, patch: TimeEntryUpdate): Promise<TimeEntry> {
+  const { data: current, error: readError } = await ctx.supabase
+    .from('project_time_entries')
+    .select(TIME_SELECT)
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('id', id)
+    .maybeSingle();
+  if (readError) throw fromPostgrest(readError, 'Registo não encontrado');
+  if (!current) throw new ApiError(404, 'Registo não encontrado');
+  const row = current as TimeRow;
+  if (!row.ended_at) throw new ApiError(422, 'Ainda a contar', 'Pausa o temporizador antes de corrigir este registo.');
+  const update: Record<string, unknown> = {};
+  if (patch.notes !== undefined) update.notes = patch.notes;
+  if (patch.date !== undefined || patch.minutes !== undefined) {
+    // Mantém a hora de início; muda o dia e/ou a duração.
+    const started = new Date(row.started_at);
+    if (patch.date) {
+      const [y, m, d] = patch.date.split('-').map(Number) as [number, number, number];
+      started.setUTCFullYear(y, m - 1, d);
+    }
+    const seconds = patch.minutes !== undefined ? patch.minutes * 60 : entrySeconds(row);
+    update.started_at = started.toISOString();
+    update.ended_at = new Date(started.getTime() + seconds * 1000).toISOString();
+  }
+  const { data, error } = await ctx.supabase
+    .from('project_time_entries')
+    .update(update)
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('id', id)
+    .select(TIME_SELECT)
+    .single();
+  if (error) throw fromPostgrest(error, 'Registo não encontrado');
   return toEntry(data as TimeRow);
 }
 

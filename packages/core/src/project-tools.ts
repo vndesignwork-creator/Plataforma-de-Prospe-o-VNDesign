@@ -106,7 +106,8 @@ export const TimeEntrySchema = z
     user_id: z.uuid(),
     started_at: z.string(),
     ended_at: z.string().nullable().meta({ description: 'null = o temporizador está a contar' }),
-    minutes: z.int().meta({ description: 'Duração (a contar: até agora)' }),
+    minutes: z.int().meta({ description: 'Duração em minutos (a contar: até agora)' }),
+    seconds: z.int().meta({ description: 'Duração em segundos (a contar: até agora)' }),
     notes: z.string().nullable(),
     created_at: z.string(),
   })
@@ -125,6 +126,19 @@ export const TimeEntryCreateSchema = z
   .meta({ id: 'TimeEntryCreate' });
 export type TimeEntryCreate = z.output<typeof TimeEntryCreateSchema>;
 
+export const TimeEntryUpdateSchema = z
+  .object({
+    date: z.iso.date({ error: 'Data inválida.' }),
+    minutes: z
+      .int({ error: 'Indica os minutos.' })
+      .min(1, { error: 'Mínimo 1 minuto.' })
+      .max(24 * 60, { error: 'Máximo 24 horas.' }),
+    notes: z.string().trim().max(300).transform((v) => v || null),
+  })
+  .partial()
+  .meta({ id: 'TimeEntryUpdate' });
+export type TimeEntryUpdate = z.output<typeof TimeEntryUpdateSchema>;
+
 export const TimeStartSchema = z
   .object({ notes: z.string().trim().max(300).optional().transform((v) => v || null) })
   .meta({ id: 'TimeStart' });
@@ -133,6 +147,7 @@ export const ProjectTimeSchema = z
   .object({
     entries: z.array(TimeEntrySchema),
     total_minutes: z.int(),
+    logged_seconds: z.int().meta({ description: 'Tempo já registado, sem o que está a contar agora' }),
     /** O temporizador do utilizador neste projeto (null = parado). */
     running: TimeEntrySchema.nullable(),
     value: z.number().nullable().meta({ description: 'Valor do projeto (proposta aceite, pagamentos ou valor estimado)' }),
@@ -142,15 +157,30 @@ export const ProjectTimeSchema = z
 export type ProjectTime = z.infer<typeof ProjectTimeSchema>;
 
 export const RunningTimerSchema = z
-  .object({ entry: TimeEntrySchema, lead: z.object({ id: z.uuid(), number: z.int(), company_name: z.string() }) })
+  .object({
+    entry: TimeEntrySchema,
+    lead: z.object({ id: z.uuid(), number: z.int(), company_name: z.string() }),
+    logged_seconds: z.int().meta({ description: 'Tempo já registado nesse projeto, sem o que está a contar' }),
+  })
   .nullable()
   .meta({ id: 'RunningTimer' });
 export type RunningTimer = z.infer<typeof RunningTimerSchema>;
 
-/** Minutos entre duas datas (arredondado para baixo; a contar: até `now`). */
-export function entryMinutes(entry: { started_at: string; ended_at: string | null }, now: number = Date.now()): number {
+/** Segundos de um registo (a contar: até `now`). */
+export function entrySeconds(entry: { started_at: string; ended_at: string | null }, now: number = Date.now()): number {
   const end = entry.ended_at ? Date.parse(entry.ended_at) : now;
-  return Math.max(0, Math.floor((end - Date.parse(entry.started_at)) / 60_000));
+  return Math.max(0, Math.floor((end - Date.parse(entry.started_at)) / 1000));
+}
+
+/** Minutos de um registo (arredondado para baixo; a contar: até `now`). */
+export function entryMinutes(entry: { started_at: string; ended_at: string | null }, now: number = Date.now()): number {
+  return Math.floor(entrySeconds(entry, now) / 60);
+}
+
+/** 45 → "45 s"; 750 → "12 min"; 3900 → "1 h 05 min". */
+export function formatDuration(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  return s < 60 ? `${s} s` : formatMinutes(Math.floor(s / 60));
 }
 
 /** 125 → "2 h 05 min"; 45 → "45 min"; 120 → "2 h". */
@@ -258,7 +288,11 @@ export const ProjectSchema = z
     payments: PaymentSummarySchema,
     next_meeting: z.object({ id: z.uuid(), starts_at: z.string() }).nullable(),
     revisions: z.object({ used: z.int() }),
-    time: z.object({ minutes: z.int(), running_since: z.string().nullable().meta({ description: 'O meu temporizador neste projeto' }) }),
+    time: z.object({
+      minutes: z.int().meta({ description: 'Total em minutos (com o que está a contar)' }),
+      logged_seconds: z.int().meta({ description: 'Já registado, sem o que está a contar' }),
+      running_since: z.string().nullable().meta({ description: 'O meu temporizador neste projeto' }),
+    }),
     deliverables: z.object({ total: z.int(), approved: z.int() }),
     value: z.number().nullable().meta({ description: 'Valor do projeto' }),
   })

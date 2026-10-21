@@ -1,11 +1,12 @@
 'use client';
 
 /**
- * Registo de horas do projeto: temporizador ▶/⏸ (um de cada vez), registo à
- * mão e o valor ganho por hora (valor do projeto ÷ horas).
+ * Registo de horas do projeto: temporizador ▶ Começar / ⏸ Pausar / ▶ Continuar
+ * (o relógio mostra o total do projeto, não só a sessão), registos à mão,
+ * corrigir ou apagar registos e o valor ganho por hora.
  */
-import { formatClock, formatCurrency, formatDate, formatMinutes, todayIso, type Lead } from '@vndesign/core';
-import { Clock, Pause, Play, Plus, Trash2 } from 'lucide-react';
+import { formatClock, formatCurrency, formatDate, formatDuration, todayIso, type Lead, type TimeEntry } from '@vndesign/core';
+import { Check, Clock, Pause, Pencil, Play, Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { ApiClientError, errorMessage } from '@/lib/api-client';
-import { useAddTime, useDeleteTime, useProjectTime, useTimer } from '@/lib/queries';
+import { useAddTime, useDeleteTime, useProjectTime, useTimer, useUpdateTime } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 import { SectionHeader } from './section-header';
 
@@ -30,17 +31,45 @@ export function useElapsed(since: string | null): number {
   return since ? Math.max(0, (now - Date.parse(since)) / 1000) : 0;
 }
 
-/** ▶ Começar / ⏸ 0:12:34 — põe a contar ou para o temporizador deste projeto. */
-export function TimerButton({ leadId, runningSince, size = 'sm', className }: { leadId: string; runningSince: string | null; size?: 'sm' | 'md'; className?: string }) {
+/**
+ * ▶ Começar → ⏸ 0:12:34 (a contar) → ▶ Continuar 0:12:34 (em pausa).
+ * O relógio é o total do projeto: o já registado (`loggedSeconds`) mais a sessão.
+ */
+export function TimerButton({
+  leadId,
+  runningSince,
+  loggedSeconds,
+  size = 'sm',
+  className,
+}: {
+  leadId: string;
+  runningSince: string | null;
+  loggedSeconds: number;
+  size?: 'sm' | 'md';
+  className?: string;
+}) {
   const timer = useTimer();
-  const elapsed = useElapsed(runningSince);
-  const running = !!runningSince;
+  // Até os dados novos chegarem do servidor, o botão mostra já o novo estado.
+  const [optimistic, setOptimistic] = useState<{ since: string | null; logged: number } | null>(null);
+  const [server, setServer] = useState({ runningSince, loggedSeconds });
+  if (server.runningSince !== runningSince || server.loggedSeconds !== loggedSeconds) {
+    setServer({ runningSince, loggedSeconds });
+    setOptimistic(null);
+  }
+  const since = optimistic ? optimistic.since : runningSince;
+  const logged = optimistic ? optimistic.logged : loggedSeconds;
+  const elapsed = useElapsed(since);
+  const running = !!since;
+  const total = logged + Math.floor(elapsed);
 
   async function toggle() {
+    const next = running ? { since: null, logged: total } : { since: new Date().toISOString(), logged };
+    setOptimistic(next);
     try {
-      const entry = await timer.mutateAsync({ leadId, start: !running });
-      toast.success(running ? `Tempo registado: ${formatMinutes(entry?.minutes ?? 0)}.` : 'Temporizador a contar.');
+      await timer.mutateAsync({ leadId, start: !running });
+      toast.success(running ? `Em pausa. Total registado: ${formatDuration(total)}.` : logged ? 'A continuar a contar.' : 'Temporizador a contar.');
     } catch (error) {
+      setOptimistic(null);
       toast.error(errorMessage(error));
     }
   }
@@ -50,12 +79,18 @@ export function TimerButton({ leadId, runningSince, size = 'sm', className }: { 
       size={size}
       variant={running ? 'primary' : 'outline'}
       onClick={toggle}
-      loading={timer.isPending}
-      className={cn(running && 'tabular', className)}
-      aria-label={running ? `Parar o temporizador (${formatClock(elapsed)})` : 'Começar a contar o tempo'}
+      disabled={timer.isPending}
+      className={cn('tabular', className)}
+      aria-label={
+        running
+          ? `Pausar o temporizador (total ${formatClock(total)})`
+          : logged
+            ? `Continuar a contar o tempo (total ${formatClock(total)})`
+            : 'Começar a contar o tempo'
+      }
     >
       {running ? <Pause className="h-3.5 w-3.5" aria-hidden /> : <Play className="h-3.5 w-3.5" aria-hidden />}
-      {running ? formatClock(elapsed) : 'Começar'}
+      {running ? formatClock(total) : logged ? `Continuar · ${formatClock(total)}` : 'Começar'}
     </Button>
   );
 }
@@ -71,7 +106,7 @@ function TimeDialog({ lead, onClose }: { lead: Lead; onClose: () => void }) {
     const minutes = Number(form.hours || 0) * 60 + Number(form.minutes || 0);
     try {
       await add.mutateAsync({ date: form.date, minutes: Math.round(minutes), notes: form.notes });
-      toast.success(`${formatMinutes(minutes)} registados.`);
+      toast.success(`${formatDuration(minutes * 60)} registados.`);
       onClose();
     } catch (error) {
       if (error instanceof ApiClientError && error.problem.errors) setErrors(error.problem.errors as Record<string, string[]>);
@@ -115,20 +150,86 @@ function TimeDialog({ lead, onClose }: { lead: Lead; onClose: () => void }) {
   );
 }
 
-export function TimeSection({ lead }: { lead: Lead }) {
-  const { data: time, isLoading } = useProjectTime(lead.id);
+/** Um registo: dia, duração e notas; o lápis corrige a duração e as notas. */
+function EntryRow({ lead, entry }: { lead: Lead; entry: TimeEntry }) {
+  const update = useUpdateTime(lead.id);
   const remove = useDeleteTime(lead.id);
+  const [edit, setEdit] = useState<{ hours: string; minutes: string; notes: string } | null>(null);
+  const day = formatDate(entry.started_at).slice(0, 5);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (!edit) return;
+    const minutes = Number(edit.hours || 0) * 60 + Number(edit.minutes || 0);
+    try {
+      await update.mutateAsync({ id: entry.id, body: { minutes: Math.round(minutes), notes: edit.notes } });
+      setEdit(null);
+      toast.success('Registo corrigido.');
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
+
+  if (edit) {
+    return (
+      <li>
+        <form onSubmit={save} className="flex flex-wrap items-center gap-2 rounded-lg bg-surface-2 p-2 text-sm" aria-label={`Corrigir o registo de ${day}`}>
+          <span className="w-12 shrink-0 text-xs text-muted tabular">{day}</span>
+          <Input aria-label="Horas" type="number" inputMode="numeric" min={0} max={24} className="h-8 w-16" value={edit.hours} onChange={(e) => setEdit({ ...edit, hours: e.target.value })} />
+          <span className="text-xs text-muted">h</span>
+          <Input aria-label="Minutos" type="number" inputMode="numeric" min={0} max={59} className="h-8 w-16" value={edit.minutes} onChange={(e) => setEdit({ ...edit, minutes: e.target.value })} />
+          <span className="text-xs text-muted">min</span>
+          <Input aria-label="Notas" className="h-8 min-w-0 flex-[1_1_8rem]" maxLength={300} value={edit.notes} onChange={(e) => setEdit({ ...edit, notes: e.target.value })} placeholder="O que fizeste" />
+          <Button type="submit" size="icon" className="h-8 w-8" loading={update.isPending} aria-label="Guardar a correção">
+            <Check className="h-4 w-4" aria-hidden />
+          </Button>
+          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEdit(null)} aria-label="Cancelar a correção">
+            <X className="h-4 w-4" aria-hidden />
+          </Button>
+        </form>
+      </li>
+    );
+  }
+
+  return (
+    <li className="flex items-center gap-2 text-sm">
+      <span className="w-12 shrink-0 text-xs text-muted tabular">{day}</span>
+      <span className="w-24 shrink-0 font-medium tabular">{formatDuration(entry.seconds)}</span>
+      <span className="min-w-0 flex-1 truncate text-muted">{entry.notes ?? ''}</span>
+      <Button
+        size="icon"
+        variant="ghost"
+        className="-my-1 h-7 w-7"
+        onClick={() => setEdit({ hours: String(Math.floor(entry.minutes / 60)), minutes: String(entry.minutes % 60), notes: entry.notes ?? '' })}
+        aria-label={`Corrigir o registo de ${formatDuration(entry.seconds)} (${formatDate(entry.started_at)})`}
+      >
+        <Pencil className="h-3.5 w-3.5" aria-hidden />
+      </Button>
+      <Button
+        size="icon"
+        variant="ghost"
+        className="-my-1 h-7 w-7"
+        onClick={() => remove.mutate(entry.id, { onError: (err) => toast.error(errorMessage(err)) })}
+        aria-label={`Apagar o registo de ${formatDuration(entry.seconds)} (${formatDate(entry.started_at)})`}
+      >
+        <Trash2 className="h-3.5 w-3.5" aria-hidden />
+      </Button>
+    </li>
+  );
+}
+
+export function TimeSection({ lead, className }: { lead: Lead; className?: string }) {
+  const { data: time, isLoading } = useProjectTime(lead.id);
   const [adding, setAdding] = useState(false);
   const [all, setAll] = useState(false);
   const running = time?.running ?? null;
   const elapsed = useElapsed(running?.started_at ?? null);
-  // O registo a contar entra no total com os segundos que já passaram.
-  const total = (time?.total_minutes ?? 0) - (running?.minutes ?? 0) + Math.floor(elapsed / 60);
+  const total = (time?.logged_seconds ?? 0) + Math.floor(elapsed);
   const entries = (time?.entries ?? []).filter((e) => e.ended_at);
-  const shown = all ? entries : entries.slice(0, 4);
+  const shown = all ? entries : entries.slice(0, 5);
 
   return (
-    <section aria-labelledby={`time-${lead.id}`} className="border-t border-border px-4 py-3">
+    <section aria-labelledby={`time-${lead.id}`} className={cn('border-t border-border px-4 py-3', className)}>
       <SectionHeader
         id={`time-${lead.id}`}
         icon={Clock}
@@ -136,7 +237,7 @@ export function TimeSection({ lead }: { lead: Lead }) {
         summary={
           time ? (
             <>
-              {formatMinutes(total)}
+              {formatDuration(total)} registadas
               {time.hourly_rate ? <> · <strong className="font-semibold text-fg">{formatCurrency(time.hourly_rate, { decimals: false })}/hora</strong></> : null}
             </>
           ) : null
@@ -146,11 +247,14 @@ export function TimeSection({ lead }: { lead: Lead }) {
             <Button size="sm" variant="ghost" onClick={() => setAdding(true)}>
               <Plus className="h-3.5 w-3.5" aria-hidden /> À mão
             </Button>
-            <TimerButton leadId={lead.id} runningSince={running?.started_at ?? null} />
+            {time ? <TimerButton leadId={lead.id} runningSince={running?.started_at ?? null} loggedSeconds={time.logged_seconds} /> : null}
           </>
         }
       />
-      {time && !time.value && total >= 15 ? (
+      {running ? (
+        <p className="mt-1 text-xs text-accent-text">A contar desde as {new Date(running.started_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Lisbon' })} · esta sessão: {formatClock(elapsed)}</p>
+      ) : null}
+      {time && !time.value && total >= 15 * 60 ? (
         <p className="mt-1 text-xs text-muted">Para ver quanto ganhas por hora, indica o valor (proposta aceite, pagamentos ou valor estimado).</p>
       ) : null}
       {isLoading ? (
@@ -158,26 +262,13 @@ export function TimeSection({ lead }: { lead: Lead }) {
       ) : shown.length ? (
         <ul className="mt-2 flex flex-col gap-1" aria-label="Horas registadas">
           {shown.map((e) => (
-            <li key={e.id} className="flex items-center gap-2 text-sm">
-              <span className="w-12 shrink-0 text-xs text-muted tabular">{formatDate(e.started_at).slice(0, 5)}</span>
-              <span className="w-20 shrink-0 font-medium tabular">{formatMinutes(e.minutes)}</span>
-              <span className="min-w-0 flex-1 truncate text-muted">{e.notes ?? ''}</span>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="-my-1 h-7 w-7"
-                onClick={() => remove.mutate(e.id, { onError: (err) => toast.error(errorMessage(err)) })}
-                aria-label={`Apagar o registo de ${formatMinutes(e.minutes)} (${formatDate(e.started_at)})`}
-              >
-                <Trash2 className="h-3.5 w-3.5" aria-hidden />
-              </Button>
-            </li>
+            <EntryRow key={e.id} lead={lead} entry={e} />
           ))}
         </ul>
       ) : !running ? (
-        <p className="mt-2 text-sm text-muted">Carrega em Começar quando estiveres a trabalhar neste projeto.</p>
+        <p className="mt-2 text-sm text-muted">Carrega em Começar quando estiveres a trabalhar neste projeto. Podes pausar e continuar quantas vezes quiseres.</p>
       ) : null}
-      {entries.length > 4 ? (
+      {entries.length > 5 ? (
         <Button size="sm" variant="ghost" className="mt-1" onClick={() => setAll(!all)}>
           {all ? 'Mostrar menos' : `Ver todos (${entries.length})`}
         </Button>

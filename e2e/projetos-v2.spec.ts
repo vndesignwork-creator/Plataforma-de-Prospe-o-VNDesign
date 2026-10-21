@@ -41,14 +41,31 @@ test('lista: prazo, fase, ações rápidas, plano de pagamentos, temporizador, f
   await expect(row.getByRole('button', { name: /Fase do projeto: Em produção/ })).toBeVisible();
   await expect(row.getByRole('progressbar', { name: /Tarefas de .*: 0 de 2/ })).toBeVisible();
 
-  // Ações rápidas: fazer a próxima tarefa e acrescentar outra.
-  await row.getByRole('checkbox', { name: 'Marcar como feita: Briefing com o cliente' }).check();
-  await expect(page.getByText('Feito: Briefing com o cliente.')).toBeVisible();
+  // Todas as tarefas na lista: marcar, acrescentar e mudar a ordem (teclado na pega).
+  const list = row.getByRole('list', { name: 'Tarefas por fazer' });
+  await expect(list.getByRole('listitem')).toHaveCount(2);
+  await list.getByRole('checkbox', { name: 'Concluir: Briefing com o cliente' }).click();
   await expect(row.getByText('Tarefas · 1 de 2')).toBeVisible();
-  await row.getByRole('button', { name: 'Tarefa', exact: true }).click();
   await row.getByRole('textbox', { name: 'Nova tarefa' }).fill('Enviar ficheiros finais');
   await row.getByRole('button', { name: 'Acrescentar' }).click();
   await expect(row.getByText('Tarefas · 1 de 3')).toBeVisible();
+  await expect(list.getByRole('listitem')).toHaveCount(2);
+  const handle = list.getByRole('button', { name: 'Mover a tarefa: Enviar ficheiros finais' });
+  await handle.focus();
+  await page.keyboard.press('Space');
+  await page.waitForTimeout(300);
+  await page.keyboard.press('ArrowUp');
+  await page.waitForTimeout(300);
+  await page.keyboard.press('Space');
+  await expect
+    .poll(async () => {
+      const tasks = (await (await page.request.get(`/api/v1/leads/${lead.id}/tasks`)).json()).data as { title: string; done_at: string | null; position: number }[];
+      return tasks.filter((t) => !t.done_at).sort((a, b) => a.position - b.position).map((t) => t.title);
+    })
+    .toEqual(['Enviar ficheiros finais', 'Primeira proposta de logótipo']);
+  await row.getByRole('button', { name: 'Esconder tarefas' }).click();
+  await expect(row.getByRole('list', { name: 'Tarefas por fazer' })).toHaveCount(0);
+  await row.getByRole('button', { name: 'Mostrar tarefas' }).click();
 
   // Sem pagamentos: criar o plano sem sair da página.
   await row.getByRole('button', { name: 'Criar plano' }).click();
@@ -57,12 +74,24 @@ test('lista: prazo, fase, ações rápidas, plano de pagamentos, temporizador, f
   await planDialog.getByRole('button', { name: 'Criar plano' }).click();
   await expect(row.getByText(/Pagamentos · 0\s€ de 800\s€/)).toBeVisible();
 
-  // Temporizador: a contar na linha e no menu lateral; parar.
+  // Temporizador: começar, pausar (o total fica) e continuar a somar.
   await row.getByRole('button', { name: 'Começar a contar o tempo' }).click();
   await expect(page.getByRole('status', { name: new RegExp(`Temporizador a contar: ${name}`) }).first()).toBeVisible();
-  await row.getByRole('button', { name: /Parar o temporizador/ }).click();
-  await expect(page.getByText(/Tempo registado: \d+ min\./)).toBeVisible();
+  await page.waitForTimeout(2200);
+  await row.getByRole('button', { name: /Pausar o temporizador/ }).click();
+  await expect(page.getByText(/Em pausa\. Total registado: \d+ s\./)).toBeVisible();
   await expect(page.getByRole('status', { name: /Temporizador a contar/ })).toHaveCount(0);
+  const resume = row.getByRole('button', { name: /Continuar a contar o tempo \(total 0:00:0[2-9]\)/ });
+  await expect(resume).toBeVisible();
+  await resume.click();
+  await expect(page.getByText('A continuar a contar.')).toBeVisible();
+  await expect(row.getByRole('button', { name: /Pausar o temporizador \(total 0:00:0[2-9]\)/ })).toBeVisible();
+  await row.getByRole('button', { name: /Pausar o temporizador/ }).click();
+  await expect(row.getByRole('button', { name: /Continuar a contar o tempo/ })).toBeVisible();
+  const time = (await (await page.request.get(`/api/v1/leads/${lead.id}/time`)).json()).data;
+  expect(time.entries).toHaveLength(2);
+  expect(time.logged_seconds).toBeGreaterThanOrEqual(2);
+  expect(time.running).toBeNull();
 
   // Fases: o cartão está em "Em produção"; muda para "Revisões" pelo botão da fase.
   await page.getByRole('button', { name: 'Fases' }).click();
@@ -76,6 +105,13 @@ test('lista: prazo, fase, ações rápidas, plano de pagamentos, temporizador, f
 
   // Calendário: a entrega aparece no dia do prazo.
   await page.getByRole('button', { name: 'Calendário' }).click();
+  // Num dia com muitos eventos (testes anteriores), "+N mais" mostra o resto.
+  const dayCell = page.getByRole('gridcell', {
+    name: new Intl.DateTimeFormat('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${due}T00:00:00Z`)),
+  });
+  await expect(dayCell.getByRole('link').first()).toBeVisible();
+  const more = dayCell.getByRole('button', { name: /mais$/ });
+  if (await more.count()) await more.click();
   await expect(page.getByRole('link', { name: new RegExp(`^Entrega: Entrega — #${lead.number} ${name}`) }).first()).toBeVisible();
   const events = (await (await page.request.get(`/api/v1/projects/calendar?from=${iso(0)}&to=${iso(10)}`)).json()).data as { type: string; date: string; lead: { id: string } }[];
   expect(events.some((e) => e.type === 'due' && e.date === due && e.lead.id === lead.id)).toBe(true);
@@ -117,7 +153,13 @@ test('ficha: revisões, horas e €/hora, entregas e a página para o cliente', 
   await dialog.getByLabel('Horas').fill('2');
   await dialog.getByLabel('O que fizeste (opcional)').fill('Maquete');
   await dialog.getByRole('button', { name: 'Registar' }).click();
-  await expect(card.getByText(/2 h · 300\s€\/hora/)).toBeVisible();
+  await expect(card.getByText(/2 h registadas · 300\s€\/hora/)).toBeVisible();
+  // Corrigir o registo: 3 h → 200 €/hora.
+  await card.getByRole('button', { name: /Corrigir o registo de 2 h/ }).click();
+  await card.getByRole('spinbutton', { name: 'Horas' }).fill('3');
+  await card.getByRole('button', { name: 'Guardar a correção' }).click();
+  await expect(page.getByText('Registo corrigido.')).toBeVisible();
+  await expect(card.getByText(/3 h registadas · 200\s€\/hora/)).toBeVisible();
 
   // Entregas: link sem https:// e aprovada pelo cliente.
   await card.getByRole('button', { name: 'Entrega', exact: true }).click();

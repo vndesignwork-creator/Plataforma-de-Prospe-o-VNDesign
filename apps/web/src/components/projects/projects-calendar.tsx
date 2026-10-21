@@ -56,6 +56,8 @@ function EventChip({ event, compact }: { event: CalendarEvent; compact?: boolean
 
 export function ProjectsCalendar({ today }: { today: string }) {
   const [month, setMonth] = useState(today.slice(0, 7));
+  // Dias com tudo à vista (depois de carregar em "+N mais").
+  const [expanded, setExpanded] = useState<string[]>([]);
   const days = useMemo(() => monthGrid(month), [month]);
   const { data: events, isLoading } = useProjectCalendar(days[0]!, days.at(-1)!);
   const byDay = useMemo(() => {
@@ -128,10 +130,18 @@ export function ProjectsCalendar({ today }: { today: string }) {
                     >
                       {Number(d.slice(8))}
                     </span>
-                    {list.slice(0, 3).map((e) => (
+                    {(expanded.includes(d) ? list : list.slice(0, 3)).map((e) => (
                       <EventChip key={e.id} event={e} compact />
                     ))}
-                    {list.length > 3 ? <span className="px-1 text-[11px] text-muted">+{list.length - 3} mais</span> : null}
+                    {list.length > 3 ? (
+                      <button
+                        type="button"
+                        onClick={() => setExpanded(expanded.includes(d) ? expanded.filter((x) => x !== d) : [...expanded, d])}
+                        className="self-start rounded px-1 text-[11px] text-muted hover:bg-surface-3 hover:text-fg"
+                      >
+                        {expanded.includes(d) ? 'Mostrar menos' : `+${list.length - 3} mais`}
+                      </button>
+                    ) : null}
                   </div>
                 );
               })}

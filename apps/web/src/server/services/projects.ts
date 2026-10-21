@@ -3,7 +3,7 @@
  * com o prazo, a fase, o progresso das tarefas, os pagamentos, a próxima
  * reunião, as revisões, as horas e as entregas.
  */
-import { DEFAULT_PROJECT_INFO, addDays, addMonths, entryMinutes, summarizePayments, todayIso, type Lead, type Project, type ProjectComplete } from '@vndesign/core';
+import { DEFAULT_PROJECT_INFO, addDays, addMonths, entrySeconds, summarizePayments, todayIso, type Lead, type Project, type ProjectComplete } from '@vndesign/core';
 import type { ApiContext } from '../context';
 import { fromPostgrest } from '../http';
 import { LEAD_SELECT, getLead } from './leads';
@@ -74,7 +74,11 @@ export async function listProjects(ctx: ApiContext, state: 'active' | 'completed
       payments: summarizePayments(pays, today),
       next_meeting: meeting ? { id: meeting.id, starts_at: meeting.starts_at } : null,
       revisions: { used: byLead(revisions.data as { lead_id: string }[], lead.id).length },
-      time: { minutes: entries.reduce((sum, e) => sum + entryMinutes(e, nowMs), 0), running_since: mine?.started_at ?? null },
+      time: {
+        minutes: Math.floor(entries.reduce((sum, e) => sum + entrySeconds(e, nowMs), 0) / 60),
+        logged_seconds: entries.filter((e) => e.ended_at).reduce((sum, e) => sum + entrySeconds(e, nowMs), 0),
+        running_since: mine?.started_at ?? null,
+      },
       deliverables: { total: delivered.length, approved: delivered.filter((d) => d.status === 'aprovada').length },
       value: values.get(lead.id) ?? null,
     };

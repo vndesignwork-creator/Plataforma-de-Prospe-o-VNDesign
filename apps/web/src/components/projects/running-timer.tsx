@@ -2,9 +2,9 @@
 
 /**
  * Temporizador a contar, sempre à vista (menu lateral e barra do telemóvel):
- * o projeto, o tempo e o botão para parar.
+ * o projeto, o tempo total do projeto e o botão para pausar.
  */
-import { formatClock, formatMinutes, leadPath } from '@vndesign/core';
+import { formatClock, formatDuration, leadPath } from '@vndesign/core';
 import { Pause } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -20,11 +20,13 @@ export function RunningTimer({ compact, className }: { compact?: boolean; classN
   const timer = useTimer();
   const elapsed = useElapsed(running?.entry.started_at ?? null);
   if (!enabled || !running) return null;
+  // Total do projeto (o já registado + esta sessão), como no botão do projeto.
+  const total = running.logged_seconds + Math.floor(elapsed);
 
   async function stop() {
     try {
-      const entry = await timer.mutateAsync({ leadId: running!.lead.id, start: false });
-      toast.success(`Tempo registado: ${formatMinutes(entry?.minutes ?? 0)}.`);
+      await timer.mutateAsync({ leadId: running!.lead.id, start: false });
+      toast.success(`Em pausa. Total registado: ${formatDuration(total)}.`);
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -33,7 +35,7 @@ export function RunningTimer({ compact, className }: { compact?: boolean; classN
   return (
     <div
       role="status"
-      aria-label={`Temporizador a contar: ${running.lead.company_name}, ${formatClock(elapsed)}`}
+      aria-label={`Temporizador a contar: ${running.lead.company_name}, total ${formatClock(total)}`}
       className={cn('flex items-center gap-2 rounded-lg border border-accent bg-accent-soft px-2 py-1.5 text-sm', className)}
     >
       <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
@@ -46,15 +48,15 @@ export function RunningTimer({ compact, className }: { compact?: boolean; classN
             {running.lead.company_name}
           </Link>
         ) : null}
-        <span className="font-semibold tabular text-accent-text">{formatClock(elapsed)}</span>
+        <span className="font-semibold tabular text-accent-text">{formatClock(total)}</span>
       </span>
       <button
         type="button"
         onClick={stop}
         disabled={timer.isPending}
         className="rounded-md p-1.5 text-accent-text hover:bg-accent-soft disabled:opacity-50 pointer-coarse:p-2"
-        aria-label={`Parar o temporizador de ${running.lead.company_name}`}
-        title="Parar"
+        aria-label={`Pausar o temporizador de ${running.lead.company_name}`}
+        title="Pausar"
       >
         <Pause className="h-4 w-4" aria-hidden />
       </button>
