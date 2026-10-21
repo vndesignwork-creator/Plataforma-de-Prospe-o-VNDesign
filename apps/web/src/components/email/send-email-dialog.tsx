@@ -15,7 +15,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input, Textarea } from '@/components/ui/input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
-import { useInvalidateLead, useMailAccount } from '@/lib/queries';
+import { useAudits, useInvalidateLead, useMailAccount, useSettings } from '@/lib/queries';
 
 interface SendEmailProps {
   lead: Lead;
@@ -29,11 +29,30 @@ interface SendEmailProps {
   inReplyTo?: string | null;
   /** Título da janela (por omissão "Enviar email"). */
   title?: string;
+  /** Anexar logo o relatório de diagnóstico do site (a pessoa pode tirar). */
+  attachDiagnosis?: boolean;
   onSent?: (result: LeadEmailSendResult) => void;
 }
 
-function SendEmailDialog({ lead, subject, body, template, proposal, inReplyTo, title, onSent, onClose }: SendEmailProps & { onClose: () => void }) {
+function SendEmailDialog({
+  lead,
+  subject,
+  body,
+  template,
+  proposal,
+  inReplyTo,
+  title,
+  attachDiagnosis,
+  onSent,
+  onClose,
+}: SendEmailProps & { onClose: () => void }) {
   const { data: account, isLoading } = useMailAccount();
+  const { data: settings } = useSettings();
+  const { data: audits } = useAudits(lead.id);
+  // O relatório de diagnóstico só existe com uma análise do site feita (e a funcionalidade ligada).
+  const diagnosisAvailable = !proposal && !!settings?.features.diagnosis_report && !!audits?.some((a) => a.status === 'done');
+  const [attach, setAttach] = useState(attachDiagnosis ?? false);
+  const withDiagnosis = diagnosisAvailable && attach;
   const invalidate = useInvalidateLead();
   const qc = useQueryClient();
   const [form, setForm] = useState({ to: lead.email ?? '', subject, body });
@@ -48,7 +67,13 @@ function SendEmailDialog({ lead, subject, body, template, proposal, inReplyTo, t
     try {
       const { data } = await api<{ data: LeadEmailSendResult }>(proposal ? `/proposals/${proposal.id}/email` : `/leads/${lead.id}/email`, {
         method: 'POST',
-        body: { ...form, bcc_self: copy, template, ...(inReplyTo ? { in_reply_to: inReplyTo } : {}) },
+        body: {
+          ...form,
+          bcc_self: copy,
+          template,
+          ...(inReplyTo ? { in_reply_to: inReplyTo } : {}),
+          ...(withDiagnosis ? { attach_diagnosis: true } : {}),
+        },
       });
       const next = data.next_action_on ? ` Próximo: ${data.next_action_text ?? 'follow-up'} a ${formatDate(data.next_action_on)}.` : '';
       toast.success(
@@ -129,6 +154,13 @@ function SendEmailDialog({ lead, subject, body, template, proposal, inReplyTo, t
             <p className="flex items-center gap-1.5 text-sm text-muted">
               <Paperclip className="h-4 w-4" aria-hidden /> Anexo: {proposal.filename}
             </p>
+          ) : null}
+          {diagnosisAvailable ? (
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input type="checkbox" className="h-4 w-4" checked={attach} onChange={(e) => setAttach(e.target.checked)} />
+              <Paperclip className="h-4 w-4 text-muted" aria-hidden />
+              Anexar o relatório de diagnóstico do site (PDF)
+            </label>
           ) : null}
           <label className="inline-flex items-center gap-2 text-sm">
             <input type="checkbox" className="h-4 w-4" checked={copy} onChange={(e) => setBccSelf(e.target.checked)} />

@@ -121,6 +121,8 @@ export const LeadEmailSendSchema = z
     bcc_self: z.boolean().optional(),
     /** Nome do modelo/origem, para a linha do tempo (ex.: "Email de prospeção — Design Gráfico"). */
     template: z.string().trim().max(160).optional(),
+    /** Levar em anexo o relatório de diagnóstico do site (PDF). */
+    attach_diagnosis: z.boolean().optional(),
     /** Message-ID do email a que este responde (follow-up na mesma conversa). */
     in_reply_to: z.string().trim().max(500).optional(),
   })

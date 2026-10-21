@@ -18,6 +18,7 @@ import {
 import { ensureUrlProtocol } from './normalize';
 import { AiSettingsSchema, AiSettingsUpdateSchema, SERVER_AI_PROVIDER } from './ai-providers';
 import { ServiceCategoryKeySchema, ServiceKeyListSchema, ServiceKeySchema } from './services';
+import { TodayMeetingSchema } from './projects';
 import { TodayTasksSchema } from './tasks';
 
 // Mensagens genéricas de validação em português (as específicas estão em cada campo).
@@ -189,6 +190,8 @@ export const LeadSchema = z
     score_reasons: z.array(z.string()).optional(),
     /** Follow-ups feitos por email desde o primeiro contacto (sequência). */
     follow_up_count: z.int().optional(),
+    /** Projeto do cliente concluído (página Projetos). */
+    project_completed_at: z.string().nullable().optional(),
     created_by: z.uuid().nullable(),
     created_at: z.string(),
     updated_at: z.string(),
@@ -469,6 +472,28 @@ export const FollowUpSequenceSchema = z.object({
 });
 export type FollowUpSequence = z.infer<typeof FollowUpSequenceSchema>;
 
+/** Funcionalidades que se podem desligar (Definições → Funcionalidades). */
+export const FeaturesSchema = z.object({
+  diagnosis_report: z.boolean().default(true).meta({ description: 'Relatório de diagnóstico do site em PDF' }),
+  payments: z.boolean().default(true).meta({ description: 'Pagamentos dos clientes e faturação' }),
+  meetings: z.boolean().default(true).meta({ description: 'Marcar reuniões (convite por email)' }),
+  projects: z.boolean().default(true).meta({ description: 'Página Projetos (clientes com projeto em curso)' }),
+});
+export type Features = z.infer<typeof FeaturesSchema>;
+export const DEFAULT_FEATURES: Features = { diagnosis_report: true, payments: true, meetings: true, projects: true };
+
+/** Cópia de segurança semanal: os leads em Excel por email. */
+export const WeeklyBackupSchema = z.object({
+  enabled: z.boolean().default(true),
+  /** null = o email de quem fez a última alteração (ou o dono). */
+  recipient: z.string().nullable().default(null),
+  /** Dia da semana ISO (1 = segunda … 7 = domingo). */
+  weekday: z.int().min(1).max(7).default(1),
+  last_sent_at: z.string().nullable().default(null),
+});
+export type WeeklyBackup = z.infer<typeof WeeklyBackupSchema>;
+export const DEFAULT_WEEKLY_BACKUP: WeeklyBackup = { enabled: true, recipient: null, weekday: 1, last_sent_at: null };
+
 export const WorkspaceSettingsSchema = z
   .object({
     timezone: z.string().default('Europe/Lisbon'),
@@ -501,6 +526,8 @@ export const WorkspaceSettingsSchema = z
         next_steps:
           'Para avançar, basta responder a este email ou ligar-me. Marcamos uma reunião curta para afinar os detalhes e começo de imediato.',
       }),
+    features: FeaturesSchema.default(DEFAULT_FEATURES),
+    weekly_backup: WeeklyBackupSchema.default(DEFAULT_WEEKLY_BACKUP),
     /** Fornecedor e modelo de IA de cada função (Definições → Inteligência artificial). */
     ai: AiSettingsSchema.default({
       email: { provider: SERVER_AI_PROVIDER, model: null },
@@ -531,6 +558,12 @@ export const WorkspaceSettingsUpdateSchema = z
       next_steps: z.string().trim().max(1000),
     }),
     ai: AiSettingsUpdateSchema,
+    features: FeaturesSchema.partial(),
+    weekly_backup: z.object({
+      enabled: z.boolean(),
+      recipient: nullableEmail,
+      weekday: z.int().min(1).max(7),
+    }),
   })
   .partial()
   .meta({ id: 'WorkspaceSettingsUpdate' });
@@ -610,6 +643,7 @@ export const TodaySchema = z
     upcoming: z.array(LeadSchema).meta({ description: 'Próximos 7 dias' }),
     tasks: TodayTasksSchema.optional().meta({ description: 'Tarefas com prazo (em atraso, hoje e próximos 7 dias)' }),
     hot: z.array(LeadSchema).optional().meta({ description: 'Leads com maior prioridade (os mais quentes), em pipeline' }),
+    meetings: z.array(TodayMeetingSchema).optional().meta({ description: 'Reuniões de hoje e dos próximos 7 dias' }),
   })
   .meta({ id: 'Today' });
 export type Today = z.infer<typeof TodaySchema>;

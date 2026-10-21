@@ -9,7 +9,13 @@ export function isMailConfigured(): boolean {
   return Boolean(process.env.SMTP_HOST);
 }
 
-export async function sendMail(message: { to: string; subject: string; text: string; html: string }) {
+export async function sendMail(message: {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+  attachments?: { filename: string; content: Buffer; contentType: string }[];
+}) {
   if (!isMailConfigured()) throw new Error('O envio de email não está configurado (SMTP_HOST).');
   const port = Number(process.env.SMTP_PORT ?? 587);
   const transport = nodemailer.createTransport({
@@ -45,6 +51,8 @@ export async function sendWithAccount(
     attachments?: { filename: string; content: Buffer; contentType: string }[];
     /** Resposta a este Message-ID (o cliente de email junta-os na mesma conversa). */
     inReplyTo?: string;
+    /** Convite de calendário (.ics): o Gmail/Outlook mostram "Adicionar ao calendário". */
+    icalEvent?: { method: 'REQUEST' | 'CANCEL'; content: string; filename?: string };
   },
 ) {
   const transport = nodemailer.createTransport({

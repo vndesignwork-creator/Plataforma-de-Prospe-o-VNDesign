@@ -310,6 +310,41 @@ Cada lead tem uma pontuação de 0 a 100 (Quente ≥ 60 com uma chama, Morno ≥
 
 ---
 
+## Projetos, pagamentos e reuniões
+
+Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**. Desligada, sai do menu e da ficha, mas os dados ficam guardados.
+
+**Relatório de diagnóstico (PDF)**
+- Na ficha, cartão **Diagnóstico do site**: **Relatório PDF** abre o relatório e **Enviar relatório** envia-o ao cliente em anexo.
+- Só aparece depois de analisar o site (Análise automática do site).
+- O relatório tem a tua marca e mostra: velocidade no telemóvel, adaptação ao telemóvel, segurança (HTTPS), tempo de resposta, os 3 problemas principais com o porquê de importarem, o que propões (serviços do lead) e o próximo passo.
+- Em qualquer email enviado pela plataforma, a caixa **Anexar o relatório de diagnóstico do site (PDF)** junta-o.
+
+**Pagamentos**
+- Na ficha (leads com proposta enviada ou clientes), cartão **Pagamentos**: **Criar plano** (50% sinal + 50% na entrega, 30/40/30 ou pagamento único) a partir do valor da proposta ou do valor estimado; ou **Acrescentar um pagamento à mão**.
+- Marca a caixa quando receberes um pagamento: fica "Pagamento recebido" na linha do tempo.
+- Dashboard → **Faturação**: recebido este mês, por receber, em atraso e projetos em curso.
+
+**Projetos**
+- Menu **Projetos**: os clientes com o projeto em curso, com o progresso das tarefas, a próxima tarefa, os pagamentos e a próxima reunião.
+- **Concluir projeto** passa-o para "Concluídos"; **Reabrir projeto** volta a pô-lo em curso. O mesmo botão está no cartão Pipeline da ficha.
+
+**Reuniões**
+- Na ficha, cartão **Reuniões → Marcar reunião**: dia e hora, duração, local ou link (Google Meet, Zoom, morada) e notas.
+- O lead passa a **Reunião**, com a próxima ação nesse dia.
+- Com **Enviar o convite ao cliente**, o cliente recebe um email com o convite de calendário (.ics): no Gmail, no Outlook e no iPhone aparece "Adicionar ao calendário".
+- Recebes uma notificação **1 hora antes** (pelo cron dos lembretes). A reunião aparece em **Hoje** no Dashboard.
+- O botão ⬇ junta a reunião ao teu calendário.
+- **Desmarcar** pode avisar o cliente: recebe o cancelamento e a reunião sai do calendário dele.
+
+**Cópia de segurança semanal**
+- Todas as semanas (segunda-feira por omissão, de manhã, pelo cron do resumo diário) recebes por email um Excel com todos os leads, também os arquivados.
+- É o mesmo ficheiro da exportação: pode ser reimportado em Leads → Importar / Exportar.
+- O email sai da tua conta de *Email de envio* ou, sem ela, do SMTP do servidor.
+- Em Definições → Funcionalidades escolhes o destinatário e o dia, desligas, ou carregas em **Enviar uma cópia agora**.
+
+---
+
 ## Fornecedores de IA (Claude, ChatGPT, OpenRouter…)
 
 - **Definições → Inteligência artificial → Juntar chave:** Anthropic (Claude), OpenAI (ChatGPT),

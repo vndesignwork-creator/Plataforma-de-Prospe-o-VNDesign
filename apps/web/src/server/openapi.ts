@@ -20,6 +20,17 @@ import {
   MailAccountUpsertSchema,
   ReplyCheckResultSchema,
   FollowUpDraftSchema,
+  LeadPaymentSchema,
+  LeadPaymentCreateSchema,
+  LeadPaymentUpdateSchema,
+  PaymentPlanSchema,
+  ProjectSchema,
+  ProjectsQuerySchema,
+  ProjectCompleteSchema,
+  BillingSummarySchema,
+  LeadMeetingSchema,
+  LeadMeetingCreateSchema,
+  LeadMeetingResultSchema,
   AiProviderCreateSchema,
   AiProviderSchema,
   AiProviderTestResultSchema,
@@ -176,6 +187,8 @@ export function getOpenApiDocument() {
       { name: 'Gerador de leads' },
       { name: 'Fornecedores de IA' },
       { name: 'Email' },
+      { name: 'Projetos', description: 'Pagamentos dos clientes e projetos em curso' },
+      { name: 'Reuniões' },
       { name: 'Mapa' },
     ],
     paths: {
@@ -854,6 +867,70 @@ export function getOpenApiDocument() {
           requestParams: { path: idParam },
           responses: { '200': ok(data(FollowUpDraftSchema)), '422': problem('O lead não está "Contactado"'), ...withNotFound },
         }),
+      },
+      '/leads/{id}/diagnosis-pdf': {
+        get: op({
+          tags: ['Leads'],
+          summary: 'Relatório de diagnóstico do site em PDF (a partir da última análise; ?download=1 para descarregar)',
+          requestParams: { path: idParam },
+          responses: { '200': { description: 'PDF', content: { 'application/pdf': { schema: { type: 'string', format: 'binary' } } } }, '422': problem('Sem análise do site ou relatório desligado'), ...withNotFound },
+        }),
+      },
+      '/leads/{id}/payments': {
+        get: op({ tags: ['Projetos'], summary: 'Pagamentos do cliente', requestParams: { path: idParam }, responses: { '200': ok(data(z.array(LeadPaymentSchema))), ...withNotFound } }),
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Acrescentar um pagamento (com `paid_on` fica já pago e regista "Pagamento recebido")',
+          requestParams: { path: idParam },
+          requestBody: body(LeadPaymentCreateSchema),
+          responses: { '201': ok(data(LeadPaymentSchema), 'Criado'), ...withNotFound },
+        }),
+      },
+      '/leads/{id}/payments/plan': {
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Criar um plano de pagamentos (ex.: split [50, 50] = sinal hoje + entrega)',
+          requestParams: { path: idParam },
+          requestBody: body(PaymentPlanSchema),
+          responses: { '201': ok(data(z.array(LeadPaymentSchema)), 'Criado'), ...withNotFound },
+        }),
+      },
+      '/payments/{id}': {
+        patch: op({ tags: ['Projetos'], summary: 'Mudar ou marcar como pago', requestParams: { path: idParam }, requestBody: body(LeadPaymentUpdateSchema), responses: { '200': ok(data(LeadPaymentSchema)), ...withNotFound } }),
+        delete: op({ tags: ['Projetos'], summary: 'Apagar um pagamento', requestParams: { path: idParam }, responses: { '204': { description: 'Apagado' }, ...withNotFound } }),
+      },
+      '/projects': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Clientes com o projeto em curso (ou concluídos), com tarefas, pagamentos e próxima reunião',
+          requestParams: { query: ProjectsQuerySchema },
+          responses: { '200': ok(data(z.array(ProjectSchema))), ...common },
+        }),
+      },
+      '/leads/{id}/project': {
+        post: op({ tags: ['Projetos'], summary: 'Concluir ou reabrir o projeto do cliente', requestParams: { path: idParam }, requestBody: body(ProjectCompleteSchema), responses: { '200': ok(data(LeadSchema)), ...withNotFound } }),
+      },
+      '/dashboard/billing': {
+        get: op({ tags: ['Projetos'], summary: 'Faturação: recebido este mês, por receber, em atraso', responses: { '200': ok(data(BillingSummarySchema)), ...common } }),
+      },
+      '/leads/{id}/meetings': {
+        get: op({ tags: ['Reuniões'], summary: 'Reuniões do lead', requestParams: { path: idParam }, responses: { '200': ok(data(z.array(LeadMeetingSchema))), ...withNotFound } }),
+        post: op({
+          tags: ['Reuniões'],
+          summary: 'Marcar uma reunião (o lead passa a "Reunião"; com send_invite, o cliente recebe o convite de calendário)',
+          requestParams: { path: idParam },
+          requestBody: body(LeadMeetingCreateSchema),
+          responses: { '201': ok(data(LeadMeetingResultSchema), 'Marcada'), '422': problem('Sem email ou sem conta de envio'), ...withNotFound },
+        }),
+      },
+      '/meetings/{id}/cancel': {
+        post: op({ tags: ['Reuniões'], summary: 'Desmarcar (notify: avisar o cliente que recebeu o convite)', requestParams: { path: idParam }, responses: { '200': ok(data(LeadMeetingSchema)), ...withNotFound } }),
+      },
+      '/meetings/{id}/ics': {
+        get: op({ tags: ['Reuniões'], summary: 'A reunião em .ics (para o próprio calendário)', requestParams: { path: idParam }, responses: { '200': { description: 'iCalendar' }, ...withNotFound } }),
+      },
+      '/settings/backup': {
+        post: op({ tags: ['Definições'], summary: 'Enviar já a cópia de segurança (todos os leads em Excel) por email', responses: { '200': ok(data(z.object({ sent_to: z.string(), leads: z.int() }))), '422': problem('Sem email para enviar'), ...common } }),
       },
       '/mail-account/check-replies': {
         post: op({

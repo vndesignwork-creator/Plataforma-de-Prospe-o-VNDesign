@@ -16,7 +16,8 @@ import path from 'node:path';
 
 const FONT_DIR = path.join(process.cwd(), 'public', 'fonts', 'pdf');
 let fontsReady = false;
-function registerFonts() {
+/** Fontes da marca (também usadas no relatório de diagnóstico). */
+export function registerFonts() {
   if (fontsReady) return;
   Font.register({
     family: 'Jakarta',
@@ -39,11 +40,11 @@ function registerFonts() {
   fontsReady = true;
 }
 
-const ACCENT = '#EF5C32';
-const INK = '#141414';
-const MUTED = '#5f5b53';
-const LINE = '#e6e2da';
-const SOFT = '#f7f4ef';
+export const ACCENT = '#EF5C32';
+export const INK = '#141414';
+export const MUTED = '#5f5b53';
+export const LINE = '#e6e2da';
+export const SOFT = '#f7f4ef';
 
 const s = StyleSheet.create({
   // Nota: sem lineHeight — na página esconde o rodapé fixo e nos textos duplica o espaçamento (react-pdf).

@@ -30,6 +30,11 @@ import {
   MessageSquare,
   MailOpen,
   Phone,
+  Wallet,
+  CalendarPlus,
+  CalendarX,
+  BriefcaseBusiness,
+  RotateCcw,
   Plus,
   Repeat,
   ShieldOff,
@@ -69,6 +74,11 @@ const ICONS: Partial<Record<Activity['type'], LucideIcon>> = {
   task_completed: SquareCheck,
   tasks_added: ListPlus,
   email_received: MailOpen,
+  payment_received: Wallet,
+  meeting_scheduled: CalendarPlus,
+  meeting_canceled: CalendarX,
+  project_completed: BriefcaseBusiness,
+  project_reopened: RotateCcw,
 };
 
 const fieldLabel = (f: string) => (LEAD_FIELD_LABELS as Record<string, string>)[f] ?? f;
@@ -107,6 +117,14 @@ function describe(a: Activity): string | null {
     case 'call_logged':
     case 'template_used':
       return p.template ? `Modelo: ${String(p.template)}` : null;
+    case 'payment_received':
+      return [p.label ? String(p.label) : null, p.method ? String(p.method) : null].filter(Boolean).join(' · ') || null;
+    case 'meeting_scheduled':
+      return [p.location ? String(p.location) : null, p.invite_sent_to ? `Convite enviado para ${String(p.invite_sent_to)}` : null]
+        .filter(Boolean)
+        .join(' · ') || null;
+    case 'meeting_canceled':
+      return p.notified ? 'O cliente foi avisado' : null;
     case 'email_received':
       return [p.from ? `De ${String(p.from)}` : null, p.subject ? `“${String(p.subject)}”` : null, p.auto ? 'resposta automática' : null]
         .filter(Boolean)

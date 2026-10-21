@@ -18,5 +18,6 @@ export * from './lead-generation';
 export * from './ai-providers';
 export * from './mail';
 export * from './score';
+export * from './projects';
 export * from './lead-path';
 export { DIRECTORY_HOSTS, SOCIAL_HOSTS, isDirectoryUrl, isSocialUrl, fixDirectoryWebsite, type LeadLinks } from './links';

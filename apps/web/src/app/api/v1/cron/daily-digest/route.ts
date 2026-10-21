@@ -6,12 +6,14 @@ import { sendDailyDigests } from '@/server/services/digest';
 import { autoArchiveLeads } from '@/server/services/leads';
 import { sendDailyPushes } from '@/server/services/push';
 import { runDueSchedules } from '@/server/services/lead-generation-schedules';
+import { runWeeklyBackups } from '@/server/services/backup';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * GET/POST /api/v1/cron/daily-digest — arquiva os leads "Sem interesse" antigos
- * (nos workspaces com o arquivo automático ligado), envia o resumo diário a todos
+ * (nos workspaces com o arquivo automático ligado), envia a cópia de segurança
+ * semanal (no dia escolhido), envia o resumo diário a todos
  * os workspaces com o resumo ativo e a notificação push a todos os dispositivos
  * subscritos. Autenticação: "Authorization: Bearer CRON_SECRET"
  * (o Vercel Cron envia-o automaticamente). ?dry_run=true não envia.
@@ -23,13 +25,15 @@ async function handler(req: Request) {
     const dryRun = url.searchParams.get('dry_run') === 'true';
     // Primeiro o arquivo automático, para o resumo já não contar esses leads.
     const archived = await autoArchiveLeads(createSupabaseAdminClient(), dryRun);
-    const [results, push, leadGeneration] = await Promise.all([
+    const [results, push, leadGeneration, backups] = await Promise.all([
       sendDailyDigests({ appUrl: publicOrigin(req), dryRun }),
       sendDailyPushes({ dryRun }),
       // Se o cron dos lembretes não estiver ligado, as pesquisas automáticas correm pelo menos aqui.
       runDueSchedules({ appUrl: publicOrigin(req), dryRun }),
+      // Cópia de segurança semanal (no dia escolhido em Definições → Funcionalidades).
+      runWeeklyBackups({ dryRun }),
     ]);
-    return json({ data: results, push, archived, lead_generation: leadGeneration });
+    return json({ data: results, push, archived, lead_generation: leadGeneration, backups });
   } catch (e) {
     return handleError(e);
   }

@@ -362,3 +362,33 @@ export const AuditApplySchema = z
   })
   .meta({ id: 'AuditApply' });
 export type AuditApply = z.infer<typeof AuditApplySchema>;
+
+// -----------------------------------------------------------------------------
+// Relatório de diagnóstico (PDF para o cliente)
+// -----------------------------------------------------------------------------
+
+/** Porque é que cada problema importa, em linguagem de cliente (não técnica). */
+export const AUDIT_ISSUE_IMPACT: Record<AuditIssueCode, string> = {
+  no_own_site: 'Quem procura no Google não encontra uma página vossa: os clientes acabam por escolher a concorrência.',
+  unreachable: 'O site não abre: cada visita perdida é um cliente que nem chega a contactar.',
+  http_error: 'O site devolve um erro: transmite abandono e o Google deixa de o mostrar.',
+  no_https: 'O browser mostra “Não seguro” ao lado do endereço: muitos visitantes saem logo e o Google penaliza.',
+  ssl_invalid: 'Ao abrir o site aparece um aviso de segurança, que assusta quem chega.',
+  ssl_expiring: 'O certificado de segurança expira em breve; depois disso o site passa a mostrar um aviso.',
+  no_viewport: 'A maioria das visitas é feita no telemóvel; sem adaptação, o texto fica minúsculo e as pessoas desistem.',
+  zoom_blocked: 'Não deixa ampliar o texto no telemóvel: pior leitura, sobretudo para clientes mais velhos.',
+  pagespeed_low: 'Um site lento perde visitantes: mais de metade desiste se a página demora mais de 3 segundos.',
+  pagespeed_medium: 'Há margem para ficar mais rápido — e a velocidade conta para a posição no Google.',
+  slow_lcp: 'O conteúdo principal demora a aparecer: a primeira impressão é de lentidão.',
+  slow_response: 'O servidor demora a responder e tudo o resto fica atrasado.',
+  no_title: 'Sem título, o Google mostra mal o site (ou nem o mostra) nas pesquisas.',
+  no_meta_description: 'O Google escolhe um texto qualquer para mostrar nos resultados, o que reduz os cliques.',
+  outdated_copyright: 'O ano no rodapé está desatualizado e passa a ideia de um site abandonado.',
+};
+
+const SEVERITY_ORDER: Record<AuditSeverity, number> = { high: 0, medium: 1, low: 2 };
+
+/** Os problemas mais importantes primeiro (graves, médios, menores), no máximo `max`. */
+export function topAuditIssues<T extends { severity: AuditSeverity }>(issues: readonly T[], max = 3): T[] {
+  return [...issues].sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]).slice(0, max);
+}

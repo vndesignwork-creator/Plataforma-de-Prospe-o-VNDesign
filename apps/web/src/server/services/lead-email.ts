@@ -21,6 +21,7 @@ import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
 import { sendWithAccount } from '../mailer';
 import { renderProposalPdf } from '../proposals/pdf';
+import { diagnosisPdf } from './diagnosis';
 import { getLead } from './leads';
 import { loadSmtpAccount, sentLast24h, smtpError } from './mail-account';
 import { getProposal, markProposalSent } from './proposals';
@@ -98,7 +99,13 @@ async function deliver(
 /** Email a um lead (scripts, email com IA, email de prospeção, follow-ups da sequência). */
 export async function sendLeadEmail(ctx: ApiContext, leadId: string, input: LeadEmailSend): Promise<LeadEmailSendResult> {
   const lead = await getLead(ctx, leadId);
-  const { sentToday, dailyLimit } = await deliver(ctx, lead, input);
+  const diagnosis = input.attach_diagnosis ? await diagnosisPdf(ctx, lead.id) : null;
+  const { sentToday, dailyLimit } = await deliver(
+    ctx,
+    lead,
+    input,
+    diagnosis ? { attachments: [{ filename: diagnosis.filename, content: diagnosis.content, contentType: 'application/pdf' }] } : {},
+  );
 
   // Como "Marcar como enviado": um lead identificado passa a Contactado; num lead
   // contactado, conta como follow-up feito. A próxima ação segue a sequência.

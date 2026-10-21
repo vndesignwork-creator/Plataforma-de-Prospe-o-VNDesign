@@ -1,7 +1,7 @@
 'use client';
 
 import * as RadixDialog from '@radix-ui/react-dialog';
-import { BarChart3, Columns3, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Settings, Sparkles, Sun, Users, X } from 'lucide-react';
+import { BarChart3, BriefcaseBusiness, Columns3, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Settings, Sparkles, Sun, Users, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
@@ -9,6 +9,7 @@ import { FollowUpNotifier } from '@/components/follow-up/follow-up-notifier';
 import { ReminderWatcher } from '@/components/tasks/reminder-watcher';
 import { NavigationTracker } from './back-link';
 import { UpdateWatcher } from './update-watcher';
+import { useSettings } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 import { Logo } from './logo';
 import { useTheme } from './theme';
@@ -19,6 +20,7 @@ const NAV = [
   { href: '/leads', label: 'Leads', icon: Users, match: (p: string) => p === '/leads' || p.startsWith('/leads/') || p.startsWith('/mapa') || p.startsWith('/importar') },
   { href: '/gerar-leads', label: 'Gerar leads', icon: Sparkles, match: (p: string) => p.startsWith('/gerar-leads') },
   { href: '/kanban', label: 'Kanban', icon: Columns3, match: (p: string) => p.startsWith('/kanban') },
+  { href: '/projetos', label: 'Projetos', icon: BriefcaseBusiness, match: (p: string) => p.startsWith('/projetos'), feature: 'projects' as const },
   { href: '/estatisticas', label: 'Estatísticas', icon: BarChart3, match: (p: string) => p.startsWith('/estatisticas') },
   { href: '/scripts', label: 'Scripts', icon: MessageSquareText, match: (p: string) => p.startsWith('/scripts') },
   { href: '/definicoes', label: 'Definições', icon: Settings, match: (p: string) => p.startsWith('/definicoes') },
@@ -26,9 +28,12 @@ const NAV = [
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const { data: settings } = useSettings();
+  // Funcionalidades desligadas (Definições → Funcionalidades) saem do menu.
+  const items = NAV.filter((item) => !('feature' in item) || !item.feature || settings?.features[item.feature] !== false);
   return (
     <ul className="flex flex-col gap-1">
-      {NAV.map(({ href, label, icon: Icon, match }) => {
+      {items.map(({ href, label, icon: Icon, match }) => {
         const active = match(pathname);
         return (
           <li key={href}>

@@ -40,6 +40,8 @@ const nextConfig: NextConfig = {
   // que o "standalone" não deteta: sem isto, o PDF dá erro 500 em produção (Hostinger).
   outputFileTracingIncludes: {
     '/api/v1/proposals/**': ['../../node_modules/pdfkit/js/standard-fonts/**/*', '../../node_modules/pdfkit/js/data/**/*'],
+    // Relatório de diagnóstico (e o email que o leva em anexo).
+    '/api/v1/leads/**': ['../../node_modules/pdfkit/js/standard-fonts/**/*', '../../node_modules/pdfkit/js/data/**/*'],
   },
   // Permite fixar a raiz do monorepo (evita avisos com vários lockfiles).
   turbopack: { root: path.join(__dirname, '..', '..') },

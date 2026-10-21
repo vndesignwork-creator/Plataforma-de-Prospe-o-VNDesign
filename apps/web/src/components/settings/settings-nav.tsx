@@ -9,6 +9,7 @@ export const SETTINGS_SECTIONS = [
   { slug: 'assinatura', label: 'Assinatura' },
   { slug: 'email', label: 'Email de envio' },
   { slug: 'lembretes', label: 'Follow-up e lembretes' },
+  { slug: 'funcionalidades', label: 'Funcionalidades' },
   { slug: 'servicos', label: 'Serviços' },
   { slug: 'propostas', label: 'Propostas' },
   { slug: 'ia', label: 'Inteligência artificial' },

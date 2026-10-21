@@ -4,6 +4,7 @@ import type { ApiContext } from '../context';
 import { fromPostgrest } from '../http';
 import { LEAD_SELECT } from './leads';
 import { fetchTodayTasks } from './tasks';
+import { fetchTodayMeetings } from './meetings';
 
 export async function getDashboard(ctx: ApiContext): Promise<Dashboard> {
   const { data, error } = await ctx.supabase.rpc('dashboard_summary', { p_workspace_id: ctx.workspaceId });
@@ -76,8 +77,12 @@ export async function fetchHotLeads(client: SupabaseClient, workspaceId: string,
   return (data ?? []) as unknown as Lead[];
 }
 
-/** Lista "Hoje": follow-ups em atraso, para hoje e nos próximos 7 dias, e os leads mais quentes. */
+/** Lista "Hoje": follow-ups em atraso, para hoje e nos próximos 7 dias, reuniões e os leads mais quentes. */
 export async function getToday(ctx: ApiContext): Promise<Today> {
-  const [today, hot] = await Promise.all([fetchToday(ctx.supabase, ctx.workspaceId), fetchHotLeads(ctx.supabase, ctx.workspaceId)]);
-  return { ...today, hot };
+  const [today, hot, meetings] = await Promise.all([
+    fetchToday(ctx.supabase, ctx.workspaceId),
+    fetchHotLeads(ctx.supabase, ctx.workspaceId),
+    fetchTodayMeetings(ctx.supabase, ctx.workspaceId),
+  ]);
+  return { ...today, hot, meetings };
 }

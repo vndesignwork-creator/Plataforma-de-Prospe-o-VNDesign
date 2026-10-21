@@ -46,6 +46,12 @@ import type {
   LeadGenerationRequestInput,
   LeadGenerationRun,
   LeadGenerationSchedule,
+  BillingSummary,
+  LeadMeeting,
+  LeadMeetingCreateInput,
+  LeadMeetingResult,
+  LeadPayment,
+  Project,
   LeadGenerationScheduleUpdate,
   LeadGenerationScheduleUpsertInput,
   MailAccount,
@@ -516,5 +522,119 @@ export function useMailAccount() {
   return useQuery({
     queryKey: ['mail-account'],
     queryFn: () => api<{ data: MailAccount | null }>('/mail-account').then((r) => r.data),
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Pagamentos, projetos e reuniões
+// -----------------------------------------------------------------------------
+
+function useInvalidateMoney() {
+  const qc = useQueryClient();
+  return (leadId: string) => {
+    void qc.invalidateQueries({ queryKey: ['payments', leadId] });
+    void qc.invalidateQueries({ queryKey: ['projects'] });
+    void qc.invalidateQueries({ queryKey: ['billing'] });
+    void qc.invalidateQueries({ queryKey: ['activities', leadId] });
+  };
+}
+
+export function usePayments(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['payments', leadId],
+    queryFn: () => api<{ data: LeadPayment[] }>(`/leads/${leadId}/payments`).then((r) => r.data),
+    enabled,
+  });
+}
+
+export function useSavePayment(leadId: string) {
+  const invalidate = useInvalidateMoney();
+  return useMutation({
+    mutationFn: ({ id, body }: { id?: string; body: Record<string, unknown> }) =>
+      api<{ data: LeadPayment }>(id ? `/payments/${id}` : `/leads/${leadId}/payments`, { method: id ? 'PATCH' : 'POST', body }).then(
+        (r) => r.data,
+      ),
+    onSuccess: () => invalidate(leadId),
+  });
+}
+
+export function usePaymentPlan(leadId: string) {
+  const invalidate = useInvalidateMoney();
+  return useMutation({
+    mutationFn: (body: { total: number; split: number[] }) =>
+      api<{ data: LeadPayment[] }>(`/leads/${leadId}/payments/plan`, { method: 'POST', body }).then((r) => r.data),
+    onSuccess: () => invalidate(leadId),
+  });
+}
+
+export function useDeletePayment(leadId: string) {
+  const invalidate = useInvalidateMoney();
+  return useMutation({
+    mutationFn: (id: string) => api(`/payments/${id}`, { method: 'DELETE' }),
+    onSuccess: () => invalidate(leadId),
+  });
+}
+
+export function useBilling(enabled = true) {
+  return useQuery({
+    queryKey: ['billing'],
+    queryFn: () => api<{ data: BillingSummary }>('/dashboard/billing').then((r) => r.data),
+    enabled,
+  });
+}
+
+export function useProjects(state: 'active' | 'completed') {
+  return useQuery({
+    queryKey: ['projects', state],
+    queryFn: () => api<{ data: Project[] }>('/projects', { query: { state } }).then((r) => r.data),
+  });
+}
+
+export function useSetProjectCompleted() {
+  const qc = useQueryClient();
+  const invalidate = useInvalidateLead();
+  return useMutation({
+    mutationFn: ({ leadId, completed }: { leadId: string; completed: boolean }) =>
+      api<{ data: Lead }>(`/leads/${leadId}/project`, { method: 'POST', body: { completed } }).then((r) => r.data),
+    onSuccess: (lead) => {
+      invalidate(lead.id);
+      void qc.invalidateQueries({ queryKey: ['projects'] });
+      void qc.invalidateQueries({ queryKey: ['billing'] });
+    },
+  });
+}
+
+export function useMeetings(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['meetings', leadId],
+    queryFn: () => api<{ data: LeadMeeting[] }>(`/leads/${leadId}/meetings`).then((r) => r.data),
+    enabled,
+  });
+}
+
+export function useCreateMeeting(leadId: string) {
+  const qc = useQueryClient();
+  const invalidate = useInvalidateLead();
+  return useMutation({
+    mutationFn: (body: LeadMeetingCreateInput) =>
+      api<{ data: LeadMeetingResult }>(`/leads/${leadId}/meetings`, { method: 'POST', body }).then((r) => r.data),
+    onSuccess: () => {
+      invalidate(leadId);
+      void qc.invalidateQueries({ queryKey: ['meetings', leadId] });
+      void qc.invalidateQueries({ queryKey: ['today'] });
+    },
+  });
+}
+
+export function useCancelMeeting(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, notify }: { id: string; notify: boolean }) =>
+      api<{ data: LeadMeeting }>(`/meetings/${id}/cancel`, { method: 'POST', body: { notify } }).then((r) => r.data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['meetings', leadId] });
+      void qc.invalidateQueries({ queryKey: ['activities', leadId] });
+      void qc.invalidateQueries({ queryKey: ['today'] });
+    },
   });
 }

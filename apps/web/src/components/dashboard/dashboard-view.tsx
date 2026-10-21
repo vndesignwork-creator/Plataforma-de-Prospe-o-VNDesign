@@ -7,10 +7,11 @@ import {
   formatPercent,
   type Lead,
   type LeadStatus,
+  type TodayMeeting,
   type TodayTask,
   leadPath,
 } from '@vndesign/core';
-import { AlertCircle, BarChart3, CalendarClock, CalendarDays, Flame, ListChecks } from 'lucide-react';
+import { AlertCircle, BarChart3, BriefcaseBusiness, CalendarClock, CalendarDays, Flame, ListChecks, MapPin, Users } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -24,7 +25,9 @@ import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
 import { api, errorMessage } from '@/lib/api-client';
 import { DueChip, ReminderChip } from '@/components/tasks/tasks-card';
 import { Linkified } from '@/lib/linkify';
-import { useDashboard, useToday } from '@/lib/queries';
+import { useBilling, useDashboard, useSettings, useToday } from '@/lib/queries';
+import { cn } from '@/lib/utils';
+import { meetingLabel } from '@/components/meetings/meetings-card';
 import { StatusIcon } from '@/components/icons/lead-icons';
 
 const euros = (v: number) => formatCurrency(v, { decimals: false });
@@ -57,6 +60,80 @@ function TodayGroup({ title, icon, leads, tone }: { title: string; icon: ReactNo
         ))}
       </ul>
     </section>
+  );
+}
+
+/** Reuniões de hoje e dos próximos 7 dias. */
+function TodayMeetings({ meetings }: { meetings: TodayMeeting[] }) {
+  if (!meetings.length) return null;
+  return (
+    <section aria-label="Reuniões">
+      <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold">
+        <Users className="h-4 w-4" aria-hidden />
+        Reuniões <span className="font-normal text-muted">({meetings.length})</span>
+      </h3>
+      <ul className="divide-y divide-border">
+        {meetings.map((m) => (
+          <li key={m.id}>
+            <Link href={leadPath(m.lead)} className="block rounded-md px-2 py-2 hover:bg-surface-2">
+              <span className="block truncate text-sm font-medium">
+                <span className="text-muted tabular">#{m.lead.number}</span> {m.lead.company_name}
+              </span>
+              <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+                <span className="tabular">{meetingLabel(m.starts_at)}</span>
+                {m.location ? (
+                  <span className="inline-flex min-w-0 items-center gap-1 truncate">
+                    <MapPin className="h-3 w-3 shrink-0" aria-hidden /> {m.location}
+                  </span>
+                ) : null}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** Faturação (com os pagamentos ligados): recebido este mês, por receber e em atraso. */
+function BillingCard() {
+  const { data: settings } = useSettings();
+  const enabled = settings?.features.payments ?? false;
+  const { data } = useBilling(enabled);
+  if (!enabled || !data || (!data.received_month && !data.outstanding && !data.active_projects)) return null;
+  return (
+    <Card>
+      <CardHeader
+        title="Faturação"
+        description="Pagamentos dos clientes"
+        actions={
+          <Link href="/projetos" className="text-sm text-accent-text hover:underline">
+            Projetos
+          </Link>
+        }
+      />
+      <dl className="grid grid-cols-2 gap-3 p-4 text-sm">
+        <div>
+          <dt className="text-muted">Recebido este mês</dt>
+          <dd className="text-lg font-semibold tabular">{euros(data.received_month)}</dd>
+        </div>
+        <div>
+          <dt className="text-muted">Por receber</dt>
+          <dd className="text-lg font-semibold tabular">{euros(data.outstanding)}</dd>
+        </div>
+        <div>
+          <dt className="text-muted">Em atraso</dt>
+          <dd className={`text-lg font-semibold tabular ${data.overdue ? 'text-danger' : ''}`}>{euros(data.overdue)}</dd>
+        </div>
+        <div>
+          <dt className="text-muted">Projetos em curso</dt>
+          <dd className="inline-flex items-center gap-1.5 text-lg font-semibold tabular">
+            <BriefcaseBusiness className="h-4 w-4 text-muted" aria-hidden />
+            {data.active_projects}
+          </dd>
+        </div>
+      </dl>
+    </Card>
   );
 }
 
@@ -124,15 +201,23 @@ function TodayCard({ className }: { className?: string }) {
   const urgentTasks = data?.tasks ? [...data.tasks.overdue, ...data.tasks.due_today] : [];
   const weekTasks = data?.tasks?.upcoming ?? [];
   const empty =
-    data && !data.overdue.length && !data.due_today.length && !data.upcoming.length && !urgentTasks.length && !weekTasks.length;
+    data &&
+    !data.overdue.length &&
+    !data.due_today.length &&
+    !data.upcoming.length &&
+    !urgentTasks.length &&
+    !weekTasks.length &&
+    !data.meetings?.length;
   return (
-    <Card className={className}>
+    <Card className={cn('flex flex-col', className)}>
       <CardHeader title="Hoje" description={data ? `Follow-ups, próximas ações e tarefas · ${formatDate(data.today)}` : undefined} />
-      <div className="flex max-h-[26rem] flex-col gap-4 overflow-y-auto p-3">
+      {/* Telemóvel: altura limitada; computador: ocupa a altura da coluna da direita (com scroll). */}
+      <div className="flex max-h-[26rem] flex-col gap-4 overflow-y-auto p-3 lg:max-h-none lg:min-h-0 lg:flex-1">
         {isLoading ? <Skeleton className="h-40" /> : null}
         {empty ? <p className="px-2 py-6 text-center text-sm text-muted">Nada agendado para os próximos 7 dias. 🎉</p> : null}
         {data ? (
           <>
+            <TodayMeetings meetings={data.meetings ?? []} />
             <TodayGroup title="Em atraso" tone="danger" icon={<AlertCircle className="h-4 w-4" aria-hidden />} leads={data.overdue} />
             <TodayGroup title="Para hoje" icon={<CalendarClock className="h-4 w-4" aria-hidden />} leads={data.due_today} />
             <TodayTasks title="Tarefas para hoje" today={data.today} tasks={urgentTasks} />
@@ -270,10 +355,14 @@ export function DashboardView() {
       </section>
 
       {/* No telemóvel os cartões ficam numa só coluna ("contents") e o "Hoje" passa para o topo: é o que se abre o dia a ver. */}
-      <div className="contents lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-start lg:gap-5">
-        <TodayCard className="max-lg:order-first" />
+      <div className="contents lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:gap-5">
+        {/* No computador, o "Hoje" estica até ao fundo da coluna da direita (sem espaço vazio por baixo). */}
+        <div className="max-lg:order-first lg:relative lg:min-h-[26rem]">
+          <TodayCard className="lg:absolute lg:inset-0" />
+        </div>
         <div className="flex flex-col gap-5">
           <HotLeadsCard />
+          <BillingCard />
           <PipelineCard byStatus={data.by_status} />
           <Link
             href="/estatisticas"

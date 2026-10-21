@@ -63,6 +63,8 @@ export async function updateSettings(
   patch: Partial<Pick<WorkspaceSettings, 'follow_up_days' | 'follow_up_sequence' | 'auto_archive_days' | 'opt_out_line' | 'proposal'>> & {
     daily_digest?: { enabled: boolean; recipient: string | null };
     ai?: Partial<WorkspaceSettings['ai']>;
+    features?: Partial<WorkspaceSettings['features']>;
+    weekly_backup?: { enabled: boolean; recipient: string | null; weekday: number };
   },
 ): Promise<WorkspaceSettings> {
   if (ctx.role === 'member') throw new ApiError(403, 'Sem permissão', 'Só o dono ou um administrador pode alterar as definições.');
@@ -70,7 +72,14 @@ export async function updateSettings(
   for (const feature of [patch.ai?.email, patch.ai?.lead_generation]) {
     if (feature) await assertAiProviderExists(ctx, feature.provider);
   }
-  const next = { ...current, ...patch, ai: { ...current.ai, ...patch.ai } };
+  const next = {
+    ...current,
+    ...patch,
+    ai: { ...current.ai, ...patch.ai },
+    features: { ...current.features, ...patch.features },
+    // last_sent_at é só do servidor (cópia de segurança semanal).
+    weekly_backup: { ...current.weekly_backup, ...patch.weekly_backup },
+  };
   const { error } = await ctx.supabase.from('workspaces').update({ settings: next }).eq('id', ctx.workspaceId);
   if (error) throw fromPostgrest(error);
   return WorkspaceSettingsSchema.parse(next);

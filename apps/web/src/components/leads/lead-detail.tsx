@@ -20,6 +20,7 @@ import {
   Copy,
   Edit3,
   ExternalLink,
+  FileText,
   GitMerge,
   Globe,
   History,
@@ -46,6 +47,7 @@ import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useDebouncedValue } from '@/lib/hooks';
 import {
   bulkResultMessage,
+  useAudits,
   useBulkLeadAction,
   useInvalidateLead,
   useLead,
@@ -53,6 +55,7 @@ import {
   useLeadTasks,
   useLogActivity,
   useMe,
+  useSettings,
   useUpdateLead,
 } from '@/lib/queries';
 import { cn, displayHost, telUrl, whatsappUrl } from '@/lib/utils';
@@ -70,6 +73,9 @@ import { SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 import { ServiceChips, useServiceCatalog } from '@/components/services/services';
 import { FollowUpEmailButton, SendEmailButton } from '@/components/email/send-email-dialog';
 import { LeadScoreDetails } from '@/components/leads/lead-score';
+import { MeetingsCard } from '@/components/meetings/meetings-card';
+import { PaymentsCard } from '@/components/projects/payments-card';
+import { ProjectToggle } from '@/components/projects/project-toggle';
 
 function Row({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
@@ -144,6 +150,7 @@ export function LeadDetail({ id }: { id: string }) {
   const router = useRouter();
   const { data: lead, isLoading, error } = useLead(id);
   const { data: me } = useMe();
+  const { data: settings } = useSettings();
   // Coluna principal: no computador, a linha do tempo (coluna lateral) não passa do fim dela.
   const mainColumn = useRef<HTMLDivElement>(null);
   const { data: tasks } = useLeadTasks(id);
@@ -372,12 +379,15 @@ export function LeadDetail({ id }: { id: string }) {
             <CardHeader
               title="Pipeline"
               actions={
-                (lead.next_action_on || lead.next_action_text) && !lead.anonymized_at ? (
-                  <>
-                    <FollowUpEmailButton lead={lead} />
-                    <FollowUpActions lead={lead} />
-                  </>
-                ) : null
+                <>
+                  {lead.status === 'cliente' && settings?.features.projects && !lead.anonymized_at ? <ProjectToggle lead={lead} /> : null}
+                  {(lead.next_action_on || lead.next_action_text) && !lead.anonymized_at ? (
+                    <>
+                      <FollowUpEmailButton lead={lead} />
+                      <FollowUpActions lead={lead} />
+                    </>
+                  ) : null}
+                </>
               }
             />
             <dl className="grid px-4 py-2 md:grid-cols-2 md:gap-x-6">
@@ -540,6 +550,8 @@ export function LeadDetail({ id }: { id: string }) {
         {/* Coluna lateral (computador): o que se consulta durante uma chamada — notas, propostas e atividade. */}
         <aside aria-label="Tarefas, notas, propostas e atividade" className="flex flex-col gap-5">
           {!lead.anonymized_at ? <TasksCard lead={lead} /> : null}
+          {settings?.features.meetings ? <MeetingsCard lead={lead} /> : null}
+          {settings?.features.payments ? <PaymentsCard lead={lead} /> : null}
           <NotesCard lead={lead} />
           <ProposalsCard lead={lead} />
           <div id="atividade" className="scroll-mt-20">
@@ -728,6 +740,34 @@ function MergePickerDialog({ lead, open, onOpenChange }: { lead: Lead; open: boo
  * Diagnóstico do site. Aberto se o lead tem algum serviço de Web Design ou ainda não
  * tem serviços; com só outras categorias fica recolhido numa linha (pode abrir-se).
  */
+/** Relatório de diagnóstico em PDF: ver e enviar ao cliente (com a análise do site feita). */
+function DiagnosisReportActions({ lead }: { lead: Lead }) {
+  const { data: settings } = useSettings();
+  const { data: audits } = useAudits(lead.id);
+  if (!settings?.features.diagnosis_report || lead.anonymized_at || !audits?.some((a) => a.status === 'done')) return null;
+  return (
+    <>
+      <a href={`/api/v1/leads/${lead.id}/diagnosis-pdf`} target="_blank" rel="noopener" className={buttonClasses('outline', 'sm')}>
+        <FileText className="h-3.5 w-3.5" aria-hidden />
+        Relatório PDF
+      </a>
+      <SendEmailButton
+        lead={lead}
+        label="Enviar relatório"
+        variant="outline"
+        attachDiagnosis
+        template="Relatório de diagnóstico"
+        subject={`Diagnóstico do site da ${lead.company_name}`}
+        body={
+          `${lead.contact_name ? `Olá ${lead.contact_name},` : 'Boa tarde,'}\n\n` +
+          'Fiz uma análise rápida ao vosso site e preparei um pequeno relatório (em anexo) com os pontos que mais afastam clientes e como os resolveria.\n\n' +
+          'Se fizer sentido, posso explicar-lhe em 15 minutos, sem compromisso.\n\nCumprimentos,'
+        }
+      />
+    </>
+  );
+}
+
 function SiteDiagnosisCard({ lead }: { lead: Lead }) {
   const catalog = useServiceCatalog();
   const [expanded, setExpanded] = useState(false);
@@ -741,7 +781,9 @@ function SiteDiagnosisCard({ lead }: { lead: Lead }) {
         title="Diagnóstico do site"
         description={relevant ? undefined : 'Não é relevante para os serviços escolhidos.'}
         actions={
-          relevant ? null : (
+          relevant ? (
+            <DiagnosisReportActions lead={lead} />
+          ) : (
             <Button size="sm" variant="ghost" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>
               <ChevronDown className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')} aria-hidden />
               {expanded ? 'Esconder' : 'Mostrar'}
