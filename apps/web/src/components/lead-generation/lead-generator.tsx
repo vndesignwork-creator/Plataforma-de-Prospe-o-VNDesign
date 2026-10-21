@@ -5,29 +5,20 @@
  * internet (1–3 minutos, em segundo plano) → revês a lista e escolhes quais
  * entram como leads (os sites são analisados a seguir).
  */
-import { LEAD_GENERATION_LIMITS, type LeadCandidate, type LeadGenerationRun } from '@vndesign/core';
-import { ExternalLink, Globe, History, Loader2, Mail, Phone, Sparkles } from 'lucide-react';
+import { type LeadCandidate, type LeadGenerationRun } from '@vndesign/core';
+import { CalendarClock, ExternalLink, Globe, History, Loader2, Mail, Phone, Repeat, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
-import { Field } from '@/components/ui/field';
-import { Input, Select, Textarea } from '@/components/ui/input';
-import { MultiSelectFilter } from '@/components/leads/multi-select';
-import { ServiceChips, ServiceGlyph, useServiceCatalog } from '@/components/services/services';
+import { ServiceChips } from '@/components/services/services';
 import { errorMessage } from '@/lib/api-client';
-import {
-  useAddGeneratedLeads,
-  useLeadGenerationRun,
-  useLeadGenerationRuns,
-  useSectors,
-  useStartLeadGeneration,
-} from '@/lib/queries';
+import { useAddGeneratedLeads, useLeadGenerationRun, useLeadGenerationRuns, useStartLeadGeneration } from '@/lib/queries';
 import { cn, displayHost } from '@/lib/utils';
-
-const COUNTS = [10, 15, 20, 30].filter((n) => n <= LEAD_GENERATION_LIMITS.maxResults);
+import { ScheduleDialog, SchedulesCard } from './schedules';
+import { EMPTY_DRAFT, SearchFields, draftToRequest, type SearchDraft } from './search-fields';
 
 const usd = (value: number | null) =>
   value === null ? null : value.toLocaleString('pt-PT', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
@@ -37,31 +28,24 @@ const dateTime = (iso: string) =>
 
 function SearchForm({ onStarted, busy }: { onStarted: (run: LeadGenerationRun) => void; busy: boolean }) {
   const start = useStartLeadGeneration();
-  const { data: sectors } = useSectors();
-  const catalog = useServiceCatalog();
-  const [query, setQuery] = useState('');
-  const [city, setCity] = useState('Amadora');
-  const [sectorId, setSectorId] = useState('');
-  const [services, setServices] = useState<string[]>([]);
-  const [count, setCount] = useState(15);
-  const [error, setError] = useState<string | null>(null);
+  const [draft, setDraft] = useState<SearchDraft>(EMPTY_DRAFT);
+  const [error, setError] = useState<string | undefined>();
+  const [scheduling, setScheduling] = useState(false);
+
+  function valid() {
+    if (draft.query.trim().length < 3) {
+      setError('Descreve que empresas procuras.');
+      return false;
+    }
+    setError(undefined);
+    return true;
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-    if (query.trim().length < 3) {
-      setError('Descreve que empresas procuras.');
-      return;
-    }
+    if (!valid()) return;
     try {
-      const run = await start.mutateAsync({
-        query: query.trim(),
-        city: city.trim() || null,
-        sector_id: sectorId || null,
-        services,
-        max_results: count,
-      });
-      onStarted(run);
+      onStarted(await start.mutateAsync(draftToRequest(draft)));
     } catch (err) {
       toast.error(errorMessage(err));
     }
@@ -74,61 +58,22 @@ function SearchForm({ onStarted, busy }: { onStarted: (run: LeadGenerationRun) =
         description="O Claude pesquisa na internet empresas reais que encaixam no pedido. Revês a lista antes de entrar algum lead."
       />
       <form onSubmit={submit} className="grid gap-4 p-4 md:grid-cols-2" noValidate>
-        <Field
-          label="O que procuras?"
-          required
-          error={error ?? undefined}
-          className="md:col-span-2"
-          hint="Ex.: “restaurantes sem site ou com site antigo”, “clínicas dentárias com má imagem nas redes sociais”."
-        >
-          <Textarea rows={2} value={query} maxLength={500} onChange={(e) => setQuery(e.target.value)} />
-        </Field>
-        <Field label="Zona" hint="Cidade ou concelho. Vazio = Portugal.">
-          <Input value={city} maxLength={120} onChange={(e) => setCity(e.target.value)} />
-        </Field>
-        <Field label="Setor (opcional)">
-          <Select value={sectorId} onChange={(e) => setSectorId(e.target.value)}>
-            <option value="">Qualquer setor</option>
-            {(sectors ?? []).map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium">Serviços a propor</span>
-          <MultiSelectFilter
-            label={services.length ? 'Serviços' : 'Todos os serviços'}
-            value={services}
-            onChange={setServices}
-            className="w-full"
-            options={catalog.active.map((s) => ({
-              value: s.key,
-              label: `${s.label} · ${catalog.categoryLabel(s.category)}`,
-              icon: <ServiceGlyph icon={s.icon} className="text-muted" />,
-            }))}
-          />
-        </div>
-        <Field label="Quantas empresas (no máximo)">
-          <Select value={String(count)} onChange={(e) => setCount(Number(e.target.value))}>
-            {COUNTS.map((n) => (
-              <option key={n} value={n}>
-                Até {n}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        <SearchFields value={draft} onChange={setDraft} error={error} />
+        <p className="text-xs text-muted md:col-span-2">
+          Usa créditos do fornecedor de IA: cerca de 0,20 $ a 1,50 $ por pesquisa (o custo real aparece no fim).
+        </p>
         <div className="flex flex-wrap items-center justify-end gap-3 md:col-span-2">
-          <p className="mr-auto text-xs text-muted">
-            Usa créditos da Anthropic: cerca de 0,20 $ a 1,50 $ por pesquisa (o custo real aparece no fim).
-          </p>
+          <Button type="button" variant="outline" onClick={() => valid() && setScheduling(true)}>
+            <Repeat className="h-4 w-4" aria-hidden />
+            Repetir todas as semanas
+          </Button>
           <Button type="submit" loading={start.isPending} disabled={busy}>
             <Sparkles className="h-4 w-4" aria-hidden />
             Procurar com IA
           </Button>
         </div>
       </form>
+      {scheduling ? <ScheduleDialog open onOpenChange={setScheduling} initial={draft} /> : null}
     </Card>
   );
 }
@@ -278,8 +223,16 @@ function RunCard({ id }: { id: string }) {
     <Card>
       <CardHeader
         title={run.query}
+        actions={
+          run.schedule_id ? (
+            <Badge tone="accent">
+              <CalendarClock className="h-3.5 w-3.5" aria-hidden /> Automática
+            </Badge>
+          ) : null
+        }
         description={[
           run.city,
+          run.auto_added ? `${run.auto_added} adicionado(s) automaticamente` : null,
           run.status === 'done' ? `${run.candidates.length} empresa(s)` : null,
           run.searches ? `${run.searches} pesquisa(s)` : null,
           cost ? `custo estimado ${cost}` : run.status === 'done' ? 'custo no painel do fornecedor' : null,
@@ -307,16 +260,26 @@ function RunCard({ id }: { id: string }) {
   );
 }
 
-export function LeadGenerator() {
+export function LeadGenerator({ initialRunId }: { initialRunId?: string | null }) {
   const { data: runs, isLoading } = useLeadGenerationRuns();
-  const [currentId, setCurrentId] = useState<string | null>(null);
+  // ?pesquisa=… (link da notificação/email da pesquisa automática) abre essa pesquisa.
+  const [currentId, setCurrentId] = useState<string | null>(initialRunId ?? null);
   const current = currentId ?? runs?.[0]?.id ?? null;
   const running = runs?.some((r) => r.status === 'running');
 
   return (
     <div className="flex flex-col gap-5">
       <SearchForm onStarted={(run) => setCurrentId(run.id)} busy={!!running} />
-      {isLoading ? <Skeleton className="h-40" /> : current ? <RunCard id={current} /> : null}
+      <SchedulesCard
+        onOpenRun={(id) => {
+          setCurrentId(id);
+          // O resultado fica logo abaixo deste cartão.
+          requestAnimationFrame(() => document.getElementById('pesquisa-atual')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+        }}
+      />
+      <div id="pesquisa-atual" className="scroll-mt-20">
+        {isLoading ? <Skeleton className="h-40" /> : current ? <RunCard id={current} /> : null}
+      </div>
       {runs && runs.length > 1 ? (
         <Card>
           <CardHeader title="Pesquisas anteriores" />
@@ -329,7 +292,11 @@ export function LeadGenerator() {
                   aria-current={r.id === current ? 'true' : undefined}
                   className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-surface-2 aria-[current=true]:bg-surface-2"
                 >
-                  <History className="h-4 w-4 shrink-0 text-muted" aria-hidden />
+                  {r.schedule_id ? (
+                    <CalendarClock className="h-4 w-4 shrink-0 text-accent-text" aria-label="Pesquisa automática" />
+                  ) : (
+                    <History className="h-4 w-4 shrink-0 text-muted" aria-hidden />
+                  )}
                   {/* Telemóvel: o resumo passa para baixo do pedido (o pedido não fica cortado cedo). */}
                   <span className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-3">
                     <span className="min-w-0 truncate sm:flex-1">{r.query}</span>

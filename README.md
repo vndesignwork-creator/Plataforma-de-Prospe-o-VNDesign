@@ -201,7 +201,7 @@ Enviar um resumo de teste agora**.
 O mesmo cron envia também as **notificações push** a todos os dispositivos ativados.
 
 **Lembretes das tarefas** (sino 🔔 no cartão Tarefas: dia e hora) — outro cron, **de 5 em 5
-minutos**, envia a notificação quando chega a hora:
+minutos**, envia a notificação quando chega a hora (e lança as pesquisas automáticas do gerador de leads):
 
 - **Hostinger** (hPanel → Avançado → Cron Jobs, "a cada 5 minutos"), comando:
   `curl -s -H "Authorization: Bearer <CRON_SECRET>" https://leads.vndesign.pt/api/v1/cron/reminders`
@@ -311,6 +311,23 @@ O Gmail guarda os emails enviados na pasta "Enviados". Com o email da Hostinger 
 - Uma pesquisa de cada vez; uma pesquisa interrompida (ex.: deploy a meio) fica como “falhou” e
   pode repetir-se. API: `POST /api/v1/lead-generation`, `GET /api/v1/lead-generation/{id}`,
   `POST /api/v1/lead-generation/{id}/add`.
+
+### Pesquisas automáticas (todas as semanas)
+
+- Em **Gerar leads**, preenche a pesquisa e carrega em **Repetir todas as semanas** (ou, no cartão
+  **Pesquisas automáticas**, em **Nova**). Escolhe o dia e a hora (de Portugal continental).
+- **Interruptor** em cada pesquisa: liga ou desliga sem a apagar. No menu **⋯** há *Correr agora*,
+  *Editar* e *Apagar*.
+- **Quando terminar:** fica a lista para rever (recomendado) ou as empresas novas entram logo como
+  leads (duplicados, empresas parecidas com leads que já tens e a lista “não contactar” ficam sempre
+  de fora). As empresas encontradas nas semanas anteriores não voltam a aparecer.
+- No fim recebes uma **notificação** (se ativaste as notificações) e um **email** com o resumo —
+  enviado pela tua conta de *Email de envio* ou, sem ela, pelo SMTP do servidor.
+- **Precisa do cron dos lembretes** (de 5 em 5 minutos, ver “Lembretes das tarefas”); sem ele, só
+  correm uma vez por dia com o cron do resumo diário. O cartão avisa se o agendador não estiver a correr.
+- Custo: o de uma pesquisa normal, uma vez por semana por cada pesquisa ligada (máximo 10 pesquisas).
+- API: `GET/POST /api/v1/lead-generation/schedules`, `PATCH/DELETE /api/v1/lead-generation/schedules/{id}`,
+  `POST /api/v1/lead-generation/schedules/{id}/run`.
 
 ## Propostas em PDF
 

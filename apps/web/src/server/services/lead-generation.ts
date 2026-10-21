@@ -39,7 +39,7 @@ import { getSettings } from './workspace';
 import { loadServiceCatalog } from './service-catalog';
 
 const RUN_SELECT =
-  'id, query, city, sector_id, services, max_results, status, error, candidates, model, searches, cost_usd, created_at, finished_at';
+  'id, query, city, sector_id, services, max_results, status, error, candidates, model, searches, cost_usd, schedule_id, auto_added, created_at, finished_at';
 const NOT_FOUND = 'Pesquisa não encontrada';
 /** Uma pesquisa "a correr" há mais do que isto foi interrompida (ex.: o servidor reiniciou). */
 const STALE_MS = 10 * 60_000;
@@ -87,15 +87,28 @@ export async function getLeadGenerationRun(ctx: ApiContext, id: string): Promise
  * Contexto para trabalho em segundo plano (depois de o pedido responder): o
  * cliente da web lê os cookies do pedido, por isso passa a usar o access token.
  */
-async function detachedContext(ctx: ApiContext): Promise<ApiContext> {
+export async function detachedContext(ctx: ApiContext): Promise<ApiContext> {
   if (ctx.authMethod !== 'session') return ctx;
   const { data } = await ctx.supabase.auth.getSession();
   const token = data.session?.access_token;
   return token ? { ...ctx, supabase: createSupabaseBearerClient(token), authMethod: 'bearer' } : ctx;
 }
 
+/** Pesquisa automática (semanal): de onde veio e o que fazer no fim. */
+export interface ScheduledRunOptions {
+  scheduleId: string;
+  /** Adicionar logo as empresas novas como leads (null = ficam para rever). */
+  autoAdd: { audit: boolean } | null;
+  /** Chamado no fim (com sucesso ou erro), para avisar o utilizador. */
+  onFinished?: (run: LeadGenerationRun) => Promise<void>;
+}
+
 /** Começa uma pesquisa e devolve-a logo ("a correr"); o resultado chega depois. */
-export async function startLeadGeneration(ctx: ApiContext, request: LeadGenerationRequest): Promise<LeadGenerationRun> {
+export async function startLeadGeneration(
+  ctx: ApiContext,
+  request: LeadGenerationRequest,
+  scheduled?: ScheduledRunOptions,
+): Promise<LeadGenerationRun> {
   const settings = await getSettings(ctx);
   const { provider, model } = await resolveAiFeature(ctx, settings.ai.lead_generation, { anthropicModel: leadGenerationModel() });
   if (!AI_PROVIDER_META[provider.kind].webSearch) {
@@ -119,6 +132,7 @@ export async function startLeadGeneration(ctx: ApiContext, request: LeadGenerati
       sector_id: request.sector_id,
       services: request.services,
       max_results: request.max_results,
+      schedule_id: scheduled?.scheduleId ?? null,
       // O fornecedor só aparece quando não é a chave do servidor (ex.: "OpenAI (ChatGPT) · gpt-5-mini").
       model: provider.id === 'server' ? model : `${provider.label} · ${model}`,
     })
@@ -127,7 +141,7 @@ export async function startLeadGeneration(ctx: ApiContext, request: LeadGenerati
   if (error) throw fromPostgrest(error);
   const run = toRun(data as RunRow);
   // Em segundo plano: o pedido responde já e a página vai consultando o estado.
-  void executeRun(await detachedContext(ctx), run.id, request, provider, model);
+  void executeRun(await detachedContext(ctx), run.id, request, provider, model, scheduled);
   return run;
 }
 
@@ -146,6 +160,7 @@ async function executeRun(
   request: LeadGenerationRequest,
   provider: ResolvedProvider,
   model: string,
+  scheduled?: ScheduledRunOptions,
 ) {
   const usage: AiUsage = { input_tokens: 0, output_tokens: 0, searches: 0 };
   const totals = () => ({
@@ -156,17 +171,19 @@ async function executeRun(
     cost_usd: provider.kind === 'anthropic' ? estimateLeadGenerationCost(model, usage) : null,
   });
   try {
-    const [sectors, services, existingNames] = await Promise.all([
+    const [sectors, services, existingNames, earlierNames] = await Promise.all([
       listSectors(ctx, false),
       loadServiceCatalog(ctx),
       existingLeadNames(ctx, request.city),
+      scheduled ? earlierCandidateNames(ctx, scheduled.scheduleId, id) : Promise.resolve([]),
     ]);
     const prompt = buildLeadGenerationPrompt({
       request,
       sectorName: sectors.find((s) => s.id === request.sector_id)?.name ?? null,
       sectors: sectors.map((s) => s.name),
       services,
-      existingNames,
+      // As pesquisas automáticas também não repetem as empresas das semanas anteriores.
+      existingNames: [...new Set([...existingNames, ...earlierNames])],
     });
     const { companies } = await searchCompanies(
       provider,
@@ -185,6 +202,43 @@ async function executeRun(
     if (!(error instanceof ApiError)) console.error('[gerador] erro', error);
     await finishRun(ctx, id, { status: 'error', error: message, ...totals() });
   }
+  if (scheduled) await finishScheduledRun(ctx, id, scheduled);
+}
+
+/** Pesquisa automática: adiciona as empresas novas (se pedido) e avisa o utilizador. */
+async function finishScheduledRun(ctx: ApiContext, id: string, scheduled: ScheduledRunOptions) {
+  try {
+    let run = await getLeadGenerationRun(ctx, id);
+    if (run.status === 'done' && scheduled.autoAdd) {
+      const indexes = run.candidates.flatMap((c, i) => (c.match.status === 'new' && !c.added_lead_id ? [i] : []));
+      if (indexes.length) {
+        const result = await addLeadGenerationCandidates(ctx, id, { indexes, audit: scheduled.autoAdd.audit });
+        await ctx.supabase
+          .from('lead_generation_runs')
+          .update({ auto_added: result.created.length })
+          .eq('workspace_id', ctx.workspaceId)
+          .eq('id', id);
+        run = await getLeadGenerationRun(ctx, id);
+      }
+    }
+    await scheduled.onFinished?.(run);
+  } catch (error) {
+    console.error('[gerador] pesquisa automática: falhou o fim', error instanceof Error ? error.message : error);
+  }
+}
+
+/** Empresas das últimas pesquisas desta pesquisa automática (para não as repetir todas as semanas). */
+async function earlierCandidateNames(ctx: ApiContext, scheduleId: string, currentRunId: string): Promise<string[]> {
+  const { data } = await ctx.supabase
+    .from('lead_generation_runs')
+    .select('candidates')
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('schedule_id', scheduleId)
+    .eq('status', 'done')
+    .neq('id', currentRunId)
+    .order('created_at', { ascending: false })
+    .limit(8);
+  return ((data ?? []) as { candidates: { company_name: string }[] }[]).flatMap((r) => r.candidates.map((c) => c.company_name));
 }
 
 /** Nomes dos leads que já existem na zona (para o Claude não os repetir). */

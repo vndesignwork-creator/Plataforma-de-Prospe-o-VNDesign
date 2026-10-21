@@ -21,7 +21,8 @@ export interface ApiContext {
   user: { id: string; email: string | null };
   workspaceId: string;
   role: MemberRole;
-  authMethod: 'session' | 'bearer' | 'token';
+  /** 'system': trabalho do cron em nome de um utilizador (ex.: pesquisas automáticas). */
+  authMethod: 'session' | 'bearer' | 'token' | 'system';
   /** Só em pedidos com token de integração. */
   token?: { id: string; scopes: ApiTokenScope[] };
 }

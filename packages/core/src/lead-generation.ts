@@ -4,6 +4,7 @@
  * para rever. Só entram como leads as que o utilizador escolher.
  */
 import { z } from 'zod';
+import { TIME_ZONE } from './format';
 import { nullableText } from './schemas';
 import { ServiceKeyListSchema, type ServiceInfo } from './services';
 
@@ -98,6 +99,8 @@ export const LeadGenerationRunSchema = z
     model: z.string().nullable(),
     searches: z.int(),
     cost_usd: z.number().nullable().meta({ description: 'Custo estimado (USD), pelo preço de tabela' }),
+    schedule_id: z.uuid().nullable().meta({ description: 'Pesquisa automática que a criou (null = feita à mão)' }),
+    auto_added: z.int().meta({ description: 'Leads adicionados automaticamente' }),
     created_at: z.string(),
     finished_at: z.string().nullable(),
   })
@@ -120,6 +123,141 @@ export const LeadGenerationAddResultSchema = z
   })
   .meta({ id: 'LeadGenerationAddResult' });
 export type LeadGenerationAddResult = z.infer<typeof LeadGenerationAddResultSchema>;
+
+// -----------------------------------------------------------------------------
+// Pesquisas automáticas (semanais)
+// -----------------------------------------------------------------------------
+
+/** Dias da semana ISO (1 = segunda … 7 = domingo). */
+export const WEEKDAY_LABELS: Record<number, string> = {
+  1: 'Segunda-feira',
+  2: 'Terça-feira',
+  3: 'Quarta-feira',
+  4: 'Quinta-feira',
+  5: 'Sexta-feira',
+  6: 'Sábado',
+  7: 'Domingo',
+};
+
+/** Máximo de pesquisas automáticas por workspace (o custo é semanal). */
+export const LEAD_GENERATION_MAX_SCHEDULES = 10;
+
+export const LeadGenerationScheduleUpsertSchema = z
+  .object({
+    enabled: z.boolean().default(true),
+    query: LeadGenerationRequestSchema.shape.query,
+    city: LeadGenerationRequestSchema.shape.city,
+    sector_id: LeadGenerationRequestSchema.shape.sector_id,
+    services: LeadGenerationRequestSchema.shape.services,
+    max_results: LeadGenerationRequestSchema.shape.max_results,
+    weekday: z.int().min(1, { error: 'Escolhe o dia.' }).max(7, { error: 'Escolhe o dia.' }).default(1),
+    hour: z.int().min(0, { error: 'Hora inválida.' }).max(23, { error: 'Hora inválida.' }).default(8),
+    auto_add: z.boolean().default(false).meta({ description: 'As empresas novas entram logo como leads' }),
+    audit: z.boolean().default(true).meta({ description: 'Analisar o site dos leads adicionados automaticamente' }),
+  })
+  .meta({ id: 'LeadGenerationScheduleUpsert' });
+export type LeadGenerationScheduleUpsert = z.output<typeof LeadGenerationScheduleUpsertSchema>;
+export type LeadGenerationScheduleUpsertInput = z.input<typeof LeadGenerationScheduleUpsertSchema>;
+
+/** Só para ligar/desligar (ou mudar parte dos campos). */
+export const LeadGenerationScheduleUpdateSchema = z
+  .object({
+    enabled: z.boolean(),
+    query: LeadGenerationRequestSchema.shape.query,
+    city: nullableText(120),
+    sector_id: z.uuid().nullable(),
+    services: ServiceKeyListSchema,
+    max_results: z.int().min(5).max(LEAD_GENERATION_LIMITS.maxResults),
+    weekday: z.int().min(1).max(7),
+    hour: z.int().min(0).max(23),
+    auto_add: z.boolean(),
+    audit: z.boolean(),
+  })
+  .partial()
+  .meta({ id: 'LeadGenerationScheduleUpdate' });
+export type LeadGenerationScheduleUpdate = z.output<typeof LeadGenerationScheduleUpdateSchema>;
+
+export const LeadGenerationScheduleSchema = z
+  .object({
+    id: z.uuid(),
+    enabled: z.boolean(),
+    query: z.string(),
+    city: z.string().nullable(),
+    sector_id: z.uuid().nullable(),
+    services: z.array(z.string()),
+    max_results: z.int(),
+    weekday: z.int().meta({ description: '1 = segunda … 7 = domingo' }),
+    hour: z.int().meta({ description: 'Hora de Lisboa (0–23)' }),
+    auto_add: z.boolean(),
+    audit: z.boolean(),
+    next_run_at: z.string().nullable().meta({ description: 'Próxima execução (null = desligada)' }),
+    last_run_at: z.string().nullable(),
+    last_run_id: z.uuid().nullable(),
+    last_error: z.string().nullable().meta({ description: 'Porque é que a última execução não arrancou' }),
+    checked_at: z.string().nullable().meta({ description: 'Última passagem do cron' }),
+    created_at: z.string(),
+  })
+  .meta({ id: 'LeadGenerationSchedule' });
+export type LeadGenerationSchedule = z.infer<typeof LeadGenerationScheduleSchema>;
+
+/** Partes de uma data num fuso (ano, mês, dia, hora, minuto, dia da semana ISO). */
+function zonedParts(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    weekday: 'short',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  const weekdays: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+  return {
+    year: Number(get('year')),
+    month: Number(get('month')),
+    day: Number(get('day')),
+    hour: Number(get('hour')),
+    minute: Number(get('minute')),
+    second: Number(get('second')),
+    weekday: weekdays[get('weekday')] ?? 1,
+  };
+}
+
+/** Instante (UTC) de uma hora "de parede" num fuso, com a mudança de hora tratada. */
+function zonedTimeToUtc(year: number, month: number, day: number, hour: number, timeZone: string): Date {
+  const wall = Date.UTC(year, month - 1, day, hour);
+  let guess = wall;
+  // Duas iterações chegam para acertar o desvio (inclui o dia da mudança de hora).
+  for (let i = 0; i < 2; i++) {
+    const p = zonedParts(new Date(guess), timeZone);
+    const shown = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+    guess += wall - shown;
+  }
+  return new Date(guess);
+}
+
+/** Próxima ocorrência de "dia da semana às HH:00" (hora de Lisboa) estritamente depois de `from`. */
+export function nextWeeklyRun(weekday: number, hour: number, from: Date = new Date(), timeZone: string = TIME_ZONE): Date {
+  const today = zonedParts(from, timeZone);
+  for (let offset = 0; offset <= 7; offset++) {
+    // Meio-dia UTC evita saltar ou repetir um dia ao somar.
+    const day = new Date(Date.UTC(today.year, today.month - 1, today.day + offset, 12));
+    const isoWeekday = ((day.getUTCDay() + 6) % 7) + 1;
+    if (isoWeekday !== weekday) continue;
+    const at = zonedTimeToUtc(day.getUTCFullYear(), day.getUTCMonth() + 1, day.getUTCDate(), hour, timeZone);
+    if (at.getTime() > from.getTime()) return at;
+  }
+  // Não chega aqui (o offset 7 já é o mesmo dia da semana seguinte).
+  throw new Error(`Dia da semana inválido: ${weekday}`);
+}
+
+/** "Segunda-feira às 08:00". */
+export function describeWeeklyRun(weekday: number, hour: number): string {
+  return `${WEEKDAY_LABELS[weekday] ?? '—'} às ${String(hour).padStart(2, '0')}:00`;
+}
 
 // -----------------------------------------------------------------------------
 // Instruções para o Claude

@@ -5,6 +5,7 @@ import { createSupabaseAdminClient } from '@/server/supabase-admin';
 import { sendDailyDigests } from '@/server/services/digest';
 import { autoArchiveLeads } from '@/server/services/leads';
 import { sendDailyPushes } from '@/server/services/push';
+import { runDueSchedules } from '@/server/services/lead-generation-schedules';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,11 +23,13 @@ async function handler(req: Request) {
     const dryRun = url.searchParams.get('dry_run') === 'true';
     // Primeiro o arquivo automático, para o resumo já não contar esses leads.
     const archived = await autoArchiveLeads(createSupabaseAdminClient(), dryRun);
-    const [results, push] = await Promise.all([
+    const [results, push, leadGeneration] = await Promise.all([
       sendDailyDigests({ appUrl: publicOrigin(req), dryRun }),
       sendDailyPushes({ dryRun }),
+      // Se o cron dos lembretes não estiver ligado, as pesquisas automáticas correm pelo menos aqui.
+      runDueSchedules({ appUrl: publicOrigin(req), dryRun }),
     ]);
-    return json({ data: results, push, archived });
+    return json({ data: results, push, archived, lead_generation: leadGeneration });
   } catch (e) {
     return handleError(e);
   }

@@ -45,6 +45,9 @@ import type {
   LeadGenerationAddResult,
   LeadGenerationRequestInput,
   LeadGenerationRun,
+  LeadGenerationSchedule,
+  LeadGenerationScheduleUpdate,
+  LeadGenerationScheduleUpsertInput,
   MailAccount,
 } from '@vndesign/core';
 import { api } from './api-client';
@@ -460,6 +463,47 @@ export function useAddGeneratedLeads(runId: string) {
       void qc.invalidateQueries({ queryKey: ['lead-generation'] });
       void qc.invalidateQueries({ queryKey: ['leads'] });
       void qc.invalidateQueries({ queryKey: ['board'] });
+    },
+  });
+}
+
+/** Pesquisas automáticas (semanais) do gerador de leads. */
+export function useLeadGenerationSchedules() {
+  return useQuery({
+    queryKey: ['lead-generation-schedules'],
+    queryFn: () => api<{ data: LeadGenerationSchedule[] }>('/lead-generation/schedules').then((r) => r.data),
+  });
+}
+
+export function useSaveLeadGenerationSchedule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id?: string; body: LeadGenerationScheduleUpsertInput | LeadGenerationScheduleUpdate }) =>
+      api<{ data: LeadGenerationSchedule }>(id ? `/lead-generation/schedules/${id}` : '/lead-generation/schedules', {
+        method: id ? 'PATCH' : 'POST',
+        body,
+      }).then((r) => r.data),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['lead-generation-schedules'] }),
+  });
+}
+
+export function useDeleteLeadGenerationSchedule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api(`/lead-generation/schedules/${id}`, { method: 'DELETE' }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['lead-generation-schedules'] }),
+  });
+}
+
+export function useRunLeadGenerationSchedule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api<{ data: LeadGenerationRun }>(`/lead-generation/schedules/${id}/run`, { method: 'POST' }).then((r) => r.data),
+    onSuccess: (run) => {
+      qc.setQueryData(['lead-generation', run.id], run);
+      void qc.invalidateQueries({ queryKey: ['lead-generation'], exact: true });
+      void qc.invalidateQueries({ queryKey: ['lead-generation-schedules'] });
     },
   });
 }

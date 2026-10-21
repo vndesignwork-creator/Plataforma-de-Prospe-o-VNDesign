@@ -57,6 +57,18 @@ async function deliver(subs: StoredSubscription[], payload: PushPayload) {
   return { sent: sent.length, removed: gone.length, failed: results.length - sent.length - gone.length };
 }
 
+/** Notificação para todos os dispositivos de um utilizador (trabalho do servidor, ex.: cron). */
+export async function sendUserPush(workspaceId: string, userId: string, payload: PushPayload) {
+  if (!isPushConfigured()) return { sent: 0, removed: 0, failed: 0 };
+  const { data, error } = await createSupabaseAdminClient()
+    .from('push_subscriptions')
+    .select('id, endpoint, p256dh, auth')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId);
+  if (error) throw new Error(error.message);
+  return data?.length ? deliver(data as StoredSubscription[], payload) : { sent: 0, removed: 0, failed: 0 };
+}
+
 /** Notificação de teste para todos os dispositivos do utilizador. */
 export async function sendTestPush(ctx: ApiContext) {
   if (!isPushConfigured()) throw new ApiError(503, 'Push não configurado', 'Faltam as chaves VAPID no servidor.');

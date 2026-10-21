@@ -26,6 +26,9 @@ import {
   LeadGenerationAddSchema,
   LeadGenerationRequestSchema,
   LeadGenerationRunSchema,
+  LeadGenerationScheduleSchema,
+  LeadGenerationScheduleUpdateSchema,
+  LeadGenerationScheduleUpsertSchema,
   GeocodeBatchResultSchema,
   LeadLocationSchema,
   MapDataSchema,
@@ -940,6 +943,48 @@ export function getOpenApiDocument() {
           requestParams: { path: idParam },
           requestBody: body(LeadGenerationAddSchema),
           responses: { '200': ok(data(LeadGenerationAddResultSchema)), '409': problem('A pesquisa ainda não terminou'), ...withNotFound },
+        }),
+      },
+      '/lead-generation/schedules': {
+        get: op({
+          tags: ['Gerador de leads'],
+          summary: 'Pesquisas automáticas (semanais)',
+          responses: { '200': ok(data(z.array(LeadGenerationScheduleSchema))), ...common },
+        }),
+        post: op({
+          tags: ['Gerador de leads'],
+          summary: 'Criar uma pesquisa automática (corre sozinha uma vez por semana, à hora de Lisboa)',
+          description:
+            'Lançada pelo cron `/cron/reminders` (de 5 em 5 minutos) ou `/cron/daily-digest`. No fim, o utilizador recebe uma notificação e um email. Com `auto_add`, as empresas novas entram logo como leads.',
+          requestBody: body(LeadGenerationScheduleUpsertSchema),
+          responses: { '201': ok(data(LeadGenerationScheduleSchema), 'Criada'), '422': problem('Dados inválidos ou demasiadas pesquisas'), ...common },
+        }),
+      },
+      '/lead-generation/schedules/{id}': {
+        patch: op({
+          tags: ['Gerador de leads'],
+          summary: 'Ativar/desativar ou mudar uma pesquisa automática',
+          requestParams: { path: idParam },
+          requestBody: body(LeadGenerationScheduleUpdateSchema),
+          responses: { '200': ok(data(LeadGenerationScheduleSchema)), ...withNotFound },
+        }),
+        delete: op({
+          tags: ['Gerador de leads'],
+          summary: 'Apagar uma pesquisa automática (as pesquisas já feitas ficam)',
+          requestParams: { path: idParam },
+          responses: { '204': { description: 'Apagada' }, ...withNotFound },
+        }),
+      },
+      '/lead-generation/schedules/{id}/run': {
+        post: op({
+          tags: ['Gerador de leads'],
+          summary: 'Correr já a pesquisa automática (não muda a próxima data)',
+          requestParams: { path: idParam },
+          responses: {
+            '202': ok(data(LeadGenerationRunSchema), 'Pesquisa começada'),
+            '409': problem('Já há uma pesquisa a correr'),
+            ...withNotFound,
+          },
         }),
       },
       '/map': {
