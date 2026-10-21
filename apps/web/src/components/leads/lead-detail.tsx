@@ -76,6 +76,7 @@ import { LeadScoreDetails } from '@/components/leads/lead-score';
 import { WhatsAppMenu } from '@/components/leads/whatsapp-menu';
 import { MeetingsCard } from '@/components/meetings/meetings-card';
 import { PaymentsCard } from '@/components/projects/payments-card';
+import { ProjectCard } from '@/components/projects/project-card';
 import { ProjectToggle } from '@/components/projects/project-toggle';
 
 function Row({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
@@ -553,6 +554,7 @@ export function LeadDetail({ id }: { id: string }) {
         {/* Coluna lateral (computador): o que se consulta durante uma chamada — notas, propostas e atividade. */}
         <aside aria-label="Tarefas, notas, propostas e atividade" className="flex flex-col gap-5">
           {!lead.anonymized_at ? <TasksCard lead={lead} /> : null}
+          {lead.status === 'cliente' && settings?.features.projects && !lead.anonymized_at ? <ProjectCard lead={lead} /> : null}
           {settings?.features.meetings ? <MeetingsCard lead={lead} /> : null}
           {settings?.features.payments ? <PaymentsCard lead={lead} /> : null}
           <NotesCard lead={lead} />

@@ -34,6 +34,7 @@ export const TEMPLATE_VARIABLES = [
   { key: 'hoje', label: 'Data de hoje' },
   { key: 'reuniao', label: 'Próxima reunião (ex.: amanhã, às 10:00)' },
   { key: 'reuniao_local', label: 'Local ou link da próxima reunião' },
+  { key: 'avaliacao', label: 'Link para avaliação no Google (Definições → Funcionalidades)' },
   { key: 'meu_nome', label: 'O teu nome' },
   { key: 'meu_cargo', label: 'O teu cargo' },
   { key: 'meu_telefone', label: 'O teu telefone' },
@@ -153,6 +154,8 @@ export function buildTemplateContext(input: {
   categories?: readonly ServiceCategoryInfo[];
   /** Próxima reunião marcada com o lead ({{reuniao}} e {{reuniao_local}}). */
   meeting?: { starts_at: string; location?: string | null } | null;
+  /** Link para avaliação no Google ({{avaliacao}}). */
+  reviewUrl?: string | null;
   now?: Date;
 }): TemplateContext {
   const { lead, signature: sig } = input;
@@ -175,6 +178,7 @@ export function buildTemplateContext(input: {
     hoje: formatDate(input.today),
     reuniao: input.meeting ? meetingPhrase(input.meeting.starts_at, input.now) || null : null,
     reuniao_local: input.meeting?.location?.trim() || null,
+    avaliacao: input.reviewUrl?.trim() || null,
     meu_nome: sig?.full_name ?? null,
     meu_cargo: sig?.role_title ?? null,
     meu_telefone: sig?.phone ?? null,

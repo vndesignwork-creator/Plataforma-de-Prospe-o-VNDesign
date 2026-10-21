@@ -4,7 +4,9 @@ import {
   ACTIVITY_TYPE_LABELS,
   AI_EMAIL_KIND_LABELS,
   PROPOSAL_STATUS_LABELS,
+  PROJECT_STAGE_LABELS,
   type AiEmailKind,
+  type ProjectStage,
   type ProposalStatus,
   LEAD_FIELD_LABELS,
   LEAD_STATUS_META,
@@ -14,6 +16,10 @@ import {
   type LeadStatus,
 } from '@vndesign/core';
 import {
+  BadgeCheck,
+  Milestone,
+  RefreshCcw,
+  Send,
   Archive,
   ArchiveRestore,
   CalendarClock,
@@ -79,6 +85,10 @@ const ICONS: Partial<Record<Activity['type'], LucideIcon>> = {
   meeting_canceled: CalendarX,
   project_completed: BriefcaseBusiness,
   project_reopened: RotateCcw,
+  project_stage_changed: Milestone,
+  revision_requested: RefreshCcw,
+  deliverable_sent: Send,
+  deliverable_approved: BadgeCheck,
 };
 
 const fieldLabel = (f: string) => (LEAD_FIELD_LABELS as Record<string, string>)[f] ?? f;
@@ -127,6 +137,12 @@ function describe(a: Activity): string | null {
         .join(' · ') || null;
     case 'meeting_canceled':
       return p.notified ? 'O cliente foi avisado' : null;
+    case 'project_stage_changed': {
+      const stage = (v: unknown) => PROJECT_STAGE_LABELS[v as ProjectStage] ?? String(v);
+      return p.from ? `${stage(p.from)} → ${stage(p.to)}` : null;
+    }
+    case 'revision_requested':
+      return p.label ? String(p.label) : null;
     case 'email_received':
       return [p.from ? `De ${String(p.from)}` : null, p.subject ? `“${String(p.subject)}”` : null, p.auto ? 'resposta automática' : null]
         .filter(Boolean)

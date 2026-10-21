@@ -52,6 +52,13 @@ import type {
   LeadMeetingResult,
   LeadPayment,
   Project,
+  ProjectInfo,
+  ProjectRevision,
+  ProjectTime,
+  ProjectDeliverable,
+  RunningTimer,
+  TimeEntry,
+  CalendarEvent,
   LeadGenerationScheduleUpdate,
   LeadGenerationScheduleUpsertInput,
   MailAccount,
@@ -594,13 +601,192 @@ export function useSetProjectCompleted() {
   const qc = useQueryClient();
   const invalidate = useInvalidateLead();
   return useMutation({
-    mutationFn: ({ leadId, completed }: { leadId: string; completed: boolean }) =>
-      api<{ data: Lead }>(`/leads/${leadId}/project`, { method: 'POST', body: { completed } }).then((r) => r.data),
+    mutationFn: ({ leadId, ...body }: { leadId: string; completed: boolean; portfolio_task?: boolean; upsell_months?: number | null }) =>
+      api<{ data: Lead }>(`/leads/${leadId}/project`, { method: 'POST', body }).then((r) => r.data),
     onSuccess: (lead) => {
       invalidate(lead.id);
       void qc.invalidateQueries({ queryKey: ['projects'] });
       void qc.invalidateQueries({ queryKey: ['billing'] });
+      void qc.invalidateQueries({ queryKey: ['tasks', lead.id] });
+      void qc.invalidateQueries({ queryKey: ['project-calendar'] });
     },
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Ferramentas dos projetos (prazo, fase, revisões, horas, entregas, calendário)
+// -----------------------------------------------------------------------------
+
+/** Depois de mudar algo de um projeto: a página Projetos, o calendário e a linha do tempo. */
+function useInvalidateProject() {
+  const qc = useQueryClient();
+  return (leadId: string) => {
+    void qc.invalidateQueries({ queryKey: ['projects'] });
+    void qc.invalidateQueries({ queryKey: ['project-calendar'] });
+    void qc.invalidateQueries({ queryKey: ['activities', leadId] });
+  };
+}
+
+export function useProjectInfo(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['project', leadId],
+    queryFn: () => api<{ data: ProjectInfo }>(`/leads/${leadId}/project`).then((r) => r.data),
+    enabled,
+  });
+}
+
+export function useUpdateProjectInfo(leadId: string) {
+  const qc = useQueryClient();
+  const invalidate = useInvalidateProject();
+  return useMutation({
+    mutationFn: (body: Partial<Pick<ProjectInfo, 'due_on' | 'stage' | 'revisions_included'>>) =>
+      api<{ data: ProjectInfo }>(`/leads/${leadId}/project`, { method: 'PATCH', body }).then((r) => r.data),
+    onSuccess: (info) => {
+      qc.setQueryData(['project', leadId], info);
+      invalidate(leadId);
+    },
+  });
+}
+
+export function useProjectShare(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { enabled: boolean; regenerate?: boolean }) =>
+      api<{ data: ProjectInfo }>(`/leads/${leadId}/project/share`, { method: 'POST', body }).then((r) => r.data),
+    onSuccess: (info) => qc.setQueryData(['project', leadId], info),
+  });
+}
+
+export function useRevisions(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['revisions', leadId],
+    queryFn: () => api<{ data: ProjectRevision[] }>(`/leads/${leadId}/revisions`).then((r) => r.data),
+    enabled,
+  });
+}
+
+export function useSaveRevision(leadId: string) {
+  const qc = useQueryClient();
+  const invalidate = useInvalidateProject();
+  return useMutation({
+    mutationFn: (body: { description: string; billable?: boolean }) =>
+      api<{ data: ProjectRevision }>(`/leads/${leadId}/revisions`, { method: 'POST', body }).then((r) => r.data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['revisions', leadId] });
+      invalidate(leadId);
+    },
+  });
+}
+
+export function useDeleteRevision(leadId: string) {
+  const qc = useQueryClient();
+  const invalidate = useInvalidateProject();
+  return useMutation({
+    mutationFn: (id: string) => api(`/revisions/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['revisions', leadId] });
+      invalidate(leadId);
+    },
+  });
+}
+
+export function useProjectTime(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['time', leadId],
+    queryFn: () => api<{ data: ProjectTime }>(`/leads/${leadId}/time`).then((r) => r.data),
+    enabled,
+  });
+}
+
+export function useRunningTimer(enabled = true) {
+  return useQuery({
+    queryKey: ['time', 'running'],
+    queryFn: () => api<{ data: RunningTimer }>('/time/running').then((r) => r.data),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+/** Pôr a contar (leadId) ou parar (null) o temporizador. */
+export function useTimer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ leadId, start }: { leadId: string; start: boolean }) =>
+      start
+        ? api<{ data: TimeEntry }>(`/leads/${leadId}/time/start`, { method: 'POST', body: {} }).then((r) => r.data)
+        : api<{ data: TimeEntry | null }>('/time/stop', { method: 'POST' }).then((r) => r.data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['time'] });
+      void qc.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+}
+
+export function useAddTime(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { date: string; minutes: number; notes?: string }) =>
+      api<{ data: TimeEntry }>(`/leads/${leadId}/time`, { method: 'POST', body }).then((r) => r.data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['time', leadId] });
+      void qc.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+}
+
+export function useDeleteTime(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api(`/time-entries/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['time', leadId] });
+      void qc.invalidateQueries({ queryKey: ['time', 'running'] });
+      void qc.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+}
+
+export function useDeliverables(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['deliverables', leadId],
+    queryFn: () => api<{ data: ProjectDeliverable[] }>(`/leads/${leadId}/deliverables`).then((r) => r.data),
+    enabled,
+  });
+}
+
+export function useSaveDeliverable(leadId: string) {
+  const qc = useQueryClient();
+  const invalidate = useInvalidateProject();
+  return useMutation({
+    mutationFn: ({ id, body }: { id?: string; body: Partial<Pick<ProjectDeliverable, 'title' | 'url' | 'status'>> }) =>
+      api<{ data: ProjectDeliverable }>(id ? `/deliverables/${id}` : `/leads/${leadId}/deliverables`, { method: id ? 'PATCH' : 'POST', body }).then(
+        (r) => r.data,
+      ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['deliverables', leadId] });
+      invalidate(leadId);
+    },
+  });
+}
+
+export function useDeleteDeliverable(leadId: string) {
+  const qc = useQueryClient();
+  const invalidate = useInvalidateProject();
+  return useMutation({
+    mutationFn: (id: string) => api(`/deliverables/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['deliverables', leadId] });
+      invalidate(leadId);
+    },
+  });
+}
+
+export function useProjectCalendar(from: string, to: string, enabled = true) {
+  return useQuery({
+    queryKey: ['project-calendar', from, to],
+    queryFn: () => api<{ data: CalendarEvent[] }>('/projects/calendar', { query: { from, to } }).then((r) => r.data),
+    enabled,
+    placeholderData: keepPreviousData,
   });
 }
 

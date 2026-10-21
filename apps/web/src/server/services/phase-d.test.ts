@@ -80,6 +80,23 @@ describe('tarefas no aviso e no resumo diário', () => {
     expect(email.text).toContain('- Enviar maquete — #7 Café Central (09/10/2026) https://leads.vndesign.pt/leads/7-cafe-central');
     expect(email.html).toContain('Tarefas (1)');
   });
+
+  it('o resumo inclui as entregas da semana e os pagamentos em atraso', () => {
+    const lead = { id: 'l1', number: 9, company_name: 'Padaria Sol' };
+    const email = buildDigestEmail({
+      workspaceName: 'VNDesign',
+      today: withTasks([]),
+      appUrl: 'https://leads.vndesign.pt',
+      projects: {
+        deliveries: [{ lead, due_on: '2026-10-12' }],
+        overdue_payments: [{ lead, description: 'Sinal (50%)', amount: 300, due_on: '2026-10-01' }],
+      },
+    });
+    expect(email.subject).toContain('1 entrega de projeto esta semana');
+    expect(email.text).toContain('- Entrega: #9 Padaria Sol — Faltam 3 dias (12/10/2026)');
+    expect(email.text).toMatch(/Pagamento em atraso: #9 Padaria Sol — Sinal \(50%\), 300,00\s€ \(desde 01\/10\/2026\)/);
+    expect(email.html).toContain('Projetos');
+  });
 });
 
 describe('lembretes das tarefas', () => {

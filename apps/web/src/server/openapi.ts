@@ -27,6 +27,21 @@ import {
   ProjectSchema,
   ProjectsQuerySchema,
   ProjectCompleteSchema,
+  ProjectInfoSchema,
+  ProjectInfoUpdateSchema,
+  ProjectShareSchema,
+  ProjectRevisionSchema,
+  ProjectRevisionCreateSchema,
+  ProjectTimeSchema,
+  TimeEntrySchema,
+  TimeEntryCreateSchema,
+  TimeStartSchema,
+  RunningTimerSchema,
+  ProjectDeliverableSchema,
+  ProjectDeliverableCreateSchema,
+  ProjectDeliverableUpdateSchema,
+  CalendarEventSchema,
+  CalendarQuerySchema,
   BillingSummarySchema,
   LeadMeetingSchema,
   LeadMeetingCreateSchema,
@@ -908,7 +923,94 @@ export function getOpenApiDocument() {
         }),
       },
       '/leads/{id}/project': {
-        post: op({ tags: ['Projetos'], summary: 'Concluir ou reabrir o projeto do cliente', requestParams: { path: idParam }, requestBody: body(ProjectCompleteSchema), responses: { '200': ok(data(LeadSchema)), ...withNotFound } }),
+        get: op({ tags: ['Projetos'], summary: 'Prazo, fase, revisões incluídas e link do cliente', requestParams: { path: idParam }, responses: { '200': ok(data(ProjectInfoSchema)), ...withNotFound } }),
+        patch: op({
+          tags: ['Projetos'],
+          summary: 'Mudar o prazo, a fase (regista "Fase do projeto") ou as revisões incluídas',
+          requestParams: { path: idParam },
+          requestBody: body(ProjectInfoUpdateSchema),
+          responses: { '200': ok(data(ProjectInfoSchema)), ...withNotFound },
+        }),
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Concluir ou reabrir o projeto do cliente',
+          description: 'Ao concluir: `portfolio_task` cria a tarefa "Juntar o projeto ao portefólio" (daqui a 7 dias) e `upsell_months` a tarefa "Propor um novo serviço" (daqui a N meses).',
+          requestParams: { path: idParam },
+          requestBody: body(ProjectCompleteSchema),
+          responses: { '200': ok(data(LeadSchema)), ...withNotFound },
+        }),
+      },
+      '/leads/{id}/project/share': {
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Ligar, desligar ou renovar o link da página de acompanhamento do cliente (/p/{share_token})',
+          requestParams: { path: idParam },
+          requestBody: body(ProjectShareSchema),
+          responses: { '200': ok(data(ProjectInfoSchema)), ...withNotFound },
+        }),
+      },
+      '/projects/calendar': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Calendário: prazos de entrega, reuniões, pagamentos previstos e tarefas (máx. 62 dias)',
+          requestParams: { query: CalendarQuerySchema },
+          responses: { '200': ok(data(z.array(CalendarEventSchema))), ...common },
+        }),
+      },
+      '/leads/{id}/revisions': {
+        get: op({ tags: ['Projetos'], summary: 'Rondas de revisão pedidas pelo cliente', requestParams: { path: idParam }, responses: { '200': ok(data(z.array(ProjectRevisionSchema))), ...withNotFound } }),
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Registar uma revisão (sem `billable`: a cobrar à parte quando já passou das incluídas)',
+          requestParams: { path: idParam },
+          requestBody: body(ProjectRevisionCreateSchema),
+          responses: { '201': ok(data(ProjectRevisionSchema), 'Criada'), ...withNotFound },
+        }),
+      },
+      '/revisions/{id}': {
+        delete: op({ tags: ['Projetos'], summary: 'Apagar uma revisão', requestParams: { path: idParam }, responses: { '204': { description: 'Apagada' }, ...withNotFound } }),
+      },
+      '/leads/{id}/time': {
+        get: op({ tags: ['Projetos'], summary: 'Horas registadas, total, temporizador e valor por hora', requestParams: { path: idParam }, responses: { '200': ok(data(ProjectTimeSchema)), ...withNotFound } }),
+        post: op({ tags: ['Projetos'], summary: 'Registar horas à mão', requestParams: { path: idParam }, requestBody: body(TimeEntryCreateSchema), responses: { '201': ok(data(TimeEntrySchema), 'Criado'), ...withNotFound } }),
+      },
+      '/leads/{id}/time/start': {
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Pôr o temporizador a contar (para o que estiver a contar noutro projeto)',
+          requestParams: { path: idParam },
+          requestBody: body(TimeStartSchema),
+          responses: { '201': ok(data(TimeEntrySchema), 'A contar'), ...withNotFound },
+        }),
+      },
+      '/time/stop': {
+        post: op({ tags: ['Projetos'], summary: 'Parar o meu temporizador', responses: { '200': ok(data(TimeEntrySchema.nullable())), ...common } }),
+      },
+      '/time/running': {
+        get: op({ tags: ['Projetos'], summary: 'O meu temporizador a contar (com o projeto), ou null', responses: { '200': ok(data(RunningTimerSchema)), ...common } }),
+      },
+      '/time-entries/{id}': {
+        delete: op({ tags: ['Projetos'], summary: 'Apagar um registo de horas', requestParams: { path: idParam }, responses: { '204': { description: 'Apagado' }, ...withNotFound } }),
+      },
+      '/leads/{id}/deliverables': {
+        get: op({ tags: ['Projetos'], summary: 'Ficheiros e entregas do projeto', requestParams: { path: idParam }, responses: { '200': ok(data(z.array(ProjectDeliverableSchema))), ...withNotFound } }),
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Acrescentar um ficheiro ou entrega (link do Drive, Figma, Canva…)',
+          requestParams: { path: idParam },
+          requestBody: body(ProjectDeliverableCreateSchema),
+          responses: { '201': ok(data(ProjectDeliverableSchema), 'Criada'), ...withNotFound },
+        }),
+      },
+      '/deliverables/{id}': {
+        patch: op({
+          tags: ['Projetos'],
+          summary: 'Mudar o nome, o link ou o estado (regista "Entrega enviada" / "Entrega aprovada")',
+          requestParams: { path: idParam },
+          requestBody: body(ProjectDeliverableUpdateSchema),
+          responses: { '200': ok(data(ProjectDeliverableSchema)), ...withNotFound },
+        }),
+        delete: op({ tags: ['Projetos'], summary: 'Apagar um ficheiro ou entrega', requestParams: { path: idParam }, responses: { '204': { description: 'Apagado' }, ...withNotFound } }),
       },
       '/dashboard/billing': {
         get: op({ tags: ['Projetos'], summary: 'Faturação: recebido este mês, por receber, em atraso', responses: { '200': ok(data(BillingSummarySchema)), ...common } }),

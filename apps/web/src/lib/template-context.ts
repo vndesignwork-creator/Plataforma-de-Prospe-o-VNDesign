@@ -23,6 +23,7 @@ export function useTemplateContext(
     services: catalog.all,
     categories: catalog.categories,
     meeting,
+    reviewUrl: settings?.google_review_url ?? null,
   });
 }
 

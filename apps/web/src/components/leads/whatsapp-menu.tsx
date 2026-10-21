@@ -78,14 +78,19 @@ export function WhatsAppMenu({ lead, className }: { lead: Lead; className?: stri
       <DropdownContent align="start" className="max-w-80">
         <DropdownLabel>Mensagem pronta</DropdownLabel>
         {messages.map((t) => {
-          // O lembrete de reunião só faz sentido com uma reunião marcada.
-          const needsMeeting = templateVariablesIn(t.body).includes('reuniao') && !nextMeeting;
+          // Mensagens que precisam de dados que ainda não existem ficam desativadas, com o motivo.
+          const vars = templateVariablesIn(t.body);
+          const blocked = vars.includes('reuniao') && !nextMeeting
+            ? 'Sem reunião marcada'
+            : vars.includes('avaliacao') && !context.avaliacao
+              ? 'Falta o link de avaliação (Definições → Funcionalidades)'
+              : null;
           return (
-            <DropdownItem key={t.id} onSelect={() => open(t)} disabled={needsMeeting}>
+            <DropdownItem key={t.id} onSelect={() => open(t)} disabled={!!blocked}>
               <MessageCircleMore className="h-4 w-4 text-accent-text" aria-hidden />
               <span className="min-w-0">
                 <span className="block">{shortName(t.name)}</span>
-                {needsMeeting ? <span className="block text-xs text-muted">Sem reunião marcada</span> : null}
+                {blocked ? <span className="block text-xs text-muted">{blocked}</span> : null}
               </span>
             </DropdownItem>
           );

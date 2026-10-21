@@ -1,7 +1,7 @@
 import { publicOrigin } from '@/lib/public-url';
 import { ApiError, apiRoute, json } from '@/server/http';
 import { isMailConfigured, sendMail } from '@/server/mailer';
-import { buildDigestEmail } from '@/server/services/digest';
+import { buildDigestEmail, fetchDigestProjects } from '@/server/services/digest';
 import { getToday } from '@/server/services/dashboard';
 import { getSettings } from '@/server/services/workspace';
 
@@ -14,7 +14,9 @@ export const POST = apiRoute(async (req, ctx) => {
   const to = settings.daily_digest.recipient ?? ctx.user.email;
   if (!to) throw new ApiError(422, 'Sem destinatário', 'Indica o email que deve receber o resumo.');
   const appUrl = publicOrigin(req);
-  const email = buildDigestEmail({ workspaceName: 'VNDesign', today: await getToday(ctx), appUrl });
+  const today = await getToday(ctx);
+  const projects = await fetchDigestProjects(ctx.supabase, ctx.workspaceId, today.today);
+  const email = buildDigestEmail({ workspaceName: 'VNDesign', today, appUrl, projects });
   try {
     await sendMail({ to, ...email });
   } catch (e) {

@@ -115,7 +115,7 @@ português) com as mesmas colunas — pode ser reimportado sem mapear nada.
   `{{setor}}`, `{{cidade}}`, `{{problema}}`, `{{angulo}}`, `{{website}}`, `{{argumentos}}`,
   `{{data}}`, `{{hoje}}`, `{{meu_nome}}`, `{{meu_cargo}}`, `{{meu_telefone}}`, `{{meu_email}}`,
   `{{meu_site}}`, `{{portfolio}}`, `{{projetos}}`, `{{assinatura}}`, `{{opt_out}}`,
-  `{{reuniao}}` (próxima reunião: “amanhã, às 10:00”) e `{{reuniao_local}}`.
+  `{{reuniao}}` (próxima reunião: “amanhã, às 10:00”), `{{reuniao_local}}` e `{{avaliacao}}` (link para avaliação no Google).
   `{{contacto|equipa}}` usa “equipa” quando o lead não tem contacto.
 - **Por serviço:** `{{servicos}}` (ex.: “identidade visual e flyers”), `{{categoria}}`
   (ex.: “design gráfico”) e `{{beneficio}}` (a *frase de valor* do serviço, em
@@ -336,8 +336,18 @@ Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**
 - Dashboard → **Faturação**: recebido este mês, por receber, em atraso e projetos em curso.
 
 **Projetos**
-- Menu **Projetos**: os clientes com o projeto em curso, com o progresso das tarefas, a próxima tarefa, os pagamentos e a próxima reunião.
-- **Concluir projeto** passa-o para "Concluídos"; **Reabrir projeto** volta a pô-lo em curso. O mesmo botão está no cartão Pipeline da ficha.
+- Menu **Projetos**, com três vistas (a última escolhida fica lembrada neste browser):
+  - **Lista**: os projetos em curso ordenados pelo prazo de entrega ("Faltam 5 dias", "Entrega hoje", "Atrasado 2 dias" a vermelho), a fase, barras de progresso das tarefas e dos pagamentos, revisões, horas, entregas e próxima reunião. Ações rápidas sem abrir a ficha: marcar a próxima tarefa como feita, **+ Tarefa**, ▶ temporizador, **WhatsApp**, **Reunião**, **Criar plano** de pagamentos e **Concluir projeto**. "Concluídos" mostra os terminados.
+  - **Fases**: colunas Briefing → Em produção → Revisões → Entrega. Arrasta o cartão (no telemóvel, mantém o dedo) ou usa o botão da fase.
+  - **Calendário**: o mês com as entregas, reuniões, pagamentos previstos e tarefas (no telemóvel, a lista dos dias com alguma coisa).
+- Na ficha de um cliente, cartão **Projeto**: prazo de entrega, fase e as secções abaixo.
+- **Rondas de revisão**: indicas quantas estão incluídas no preço (2 por omissão) e registas cada pedido do cliente. A partir da primeira além das incluídas, aparece o aviso e a revisão fica "A cobrar".
+- **Registo de horas**: ▶ **Começar** / ⏸ parar (um temporizador de cada vez; enquanto conta aparece no menu, também no telemóvel) ou **À mão**. Mostra o total e quanto ganhas por hora (valor da proposta aceite; sem ela, o total dos pagamentos; por fim, o valor estimado).
+- **Ficheiros e entregas**: links do Google Drive, Figma, Canva… com o estado *Por enviar → Enviada → Aprovada pelo cliente* (fica na linha do tempo).
+- **Página para o cliente**: **Criar link** gera uma página só de leitura (sem login, endereço `/p/<código>`) com a fase, o progresso das tarefas, a entrega prevista, a próxima reunião, as entregas enviadas, os pagamentos (total, pago, em falta) e as revisões. Não mostra notas, horas nem valores internos. **Enviar por WhatsApp**, **Novo link** (o antigo deixa de abrir) ou **Desligar**.
+- **Concluir projeto** abre os passos finais: criar a tarefa *Juntar o projeto ao portefólio* (daqui a 7 dias), lembrar de *propor um novo serviço* daqui a 3, 6 ou 12 meses (tarefas que aparecem em "Hoje" no dia) e, no fim, **pedir uma avaliação no Google** por WhatsApp ou email (modelos *pedido de avaliação* em Scripts, com `{{avaliacao}}`). O link de avaliação guarda-se em Definições → Funcionalidades → *Avaliações no Google*. **Reabrir projeto** volta a pô-lo em curso.
+- **Resumo diário por email**: inclui as entregas de projeto atrasadas e dos próximos 7 dias e os pagamentos em atraso.
+- Revisões, horas, entregas e página do cliente desligam-se uma a uma em Definições → Funcionalidades.
 
 **Reuniões**
 - Na ficha, cartão **Reuniões → Marcar reunião**: dia e hora, duração, local ou link (Google Meet, Zoom, morada) e notas.

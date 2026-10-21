@@ -69,7 +69,8 @@ export function parseQuery<T extends z.ZodType>(req: Request, schema: T): z.outp
 
 export function parseId(value: string, what = 'Lead'): string {
   const parsed = z.uuid().safeParse(value);
-  if (!parsed.success) throw new ApiError(404, `${what} não encontrado`);
+  // `what` pode ser já a frase completa (ex.: "Revisão não encontrada").
+  if (!parsed.success) throw new ApiError(404, what.includes(' não ') ? what : `${what} não encontrado`);
   return parsed.data;
 }
 

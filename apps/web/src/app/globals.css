@@ -28,6 +28,7 @@
   --danger: #ff6b6b;
   --danger-soft: rgb(255 107 107 / 0.12);
   --success: #4cc38a;
+  --success-soft: rgb(76 195 138 / 0.14);
   --warning: #f0b94a;
   --warning-soft: rgb(240 185 74 / 0.12);
   --focus: #ff8a65;
@@ -53,6 +54,7 @@
   --danger: #c22a2a;
   --danger-soft: rgb(194 42 42 / 0.08);
   --success: #17663f; /* 5,4:1 sobre #e7e3db (etiquetas) */
+  --success-soft: rgb(23 102 63 / 0.1);
   --warning: #8a5a00;
   --warning-soft: rgb(240 185 74 / 0.18);
   --focus: #b2390f;
@@ -77,6 +79,7 @@
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;

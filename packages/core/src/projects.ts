@@ -4,7 +4,6 @@
  * calendário (.ics) das reuniões.
  */
 import { z } from 'zod';
-import { LEAD_STATUSES } from './enums';
 
 // (Sem importar de ./schemas: o schema "Hoje" de lá usa os daqui.)
 const emptyToNull = (v: string) => (v === '' ? null : v);
@@ -240,36 +239,6 @@ export function buildMeetingIcs(input: {
   ].filter((l): l is string => l !== null);
   return lines.map(icsFold).join('\r\n') + '\r\n';
 }
-
-// -----------------------------------------------------------------------------
-// Projetos (clientes)
-// -----------------------------------------------------------------------------
-
-export const ProjectSchema = z
-  .object({
-    lead: z.object({
-      id: z.uuid(),
-      number: z.int(),
-      company_name: z.string(),
-      status: z.enum(LEAD_STATUSES),
-      services: z.array(z.string()),
-      estimated_value: z.number().nullable(),
-      status_changed_at: z.string(),
-      project_completed_at: z.string().nullable(),
-    }),
-    tasks: z.object({ total: z.int(), done: z.int() }),
-    next_task: z.object({ id: z.uuid(), title: z.string(), due_on: z.string().nullable() }).nullable(),
-    payments: PaymentSummarySchema,
-    next_meeting: z.object({ id: z.uuid(), starts_at: z.string() }).nullable(),
-  })
-  .meta({ id: 'Project' });
-export type Project = z.infer<typeof ProjectSchema>;
-
-export const ProjectsQuerySchema = z.object({
-  state: z.enum(['active', 'completed']).default('active').meta({ description: 'Em curso ou concluídos' }),
-});
-
-export const ProjectCompleteSchema = z.object({ completed: z.boolean() }).meta({ id: 'ProjectComplete' });
 
 /** Faturação (Dashboard): recebido no mês, por receber e em atraso. */
 export const BillingSummarySchema = z

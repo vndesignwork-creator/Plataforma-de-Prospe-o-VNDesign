@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 import { FollowUpNotifier } from '@/components/follow-up/follow-up-notifier';
+import { RunningTimer } from '@/components/projects/running-timer';
 import { ReminderWatcher } from '@/components/tasks/reminder-watcher';
 import { NavigationTracker } from './back-link';
 import { UpdateWatcher } from './update-watcher';
@@ -101,6 +102,7 @@ export function AppShell({ email, children }: { email: string | null; children: 
         <nav aria-label="Principal" className="flex-1">
           <NavLinks />
         </nav>
+        <RunningTimer />
         <SidebarFooter email={email} />
       </aside>
 
@@ -109,6 +111,7 @@ export function AppShell({ email, children }: { email: string | null; children: 
         <Link href="/dashboard">
           <Logo />
         </Link>
+        <RunningTimer compact className="ml-auto mr-2 py-0.5" />
         <RadixDialog.Root open={open} onOpenChange={setOpen}>
           <RadixDialog.Trigger className="rounded-lg p-2 text-fg hover:bg-surface-2" aria-label="Abrir menu">
             <Menu className="h-5 w-5" aria-hidden />

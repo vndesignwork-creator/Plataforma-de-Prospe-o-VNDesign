@@ -111,6 +111,7 @@ export async function renderForLead(
     today: todayIso(),
     services,
     categories,
+    reviewUrl: settings.google_review_url,
   });
   const subject = renderTemplate(input.subject ?? template?.subject ?? '', context);
   const body = renderTemplate(input.body ?? template?.body ?? '', context);

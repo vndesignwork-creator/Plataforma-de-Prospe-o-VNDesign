@@ -64,6 +64,7 @@ export async function updateSettings(
     daily_digest?: { enabled: boolean; recipient: string | null };
     ai?: Partial<WorkspaceSettings['ai']>;
     features?: Partial<WorkspaceSettings['features']>;
+    google_review_url?: string | null;
     weekly_backup?: { enabled: boolean; recipient: string | null; weekday: number };
   },
 ): Promise<WorkspaceSettings> {

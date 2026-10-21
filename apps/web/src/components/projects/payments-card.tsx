@@ -140,7 +140,7 @@ function PaymentRow({ lead, payment, today }: { lead: Lead; payment: LeadPayment
 }
 
 /** Plano rápido a partir do valor da proposta aceite (ou do valor estimado). */
-function PlanForm({ lead }: { lead: Lead }) {
+export function PlanForm({ lead, onDone }: { lead: Lead; onDone?: () => void }) {
   const plan = usePaymentPlan(lead.id);
   const { data: proposals } = useProposals(lead.id);
   const accepted = proposals?.find((p) => p.status === 'aceite') ?? proposals?.find((p) => p.status === 'enviada');
@@ -157,6 +157,7 @@ function PlanForm({ lead }: { lead: Lead }) {
     try {
       await plan.mutateAsync({ total: value, split: [...PAYMENT_PLANS[Number(split)]!.split] });
       toast.success('Plano de pagamentos criado.');
+      onDone?.();
     } catch (error) {
       toast.error(errorMessage(error));
     }

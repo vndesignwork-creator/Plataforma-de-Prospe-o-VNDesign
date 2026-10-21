@@ -135,10 +135,15 @@ test('pagamentos e Projetos: plano 50/50, receber o sinal, concluir o projeto', 
   await page.goto('/projetos');
   const active = page.getByRole('list', { name: 'Projetos em curso' });
   const row = active.getByRole('listitem').filter({ hasText: `Clínica Projeto ${run}` });
-  await expect(row.getByText(/Recebido 750\s€ de 1500\s€/)).toBeVisible();
-  await expect(row.getByRole('link', { name: 'Criar a lista de tarefas' })).toBeVisible();
+  await expect(row.getByText(/750\s€ de 1500\s€/)).toBeVisible();
+  await expect(row.getByRole('link', { name: 'Usar um modelo de tarefas' })).toBeVisible();
   await row.getByRole('button', { name: 'Concluir projeto' }).click();
+  const wrapUp = page.getByRole('dialog', { name: 'Concluir o projeto' });
+  await wrapUp.getByLabel(/Juntar o projeto ao portefólio/).uncheck();
+  await wrapUp.getByLabel(/propor um novo serviço/).uncheck();
+  await wrapUp.getByRole('button', { name: 'Concluir projeto' }).click();
   await expect(page.getByText('Projeto concluído. 🎉')).toBeVisible();
+  await page.getByRole('dialog', { name: 'Projeto concluído 🎉' }).getByRole('button', { name: 'Fechar' }).first().click();
   await expect(active.getByText(`Clínica Projeto ${run}`)).toHaveCount(0);
   await page.getByRole('button', { name: 'Concluídos' }).click();
   await expect(page.getByRole('list', { name: 'Projetos concluídos' }).getByText(`Clínica Projeto ${run}`)).toBeVisible();
@@ -211,7 +216,7 @@ test('cópia de segurança: enviar agora (Excel em anexo) e o dia da semana', as
   await expect(page.getByRole('switch', { name: /Relatório de diagnóstico em PDF/ })).toHaveAttribute('aria-checked', 'true');
   await page.getByLabel('Enviar para').fill(recipient);
   await page.getByLabel('Dia da semana').selectOption({ label: 'Sexta-feira' });
-  await page.getByRole('button', { name: 'Guardar' }).click();
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click();
   await expect(page.getByText('Cópia de segurança guardada.')).toBeVisible();
   await page.getByRole('button', { name: 'Enviar uma cópia agora' }).click();
   await expect(page.getByText(new RegExp(`Cópia enviada para ${recipient} \\(\\d+ leads\\)\\.`))).toBeVisible();
@@ -225,7 +230,7 @@ test('cópia de segurança: enviar agora (Excel em anexo) e o dia da semana', as
 
   // Desligar no interruptor do cartão.
   await page.getByRole('switch', { name: 'Desligar a cópia de segurança semanal' }).click();
-  await page.getByRole('button', { name: 'Guardar' }).click();
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click();
   await expect(page.getByText('Cópia de segurança guardada.')).toBeVisible();
   expect((await (await page.request.get('/api/v1/settings')).json()).data.weekly_backup.enabled).toBe(false);
 });

@@ -2,12 +2,12 @@
 
 /**
  * Definições → Funcionalidades: ligar/desligar o relatório de diagnóstico, os
- * pagamentos, as reuniões, a página Projetos e as mensagens prontas do WhatsApp,
- * e a cópia de segurança semanal.
+ * pagamentos, as reuniões, a página Projetos (e as partes dela), as mensagens
+ * prontas do WhatsApp, o link de avaliação no Google e a cópia de segurança.
  */
 import { useQueryClient } from '@tanstack/react-query';
 import { WEEKDAY_LABELS, formatDateTime, type Features } from '@vndesign/core';
-import { BriefcaseBusiness, CalendarPlus, DatabaseBackup, FileText, MessageCircle, Wallet, type LucideIcon } from 'lucide-react';
+import { BriefcaseBusiness, CalendarPlus, Clock, DatabaseBackup, FileText, FolderOpen, Link2, MessageCircle, RefreshCcw, Star, Wallet, type LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -17,8 +17,9 @@ import { Input, Select } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useMe, useSettings, type SettingsWithMail } from '@/lib/queries';
+import { cn } from '@/lib/utils';
 
-const FEATURES: { key: keyof Features; label: string; description: string; icon: LucideIcon }[] = [
+const FEATURES: { key: keyof Features; label: string; description: string; icon: LucideIcon; sub?: boolean }[] = [
   {
     key: 'diagnosis_report',
     label: 'Relatório de diagnóstico em PDF',
@@ -40,8 +41,36 @@ const FEATURES: { key: keyof Features; label: string; description: string; icon:
   {
     key: 'projects',
     label: 'Projetos',
-    description: 'Página com os clientes com o projeto em curso: tarefas, pagamentos e próxima reunião.',
+    description: 'Clientes com o projeto em curso: prazo de entrega, fases, tarefas, pagamentos, calendário e resumo diário.',
     icon: BriefcaseBusiness,
+  },
+  {
+    key: 'revisions',
+    label: 'Rondas de revisão',
+    description: 'Quantas revisões estão incluídas e as que o cliente pediu; avisa quando passa das incluídas.',
+    icon: RefreshCcw,
+    sub: true,
+  },
+  {
+    key: 'time_tracking',
+    label: 'Registo de horas',
+    description: 'Temporizador ▶/⏸ em cada projeto e quanto ganhas por hora.',
+    icon: Clock,
+    sub: true,
+  },
+  {
+    key: 'deliverables',
+    label: 'Ficheiros e entregas',
+    description: 'Links do Drive, Figma ou Canva, com “Enviada” e “Aprovada pelo cliente”.',
+    icon: FolderOpen,
+    sub: true,
+  },
+  {
+    key: 'client_page',
+    label: 'Página para o cliente',
+    description: 'Um link só de leitura para o cliente acompanhar o projeto (sem login).',
+    icon: Link2,
+    sub: true,
   },
   {
     key: 'whatsapp_templates',
@@ -59,6 +88,9 @@ export function FeaturesSettings() {
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
+  const [review, setReview] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [savingReview, setSavingReview] = useState(false);
 
   useEffect(() => {
     if (!settings) return;
@@ -100,6 +132,22 @@ export function FeaturesSettings() {
     }
   }
 
+  async function saveReview(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingReview(true);
+    setReviewError(null);
+    try {
+      await patch({ google_review_url: review ?? '' });
+      setReview(null);
+      toast.success('Link de avaliação guardado.');
+    } catch (error) {
+      if (error instanceof ApiClientError && error.problem.errors) setReviewError((error.problem.errors as Record<string, string[]>).google_review_url?.[0] ?? 'Link inválido.');
+      else toast.error(errorMessage(error));
+    } finally {
+      setSavingReview(false);
+    }
+  }
+
   async function sendNow() {
     setSending(true);
     try {
@@ -121,8 +169,8 @@ export function FeaturesSettings() {
       <Card>
         <CardHeader title="Funcionalidades" description="Desliga o que não usas: sai do menu e da ficha. Os dados ficam guardados." />
         <ul className="divide-y divide-border" aria-label="Funcionalidades">
-          {FEATURES.map(({ key, label, description, icon: Icon }) => (
-            <li key={key} className="flex items-start gap-3 px-4 py-3">
+          {FEATURES.map(({ key, label, description, icon: Icon, sub }) => (
+            <li key={key} className={cn('flex items-start gap-3 px-4 py-3', sub && 'pl-10', sub && !settings.features.projects && 'opacity-60')}>
               <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden />
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium">{label}</span>
@@ -132,6 +180,31 @@ export function FeaturesSettings() {
             </li>
           ))}
         </ul>
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Avaliações no Google"
+          description="O link da tua ficha no Google para os clientes deixarem uma avaliação. Usa-se em {{avaliacao}} e ao concluir um projeto."
+        />
+        <form onSubmit={saveReview} className="flex flex-wrap items-end gap-3 p-4" noValidate>
+          <Field
+            label="Link para avaliação"
+            error={reviewError ?? undefined}
+            hint="No Perfil da Empresa no Google: “Pedir avaliações” → copiar o link."
+            className="min-w-0 flex-[1_1_18rem]"
+          >
+            <Input
+              inputMode="url"
+              placeholder="https://g.page/r/…/review"
+              value={review ?? settings.google_review_url ?? ''}
+              onChange={(e) => setReview(e.target.value)}
+            />
+          </Field>
+          <Button type="submit" loading={savingReview} disabled={review === null}>
+            <Star className="h-4 w-4" aria-hidden /> Guardar link
+          </Button>
+        </form>
       </Card>
 
       <Card>

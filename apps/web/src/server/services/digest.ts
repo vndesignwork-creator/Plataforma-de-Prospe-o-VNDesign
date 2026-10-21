@@ -3,7 +3,20 @@
  * Corre a partir de /api/v1/cron/daily-digest (Vercel Cron, tarefa agendada no
  * Coolify/Hostinger) ou de um envio de teste nas Definições.
  */
-import { formatDate, LEAD_STATUS_META, type Lead, type Today, type TodayTask, leadPath } from '@vndesign/core';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import {
+  addDays,
+  dueStatus,
+  formatCurrency,
+  formatDate,
+  LEAD_STATUS_META,
+  type Lead,
+  type Today,
+  type TodayTask,
+  leadPath,
+  todayIso,
+  WorkspaceSettingsSchema,
+} from '@vndesign/core';
 import { isMailConfigured, sendMail } from '../mailer';
 import { createSupabaseAdminClient } from '../supabase-admin';
 import { fetchToday } from './dashboard';
@@ -15,17 +28,71 @@ export function urgentTasks(today: Today): TodayTask[] {
   return [...(today.tasks?.overdue ?? []), ...(today.tasks?.due_today ?? [])];
 }
 
-export function buildDigestEmail(input: { workspaceName: string; today: Today; appUrl: string }) {
+type LeadRef = { id: string; number: number; company_name: string };
+
+/** Projetos no resumo: entregas atrasadas e desta semana, pagamentos em atraso. */
+export interface DigestProjects {
+  deliveries: { lead: LeadRef; due_on: string }[];
+  overdue_payments: { lead: LeadRef; description: string; amount: number; due_on: string }[];
+}
+
+export async function fetchDigestProjects(client: SupabaseClient, workspaceId: string, today = todayIso()): Promise<DigestProjects> {
+  const { data: ws } = await client.from('workspaces').select('settings').eq('id', workspaceId).maybeSingle();
+  const features = WorkspaceSettingsSchema.parse(ws?.settings ?? {}).features;
+  const embed = 'lead:leads!inner(id, number, company_name, status, archived_at, project_completed_at)';
+  const [dues, payments] = await Promise.all([
+    features.projects
+      ? client
+          .from('lead_projects')
+          .select(`due_on, ${embed}`)
+          .eq('workspace_id', workspaceId)
+          .not('due_on', 'is', null)
+          .lte('due_on', addDays(today, 7))
+          .eq('lead.status', 'cliente')
+          .is('lead.project_completed_at', null)
+          .is('lead.archived_at', null)
+          .order('due_on', { ascending: true })
+      : Promise.resolve({ data: [] }),
+    features.payments
+      ? client
+          .from('lead_payments')
+          .select(`description, amount, due_on, ${embed}`)
+          .eq('workspace_id', workspaceId)
+          .is('paid_on', null)
+          .lt('due_on', today)
+          .is('lead.archived_at', null)
+          .order('due_on', { ascending: true })
+      : Promise.resolve({ data: [] }),
+  ]);
+  const ref = (l: LeadRef) => ({ id: l.id, number: l.number, company_name: l.company_name });
+  return {
+    deliveries: ((dues.data ?? []) as unknown as { due_on: string; lead: LeadRef }[]).map((d) => ({ lead: ref(d.lead), due_on: d.due_on })),
+    overdue_payments: ((payments.data ?? []) as unknown as { description: string; amount: number | string; due_on: string; lead: LeadRef }[]).map((p) => ({
+      lead: ref(p.lead),
+      description: p.description,
+      amount: Number(p.amount),
+      due_on: p.due_on,
+    })),
+  };
+}
+
+const projectCount = (p?: DigestProjects) => (p ? p.deliveries.length + p.overdue_payments.length : 0);
+
+export function buildDigestEmail(input: { workspaceName: string; today: Today; appUrl: string; projects?: DigestProjects }) {
   const { today, appUrl } = input;
+  const projects = input.projects ?? { deliveries: [], overdue_payments: [] };
   const total = today.overdue.length + today.due_today.length;
   const tasksUrgent = urgentTasks(today);
   const tasksAll = [...tasksUrgent, ...(today.tasks?.upcoming ?? [])];
   const taskNote = tasksUrgent.length ? ` · ${tasksUrgent.length} tarefa${tasksUrgent.length === 1 ? '' : 's'}` : '';
+  const deliveries = projects.deliveries.length;
   const subject =
     total === 0
       ? tasksUrgent.length
         ? `VNDesign Leads · ${tasksUrgent.length} tarefa${tasksUrgent.length === 1 ? '' : 's'} para hoje · ${formatDate(today.today)}`
-        : `VNDesign Leads · sem follow-ups para hoje (${formatDate(today.today)})`
+        : deliveries
+          ? `VNDesign Leads · ${deliveries} entrega${deliveries === 1 ? '' : 's'} de projeto esta semana · ${formatDate(today.today)}`
+          : `VNDesign Leads · sem follow-ups para hoje (${formatDate(today.today)})`
       : `VNDesign Leads · ${total} follow-up${total === 1 ? '' : 's'} para hoje${
           today.overdue.length ? ` (${today.overdue.length} em atraso)` : ''
         }${taskNote} · ${formatDate(today.today)}`;
@@ -54,6 +121,18 @@ export function buildDigestEmail(input: { workspaceName: string; today: Today; a
     }
     textParts.push('');
   }
+  if (projectCount(projects)) {
+    textParts.push('PROJETOS');
+    for (const d of projects.deliveries) {
+      textParts.push(`- Entrega: #${d.lead.number} ${d.lead.company_name} — ${dueStatus(d.due_on, today.today)!.label} (${formatDate(d.due_on)}) ${appUrl}${leadPath(d.lead)}`);
+    }
+    for (const p of projects.overdue_payments) {
+      textParts.push(
+        `- Pagamento em atraso: #${p.lead.number} ${p.lead.company_name} — ${p.description}, ${formatCurrency(p.amount)} (desde ${formatDate(p.due_on)}) ${appUrl}${leadPath(p.lead)}`,
+      );
+    }
+    textParts.push('');
+  }
   textParts.push(`Abrir o dashboard: ${appUrl}/dashboard`);
 
   const taskColor = (t: TodayTask) => (t.due_on! < today.today ? '#c22a2a' : t.due_on === today.today ? '#EF5C32' : '#5f5b53');
@@ -65,6 +144,29 @@ export function buildDigestEmail(input: { workspaceName: string; today: Today; a
     <a href="${esc(`${appUrl}${leadPath(t.lead)}`)}" style="color:#5f5b53;font-size:13px;text-decoration:none;">#${t.lead.number} ${esc(t.lead.company_name)}</a>
   </td>
   <td style="padding:8px 0;border-bottom:1px solid #e7e3db;text-align:right;white-space:nowrap;color:${taskColor(t)};font-weight:600;font-size:13px;">${esc(formatDate(t.due_on))}</td>
+</tr>`,
+    )
+    .join('');
+
+  const projectRows = [
+    ...projects.deliveries.map((d) => {
+      const due = dueStatus(d.due_on, today.today)!;
+      return { lead: d.lead, line: `📦 Entrega · ${due.label}`, right: formatDate(d.due_on), color: due.tone === 'danger' ? '#c22a2a' : due.tone === 'warning' ? '#EF5C32' : '#5f5b53' };
+    }),
+    ...projects.overdue_payments.map((p) => ({
+      lead: p.lead,
+      line: `💶 Pagamento em atraso · ${p.description} (desde ${formatDate(p.due_on)})`,
+      right: formatCurrency(p.amount),
+      color: '#c22a2a',
+    })),
+  ]
+    .map(
+      (r) => `<tr>
+  <td style="padding:8px 0;border-bottom:1px solid #e7e3db;">
+    <a href="${esc(`${appUrl}${leadPath(r.lead)}`)}" style="color:#141414;font-weight:600;text-decoration:none;">#${r.lead.number} ${esc(r.lead.company_name)}</a><br>
+    <span style="color:#5f5b53;font-size:13px;">${esc(r.line)}</span>
+  </td>
+  <td style="padding:8px 0;border-bottom:1px solid #e7e3db;text-align:right;white-space:nowrap;color:${r.color};font-weight:600;font-size:13px;">${esc(r.right)}</td>
 </tr>`,
     )
     .join('');
@@ -91,7 +193,7 @@ export function buildDigestEmail(input: { workspaceName: string; today: Today; a
 </td></tr>
 <tr><td style="padding:16px 24px 8px;">
 ${
-  total + today.upcoming.length + tasksAll.length === 0
+  total + today.upcoming.length + tasksAll.length + projectCount(projects) === 0
     ? '<p style="color:#141414;">Não há follow-ups nem tarefas para os próximos 7 dias.</p>'
     : sections
         .filter((s) => s.leads.length)
@@ -103,6 +205,10 @@ ${
       (tasksAll.length
         ? `<h2 style="font-size:15px;margin:16px 0 4px;color:#141414;">Tarefas (${tasksAll.length})</h2>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${taskRows}</table>`
+        : '') +
+      (projectRows
+        ? `<h2 style="font-size:15px;margin:16px 0 4px;color:#141414;">Projetos</h2>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${projectRows}</table>`
         : '')
 }
 </td></tr>
@@ -124,6 +230,7 @@ export interface DigestResult {
   due_today: number;
   upcoming: number;
   tasks?: number;
+  projects?: number;
   error?: string;
 }
 
@@ -135,6 +242,7 @@ export async function sendDailyDigests(options: { appUrl: string; dryRun?: boole
   const results: DigestResult[] = [];
   for (const ws of (data ?? []) as { workspace_id: string; workspace_name: string; recipient: string }[]) {
     const today = await fetchToday(admin, ws.workspace_id);
+    const projects = await fetchDigestProjects(admin, ws.workspace_id, today.today);
     const base = {
       workspace_id: ws.workspace_id,
       recipient: ws.recipient,
@@ -142,8 +250,9 @@ export async function sendDailyDigests(options: { appUrl: string; dryRun?: boole
       due_today: today.due_today.length,
       upcoming: today.upcoming.length,
       tasks: urgentTasks(today).length,
+      projects: projectCount(projects),
     };
-    if (base.overdue + base.due_today + base.tasks === 0) {
+    if (base.overdue + base.due_today + base.tasks + base.projects === 0) {
       results.push({ ...base, status: 'skipped' });
       continue;
     }
@@ -152,7 +261,7 @@ export async function sendDailyDigests(options: { appUrl: string; dryRun?: boole
       continue;
     }
     try {
-      await sendMail({ to: ws.recipient, ...buildDigestEmail({ workspaceName: ws.workspace_name, today, appUrl: options.appUrl }) });
+      await sendMail({ to: ws.recipient, ...buildDigestEmail({ workspaceName: ws.workspace_name, today, appUrl: options.appUrl, projects }) });
       results.push({ ...base, status: 'sent' });
     } catch (e) {
       results.push({ ...base, status: 'error', error: e instanceof Error ? e.message : String(e) });

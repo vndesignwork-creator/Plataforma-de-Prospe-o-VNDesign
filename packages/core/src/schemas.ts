@@ -479,9 +479,23 @@ export const FeaturesSchema = z.object({
   meetings: z.boolean().default(true).meta({ description: 'Marcar reuniões (convite por email)' }),
   projects: z.boolean().default(true).meta({ description: 'Página Projetos (clientes com projeto em curso)' }),
   whatsapp_templates: z.boolean().default(true).meta({ description: 'Mensagens prontas no botão WhatsApp da ficha' }),
+  revisions: z.boolean().default(true).meta({ description: 'Projetos: rondas de revisão' }),
+  time_tracking: z.boolean().default(true).meta({ description: 'Projetos: registo de horas' }),
+  deliverables: z.boolean().default(true).meta({ description: 'Projetos: ficheiros e entregas' }),
+  client_page: z.boolean().default(true).meta({ description: 'Projetos: página de acompanhamento para o cliente' }),
 });
 export type Features = z.infer<typeof FeaturesSchema>;
-export const DEFAULT_FEATURES: Features = { diagnosis_report: true, payments: true, meetings: true, projects: true, whatsapp_templates: true };
+export const DEFAULT_FEATURES: Features = {
+  diagnosis_report: true,
+  payments: true,
+  meetings: true,
+  projects: true,
+  whatsapp_templates: true,
+  revisions: true,
+  time_tracking: true,
+  deliverables: true,
+  client_page: true,
+};
 
 /** Cópia de segurança semanal: os leads em Excel por email. */
 export const WeeklyBackupSchema = z.object({
@@ -528,6 +542,8 @@ export const WorkspaceSettingsSchema = z
           'Para avançar, basta responder a este email ou ligar-me. Marcamos uma reunião curta para afinar os detalhes e começo de imediato.',
       }),
     features: FeaturesSchema.default(DEFAULT_FEATURES),
+    /** Link para os clientes deixarem uma avaliação no Google ({{avaliacao}}). */
+    google_review_url: z.string().nullable().default(null),
     weekly_backup: WeeklyBackupSchema.default(DEFAULT_WEEKLY_BACKUP),
     /** Fornecedor e modelo de IA de cada função (Definições → Inteligência artificial). */
     ai: AiSettingsSchema.default({
@@ -560,6 +576,7 @@ export const WorkspaceSettingsUpdateSchema = z
     }),
     ai: AiSettingsUpdateSchema,
     features: FeaturesSchema.partial(),
+    google_review_url: nullableUrl,
     weekly_backup: z.object({
       enabled: z.boolean(),
       recipient: nullableEmail,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildMeetingIcs, paymentPlanItems, summarizePayments } from '../src/projects';
-import { WorkspaceSettingsSchema } from '../src/schemas';
+import { DEFAULT_FEATURES, WorkspaceSettingsSchema } from '../src/schemas';
 import { topAuditIssues } from '../src/audit';
 
 describe('pagamentos', () => {
@@ -60,7 +60,7 @@ describe('convite de calendário (.ics)', () => {
 describe('definições', () => {
   it('funcionalidades ligadas e cópia semanal à segunda por omissão', () => {
     const s = WorkspaceSettingsSchema.parse({});
-    expect(s.features).toEqual({ diagnosis_report: true, payments: true, meetings: true, projects: true, whatsapp_templates: true });
+    expect(s.features).toEqual(DEFAULT_FEATURES);
     expect(s.weekly_backup).toMatchObject({ enabled: true, weekday: 1, recipient: null, last_sent_at: null });
   });
 });

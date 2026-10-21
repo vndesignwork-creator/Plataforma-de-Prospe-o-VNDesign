@@ -93,6 +93,10 @@ export const ACTIVITY_TYPES = [
   'meeting_canceled',
   'project_completed',
   'project_reopened',
+  'project_stage_changed',
+  'revision_requested',
+  'deliverable_sent',
+  'deliverable_approved',
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
@@ -135,6 +139,10 @@ export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
   meeting_canceled: 'Reunião desmarcada',
   project_completed: 'Projeto concluído',
   project_reopened: 'Projeto reaberto',
+  project_stage_changed: 'Fase do projeto',
+  revision_requested: 'Revisão pedida',
+  deliverable_sent: 'Entrega enviada',
+  deliverable_approved: 'Entrega aprovada',
 };
 
 export const TEMPLATE_KINDS = [
