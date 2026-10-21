@@ -124,6 +124,22 @@ export const LeadGenerationAddResultSchema = z
   .meta({ id: 'LeadGenerationAddResult' });
 export type LeadGenerationAddResult = z.infer<typeof LeadGenerationAddResultSchema>;
 
+/**
+ * Tira as citações em Markdown que alguns fornecedores (ex.: OpenAI) metem no
+ * texto: "… satisfação garantida. ([rodrijor.pt](https://…?utm_source=openai))".
+ */
+export function cleanAiText(text: string): string;
+export function cleanAiText(text: string | null): string | null;
+export function cleanAiText(text: string | null): string | null {
+  if (!text) return text;
+  return text
+    .replace(/\s*\(\s*\[[^\]]*\]\(https?:\/\/[^)\s]*\)(?:\s*,?\s*\[[^\]]*\]\(https?:\/\/[^)\s]*\))*\s*\)/g, '')
+    .replace(/\[([^\]]+)\]\(https?:\/\/[^)\s]*\)/g, '$1')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\s+([.,;:!?])/g, '$1')
+    .trim();
+}
+
 // -----------------------------------------------------------------------------
 // Pesquisas automáticas (semanais)
 // -----------------------------------------------------------------------------

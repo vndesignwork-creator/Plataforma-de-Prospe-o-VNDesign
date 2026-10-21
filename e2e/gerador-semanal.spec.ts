@@ -167,4 +167,13 @@ test('“Correr agora” abre o resultado na página', async ({ page }) => {
   // Fica para rever: nada foi adicionado sozinho.
   await expect(result.getByRole('button', { name: /^Adicionar \d+ leads?$/ })).toBeVisible();
   await expect(card.getByRole('button', { name: /Ver a última pesquisa/ })).toBeVisible();
+
+  // Ao voltar à página, a última pesquisa aparece identificada e fechada; abre-se no botão.
+  await page.reload();
+  await expect(result.getByText('Última pesquisa', { exact: true })).toBeVisible();
+  await expect(result.getByRole('list', { name: 'Empresas encontradas' })).toBeHidden();
+  await result.getByRole('button', { name: 'Ver empresas' }).click();
+  await expect(result.getByRole('list', { name: 'Empresas encontradas' })).toBeVisible();
+  await result.getByRole('button', { name: 'Esconder' }).click();
+  await expect(result.getByRole('list', { name: 'Empresas encontradas' })).toBeHidden();
 });

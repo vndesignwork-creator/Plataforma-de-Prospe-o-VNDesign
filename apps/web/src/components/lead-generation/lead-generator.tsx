@@ -5,8 +5,8 @@
  * internet (1–3 minutos, em segundo plano) → revês a lista e escolhes quais
  * entram como leads (os sites são analisados a seguir).
  */
-import { type LeadCandidate, type LeadGenerationRun } from '@vndesign/core';
-import { CalendarClock, ExternalLink, Globe, History, Loader2, Mail, Phone, Repeat, Sparkles } from 'lucide-react';
+import { cleanAiText, type LeadCandidate, type LeadGenerationRun } from '@vndesign/core';
+import { CalendarClock, ChevronDown, ExternalLink, Globe, History, Loader2, Mail, Phone, Repeat, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -160,7 +160,7 @@ function Results({ run }: { run: LeadGenerationRun }) {
                   {c.sector_name ? <span className="text-xs text-muted">{c.sector_name}</span> : null}
                   {c.city ? <span className="text-xs text-muted">· {c.city}</span> : null}
                 </div>
-                <p className="text-sm break-words">{c.opportunity}</p>
+                <p className="text-sm break-words">{cleanAiText(c.opportunity)}</p>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                   {c.website ? (
                     <a href={c.website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent-text hover:underline">
@@ -209,9 +209,10 @@ function Results({ run }: { run: LeadGenerationRun }) {
   );
 }
 
-function RunCard({ id }: { id: string }) {
+function RunCard({ id, label, defaultOpen }: { id: string; label: string; defaultOpen: boolean }) {
   const { data: run, isLoading } = useLeadGenerationRun(id);
   const qc = useQueryClient();
+  const [open, setOpen] = useState(defaultOpen);
   const status = run?.status;
   // Quando termina, a lista de pesquisas (e o botão "Procurar") atualiza-se.
   useEffect(() => {
@@ -219,19 +220,43 @@ function RunCard({ id }: { id: string }) {
   }, [status, qc]);
   if (isLoading || !run) return <Skeleton className="h-40" />;
   const cost = usd(run.cost_usd);
+  // Enquanto pesquisa, mostra sempre o progresso.
+  const expanded = open || run.status === 'running';
+  const added = run.candidates.filter((c) => c.added_lead_id).length;
   return (
     <Card>
       <CardHeader
-        title={run.query}
-        actions={
-          run.schedule_id ? (
-            <Badge tone="accent">
-              <CalendarClock className="h-3.5 w-3.5" aria-hidden /> Automática
-            </Badge>
-          ) : null
+        title={
+          <>
+            <span className="mb-0.5 block text-xs font-medium tracking-wide text-muted uppercase">{label}</span>
+            {run.query}
+          </>
         }
+        actions={
+          <>
+            {run.schedule_id ? (
+              <Badge tone="accent">
+                <CalendarClock className="h-3.5 w-3.5" aria-hidden /> Automática
+              </Badge>
+            ) : null}
+            {run.status !== 'running' ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setOpen(!expanded)}
+                aria-expanded={expanded}
+                aria-controls={`pesquisa-${run.id}`}
+              >
+                <ChevronDown className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')} aria-hidden />
+                {expanded ? 'Esconder' : run.status === 'error' ? 'Ver o erro' : 'Ver empresas'}
+              </Button>
+            ) : null}
+          </>
+        }
+        className={cn(!expanded && 'border-b-0')}
         description={[
           run.city,
+          added && !run.auto_added ? `${added} adicionada(s)` : null,
           run.auto_added ? `${run.auto_added} adicionado(s) automaticamente` : null,
           run.status === 'done' ? `${run.candidates.length} empresa(s)` : null,
           run.searches ? `${run.searches} pesquisa(s)` : null,
@@ -241,7 +266,8 @@ function RunCard({ id }: { id: string }) {
           .filter(Boolean)
           .join(' · ')}
       />
-      {run.status === 'running' ? (
+      <div id={`pesquisa-${run.id}`} hidden={!expanded}>
+      {!expanded ? null : run.status === 'running' ? (
         <div role="status" className="flex items-start gap-3 p-4 text-sm">
           <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-accent-text" aria-hidden />
           <p>
@@ -256,6 +282,7 @@ function RunCard({ id }: { id: string }) {
       ) : (
         <Results key={run.id} run={run} />
       )}
+      </div>
     </Card>
   );
 }
@@ -264,21 +291,38 @@ export function LeadGenerator({ initialRunId }: { initialRunId?: string | null }
   const { data: runs, isLoading } = useLeadGenerationRuns();
   // ?pesquisa=… (link da notificação/email da pesquisa automática) abre essa pesquisa.
   const [currentId, setCurrentId] = useState<string | null>(initialRunId ?? null);
+  // Cada vez que se abre uma pesquisa (lista, "Correr agora", nova pesquisa), o cartão volta aberto.
+  const [openCount, setOpenCount] = useState(0);
   const current = currentId ?? runs?.[0]?.id ?? null;
+  const currentRun = runs?.find((r) => r.id === current);
+  const openRun = (id: string) => {
+    setCurrentId(id);
+    setOpenCount((n) => n + 1);
+  };
   const running = runs?.some((r) => r.status === 'running');
 
   return (
     <div className="flex flex-col gap-5">
-      <SearchForm onStarted={(run) => setCurrentId(run.id)} busy={!!running} />
+      <SearchForm onStarted={(run) => openRun(run.id)} busy={!!running} />
       <SchedulesCard
         onOpenRun={(id) => {
-          setCurrentId(id);
+          openRun(id);
           // O resultado fica logo abaixo deste cartão.
           requestAnimationFrame(() => document.getElementById('pesquisa-atual')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
         }}
       />
       <div id="pesquisa-atual" className="scroll-mt-20">
-        {isLoading ? <Skeleton className="h-40" /> : current ? <RunCard id={current} /> : null}
+        {isLoading ? (
+          <Skeleton className="h-40" />
+        ) : current ? (
+          <RunCard
+            key={`${current}-${openCount}`}
+            id={current}
+            label={!currentRun || current === runs?.[0]?.id ? 'Última pesquisa' : `Pesquisa de ${dateTime(currentRun.created_at)}`}
+            // Ao entrar na página, a última pesquisa aparece fechada; aberta quando se escolhe uma.
+            defaultOpen={currentId !== null}
+          />
+        ) : null}
       </div>
       {runs && runs.length > 1 ? (
         <Card>
@@ -288,7 +332,7 @@ export function LeadGenerator({ initialRunId }: { initialRunId?: string | null }
               <li key={r.id}>
                 <button
                   type="button"
-                  onClick={() => setCurrentId(r.id)}
+                  onClick={() => openRun(r.id)}
                   aria-current={r.id === current ? 'true' : undefined}
                   className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-surface-2 aria-[current=true]:bg-surface-2"
                 >

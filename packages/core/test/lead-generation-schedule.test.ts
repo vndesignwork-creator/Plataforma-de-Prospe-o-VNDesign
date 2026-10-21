@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LeadGenerationScheduleUpsertSchema, describeWeeklyRun, nextWeeklyRun } from '../src/lead-generation';
+import { LeadGenerationScheduleUpsertSchema, cleanAiText, describeWeeklyRun, nextWeeklyRun } from '../src/lead-generation';
 
 describe('nextWeeklyRun (hora de Lisboa)', () => {
   // Terça, 20/10/2026, 11:00 em Lisboa (WEST, UTC+1).
@@ -38,5 +38,18 @@ describe('pesquisas automáticas', () => {
 
   it('descreve o horário', () => {
     expect(describeWeeklyRun(1, 8)).toBe('Segunda-feira às 08:00');
+  });
+});
+
+describe('cleanAiText', () => {
+  it('tira as citações em Markdown do fornecedor', () => {
+    expect(
+      cleanAiText(
+        'O site apresenta instruções do modelo por preencher. O portefólio mantém texto genérico. ([rodrijor.pt](https://www.rodrijor.pt/?utm_source=openai))',
+      ),
+    ).toBe('O site apresenta instruções do modelo por preencher. O portefólio mantém texto genérico.');
+    expect(cleanAiText('Ver [o site](https://exemplo.pt) e ([a](https://a.pt), [b](https://b.pt)).')).toBe('Ver o site e.');
+    expect(cleanAiText('Sem site próprio, só Facebook.')).toBe('Sem site próprio, só Facebook.');
+    expect(cleanAiText(null)).toBeNull();
   });
 });

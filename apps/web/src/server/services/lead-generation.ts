@@ -13,6 +13,7 @@ import {
   LEAD_GENERATION_SYSTEM_PROMPT,
   LeadCreateSchema,
   buildLeadGenerationPrompt,
+  cleanAiText,
   ensureUrlProtocol,
   estimateLeadGenerationCost,
   isDirectoryUrl,
@@ -272,7 +273,10 @@ const httpUrl = (value: string | null): string | null => {
   if (!value) return null;
   try {
     const url = new URL(ensureUrlProtocol(value));
-    return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : null;
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    // Marcas de origem acrescentadas pelo fornecedor (ex.: ?utm_source=openai).
+    for (const key of [...url.searchParams.keys()]) if (key.startsWith('utm_')) url.searchParams.delete(key);
+    return url.toString();
   } catch {
     return null;
   }
@@ -314,8 +318,8 @@ async function toCandidates(
       sector_id: sector?.id ?? null,
       sector_name: sector?.name ?? null,
       services: [...new Set(c.services.filter((k) => catalog.serviceKeys.has(k)))],
-      opportunity: c.opportunity,
-      approach_angle: c.approach_angle,
+      opportunity: cleanAiText(c.opportunity),
+      approach_angle: cleanAiText(c.approach_angle),
       source_url: httpUrl(c.source_url) ?? website ?? social ?? '',
     };
   });
@@ -374,10 +378,10 @@ export async function addLeadGenerationCandidates(
       email: c.email,
       sector_id: c.sector_id,
       services: c.services,
-      approach_angle: c.approach_angle,
+      approach_angle: cleanAiText(c.approach_angle),
       source_url: c.source_url || null,
       suggested_on: todayIso(),
-      notes: `Encontrado pelo gerador de leads (“${run.query}”): ${c.opportunity}`,
+      notes: `Encontrado pelo gerador de leads (“${run.query}”): ${cleanAiText(c.opportunity)}`,
     });
     if (!parsed.success) {
       result.skipped.push({ index, reason: 'Dados inválidos: corrige-os depois de criar o lead manualmente.' });
