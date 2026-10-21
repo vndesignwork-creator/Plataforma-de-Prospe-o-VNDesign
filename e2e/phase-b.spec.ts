@@ -116,7 +116,7 @@ test('Dashboard: o essencial e "Hoje"; o resto em Estatísticas', async ({ page 
   );
   await expect(page.getByRole('heading', { name: 'Funil de conversão' })).toHaveCount(0);
 
-  await page.getByRole('link', { name: 'Ver todas as estatísticas' }).click();
+  await page.getByRole('link', { name: 'Estatísticas', exact: true }).last().click();
   await expect(page).toHaveURL(/\/estatisticas$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Estatísticas' })).toBeVisible();
   for (const label of ['Total de leads', 'Valor total estimado']) {

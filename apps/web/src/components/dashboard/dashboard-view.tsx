@@ -26,7 +26,6 @@ import { api, errorMessage } from '@/lib/api-client';
 import { DueChip, ReminderChip } from '@/components/tasks/tasks-card';
 import { Linkified } from '@/lib/linkify';
 import { useBilling, useDashboard, useSettings, useToday } from '@/lib/queries';
-import { cn } from '@/lib/utils';
 import { meetingLabel } from '@/components/meetings/meetings-card';
 import { StatusIcon } from '@/components/icons/lead-icons';
 
@@ -209,10 +208,9 @@ function TodayCard({ className }: { className?: string }) {
     !weekTasks.length &&
     !data.meetings?.length;
   return (
-    <Card className={cn('flex flex-col', className)}>
+    <Card className={className}>
       <CardHeader title="Hoje" description={data ? `Follow-ups, próximas ações e tarefas · ${formatDate(data.today)}` : undefined} />
-      {/* Telemóvel: altura limitada; computador: ocupa a altura da coluna da direita (com scroll). */}
-      <div className="flex max-h-[26rem] flex-col gap-4 overflow-y-auto p-3 lg:max-h-none lg:min-h-0 lg:flex-1">
+      <div className="flex max-h-[26rem] flex-col gap-4 overflow-y-auto p-3">
         {isLoading ? <Skeleton className="h-40" /> : null}
         {empty ? <p className="px-2 py-6 text-center text-sm text-muted">Nada agendado para os próximos 7 dias. 🎉</p> : null}
         {data ? (
@@ -271,20 +269,26 @@ function HotLeadsCard() {
 }
 
 /** Estados pela ordem do pipeline, com o número de leads e ligação à lista filtrada. */
-function PipelineCard({ byStatus }: { byStatus: { status: LeadStatus; count: number }[] }) {
+function PipelineCard({ byStatus, className }: { byStatus: { status: LeadStatus; count: number }[]; className?: string }) {
   const max = Math.max(1, ...byStatus.map((s) => s.count));
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader
         title="Pipeline"
         description="Leads em cada estado"
         actions={
-          <Link href="/kanban" className="text-sm text-accent-text hover:underline">
-            Kanban
-          </Link>
+          <span className="flex items-center gap-3 text-sm">
+            <Link href="/kanban" className="text-accent-text hover:underline">
+              Kanban
+            </Link>
+            <Link href="/estatisticas" className="inline-flex items-center gap-1 text-accent-text hover:underline">
+              <BarChart3 className="h-3.5 w-3.5" aria-hidden /> Estatísticas
+            </Link>
+          </span>
         }
       />
-      <ul className="flex flex-col p-2" aria-label="Leads por estado">
+      {/* No computador, em duas colunas (por baixo do "Hoje", que é largo). */}
+      <ul className="grid p-2 lg:grid-flow-col lg:grid-rows-4 lg:gap-x-6" aria-label="Leads por estado">
         {byStatus.map(({ status, count }) => (
           <li key={status}>
             <Link
@@ -354,28 +358,16 @@ export function DashboardView() {
         <StatTile label="Valor do pipeline" value={euros(t.value_pipeline)} hint="Soma dos leads ativos" />
       </section>
 
-      {/* No telemóvel os cartões ficam numa só coluna ("contents") e o "Hoje" passa para o topo: é o que se abre o dia a ver. */}
-      <div className="contents lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:gap-5">
-        {/* No computador, o "Hoje" estica até ao fundo da coluna da direita (sem espaço vazio por baixo). */}
-        <div className="max-lg:order-first lg:relative lg:min-h-[26rem]">
-          <TodayCard className="lg:absolute lg:inset-0" />
+      {/* Telemóvel: uma só coluna ("contents"), com o "Hoje" no topo (é o que se abre o dia a ver) e o Pipeline no fim.
+          Computador: "Hoje" e Pipeline à esquerda; os leads mais quentes e a faturação à direita. */}
+      <div className="contents lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-start lg:gap-5">
+        <div className="contents lg:flex lg:flex-col lg:gap-5">
+          <TodayCard className="max-lg:order-first" />
+          <PipelineCard byStatus={data.by_status} className="max-lg:order-last" />
         </div>
         <div className="flex flex-col gap-5">
           <HotLeadsCard />
           <BillingCard />
-          <PipelineCard byStatus={data.by_status} />
-          <Link
-            href="/estatisticas"
-            className="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-sm font-medium hover:bg-surface-2"
-          >
-            <span className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-accent-text" aria-hidden />
-              Ver todas as estatísticas
-            </span>
-            <span className="text-muted" aria-hidden>
-              →
-            </span>
-          </Link>
         </div>
       </div>
     </div>
