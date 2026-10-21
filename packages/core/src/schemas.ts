@@ -478,9 +478,10 @@ export const FeaturesSchema = z.object({
   payments: z.boolean().default(true).meta({ description: 'Pagamentos dos clientes e faturação' }),
   meetings: z.boolean().default(true).meta({ description: 'Marcar reuniões (convite por email)' }),
   projects: z.boolean().default(true).meta({ description: 'Página Projetos (clientes com projeto em curso)' }),
+  whatsapp_templates: z.boolean().default(true).meta({ description: 'Mensagens prontas no botão WhatsApp da ficha' }),
 });
 export type Features = z.infer<typeof FeaturesSchema>;
-export const DEFAULT_FEATURES: Features = { diagnosis_report: true, payments: true, meetings: true, projects: true };
+export const DEFAULT_FEATURES: Features = { diagnosis_report: true, payments: true, meetings: true, projects: true, whatsapp_templates: true };
 
 /** Cópia de segurança semanal: os leads em Excel por email. */
 export const WeeklyBackupSchema = z.object({

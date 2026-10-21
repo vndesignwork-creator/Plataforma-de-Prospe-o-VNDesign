@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTemplateContext, formatSignature, mailtoUrl, renderTemplate, templateVariablesIn } from '../src/templates';
+import { buildTemplateContext, formatSignature, mailtoUrl, meetingPhrase, renderTemplate, templateVariablesIn } from '../src/templates';
 
 const signature = {
   full_name: 'Vá Nancassa',
@@ -107,5 +107,24 @@ describe('variáveis dos serviços do lead', () => {
     expect(renderTemplate('Trabalho em {{servicos|design}} para ter {{beneficio|uma imagem forte}}.', ctx).text).toBe(
       'Trabalho em design para ter uma imagem forte.',
     );
+  });
+});
+
+describe('variáveis da reunião ({{reuniao}})', () => {
+  const now = new Date('2026-10-27T09:00:00Z'); // terça-feira, 09:00 em Lisboa (hora de inverno desde 25/10)
+
+  it('diz hoje, amanhã ou o dia da semana, na hora de Lisboa', () => {
+    expect(meetingPhrase('2026-10-27T15:30:00Z', now)).toBe('hoje, às 15:30');
+    expect(meetingPhrase('2026-10-28T10:00:00Z', now)).toBe('amanhã, às 10:00');
+    expect(meetingPhrase('2026-10-30T14:00:00Z', now)).toBe('sexta-feira, 30/10, às 14:00');
+    expect(meetingPhrase('2026-07-01T09:00:00Z', now)).toBe('quarta-feira, 01/07, às 10:00');
+  });
+
+  it('preenche o lembrete; sem reunião, as linhas ficam vazias', () => {
+    const body = 'Só para lembrar a nossa reunião de {{reuniao}}.\n{{reuniao_local}}\n\nAté já!';
+    const withMeeting = buildTemplateContext({ today: '2026-10-27', now, meeting: { starts_at: '2026-10-28T10:00:00Z', location: 'Google Meet' } });
+    expect(renderTemplate(body, withMeeting).text).toBe('Só para lembrar a nossa reunião de amanhã, às 10:00.\nGoogle Meet\n\nAté já!');
+    const without = renderTemplate(body, buildTemplateContext({ today: '2026-10-27' }));
+    expect(without.missing).toEqual(['reuniao', 'reuniao_local']);
   });
 });

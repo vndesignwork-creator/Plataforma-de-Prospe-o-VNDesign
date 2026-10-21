@@ -5,7 +5,10 @@ import { useServiceCatalog } from '@/components/services/services';
 import { useSectors, useSettings, useSignature } from './queries';
 
 /** Contexto das variáveis ({{empresa}}, {{assinatura}}…) para pré-visualizar no browser. */
-export function useTemplateContext(lead: Lead | null | undefined): TemplateContext {
+export function useTemplateContext(
+  lead: Lead | null | undefined,
+  meeting?: { starts_at: string; location?: string | null } | null,
+): TemplateContext {
   const { data: signature } = useSignature();
   const { data: settings } = useSettings();
   const { data: sectors } = useSectors(true);
@@ -19,6 +22,7 @@ export function useTemplateContext(lead: Lead | null | undefined): TemplateConte
     today: todayIso(),
     services: catalog.all,
     categories: catalog.categories,
+    meeting,
   });
 }
 

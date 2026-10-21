@@ -11,7 +11,7 @@ import {
   leadServiceCategory,
   rankTemplatesForLead,
 } from '@vndesign/core';
-import { Copy, Mail, MessageSquareText, Phone, RotateCcw, Save, Send } from 'lucide-react';
+import { Copy, Mail, MessageCircle, MessageSquareText, Phone, RotateCcw, Save, Send } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -23,6 +23,7 @@ import { SendEmailButton } from '@/components/email/send-email-dialog';
 import { errorMessage } from '@/lib/api-client';
 import { useLogActivity, useTemplates, useUpdateLead } from '@/lib/queries';
 import { EMAIL_KINDS, useTemplateContext } from '@/lib/template-context';
+import { whatsappUrl } from '@/lib/utils';
 
 const VAR_LABEL = Object.fromEntries(TEMPLATE_VARIABLES.map((v) => [v.key, v.label]));
 
@@ -35,6 +36,7 @@ const SENT_AS: Record<string, { activity: 'email_sent' | 'call_logged' | 'templa
   social_dm: { activity: 'template_used', channel: 'instagram' },
   linkedin: { activity: 'template_used', channel: 'linkedin' },
   short_message: { activity: 'template_used', channel: 'outro' },
+  whatsapp: { activity: 'template_used', channel: 'whatsapp' },
   proposal_structure: { activity: 'template_used', channel: null },
 };
 
@@ -93,6 +95,8 @@ export function ContactScriptsCard({ lead }: { lead: Lead }) {
   }
 
   const isEmail = EMAIL_KINDS.has(template.kind);
+  // Modelos de WhatsApp (ou mensagens curtas): abrir a conversa já com o texto.
+  const canWhatsApp = ['whatsapp', 'short_message'].includes(template.kind) && !!whatsappUrl(lead.phone);
   const subject = draft?.subject ?? rendered.subject;
   const body = draft?.body ?? rendered.body;
   const edited = draft !== null;
@@ -112,6 +116,12 @@ export function ContactScriptsCard({ lead }: { lead: Lead }) {
     log.mutate({ type: 'email_mailto', payload });
     if (!lead.email) toast.info('Este lead não tem email: escreve o destinatário no teu programa de email.');
     window.location.href = mailtoUrl(lead.email, subject, body);
+  }
+
+  function onWhatsApp() {
+    window.open(whatsappUrl(lead.phone, body)!, '_blank', 'noopener,noreferrer');
+    log.mutate({ type: 'template_used', payload: { ...payload, via: 'whatsapp' } });
+    toast.success('Mensagem aberta no WhatsApp. Depois de a enviares, usa “Marcar como enviado”.');
   }
 
   async function onSaveToLead() {
@@ -221,7 +231,12 @@ export function ContactScriptsCard({ lead }: { lead: Lead }) {
           {isEmail ? (
             <SendEmailButton lead={lead} subject={subject} body={body} template={template.name} onSent={() => setDraft(null)} />
           ) : null}
-          <Button size="sm" variant={isEmail ? 'outline' : 'primary'} onClick={onCopy}>
+          {canWhatsApp ? (
+            <Button size="sm" onClick={onWhatsApp}>
+              <MessageCircle className="h-3.5 w-3.5" aria-hidden /> Abrir no WhatsApp
+            </Button>
+          ) : null}
+          <Button size="sm" variant={isEmail || canWhatsApp ? 'outline' : 'primary'} onClick={onCopy}>
             <Copy className="h-3.5 w-3.5" aria-hidden /> Copiar
           </Button>
           {isEmail ? (

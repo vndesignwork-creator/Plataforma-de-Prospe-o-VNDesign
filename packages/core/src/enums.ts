@@ -38,6 +38,7 @@ export const LEAD_CHANNELS = [
   'instagram',
   'linkedin',
   'google_maps',
+  'whatsapp',
   'pessoal',
   'outro',
 ] as const;
@@ -49,6 +50,7 @@ export const LEAD_CHANNEL_META: Record<LeadChannel, { label: string; emoji: stri
   instagram: { label: 'Instagram', emoji: '📱' },
   linkedin: { label: 'LinkedIn', emoji: '💼' },
   google_maps: { label: 'Google Maps', emoji: '🗺️' },
+  whatsapp: { label: 'WhatsApp', emoji: '💬' },
   pessoal: { label: 'Pessoal', emoji: '👋' },
   outro: { label: 'Outro', emoji: '🌐' },
 };
@@ -144,6 +146,7 @@ export const TEMPLATE_KINDS = [
   'short_message',
   'general_email',
   'proposal_structure',
+  'whatsapp',
 ] as const;
 export type TemplateKind = (typeof TEMPLATE_KINDS)[number];
 
@@ -156,6 +159,7 @@ export const TEMPLATE_KIND_LABELS: Record<TemplateKind, string> = {
   short_message: 'Mensagem curta',
   general_email: 'Email geral',
   proposal_structure: 'Estrutura de proposta',
+  whatsapp: 'WhatsApp',
 };
 
 /** Motivos devolvidos por find_lead_duplicates() e respetivo texto. */

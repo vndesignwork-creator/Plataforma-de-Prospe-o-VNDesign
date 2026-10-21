@@ -73,6 +73,7 @@ import { SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 import { ServiceChips, useServiceCatalog } from '@/components/services/services';
 import { FollowUpEmailButton, SendEmailButton } from '@/components/email/send-email-dialog';
 import { LeadScoreDetails } from '@/components/leads/lead-score';
+import { WhatsAppMenu } from '@/components/leads/whatsapp-menu';
 import { MeetingsCard } from '@/components/meetings/meetings-card';
 import { PaymentsCard } from '@/components/projects/payments-card';
 import { ProjectToggle } from '@/components/projects/project-toggle';
@@ -116,7 +117,7 @@ function ExternalUrl({ url }: { url: string | null }) {
 }
 
 /** Atalhos para contactar o lead (no telemóvel: ligar ou abrir o WhatsApp com um toque). */
-function QuickContact({ lead }: { lead: Lead }) {
+function QuickContact({ lead, whatsappMessages }: { lead: Lead; whatsappMessages: boolean }) {
   const whatsapp = whatsappUrl(lead.phone);
   const links = [
     lead.phone ? { key: 'tel', href: telUrl(lead.phone), label: 'Ligar', icon: Phone, external: false } : null,
@@ -125,20 +126,22 @@ function QuickContact({ lead }: { lead: Lead }) {
     lead.website ? { key: 'site', href: lead.website, label: 'Site', icon: Globe, external: true } : null,
   ].filter((l) => l !== null);
   if (!links.length) return null;
+  const classes = buttonClasses('outline', 'sm', 'w-full justify-center pointer-coarse:min-h-11');
   return (
     <nav aria-label="Contactar" className="mb-5 -mt-2">
       <ul className="grid grid-cols-[repeat(auto-fit,minmax(5.5rem,1fr))] gap-2 sm:flex sm:flex-wrap">
         {links.map(({ key, href, label, icon: Icon, external }) => (
           <li key={key}>
-            <a
-              href={href}
-              {...(external ? { target: '_blank', rel: 'noreferrer' } : {})}
-              className={buttonClasses('outline', 'sm', 'w-full justify-center pointer-coarse:min-h-11')}
-            >
-              <Icon className="h-4 w-4 text-accent-text" aria-hidden />
-              {label}
-              {external ? <span className="sr-only">(abre num novo separador)</span> : null}
-            </a>
+            {/* WhatsApp com mensagens prontas (desliga-se em Definições → Funcionalidades). */}
+            {key === 'wa' && whatsappMessages ? (
+              <WhatsAppMenu lead={lead} className={classes} />
+            ) : (
+              <a href={href} {...(external ? { target: '_blank', rel: 'noreferrer' } : {})} className={classes}>
+                <Icon className="h-4 w-4 text-accent-text" aria-hidden />
+                {label}
+                {external ? <span className="sr-only">(abre num novo separador)</span> : null}
+              </a>
+            )}
           </li>
         ))}
       </ul>
@@ -349,7 +352,7 @@ export function LeadDetail({ id }: { id: string }) {
         }
       />
 
-      {!lead.anonymized_at ? <QuickContact lead={lead} /> : null}
+      {!lead.anonymized_at ? <QuickContact lead={lead} whatsappMessages={!!settings?.features.whatsapp_templates} /> : null}
 
       {lead.archived_at ? (
         <div

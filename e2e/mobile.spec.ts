@@ -70,7 +70,10 @@ test('no telemóvel: contacto rápido na ficha, ordenar a lista e formulário cu
   await page.goto(`/leads/${lead.id}`);
   const contact = page.getByRole('navigation', { name: 'Contactar' });
   await expect(contact.getByRole('link', { name: 'Ligar' })).toHaveAttribute('href', 'tel:912345678');
-  await expect(contact.getByRole('link', { name: /WhatsApp/ })).toHaveAttribute('href', 'https://wa.me/351912345678');
+  // WhatsApp: menu com mensagens prontas (e a opção de abrir só a conversa).
+  await contact.getByRole('button', { name: /WhatsApp/ }).click();
+  await expect(page.getByRole('menuitem', { name: 'Abrir a conversa sem mensagem' })).toBeVisible();
+  await page.keyboard.press('Escape');
 
   await page.goto('/leads');
   await expect(page.getByLabel('Ordenar leads')).toBeVisible();

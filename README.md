@@ -114,7 +114,8 @@ português) com as mesmas colunas — pode ser reimportado sem mapear nada.
 - **Scripts** (menu): biblioteca de modelos com variáveis — `{{empresa}}`, `{{contacto}}`,
   `{{setor}}`, `{{cidade}}`, `{{problema}}`, `{{angulo}}`, `{{website}}`, `{{argumentos}}`,
   `{{data}}`, `{{hoje}}`, `{{meu_nome}}`, `{{meu_cargo}}`, `{{meu_telefone}}`, `{{meu_email}}`,
-  `{{meu_site}}`, `{{portfolio}}`, `{{projetos}}`, `{{assinatura}}`, `{{opt_out}}`.
+  `{{meu_site}}`, `{{portfolio}}`, `{{projetos}}`, `{{assinatura}}`, `{{opt_out}}`,
+  `{{reuniao}}` (próxima reunião: “amanhã, às 10:00”) e `{{reuniao_local}}`.
   `{{contacto|equipa}}` usa “equipa” quando o lead não tem contacto.
 - **Por serviço:** `{{servicos}}` (ex.: “identidade visual e flyers”), `{{categoria}}`
   (ex.: “design gráfico”) e `{{beneficio}}` (a *frase de valor* do serviço, em
@@ -124,6 +125,15 @@ português) com as mesmas colunas — pode ser reimportado sem mapear nada.
   categoria nova). Para Design Gráfico, `{{portfolio}}` usa o portfólio de design.
 - **Ficha do lead → Scripts de contacto:** escolhe o modelo, edita, copia, abre no email,
   guarda como email de prospeção ou marca como enviado (passa a “Contactado” e agenda o follow-up).
+- **WhatsApp com mensagens prontas:** na ficha, o botão **WhatsApp** abre um menu com os
+  modelos do tipo *WhatsApp* (de origem: primeiro contacto, follow-up e lembrete de reunião)
+  e abre a conversa — no telemóvel, na app WhatsApp ou WhatsApp Business — com a mensagem já
+  escrita, para rever e enviar. Fica registado na linha do tempo; num lead “Identificado”, o
+  aviso tem **Marcar como contactado** (canal WhatsApp). O lembrete só fica ativo com uma
+  reunião marcada. Os textos editam-se em **Scripts**; no cartão *Scripts de contacto* há
+  também **Abrir no WhatsApp** (com o texto editado). Desliga-se em **Definições →
+  Funcionalidades** (o botão volta a abrir só a conversa). Só aparece para telemóveis
+  (9xx xxx xxx ou com indicativo).
 - **Follow-up:** na ficha e na lista “Hoje” — *Feito* (com ou sem nova data) ou *Adiar*.
   Os dias até ao follow-up configuram-se em **Definições → Follow-up e lembretes**.
 - **Notificações push** (Fase D): Definições → *Ativar notificações neste dispositivo* — chegam

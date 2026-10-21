@@ -28,6 +28,12 @@ describe('whatsappUrl', () => {
     expect(whatsappUrl('')).toBeNull();
     expect(whatsappUrl(null)).toBeNull();
   });
+  it('abre com a mensagem já escrita', () => {
+    expect(whatsappUrl('912 345 678', 'Olá Ana! Tudo bem?\nAté já')).toBe(
+      'https://wa.me/351912345678?text=Ol%C3%A1%20Ana!%20Tudo%20bem%3F%0AAt%C3%A9%20j%C3%A1',
+    );
+    expect(whatsappUrl('912 345 678', '   ')).toBe('https://wa.me/351912345678');
+  });
   it('aceita outros países com indicativo', () => {
     expect(whatsappUrl('+55 11 98765-4321')).toBe('https://wa.me/5511987654321');
     expect(whatsappUrl('+44 7700 900123')).toBe('https://wa.me/447700900123');

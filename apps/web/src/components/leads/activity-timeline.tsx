@@ -113,9 +113,11 @@ function describe(a: Activity): string | null {
           .join(' · ');
       }
       return p.template ? `Modelo: ${String(p.template)}` : null;
+    case 'template_used':
+      if (p.via === 'whatsapp') return p.template ? `WhatsApp · Modelo: ${String(p.template)}` : 'WhatsApp';
+      return p.template ? `Modelo: ${String(p.template)}` : null;
     case 'email_mailto':
     case 'call_logged':
-    case 'template_used':
       return p.template ? `Modelo: ${String(p.template)}` : null;
     case 'payment_received':
       return [p.label ? String(p.label) : null, p.method ? String(p.method) : null].filter(Boolean).join(' · ') || null;

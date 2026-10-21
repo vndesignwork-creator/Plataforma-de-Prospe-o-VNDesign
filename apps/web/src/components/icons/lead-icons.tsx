@@ -81,6 +81,7 @@ export const CHANNEL_ICONS: Record<LeadChannel, LucideIcon> = {
   instagram: Camera,
   linkedin: Briefcase,
   google_maps: MapPin,
+  whatsapp: MessageCircle,
   pessoal: Hand,
   outro: Globe,
 };

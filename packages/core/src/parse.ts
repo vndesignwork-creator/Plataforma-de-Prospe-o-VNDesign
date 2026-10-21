@@ -54,7 +54,6 @@ export function parseChannel(value: unknown): LeadChannel | null {
     mail: 'email',
     telemovel: 'telefone',
     chamada: 'telefone',
-    whatsapp: 'telefone',
     maps: 'google_maps',
     presencial: 'pessoal',
     facebook: 'outro',

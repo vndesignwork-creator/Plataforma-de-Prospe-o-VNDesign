@@ -2,11 +2,12 @@
 
 /**
  * Definições → Funcionalidades: ligar/desligar o relatório de diagnóstico, os
- * pagamentos, as reuniões e a página Projetos, e a cópia de segurança semanal.
+ * pagamentos, as reuniões, a página Projetos e as mensagens prontas do WhatsApp,
+ * e a cópia de segurança semanal.
  */
 import { useQueryClient } from '@tanstack/react-query';
 import { WEEKDAY_LABELS, formatDateTime, type Features } from '@vndesign/core';
-import { BriefcaseBusiness, CalendarPlus, DatabaseBackup, FileText, Wallet, type LucideIcon } from 'lucide-react';
+import { BriefcaseBusiness, CalendarPlus, DatabaseBackup, FileText, MessageCircle, Wallet, type LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,12 @@ const FEATURES: { key: keyof Features; label: string; description: string; icon:
     label: 'Projetos',
     description: 'Página com os clientes com o projeto em curso: tarefas, pagamentos e próxima reunião.',
     icon: BriefcaseBusiness,
+  },
+  {
+    key: 'whatsapp_templates',
+    label: 'Mensagens prontas no WhatsApp',
+    description: 'O botão WhatsApp da ficha abre um menu com mensagens já escritas (primeiro contacto, follow-up, lembrete de reunião). Editam-se em Scripts.',
+    icon: MessageCircle,
   },
 ];
 

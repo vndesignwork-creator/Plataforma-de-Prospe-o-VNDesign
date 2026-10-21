@@ -39,9 +39,10 @@ export function safeNextPath(next: string | null | undefined, fallback = '/dashb
 /**
  * Ligação do WhatsApp para um telefone (ou null se não parecer telemóvel).
  * Números portugueses sem indicativo: só os móveis (9xx xxx xxx) — os fixos não
- * têm WhatsApp. Com "+" ou "00" à frente, aceita qualquer país.
+ * têm WhatsApp. Com "+" ou "00" à frente, aceita qualquer país. Com `text`, a
+ * conversa abre com a mensagem já escrita (WhatsApp ou WhatsApp Business).
  */
-export function whatsappUrl(phone: string | null | undefined): string | null {
+export function whatsappUrl(phone: string | null | undefined, text?: string | null): string | null {
   if (!phone) return null;
   const trimmed = phone.trim();
   let digits = trimmed.replace(/\D/g, '');
@@ -55,7 +56,8 @@ export function whatsappUrl(phone: string | null | undefined): string | null {
     return null;
   }
   if (digits.startsWith('351') && !/^3519\d{8}$/.test(digits)) return null;
-  return digits.length >= 8 && digits.length <= 15 ? `https://wa.me/${digits}` : null;
+  if (digits.length < 8 || digits.length > 15) return null;
+  return `https://wa.me/${digits}${text?.trim() ? `?text=${encodeURIComponent(text.trim())}` : ''}`;
 }
 
 /** "21 625 0897" → "tel:216250897" (mantém o "+" do indicativo). */
