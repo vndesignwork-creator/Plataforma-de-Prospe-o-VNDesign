@@ -300,7 +300,7 @@ Com a opção **Detetar respostas na caixa de entrada** ligada (Definições →
 
 ## Prioridade dos leads
 
-Cada lead tem uma pontuação de 0 a 100 (🔥 Quente ≥ 60, 🌤️ Morno ≥ 35, ❄️ Frio), atualizada sozinha sempre que o lead muda.
+Cada lead tem uma pontuação de 0 a 100 (Quente ≥ 60 com uma chama, Morno ≥ 35 com um sol, Frio com um floco de neve), atualizada sozinha sempre que o lead muda.
 
 - Somam pontos: o estado (Reunião, Respondeu, Proposta enviada), sem site próprio ou só redes sociais, site lento ou que não funciona no telemóvel (só se o lead precisar de web design), problemas identificados, ter email ou telefone, setor prioritário (Definições → Setores), valor estimado e ângulo de abordagem.
 - Clientes, sem interesse, em pausa e arquivados ficam com 0.
