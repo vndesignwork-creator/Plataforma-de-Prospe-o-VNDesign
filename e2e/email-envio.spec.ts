@@ -57,7 +57,7 @@ test('ligar a conta em Definições → Email de envio e enviar um email de test
   await page.getByLabel('Nome que o cliente vê').fill('Va Teste');
   await page.getByLabel('O teu email').fill(FROM);
   await page.getByLabel('Servidor SMTP').fill('127.0.0.1');
-  await page.getByRole('spinbutton', { name: 'Porta' }).fill('54325');
+  await page.getByRole('spinbutton', { name: 'Porta', exact: true }).fill('54325');
   await page.getByRole('button', { name: 'Guardar' }).click();
   await expect(page.getByText('Conta de email guardada.')).toBeVisible();
   await expect(page.getByText(/Ligada · hoje \d+ de 50/)).toBeVisible();

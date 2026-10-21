@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { LeadEmailSendSchema, MailAccountUpsertSchema, plainTextToHtml } from '../src/mail';
+import { LeadEmailSendSchema, MailAccountUpsertSchema, isAutoReply, matchReplyToLead, plainTextToHtml } from '../src/mail';
+import { isGenericEmailDomain } from '../src/normalize';
 
 describe('plainTextToHtml', () => {
   it('parágrafos, quebras de linha e ligações clicáveis', () => {
@@ -37,5 +38,38 @@ describe('LeadEmailSendSchema', () => {
     const r = LeadEmailSendSchema.safeParse({ to: 'nao-e-email', subject: '  ', body: 'Olá' });
     expect(r.success).toBe(false);
     expect(r.error?.issues.map((i) => i.path[0])).toEqual(['to', 'subject']);
+  });
+});
+
+describe('respostas dos leads', () => {
+  const leads = [
+    { id: 'a', email: 'geral@pastelaria.pt' },
+    { id: 'b', email: 'clinica@gmail.com' },
+    { id: 'c', email: 'info@oficina.pt' },
+    { id: 'd', email: 'vendas@oficina.pt' },
+  ];
+  const sent = new Map([['<abc@vndesign.pt>', 'b']]);
+  const generic = isGenericEmailDomain;
+
+  it('In-Reply-To de um email enviado pela plataforma', () => {
+    expect(matchReplyToLead({ from: 'outra@pessoa.pt', inReplyTo: '<abc@vndesign.pt>' }, leads, sent, generic)).toBe('b');
+  });
+  it('o mesmo endereço (sem diferença de maiúsculas)', () => {
+    expect(matchReplyToLead({ from: 'Geral@Pastelaria.pt', inReplyTo: null }, leads, sent, generic)).toBe('a');
+  });
+  it('o mesmo domínio de empresa, só se houver um único lead', () => {
+    expect(matchReplyToLead({ from: 'joao@pastelaria.pt', inReplyTo: null }, leads, sent, generic)).toBe('a');
+    expect(matchReplyToLead({ from: 'joao@oficina.pt', inReplyTo: null }, leads, sent, generic)).toBeNull();
+    expect(matchReplyToLead({ from: 'outro@gmail.com', inReplyTo: null }, leads, sent, generic)).toBeNull();
+  });
+  it('ignora avisos do servidor', () => {
+    expect(matchReplyToLead({ from: 'mailer-daemon@pastelaria.pt', inReplyTo: '<abc@vndesign.pt>' }, leads, sent, generic)).toBeNull();
+  });
+  it('respostas automáticas', () => {
+    expect(isAutoReply('Resposta automática: Uma ideia')).toBe(true);
+    expect(isAutoReply('RE: Out of Office')).toBe(true);
+    expect(isAutoReply('Re: Uma ideia', 'auto-replied')).toBe(true);
+    expect(isAutoReply('Re: Uma ideia', 'no')).toBe(false);
+    expect(isAutoReply('Re: Uma ideia')).toBe(false);
   });
 });

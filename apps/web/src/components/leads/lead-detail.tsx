@@ -68,7 +68,8 @@ import { TasksCard } from '@/components/tasks/tasks-card';
 import { NotesCard } from './notes-card';
 import { SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 import { ServiceChips, useServiceCatalog } from '@/components/services/services';
-import { SendEmailButton } from '@/components/email/send-email-dialog';
+import { FollowUpEmailButton, SendEmailButton } from '@/components/email/send-email-dialog';
+import { LeadScoreDetails } from '@/components/leads/lead-score';
 
 function Row({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
@@ -248,6 +249,9 @@ export function LeadDetail({ id }: { id: string }) {
                     </span>
                   </>
                 ) : null}
+                <span className="ml-2 inline-flex align-middle">
+                  <LeadScoreDetails lead={lead} />
+                </span>
               </>
             }
           />
@@ -368,7 +372,12 @@ export function LeadDetail({ id }: { id: string }) {
             <CardHeader
               title="Pipeline"
               actions={
-                (lead.next_action_on || lead.next_action_text) && !lead.anonymized_at ? <FollowUpActions lead={lead} /> : null
+                (lead.next_action_on || lead.next_action_text) && !lead.anonymized_at ? (
+                  <>
+                    <FollowUpEmailButton lead={lead} />
+                    <FollowUpActions lead={lead} />
+                  </>
+                ) : null
               }
             />
             <dl className="grid px-4 py-2 md:grid-cols-2 md:gap-x-6">

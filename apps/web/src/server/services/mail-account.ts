@@ -21,20 +21,43 @@ type Row = {
   password_ciphertext: string | null;
   daily_limit: number;
   bcc_self: boolean;
+  reply_detection: boolean;
+  imap_host: string | null;
+  imap_port: number | null;
+  imap_checked_at: string | null;
+  imap_error: string | null;
+  imap_uid_validity: number | string | null;
+  imap_last_uid: number | string | null;
 };
-const SELECT = 'provider, from_name, from_email, smtp_host, smtp_port, smtp_secure, smtp_user, password_ciphertext, daily_limit, bcc_self';
+const SELECT =
+  'provider, from_name, from_email, smtp_host, smtp_port, smtp_secure, smtp_user, password_ciphertext, daily_limit, bcc_self, reply_detection, imap_host, imap_port, imap_checked_at, imap_error, imap_uid_validity, imap_last_uid';
+
+// Antes da migração 20261028000100 (sem a leitura da caixa de entrada): continua a enviar.
+const LEGACY_SELECT = 'provider, from_name, from_email, smtp_host, smtp_port, smtp_secure, smtp_user, password_ciphertext, daily_limit, bcc_self';
+const LEGACY_DEFAULTS = {
+  reply_detection: false,
+  imap_host: null,
+  imap_port: null,
+  imap_checked_at: null,
+  imap_error: null,
+  imap_uid_validity: null,
+  imap_last_uid: null,
+};
 
 async function getRow(ctx: ApiContext): Promise<Row | null> {
-  const { data, error } = await ctx.supabase
-    .from('mail_accounts')
-    .select(SELECT)
-    .eq('workspace_id', ctx.workspaceId)
-    .eq('user_id', ctx.user.id)
-    .maybeSingle();
+  const query = (select: string) =>
+    ctx.supabase.from('mail_accounts').select(select).eq('workspace_id', ctx.workspaceId).eq('user_id', ctx.user.id).maybeSingle();
+  let { data, error } = await query(SELECT);
+  let legacy = false;
+  if (error?.code === '42703') {
+    ({ data, error } = await query(LEGACY_SELECT));
+    legacy = true;
+  }
   // Antes da migração 20261026000100 a tabela não existe.
   if (error?.code === '42P01' || error?.code === 'PGRST205') return null;
   if (error) throw fromPostgrest(error);
-  return data as Row | null;
+  if (!data) return null;
+  return (legacy ? { ...(data as object), ...LEGACY_DEFAULTS } : data) as Row;
 }
 
 /** Emails enviados pela plataforma nas últimas 24 horas (limite diário). */
@@ -54,8 +77,24 @@ export async function sentLast24h(ctx: ApiContext): Promise<number> {
 export async function getMailAccount(ctx: ApiContext): Promise<MailAccount | null> {
   const row = await getRow(ctx);
   if (!row) return null;
-  const { password_ciphertext, ...rest } = row;
-  return { ...rest, password_set: !!password_ciphertext, sent_today: await sentLast24h(ctx) };
+  return {
+    provider: row.provider,
+    from_name: row.from_name,
+    from_email: row.from_email,
+    smtp_host: row.smtp_host,
+    smtp_port: row.smtp_port,
+    smtp_secure: row.smtp_secure,
+    smtp_user: row.smtp_user,
+    daily_limit: row.daily_limit,
+    bcc_self: row.bcc_self,
+    reply_detection: row.reply_detection,
+    imap_host: row.imap_host,
+    imap_port: row.imap_port,
+    imap_checked_at: row.imap_checked_at,
+    imap_error: row.imap_error,
+    password_set: !!row.password_ciphertext,
+    sent_today: await sentLast24h(ctx),
+  };
 }
 
 /** Servidor próprio (Outro): em produção nunca endereços internos. */
@@ -96,10 +135,71 @@ export async function saveMailAccount(ctx: ApiContext, input: MailAccountUpsert)
     password_ciphertext: password ? sealSecret(password) : (current?.password_ciphertext ?? null),
     daily_limit: input.daily_limit,
     bcc_self: input.bcc_self ?? preset.bccSelf,
+    reply_detection: input.reply_detection ?? current?.reply_detection ?? true,
+    imap_host: custom ? input.imap_host || imapHostFor(host) : null,
+    imap_port: custom ? (input.imap_port ?? preset.imapPort) : null,
+    // Outra caixa de correio: volta a ler a caixa de entrada desde o início.
+    ...(current && (current.from_email !== input.from_email || current.provider !== input.provider)
+      ? { imap_uid_validity: null, imap_last_uid: null, imap_checked_at: null, imap_error: null }
+      : {}),
   };
+  if (custom && row.imap_host) assertPublicHost(row.imap_host);
   const { error } = await ctx.supabase.from('mail_accounts').upsert(row, { onConflict: 'workspace_id,user_id' });
   if (error) throw fromPostgrest(error);
   return (await getMailAccount(ctx))!;
+}
+
+/** "smtp.exemplo.pt" → "imap.exemplo.pt" (o habitual nos alojamentos). */
+function imapHostFor(smtpHost: string): string {
+  return smtpHost.replace(/^smtp\./i, 'imap.');
+}
+
+/** Dados para ler a caixa de entrada (só no servidor). */
+export interface ImapAccount {
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string;
+  password: string;
+  fromEmail: string;
+  uidValidity: number | null;
+  lastUid: number | null;
+}
+
+/** A caixa de entrada pronta a ler, ou null (sem conta, desligado ou sem palavra-passe). */
+export async function loadImapAccount(ctx: ApiContext): Promise<ImapAccount | null> {
+  const row = await getRow(ctx);
+  if (!row?.reply_detection || !row.password_ciphertext) return null;
+  const password = openSecret(row.password_ciphertext);
+  if (!password) return null;
+  const preset = MAIL_PROVIDER_PRESETS[row.provider];
+  const host = row.provider === 'custom' ? row.imap_host || imapHostFor(row.smtp_host) : preset.imapHost;
+  const port = row.provider === 'custom' ? (row.imap_port ?? preset.imapPort) : preset.imapPort;
+  const num = (v: number | string | null) => (v === null ? null : Number(v));
+  return {
+    host,
+    port,
+    // 993 = SSL direto; outras portas (143) usam STARTTLS se o servidor o tiver.
+    secure: port === 993,
+    user: row.smtp_user || row.from_email,
+    password,
+    fromEmail: row.from_email,
+    uidValidity: num(row.imap_uid_validity),
+    lastUid: num(row.imap_last_uid),
+  };
+}
+
+/** Guarda onde ficou a leitura da caixa de entrada (e o erro, se houve). */
+export async function saveImapState(
+  ctx: ApiContext,
+  patch: { imap_uid_validity?: number | null; imap_last_uid?: number | null; imap_error: string | null },
+) {
+  const { error } = await ctx.supabase
+    .from('mail_accounts')
+    .update({ ...patch, imap_checked_at: new Date().toISOString() })
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('user_id', ctx.user.id);
+  if (error) throw fromPostgrest(error);
 }
 
 export async function deleteMailAccount(ctx: ApiContext): Promise<void> {

@@ -184,6 +184,11 @@ export const LeadSchema = z
     archived_at: z.string().nullable().optional(),
     /** Tarefas do lead (total e concluídas); só nas listas, no Kanban e na ficha. */
     task_progress: z.object({ total: z.int(), done: z.int() }).nullable().optional(),
+    /** Prioridade (0–100) calculada pela base de dados e as razões, em português. */
+    score: z.int().optional().meta({ description: 'Prioridade 0–100 (maior = contactar primeiro)' }),
+    score_reasons: z.array(z.string()).optional(),
+    /** Follow-ups feitos por email desde o primeiro contacto (sequência). */
+    follow_up_count: z.int().optional(),
     created_by: z.uuid().nullable(),
     created_at: z.string(),
     updated_at: z.string(),
@@ -193,6 +198,7 @@ export type Lead = z.infer<typeof LeadSchema>;
 
 export const LEAD_SORT_FIELDS = [
   'number',
+  'score',
   'kanban_position',
   'company_name',
   'city',
@@ -437,11 +443,39 @@ export const PaginationMetaSchema = z
 
 export const PreferenceValueSchema = z.object({ value: z.json() }).meta({ id: 'PreferenceValue' });
 
+/** Sequência de follow-ups por email: dias depois do email anterior e o modelo de cada passo. */
+export const FOLLOW_UP_SEQUENCE_MAX_STEPS = 5;
+export const FollowUpStepSchema = z.object({
+  days: z.int({ error: 'Indica um número de dias.' }).min(1, { error: 'Mínimo 1 dia.' }).max(60, { error: 'Máximo 60 dias.' }),
+  /** null = o modelo de follow-up mais adequado ao lead (categoria dos serviços, setor). */
+  template_id: z.uuid().nullable().default(null),
+});
+export type FollowUpStep = z.infer<typeof FollowUpStepSchema>;
+export const DEFAULT_FOLLOW_UP_SEQUENCE = {
+  enabled: true,
+  steps: [
+    { days: 3, template_id: null },
+    { days: 7, template_id: null },
+    { days: 14, template_id: null },
+  ],
+};
+const FollowUpStepsSchema = z
+  .array(FollowUpStepSchema)
+  .min(1, { error: 'Pelo menos um follow-up.' })
+  .max(FOLLOW_UP_SEQUENCE_MAX_STEPS, { error: `No máximo ${FOLLOW_UP_SEQUENCE_MAX_STEPS} follow-ups.` });
+export const FollowUpSequenceSchema = z.object({
+  enabled: z.boolean().default(true),
+  steps: FollowUpStepsSchema.default(DEFAULT_FOLLOW_UP_SEQUENCE.steps),
+});
+export type FollowUpSequence = z.infer<typeof FollowUpSequenceSchema>;
+
 export const WorkspaceSettingsSchema = z
   .object({
     timezone: z.string().default('Europe/Lisbon'),
     currency: z.string().default('EUR'),
     follow_up_days: z.int().min(1).max(60).default(3),
+    /** Sequência de follow-ups por email (depois de um email enviado pela plataforma). */
+    follow_up_sequence: FollowUpSequenceSchema.default(DEFAULT_FOLLOW_UP_SEQUENCE),
     /** Arquivar sozinhos os leads em "Sem interesse" há mais de N dias (null = desligado). */
     auto_archive_days: z.int().min(7).max(365).nullable().default(null),
     opt_out_line: z.string().default(''),
@@ -479,6 +513,7 @@ export type WorkspaceSettings = z.infer<typeof WorkspaceSettingsSchema>;
 export const WorkspaceSettingsUpdateSchema = z
   .object({
     follow_up_days: z.int({ error: 'Indica um número de dias.' }).min(1, { error: 'Mínimo 1 dia.' }).max(60, { error: 'Máximo 60 dias.' }),
+    follow_up_sequence: z.object({ enabled: z.boolean(), steps: FollowUpStepsSchema }),
     auto_archive_days: z
       .int({ error: 'Indica um número de dias.' })
       .min(7, { error: 'Mínimo 7 dias.' })
@@ -574,6 +609,7 @@ export const TodaySchema = z
     due_today: z.array(LeadSchema),
     upcoming: z.array(LeadSchema).meta({ description: 'Próximos 7 dias' }),
     tasks: TodayTasksSchema.optional().meta({ description: 'Tarefas com prazo (em atraso, hoje e próximos 7 dias)' }),
+    hot: z.array(LeadSchema).optional().meta({ description: 'Leads com maior prioridade (os mais quentes), em pipeline' }),
   })
   .meta({ id: 'Today' });
 export type Today = z.infer<typeof TodaySchema>;

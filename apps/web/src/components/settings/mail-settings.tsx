@@ -5,8 +5,16 @@
  * (Gmail, Hostinger ou outro SMTP). Cada utilizador liga a sua.
  */
 import { useQueryClient } from '@tanstack/react-query';
-import { MAIL_DEFAULT_DAILY_LIMIT, MAIL_PROVIDERS, MAIL_PROVIDER_PRESETS, type MailAccount, type MailProvider } from '@vndesign/core';
-import { CheckCircle2, Mail } from 'lucide-react';
+import {
+  MAIL_DEFAULT_DAILY_LIMIT,
+  MAIL_PROVIDERS,
+  MAIL_PROVIDER_PRESETS,
+  formatDateTime,
+  type MailAccount,
+  type MailProvider,
+  type ReplyCheckResult,
+} from '@vndesign/core';
+import { CheckCircle2, Inbox, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -32,10 +40,14 @@ function MailForm({ account, defaultName }: { account: MailAccount | null; defau
     password: '',
     daily_limit: String(account?.daily_limit ?? MAIL_DEFAULT_DAILY_LIMIT),
     bcc_self: account?.bcc_self ?? MAIL_PROVIDER_PRESETS.gmail.bccSelf,
+    reply_detection: account?.reply_detection ?? true,
+    imap_host: account?.provider === 'custom' ? (account.imap_host ?? '') : '',
+    imap_port: String(account?.provider === 'custom' ? (account.imap_port ?? 993) : 993),
   });
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const preset = MAIL_PROVIDER_PRESETS[form.provider];
   const custom = form.provider === 'custom';
@@ -57,6 +69,9 @@ function MailForm({ account, defaultName }: { account: MailAccount | null; defau
           password: form.password || undefined,
           daily_limit: Number(form.daily_limit) || MAIL_DEFAULT_DAILY_LIMIT,
           bcc_self: form.bcc_self,
+          reply_detection: form.reply_detection,
+          imap_host: custom ? form.imap_host || null : undefined,
+          imap_port: custom ? Number(form.imap_port) || null : undefined,
         },
       });
       await qc.invalidateQueries({ queryKey: ['mail-account'] });
@@ -79,6 +94,28 @@ function MailForm({ account, defaultName }: { account: MailAccount | null; defau
       toast.error(errorMessage(error));
     } finally {
       setTesting(false);
+    }
+  }
+
+  async function checkReplies() {
+    setChecking(true);
+    try {
+      const { data } = await api<{ data: ReplyCheckResult }>('/mail-account/check-replies', { method: 'POST' });
+      await qc.invalidateQueries({ queryKey: ['mail-account'] });
+      if (data.replies.length) {
+        void qc.invalidateQueries({ queryKey: ['leads'] });
+        void qc.invalidateQueries({ queryKey: ['today'] });
+        toast.success(
+          `${data.replies.length === 1 ? '1 resposta nova' : `${data.replies.length} respostas novas`}: ${data.replies.map((r) => r.company_name).join(', ')}.`,
+        );
+      } else {
+        toast.success(`Caixa de entrada lida (${data.checked === 1 ? '1 email novo' : `${data.checked} emails novos`}). Nenhuma resposta de leads.`);
+      }
+    } catch (error) {
+      await qc.invalidateQueries({ queryKey: ['mail-account'] });
+      toast.error(errorMessage(error));
+    } finally {
+      setChecking(false);
     }
   }
 
@@ -195,6 +232,50 @@ function MailForm({ account, defaultName }: { account: MailAccount | null; defau
       <Field label="Limite por dia" error={errors.daily_limit?.[0]} hint="Protege o teu email de ser marcado como spam.">
         <Input type="number" inputMode="numeric" min={1} max={500} value={form.daily_limit} onChange={(e) => setForm({ ...form, daily_limit: e.target.value })} />
       </Field>
+      <fieldset className="flex flex-col gap-3 rounded-lg border border-border p-3 md:col-span-2">
+        <legend className="px-1 text-sm font-medium">Respostas dos leads</legend>
+        <label className="inline-flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4"
+            checked={form.reply_detection}
+            onChange={(e) => setForm({ ...form, reply_detection: e.target.checked })}
+          />
+          <span>
+            Detetar respostas na caixa de entrada
+            <span className="block text-xs text-muted">
+              De 10 em 10 minutos, lê só o remetente e o assunto dos emails novos (nunca o texto). Quando um lead responde, passa a
+              “Respondeu”, a sequência de follow-ups para e recebes uma notificação.
+            </span>
+          </span>
+        </label>
+        {custom && form.reply_detection ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Servidor IMAP" error={errors.imap_host?.[0]} hint="Vazio = o servidor SMTP com “imap.” em vez de “smtp.”.">
+              <Input value={form.imap_host} onChange={(e) => setForm({ ...form, imap_host: e.target.value })} />
+            </Field>
+            <Field label="Porta IMAP" error={errors.imap_port?.[0]} hint="993 (SSL)">
+              <Input type="number" inputMode="numeric" value={form.imap_port} onChange={(e) => setForm({ ...form, imap_port: e.target.value })} />
+            </Field>
+          </div>
+        ) : null}
+        {account?.reply_detection ? (
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            {account.imap_error ? (
+              <p role="alert" className="flex-1 text-danger">
+                Última leitura falhou: {account.imap_error}
+              </p>
+            ) : (
+              <p className="flex-1 text-muted">
+                {account.imap_checked_at ? `Última leitura: ${formatDateTime(account.imap_checked_at)}.` : 'Ainda não foi lida: lê-se sozinha em poucos minutos.'}
+              </p>
+            )}
+            <Button type="button" size="sm" variant="outline" onClick={checkReplies} loading={checking}>
+              <Inbox className="h-4 w-4" aria-hidden /> Verificar agora
+            </Button>
+          </div>
+        ) : null}
+      </fieldset>
       <label className="inline-flex items-start gap-2 self-end pb-2 text-sm">
         <input type="checkbox" className="mt-0.5 h-4 w-4" checked={form.bcc_self} onChange={(e) => setForm({ ...form, bcc_self: e.target.checked })} />
         <span>

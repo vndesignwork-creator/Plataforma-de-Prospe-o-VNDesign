@@ -57,7 +57,27 @@ export async function fetchToday(client: SupabaseClient, workspaceId: string): P
   };
 }
 
-/** Lista "Hoje": follow-ups em atraso, para hoje e nos próximos 7 dias. */
-export function getToday(ctx: ApiContext): Promise<Today> {
-  return fetchToday(ctx.supabase, ctx.workspaceId);
+/** Os leads com maior prioridade (pontuação), em pipeline. */
+export async function fetchHotLeads(client: SupabaseClient, workspaceId: string, limit = 8): Promise<Lead[]> {
+  const { data, error } = await client
+    .from('leads')
+    .select(LEAD_SELECT)
+    .eq('workspace_id', workspaceId)
+    .is('anonymized_at', null)
+    .is('archived_at', null)
+    .not('status', 'in', '(cliente,sem_interesse,em_pausa)')
+    .gt('score', 0)
+    .order('score', { ascending: false })
+    .order('number', { ascending: false })
+    .limit(limit);
+  // Antes da migração 20261028000100 não há pontuação.
+  if (error?.code === '42703') return [];
+  if (error) throw fromPostgrest(error);
+  return (data ?? []) as unknown as Lead[];
+}
+
+/** Lista "Hoje": follow-ups em atraso, para hoje e nos próximos 7 dias, e os leads mais quentes. */
+export async function getToday(ctx: ApiContext): Promise<Today> {
+  const [today, hot] = await Promise.all([fetchToday(ctx.supabase, ctx.workspaceId), fetchHotLeads(ctx.supabase, ctx.workspaceId)]);
+  return { ...today, hot };
 }

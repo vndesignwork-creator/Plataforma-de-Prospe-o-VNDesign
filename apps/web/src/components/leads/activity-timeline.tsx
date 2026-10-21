@@ -28,6 +28,7 @@ import {
   GitMerge,
   Mail,
   MessageSquare,
+  MailOpen,
   Phone,
   Plus,
   Repeat,
@@ -67,6 +68,7 @@ const ICONS: Partial<Record<Activity['type'], LucideIcon>> = {
   ai_email_generated: Sparkles,
   task_completed: SquareCheck,
   tasks_added: ListPlus,
+  email_received: MailOpen,
 };
 
 const fieldLabel = (f: string) => (LEAD_FIELD_LABELS as Record<string, string>)[f] ?? f;
@@ -105,7 +107,16 @@ function describe(a: Activity): string | null {
     case 'call_logged':
     case 'template_used':
       return p.template ? `Modelo: ${String(p.template)}` : null;
+    case 'email_received':
+      return [p.from ? `De ${String(p.from)}` : null, p.subject ? `“${String(p.subject)}”` : null, p.auto ? 'resposta automática' : null]
+        .filter(Boolean)
+        .join(' · ') || null;
     case 'follow_up_done':
+      if (typeof p.sequence_step === 'number') {
+        return [`Follow-up ${p.sequence_step} enviado por email ✓`, p.text && p.on ? `Próximo: ${String(p.text)} a ${formatDate(String(p.on))}` : null]
+          .filter(Boolean)
+          .join(' · ');
+      }
       return [p.done_text ? `${String(p.done_text)} ✓` : null, p.on ? `Próximo: ${formatDate(String(p.on))}` : 'Sem próxima ação']
         .filter(Boolean)
         .join(' · ');

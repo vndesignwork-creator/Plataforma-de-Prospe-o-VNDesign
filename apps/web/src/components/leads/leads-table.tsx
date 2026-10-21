@@ -60,6 +60,7 @@ import { useDebouncedValue } from '@/lib/hooks';
 import { bulkResultMessage, useBulkLeadAction, usePreference, useLeads, useSectors, useSetPreference } from '@/lib/queries';
 import { cn, displayHost } from '@/lib/utils';
 import { ChannelLabel, MobileLabel, PageSpeedScore, StatusBadge } from './badges';
+import { LeadScoreBadge } from './lead-score';
 import { MultiSelectFilter, SingleSelectFilter } from './multi-select';
 import { ChannelIcon, SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 import { ServiceIcons, useServiceFilterOptions } from '@/components/services/services';
@@ -130,6 +131,11 @@ function buildColumns(today: string): Col[] {
           <TaskProgress progress={row.original.task_progress} className="mt-1 flex w-fit" />
         </>
       ),
+    },
+    {
+      id: 'score',
+      meta: { label: 'Prioridade', sort: 'score' },
+      cell: ({ row }) => <LeadScoreBadge lead={row.original} />,
     },
     {
       id: 'sector',
@@ -247,6 +253,7 @@ const DUE_OPTIONS = [
 
 const MOBILE_SORTS = [
   { value: 'number:desc', label: 'Mais recentes' },
+  { value: 'score:desc', label: 'Prioridade (mais quentes)' },
   { value: 'next_action_on:asc', label: 'Próxima ação' },
   { value: 'company_name:asc', label: 'Empresa (A–Z)' },
   { value: 'estimated_value:desc', label: 'Valor estimado' },
@@ -778,7 +785,10 @@ export function LeadsTable() {
                         {lead.company_name}
                         {lead.archived_at ? <ArchivedBadge /> : null}
                       </span>
-                      <StatusBadge status={lead.status} />
+                      <span className="flex shrink-0 flex-col items-end gap-1">
+                        <StatusBadge status={lead.status} />
+                        <LeadScoreBadge lead={lead} />
+                      </span>
                     </span>
                     <span className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted">
                       {lead.sector ? (

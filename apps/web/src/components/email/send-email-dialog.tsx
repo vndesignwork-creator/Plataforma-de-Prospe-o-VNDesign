@@ -4,9 +4,9 @@
  * "Enviar" um email a um lead pela conta do utilizador (Definições → Email de envio).
  * Mostra o email pronto a rever (Para, Assunto, Mensagem) antes de sair.
  */
-import { formatDate, type Lead, type LeadEmailSendResult } from '@vndesign/core';
+import { formatDate, type FollowUpDraft, type Lead, type LeadEmailSendResult } from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { Paperclip, Send } from 'lucide-react';
+import { Paperclip, Reply, Send } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -25,10 +25,14 @@ interface SendEmailProps {
   template?: string;
   /** Envia a proposta com o PDF em anexo. */
   proposal?: { id: string; filename: string };
+  /** Resposta ao último email (follow-up na mesma conversa). */
+  inReplyTo?: string | null;
+  /** Título da janela (por omissão "Enviar email"). */
+  title?: string;
   onSent?: (result: LeadEmailSendResult) => void;
 }
 
-function SendEmailDialog({ lead, subject, body, template, proposal, onSent, onClose }: SendEmailProps & { onClose: () => void }) {
+function SendEmailDialog({ lead, subject, body, template, proposal, inReplyTo, title, onSent, onClose }: SendEmailProps & { onClose: () => void }) {
   const { data: account, isLoading } = useMailAccount();
   const invalidate = useInvalidateLead();
   const qc = useQueryClient();
@@ -44,12 +48,16 @@ function SendEmailDialog({ lead, subject, body, template, proposal, onSent, onCl
     try {
       const { data } = await api<{ data: LeadEmailSendResult }>(proposal ? `/proposals/${proposal.id}/email` : `/leads/${lead.id}/email`, {
         method: 'POST',
-        body: { ...form, bcc_self: copy, template },
+        body: { ...form, bcc_self: copy, template, ...(inReplyTo ? { in_reply_to: inReplyTo } : {}) },
       });
+      const next = data.next_action_on ? ` Próximo: ${data.next_action_text ?? 'follow-up'} a ${formatDate(data.next_action_on)}.` : '';
       toast.success(
-        `Email enviado para ${data.sent_to}.` +
-          (data.status_changed ? ` Estado atualizado${data.next_action_on ? ` — follow-up a ${formatDate(data.next_action_on)}` : ''}.` : ''),
+        data.follow_up_step
+          ? `Follow-up ${data.follow_up_step} enviado para ${data.sent_to}.${next}`
+          : `Email enviado para ${data.sent_to}.` +
+              (data.status_changed ? ` Estado atualizado${data.next_action_on ? ` — follow-up a ${formatDate(data.next_action_on)}` : ''}.` : ''),
       );
+      void qc.invalidateQueries({ queryKey: ['today'] });
       invalidate(lead.id);
       void qc.invalidateQueries({ queryKey: ['mail-account'] });
       onSent?.(data);
@@ -67,7 +75,7 @@ function SendEmailDialog({ lead, subject, body, template, proposal, onSent, onCl
     <Dialog
       open
       onOpenChange={(open) => (!open ? onClose() : undefined)}
-      title={proposal ? 'Enviar a proposta por email' : 'Enviar email'}
+      title={title ?? (proposal ? 'Enviar a proposta por email' : 'Enviar email')}
       description={ready ? `De: ${account.from_name} <${account.from_email}>` : undefined}
       className="max-w-2xl"
       footer={
@@ -148,6 +156,62 @@ export function SendEmailButton({
         <Send className={size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4'} aria-hidden /> {label}
       </Button>
       {open ? <SendEmailDialog {...props} onClose={() => setOpen(false)} /> : null}
+    </>
+  );
+}
+
+/**
+ * "Enviar follow-up": pede à plataforma o próximo follow-up da sequência (modelo
+ * do passo preenchido, "Re:" do último email) e abre-o para rever e enviar.
+ */
+export function FollowUpEmailButton({ lead, compact, className }: { lead: Lead; compact?: boolean; className?: string }) {
+  const [draft, setDraft] = useState<FollowUpDraft | null>(null);
+  const [loading, setLoading] = useState(false);
+  if (lead.status !== 'contactado' || !lead.email || lead.anonymized_at) return null;
+
+  async function open() {
+    setLoading(true);
+    try {
+      const { data } = await api<{ data: FollowUpDraft }>(`/leads/${lead.id}/follow-up-draft`);
+      setDraft(data);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const label = `Enviar follow-up${lead.follow_up_count !== undefined ? ` ${lead.follow_up_count + 1}` : ''} por email`;
+  return (
+    <>
+      {compact ? (
+        <Button
+          size="icon"
+          variant="ghost"
+          className={`h-8 w-8 pointer-coarse:h-10 pointer-coarse:w-10 ${className ?? ''}`}
+          onClick={open}
+          loading={loading}
+          aria-label={`${label}: #${lead.number} ${lead.company_name}`}
+          title={label}
+        >
+          <Reply className="h-4 w-4" aria-hidden />
+        </Button>
+      ) : (
+        <Button size="sm" variant="outline" onClick={open} loading={loading} className={className}>
+          <Reply className="h-3.5 w-3.5" aria-hidden /> Enviar follow-up
+        </Button>
+      )}
+      {draft ? (
+        <SendEmailDialog
+          lead={lead}
+          subject={draft.subject}
+          body={draft.body}
+          inReplyTo={draft.in_reply_to}
+          template={`Follow-up ${draft.step}${draft.template_name ? ` — ${draft.template_name}` : ''}`}
+          title={draft.step <= draft.total ? `Enviar follow-up ${draft.step} de ${draft.total}` : `Enviar follow-up ${draft.step}`}
+          onClose={() => setDraft(null)}
+        />
+      ) : null}
     </>
   );
 }

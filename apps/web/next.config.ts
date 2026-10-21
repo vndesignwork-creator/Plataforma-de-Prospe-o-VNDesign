@@ -33,8 +33,9 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // O pacote partilhado é TypeScript "cru": o Next compila-o.
   transpilePackages: ['@vndesign/core'],
-  // Gerador de PDF das propostas: corre como pacote Node normal (não é empacotado).
-  serverExternalPackages: ['@react-pdf/renderer'],
+  // Gerador de PDF das propostas e leitura da caixa de entrada (IMAP, usa o pino com
+  // workers): correm como pacotes Node normais (não são empacotados).
+  serverExternalPackages: ['@react-pdf/renderer', 'imapflow'],
   // O pdfkit (usado pelo gerador de PDF) carrega as fontes base com require() dinâmico,
   // que o "standalone" não deteta: sem isto, o PDF dá erro 500 em produção (Hostinger).
   outputFileTracingIncludes: {

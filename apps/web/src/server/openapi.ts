@@ -18,6 +18,8 @@ import {
   LeadEmailSendSchema,
   MailAccountSchema,
   MailAccountUpsertSchema,
+  ReplyCheckResultSchema,
+  FollowUpDraftSchema,
   AiProviderCreateSchema,
   AiProviderSchema,
   AiProviderTestResultSchema,
@@ -842,6 +844,24 @@ export function getOpenApiDocument() {
           tags: ['Email'],
           summary: 'Enviar um email de teste para o próprio',
           responses: { '200': ok(data(z.object({ sent_to: z.string() }))), '422': problem('Sem conta ou palavra-passe recusada'), ...common },
+        }),
+      },
+      '/leads/{id}/follow-up-draft': {
+        get: op({
+          tags: ['Email'],
+          summary: 'O próximo follow-up da sequência, já escrito (modelo do passo preenchido, "Re:" do último email)',
+          description: 'Enviar com `POST /leads/{id}/email` (com `in_reply_to`): conta como follow-up feito e agenda o passo seguinte.',
+          requestParams: { path: idParam },
+          responses: { '200': ok(data(FollowUpDraftSchema)), '422': problem('O lead não está "Contactado"'), ...withNotFound },
+        }),
+      },
+      '/mail-account/check-replies': {
+        post: op({
+          tags: ['Email'],
+          summary: 'Ler já a caixa de entrada (IMAP) e registar as respostas dos leads',
+          description:
+            'Só lê o cabeçalho dos emails novos (remetente, assunto, data). Uma resposta de um lead "Contactado" passa-o a "Respondeu". O cron `/cron/reminders` faz o mesmo de 10 em 10 minutos.',
+          responses: { '200': ok(data(ReplyCheckResultSchema)), '422': problem('Deteção desligada ou acesso recusado'), '502': problem('Servidor IMAP inacessível'), ...common },
         }),
       },
       '/leads/{id}/email': {

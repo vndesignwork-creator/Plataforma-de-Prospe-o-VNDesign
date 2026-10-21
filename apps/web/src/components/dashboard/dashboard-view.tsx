@@ -10,14 +10,16 @@ import {
   type TodayTask,
   leadPath,
 } from '@vndesign/core';
-import { AlertCircle, BarChart3, CalendarClock, CalendarDays, ListChecks } from 'lucide-react';
+import { AlertCircle, BarChart3, CalendarClock, CalendarDays, Flame, ListChecks } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
 import { StatTile } from '@/components/charts/stat-tile';
+import { FollowUpEmailButton } from '@/components/email/send-email-dialog';
 import { FollowUpActions } from '@/components/follow-up/follow-up-actions';
 import { StatusBadge } from '@/components/leads/badges';
+import { LeadScoreBadge } from '@/components/leads/lead-score';
 import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
 import { api, errorMessage } from '@/lib/api-client';
 import { DueChip, ReminderChip } from '@/components/tasks/tasks-card';
@@ -49,6 +51,7 @@ function TodayGroup({ title, icon, leads, tone }: { title: string; icon: ReactNo
                 <StatusBadge status={l.status} />
               </span>
             </Link>
+            <FollowUpEmailButton lead={l} compact />
             <FollowUpActions lead={l} compact />
           </li>
         ))}
@@ -142,6 +145,46 @@ function TodayCard({ className }: { className?: string }) {
   );
 }
 
+/** Os leads com maior prioridade (pontuação calculada pela base de dados). */
+function HotLeadsCard() {
+  const { data } = useToday();
+  const hot = data?.hot ?? [];
+  if (!hot.length) return null;
+  return (
+    <Card>
+      <CardHeader
+        title="Leads mais quentes"
+        description="Quem vale mais a pena contactar agora"
+        actions={
+          <Link href="/leads?sort=score&order=desc" className="text-sm text-accent-text hover:underline">
+            Ver todos
+          </Link>
+        }
+      />
+      <ul className="flex flex-col p-2" aria-label="Leads mais quentes">
+        {hot.map((l) => (
+          <li key={l.id}>
+            <Link
+              href={leadPath(l)}
+              className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-surface-2"
+              title={l.score_reasons?.join(' · ')}
+            >
+              <Flame className="h-3.5 w-3.5 shrink-0 text-muted" aria-hidden />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium">{l.company_name}</span>
+                <span className="block truncate text-xs text-muted">
+                  {l.score_reasons?.slice(0, 2).join(' · ') || LEAD_STATUS_META[l.status].label}
+                </span>
+              </span>
+              <LeadScoreBadge lead={l} />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 /** Estados pela ordem do pipeline, com o número de leads e ligação à lista filtrada. */
 function PipelineCard({ byStatus }: { byStatus: { status: LeadStatus; count: number }[] }) {
   const max = Math.max(1, ...byStatus.map((s) => s.count));
@@ -230,6 +273,7 @@ export function DashboardView() {
       <div className="contents lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-start lg:gap-5">
         <TodayCard className="max-lg:order-first" />
         <div className="flex flex-col gap-5">
+          <HotLeadsCard />
           <PipelineCard byStatus={data.by_status} />
           <Link
             href="/estatisticas"

@@ -9,6 +9,7 @@ import {
   type ContactTemplate,
   type Lead,
   leadServiceCategory,
+  rankTemplatesForLead,
 } from '@vndesign/core';
 import { Copy, Mail, MessageSquareText, Phone, RotateCcw, Save, Send } from 'lucide-react';
 import Link from 'next/link';
@@ -37,26 +38,10 @@ const SENT_AS: Record<string, { activity: 'email_sent' | 'call_logged' | 'templa
   proposal_structure: { activity: 'template_used', channel: null },
 };
 
-/** Escolhe o modelo inicial: email frio do setor do lead, senão o predefinido. */
-/**
- * Ordem de sugestão: primeiro os modelos da categoria dos serviços do lead, depois
- * os de todas as categorias, por fim os de outras. Lead sem serviços: tanto faz.
- */
-function categoryRank(t: ContactTemplate, category: string | null): number {
-  if (!category) return 0;
-  return t.category === category ? 0 : t.category === null ? 1 : 2;
-}
-
-function byRelevance(lead: Lead, category: string | null) {
-  return (a: ContactTemplate, b: ContactTemplate) =>
-    categoryRank(a, category) - categoryRank(b, category) ||
-    Number(!!lead.sector_id && b.sector_id === lead.sector_id) - Number(!!lead.sector_id && a.sector_id === lead.sector_id) ||
-    Number(b.is_default) - Number(a.is_default);
-}
-
+/** Escolhe o modelo inicial: email frio (ou follow-up) mais adequado ao lead. */
 function initialTemplate(templates: ContactTemplate[], lead: Lead, category: string | null): ContactTemplate | undefined {
   const firstKind = lead.status === 'identificado' ? 'cold_email' : 'follow_up';
-  return [...templates.filter((t) => t.kind === firstKind)].sort(byRelevance(lead, category))[0] ?? templates[0];
+  return rankTemplatesForLead(templates.filter((t) => t.kind === firstKind), lead, category)[0] ?? templates[0];
 }
 
 async function copy(text: string) {
@@ -181,7 +166,7 @@ export function ContactScriptsCard({ lead }: { lead: Lead }) {
             className="h-9 w-auto min-w-64 flex-1"
           >
             {TEMPLATE_KINDS.map((kind) => {
-              const group = templates.filter((t) => t.kind === kind).sort(byRelevance(lead, category));
+              const group = rankTemplatesForLead(templates.filter((t) => t.kind === kind), lead, category);
               if (!group.length) return null;
               return (
                 <optgroup key={kind} label={TEMPLATE_KIND_LABELS[kind]}>

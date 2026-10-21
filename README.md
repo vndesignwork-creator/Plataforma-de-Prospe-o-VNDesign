@@ -201,7 +201,7 @@ Enviar um resumo de teste agora**.
 O mesmo cron envia também as **notificações push** a todos os dispositivos ativados.
 
 **Lembretes das tarefas** (sino 🔔 no cartão Tarefas: dia e hora) — outro cron, **de 5 em 5
-minutos**, envia a notificação quando chega a hora (e lança as pesquisas automáticas do gerador de leads):
+minutos**, envia a notificação quando chega a hora (e lança as pesquisas automáticas do gerador de leads e lê as caixas de entrada para detetar respostas):
 
 - **Hostinger** (hPanel → Avançado → Cron Jobs, "a cada 5 minutos"), comando:
   `curl -s -H "Authorization: Bearer <CRON_SECRET>" https://leads.vndesign.pt/api/v1/cron/reminders`
@@ -273,6 +273,40 @@ Os botões **Enviar** (email de prospeção, scripts de contacto, Escrever com I
 4. Carrega em **Guardar** e depois em **Enviar email de teste**.
 
 O Gmail guarda os emails enviados na pasta "Enviados". Com o email da Hostinger (ou outro SMTP) isso não acontece: liga a opção *cópia oculta* para receberes uma cópia de cada email. A palavra-passe fica cifrada no servidor, como as chaves de IA (ver `AI_KEYS_SECRET` no `.env.example`), e nunca volta a aparecer.
+
+### Sequência de follow-ups por email
+
+Depois de um email enviado pela plataforma, a próxima ação passa a ser o **follow-up seguinte**, já escrito:
+
+- Por omissão: 1.º follow-up 3 dias depois, 2.º 7 dias depois, 3.º 14 dias depois (sempre contados a partir do email anterior).
+- Muda os dias e o modelo de cada passo em **Definições → Follow-up e lembretes → Sequência de follow-ups por email**. "Automático" escolhe o modelo de follow-up mais adequado ao lead (categoria dos serviços e setor).
+- No dia certo, o lead aparece em **Hoje** (Dashboard) com o botão de responder ↩, e a ficha mostra **Enviar follow-up** no cartão Pipeline.
+- O botão abre o follow-up preenchido, com "Re:" do último email e na **mesma conversa**. Revês e carregas em **Enviar**.
+- Depois do último passo, a próxima ação fica "Sem resposta aos follow-ups: ligar ou marcar Sem interesse".
+- A sequência **para** quando o lead deixa de estar "Contactado": por exemplo, quando responde (deteção de respostas, abaixo) ou quando mudas o estado.
+
+### Deteção de respostas
+
+Com a opção **Detetar respostas na caixa de entrada** ligada (Definições → Email de envio, ligada por omissão):
+
+- De 10 em 10 minutos (pelo cron dos lembretes), a plataforma lê na caixa de entrada **só o remetente e o assunto** dos emails novos. Nunca lê o texto.
+- Um email de um lead (resposta ao email enviado, o mesmo endereço, ou o mesmo domínio de empresa) fica na linha do tempo como **Resposta recebida**.
+- Se o lead estava "Contactado", passa a **Respondeu**, com a próxima ação "Responder ao cliente" para hoje, e recebes uma notificação.
+- As respostas automáticas (férias, ausência) ficam registadas mas não mudam o estado.
+- Usa a mesma palavra-passe de aplicação do Gmail (IMAP: `imap.gmail.com:993`). Hostinger: `imap.hostinger.com:993`. Outro serviço: indica o servidor IMAP.
+- **Verificar agora** lê logo a caixa. Se a leitura falhar (ex.: palavra-passe mudada), o erro aparece nessa secção.
+
+---
+
+## Prioridade dos leads
+
+Cada lead tem uma pontuação de 0 a 100 (🔥 Quente ≥ 60, 🌤️ Morno ≥ 35, ❄️ Frio), atualizada sozinha sempre que o lead muda.
+
+- Somam pontos: o estado (Reunião, Respondeu, Proposta enviada), sem site próprio ou só redes sociais, site lento ou que não funciona no telemóvel (só se o lead precisar de web design), problemas identificados, ter email ou telefone, setor prioritário (Definições → Setores), valor estimado e ângulo de abordagem.
+- Clientes, sem interesse, em pausa e arquivados ficam com 0.
+- **Leads → ordenar por Prioridade** (coluna "Prioridade"; no telemóvel, "Ordenar → Prioridade (mais quentes)").
+- **Dashboard → Leads mais quentes**: os 8 com mais pontos.
+- Na ficha, toca no distintivo ao lado do setor para ver as razões.
 
 ---
 

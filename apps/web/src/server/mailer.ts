@@ -43,6 +43,8 @@ export async function sendWithAccount(
     text: string;
     html: string;
     attachments?: { filename: string; content: Buffer; contentType: string }[];
+    /** Resposta a este Message-ID (o cliente de email junta-os na mesma conversa). */
+    inReplyTo?: string;
   },
 ) {
   const transport = nodemailer.createTransport({
@@ -55,5 +57,6 @@ export async function sendWithAccount(
     socketTimeout: 60_000,
   });
   const from = { name: account.fromName, address: account.fromEmail };
-  return transport.sendMail({ from, replyTo: from, ...message });
+  const { inReplyTo, ...rest } = message;
+  return transport.sendMail({ from, replyTo: from, ...rest, ...(inReplyTo ? { inReplyTo, references: [inReplyTo] } : {}) });
 }

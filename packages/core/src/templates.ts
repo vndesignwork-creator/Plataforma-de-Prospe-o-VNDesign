@@ -9,7 +9,7 @@
  * Variáveis vazias sem alternativa desaparecem e a pontuação à volta é
  * arrumada ("Olá {{contacto}}," → "Olá,").
  */
-import { formatDate } from './format';
+import { addDays, formatDate } from './format';
 import {
   DEFAULT_SERVICE_CATEGORIES,
   DEFAULT_SERVICES,
@@ -216,4 +216,67 @@ export function mailtoUrl(to: string | null | undefined, subject?: string | null
   if (body) params.set('body', body);
   const qs = params.toString().replace(/\+/g, '%20');
   return `mailto:${to ?? ''}${qs ? `?${qs}` : ''}`;
+}
+
+// -----------------------------------------------------------------------------
+// Escolha do modelo para um lead
+// -----------------------------------------------------------------------------
+
+type RankableTemplate = { category?: string | null; sector_id: string | null; is_default: boolean };
+
+/**
+ * Ordem de sugestão: primeiro os modelos da categoria dos serviços do lead, depois
+ * os de todas as categorias, por fim os de outras; a seguir os do setor do lead e
+ * os predefinidos. Lead sem serviços: a categoria não conta.
+ */
+export function rankTemplatesForLead<T extends RankableTemplate>(
+  templates: readonly T[],
+  lead: { sector_id: string | null },
+  category: string | null,
+): T[] {
+  const categoryRank = (t: T) => (!category ? 0 : t.category === category ? 0 : (t.category ?? null) === null ? 1 : 2);
+  const sectorRank = (t: T) => Number(!(lead.sector_id && t.sector_id === lead.sector_id));
+  return [...templates].sort(
+    (a, b) => categoryRank(a) - categoryRank(b) || sectorRank(a) - sectorRank(b) || Number(b.is_default) - Number(a.is_default),
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Sequência de follow-ups por email
+// -----------------------------------------------------------------------------
+
+export interface FollowUpPlan {
+  /** Data da próxima ação (AAAA-MM-DD). */
+  on: string;
+  text: string;
+  /** Número do follow-up seguinte (1, 2, 3…) ou null fora da sequência. */
+  step: number | null;
+  total: number;
+}
+
+/**
+ * Próxima ação depois de um email enviado ao lead. `sent` = follow-ups já
+ * enviados (0 depois do primeiro contacto). Com a sequência desligada, volta ao
+ * follow-up simples de N dias (Definições → Follow-up e lembretes).
+ */
+export function planNextFollowUp(
+  settings: { follow_up_days: number; follow_up_sequence: { enabled: boolean; steps: readonly { days: number }[] } },
+  sent: number,
+  today: string,
+): FollowUpPlan {
+  const steps = settings.follow_up_sequence.steps;
+  const total = steps.length;
+  if (!settings.follow_up_sequence.enabled || !total) {
+    return { on: addDays(today, settings.follow_up_days), text: 'Enviar follow-up', step: null, total: 0 };
+  }
+  if (sent < total) {
+    return { on: addDays(today, steps[sent]!.days), text: `Follow-up ${sent + 1} de ${total} por email`, step: sent + 1, total };
+  }
+  return { on: addDays(today, 7), text: 'Sem resposta aos follow-ups: ligar ou marcar Sem interesse', step: null, total };
+}
+
+/** "Re: assunto" sem repetir o "Re:". */
+export function replySubject(subject: string): string {
+  const clean = subject.replace(/^(\s*(re|res|fw|fwd|enc)\s*:\s*)+/i, '').trim();
+  return clean ? `Re: ${clean}` : '';
 }

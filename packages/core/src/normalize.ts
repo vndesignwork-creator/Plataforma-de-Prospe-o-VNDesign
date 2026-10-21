@@ -93,6 +93,11 @@ const GENERIC_EMAIL_DOMAINS = new Set([
   'gmx.net', 'protonmail.com', 'proton.me', 'vodafone.pt', 'meo.pt', 'nos.pt',
 ]);
 
+/** gmail.com, hotmail.com, sapo.pt…: domínios de email de pessoas, não de empresas. */
+export function isGenericEmailDomain(domain: string): boolean {
+  return GENERIC_EMAIL_DOMAINS.has(domain.toLowerCase());
+}
+
 /** Domínio empresarial do email (null para gmail, hotmail, sapo…). */
 export function emailBusinessDomain(email: string | null | undefined): string | null {
   const normalized = normalizeEmail(email);
