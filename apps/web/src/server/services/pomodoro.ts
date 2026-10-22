@@ -186,7 +186,10 @@ async function insertWorkEntry(ctx: ApiContext, leadId: string, task: { id: stri
   return (data as { id: string }).id;
 }
 
-/** Começa um pomodoro de trabalho no projeto (e na tarefa, se escolhida). O ciclo continua. */
+/**
+ * Começa um pomodoro de trabalho no projeto (e na tarefa, se escolhida) ou,
+ * com phase "short_break", um descanso já. O ciclo continua.
+ */
 export async function startPomodoro(ctx: ApiContext, input: PomodoroStart): Promise<Pomodoro> {
   const settings = await settingsOf(ctx);
   const lead = await getLead(ctx, input.lead_id);
@@ -205,7 +208,9 @@ export async function startPomodoro(ctx: ApiContext, input: PomodoroStart): Prom
     task = data as { id: string; title: string };
   }
   const previous = await loadRow(ctx.supabase, ctx.workspaceId, ctx.user.id);
-  const entryId = await insertWorkEntry(ctx, lead.id, task);
+  const work = input.phase === 'work';
+  // Descanso forçado: o trabalho em curso fica registado (sem contar como pomodoro completo).
+  const entryId = work ? await insertWorkEntry(ctx, lead.id, task) : (await stopTimer(ctx), null);
   const now = Date.now();
   const { error } = await ctx.supabase.from('pomodoro_timers').upsert(
     {
@@ -213,9 +218,9 @@ export async function startPomodoro(ctx: ApiContext, input: PomodoroStart): Prom
       workspace_id: ctx.workspaceId,
       lead_id: lead.id,
       task_id: task?.id ?? null,
-      phase: 'work',
+      phase: input.phase,
       phase_started_at: at(now),
-      ends_at: at(now + settings.work_minutes * 60_000),
+      ends_at: at(now + (work ? settings.work_minutes : settings.short_break_minutes) * 60_000),
       paused_left: null,
       // O ciclo continua (depois da pausa longa já voltou a 0).
       completed: previous?.completed ?? 0,
@@ -229,7 +234,7 @@ export async function startPomodoro(ctx: ApiContext, input: PomodoroStart): Prom
   return getPomodoro(ctx);
 }
 
-/** Pausar, continuar, saltar (acabar já a fase) ou parar o pomodoro. */
+/** Pausar, continuar, saltar (acabar já a fase), reiniciar a fase ou parar o pomodoro. */
 export async function pomodoroAction(ctx: ApiContext, action: PomodoroAction): Promise<Pomodoro> {
   const settings = await settingsOf(ctx);
   let row = await loadRow(ctx.supabase, ctx.workspaceId, ctx.user.id);
@@ -247,6 +252,14 @@ export async function pomodoroAction(ctx: ApiContext, action: PomodoroAction): P
     if (row.phase === 'ready' || row.paused_left !== null) return getPomodoro(ctx);
     if (row.phase === 'work') await stopTimer(ctx);
     await saveRow(ctx.supabase, row, { paused_left: pomodoroRemaining(row, now), ends_at: null, entry_id: null });
+    return getPomodoro(ctx);
+  }
+  if (action === 'restart') {
+    // A fase volta ao início (o trabalho já feito fica registado) e conta logo.
+    const minutes = phaseMinutes(row.phase, settings);
+    if (!minutes) return getPomodoro(ctx);
+    const entryId = row.phase === 'work' ? await insertWorkEntry(ctx, row.lead_id, row.task) : null;
+    await saveRow(ctx.supabase, row, { phase_started_at: at(now), ends_at: at(now + minutes * 60_000), paused_left: null, entry_id: entryId, notified_at: null });
     return getPomodoro(ctx);
   }
   if (action === 'resume') {

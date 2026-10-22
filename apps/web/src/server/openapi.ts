@@ -1484,7 +1484,7 @@ export function getOpenApiDocument() {
         get: op({ tags: ['Projetos'], summary: 'O meu pomodoro em curso (null = nenhum); avança as fases que já acabaram', responses: { '200': ok(data(PomodoroSchema)), ...common } }),
         post: op({
           tags: ['Projetos'],
-          summary: 'Começar um pomodoro de trabalho num projeto (e tarefa): conta no registo de horas',
+          summary: 'Começar um pomodoro de trabalho num projeto (e tarefa), que conta no registo de horas, ou um descanso já (phase: short_break)',
           requestBody: body(PomodoroStartSchema),
           responses: { '201': ok(data(PomodoroSchema)), ...withNotFound },
         }),
@@ -1492,7 +1492,7 @@ export function getOpenApiDocument() {
       '/pomodoro/action': {
         post: op({
           tags: ['Projetos'],
-          summary: 'Pausar, continuar, saltar (acabar já a fase) ou parar o pomodoro',
+          summary: 'Pausar, continuar, saltar (acabar já a fase), reiniciar a fase ou parar o pomodoro',
           requestBody: body(PomodoroActionSchema),
           responses: { '200': ok(data(PomodoroSchema)), '404': problem('Sem pomodoro a decorrer'), ...common },
         }),

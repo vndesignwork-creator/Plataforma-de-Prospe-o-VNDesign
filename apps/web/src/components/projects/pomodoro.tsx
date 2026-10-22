@@ -10,6 +10,7 @@ import {
   POMODORO_PHASE_LABELS,
   formatCountdown,
   leadPath,
+  phaseMinutes,
   pomodoroNotice,
   pomodoroRemaining,
   type Lead,
@@ -18,7 +19,7 @@ import {
   type PomodoroSettings,
 } from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { Coffee, Pause, Play, SkipForward, Square } from 'lucide-react';
+import { CircleCheck, Coffee, Pause, Play, RotateCcw, SkipForward, Square, Timer } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -84,6 +85,48 @@ function askNotifications() {
   if (typeof Notification !== 'undefined' && Notification.permission === 'default') void Notification.requestPermission().catch(() => undefined);
 }
 
+/**
+ * Mostrador circular com 60 marcas: as que já passaram ficam apagadas e o
+ * ponteiro (laranja a trabalhar, verde na pausa) mostra onde vai a fase.
+ */
+function Dial({ fraction, tone, children }: { fraction: number; tone: 'accent' | 'success' | 'muted'; children: React.ReactNode }) {
+  const f = Math.min(1, Math.max(0, fraction));
+  const angle = f * 360;
+  return (
+    <div className="relative mx-auto aspect-square w-full max-w-[13.5rem]">
+      <svg viewBox="-100 -100 200 200" className="absolute inset-0 h-full w-full" aria-hidden>
+        {Array.from({ length: 60 }, (_, i) => {
+          const a = (i * 6 * Math.PI) / 180;
+          const passed = i / 60 < f;
+          return (
+            <line
+              key={i}
+              x1={Math.sin(a) * 84}
+              y1={-Math.cos(a) * 84}
+              x2={Math.sin(a) * 94}
+              y2={-Math.cos(a) * 94}
+              strokeWidth={3.2}
+              strokeLinecap="round"
+              className={passed ? 'stroke-fg/10' : 'stroke-fg/35'}
+            />
+          );
+        })}
+        <line
+          x1={0}
+          y1={-74}
+          x2={0}
+          y2={-97}
+          strokeWidth={4.5}
+          strokeLinecap="round"
+          transform={`rotate(${angle})`}
+          className={cn('transition-transform duration-1000 ease-linear motion-reduce:transition-none', tone === 'success' ? 'stroke-success' : tone === 'accent' ? 'stroke-accent' : 'stroke-fg/50')}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-8 text-center">{children}</div>
+    </div>
+  );
+}
+
 export function PomodoroBox({ lead, className }: { lead: Lead; className?: string }) {
   const settings = usePomodoroSettings();
   const { data: pomodoro } = usePomodoro(!!settings);
@@ -96,63 +139,93 @@ export function PomodoroBox({ lead, className }: { lead: Lead; className?: strin
   const here = pomodoro?.lead.id === lead.id ? pomodoro : null;
   const elsewhere = pomodoro && !here ? pomodoro : null;
   const open = (tasks ?? []).filter((t) => !t.done_at);
-  const start = () => {
+  const start = (phase: 'work' | 'short_break' = 'work') => {
     askNotifications();
-    void run({ start: { lead_id: lead.id, task_id: taskId || null } }, `Pomodoro de ${settings.work_minutes} minutos a contar.`);
+    void run(
+      { start: { lead_id: lead.id, task_id: taskId || here?.task?.id || null, phase } },
+      phase === 'work' ? `Pomodoro de ${settings.work_minutes} minutos a contar.` : `Pausa de ${settings.short_break_minutes} minutos.`,
+    );
   };
   const act = (action: PomodoroAction, success?: string) => void run({ action }, success);
-  const paused = here?.paused_left !== null && here?.paused_left !== undefined;
+  const paused = !!here && here.paused_left !== null;
   const onBreak = here?.phase === 'short_break' || here?.phase === 'long_break';
+  const working = here?.phase === 'work';
+  const total = here && here.phase !== 'ready' ? phaseMinutes(here.phase, settings) * 60 : settings.work_minutes * 60;
+  const left = here && here.phase !== 'ready' ? Math.min(remaining, total) : total;
+  const label = !here ? 'Pronto' : paused ? 'Em pausa' : POMODORO_PHASE_LABELS[here.phase];
+  const breakButton = (
+    <Button size="sm" variant="outline" onClick={() => start('short_break')} disabled={pending}>
+      <Coffee className="h-3.5 w-3.5" aria-hidden /> Pausa de {settings.short_break_minutes} min
+    </Button>
+  );
 
   return (
-    <section aria-label="Pomodoro" className={cn('flex min-w-0 flex-col gap-2 rounded-lg border border-border p-3', here?.phase === 'work' && !paused && 'border-accent bg-accent-soft/40', className)}>
+    <section
+      aria-label="Pomodoro"
+      className={cn('flex min-w-0 flex-col gap-3 rounded-lg border border-border p-3', working && !paused && 'border-accent', onBreak && !paused && 'border-success', className)}
+    >
       <div className="flex items-center justify-between gap-2 text-xs">
-        <span className="font-medium text-muted">🍅 Pomodoro</span>
-        {here ? <Dots completed={here.completed} every={here.long_every} /> : null}
+        <span className="inline-flex items-center gap-1.5 font-medium text-muted">
+          <Timer className="h-3.5 w-3.5" aria-hidden /> Pomodoro
+        </span>
+        <span className="inline-flex items-center gap-3 text-muted">
+          {here ? <Dots completed={here.completed} every={here.long_every} /> : null}
+          {here ? (
+            <span className="inline-flex items-center gap-1" title="Pomodoros completos hoje">
+              <CircleCheck className="h-3.5 w-3.5" aria-hidden /> Hoje: {here.today}
+            </span>
+          ) : null}
+        </span>
       </div>
 
+      <Dial fraction={1 - left / total} tone={!here || paused || here.phase === 'ready' ? 'muted' : onBreak ? 'success' : 'accent'}>
+        <span className={cn('text-xs font-medium', onBreak ? 'text-success' : here?.phase === 'ready' ? 'text-warning' : here ? 'text-accent-text' : 'text-muted')}>{label}</span>
+        <span className="text-5xl font-extralight tabular tracking-tight" role="timer" aria-live="off" aria-label="Tempo que falta">
+          {formatCountdown(left)}
+        </span>
+        {here?.task ? <span className="line-clamp-2 text-xs text-muted">{here.task.title}</span> : null}
+      </Dial>
+
       {here ? (
-        <>
-          <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
-            <div className="min-w-0">
-              <p className={cn('text-xs font-medium', onBreak ? 'text-success' : here.phase === 'ready' ? 'text-warning' : 'text-accent-text')}>
-                {paused ? 'Em pausa' : POMODORO_PHASE_LABELS[here.phase]}
-                {here.task ? <span className="font-normal text-muted"> · {here.task.title}</span> : null}
-              </p>
-              <p className="font-display text-3xl font-semibold tabular" role="timer" aria-live="off" aria-label="Tempo que falta">
-                {here.phase === 'ready' ? formatCountdown(settings.work_minutes * 60) : formatCountdown(remaining)}
-              </p>
-            </div>
-            <p className="text-xs text-muted">Hoje: {here.today} 🍅</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {here.phase === 'ready' ? (
-              <Button size="sm" onClick={start} loading={pending}>
+        <div className="flex flex-wrap justify-center gap-2">
+          {here.phase === 'ready' ? (
+            <>
+              <Button size="sm" onClick={() => start('work')} loading={pending}>
                 <Play className="h-3.5 w-3.5" aria-hidden /> Começar o próximo
               </Button>
-            ) : paused ? (
+              {breakButton}
+            </>
+          ) : paused ? (
+            <>
               <Button size="sm" onClick={() => act('resume')} loading={pending}>
                 <Play className="h-3.5 w-3.5" aria-hidden /> Continuar
               </Button>
-            ) : (
+              <Button size="sm" variant="outline" onClick={() => act('restart', 'A fase recomeçou do início.')} disabled={pending}>
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Reiniciar
+              </Button>
+            </>
+          ) : (
+            <>
               <Button size="sm" variant="outline" onClick={() => act('pause')} loading={pending}>
                 <Pause className="h-3.5 w-3.5" aria-hidden /> Pausar
               </Button>
-            )}
-            {onBreak ? (
-              <Button size="sm" variant="outline" onClick={() => act('skip')} disabled={pending}>
-                <SkipForward className="h-3.5 w-3.5" aria-hidden /> Saltar pausa
-              </Button>
-            ) : null}
-            <Button size="sm" variant="ghost" onClick={() => act('stop', 'Pomodoro parado. O tempo de trabalho ficou registado.')} disabled={pending}>
-              <Square className="h-3.5 w-3.5" aria-hidden /> Parar
-            </Button>
-          </div>
-        </>
+              {onBreak ? (
+                <Button size="sm" variant="outline" onClick={() => act('skip')} disabled={pending}>
+                  <SkipForward className="h-3.5 w-3.5" aria-hidden /> Saltar pausa
+                </Button>
+              ) : (
+                breakButton
+              )}
+            </>
+          )}
+          <Button size="sm" variant="ghost" onClick={() => act('stop', 'Pomodoro parado. O tempo de trabalho ficou registado.')} disabled={pending}>
+            <Square className="h-3.5 w-3.5" aria-hidden /> Parar
+          </Button>
+        </div>
       ) : (
         <>
           {elsewhere ? (
-            <p className="text-xs text-muted">
+            <p className="text-center text-xs text-muted">
               A decorrer em{' '}
               <Link href={`${leadPath(elsewhere.lead)}#projeto`} className="font-medium text-accent-text hover:underline">
                 {elsewhere.lead.company_name}
@@ -160,22 +233,23 @@ export function PomodoroBox({ lead, className }: { lead: Lead; className?: strin
               . Começar aqui passa o pomodoro para este projeto.
             </p>
           ) : null}
-          <div className="flex flex-wrap items-center gap-2">
-            {open.length ? (
-              <Select aria-label="Em que tarefa?" value={taskId} onChange={(e) => setTaskId(e.target.value)} className="h-9 min-w-0 flex-[1_1_10rem] text-sm">
-                <option value="">Em que tarefa? (opcional)</option>
-                {open.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.title.length > 60 ? `${t.title.slice(0, 60)}…` : t.title}
-                  </option>
-                ))}
-              </Select>
-            ) : null}
-            <Button size="sm" onClick={start} loading={pending} className="ml-auto shrink-0">
+          {open.length ? (
+            <Select aria-label="Em que tarefa?" value={taskId} onChange={(e) => setTaskId(e.target.value)} className="h-9 text-sm">
+              <option value="">Em que tarefa? (opcional)</option>
+              {open.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.title.length > 60 ? `${t.title.slice(0, 60)}…` : t.title}
+                </option>
+              ))}
+            </Select>
+          ) : null}
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button size="sm" onClick={() => start('work')} loading={pending}>
               <Play className="h-3.5 w-3.5" aria-hidden /> Começar {settings.work_minutes} min
             </Button>
+            {breakButton}
           </div>
-          <p className="text-xs text-muted">
+          <p className="text-center text-xs text-muted">
             {settings.work_minutes} min de trabalho, {settings.short_break_minutes} de pausa; a cada {settings.long_every}, pausa de {settings.long_break_minutes}. O trabalho fica nas horas do
             projeto.
           </p>
@@ -203,7 +277,7 @@ export function PomodoroIndicator({ pomodoro, compact, className }: { pomodoro: 
         className,
       )}
     >
-      <span aria-hidden>{onBreak ? <Coffee className="h-4 w-4 text-success" /> : '🍅'}</span>
+      {onBreak ? <Coffee className="h-4 w-4 shrink-0 text-success" aria-hidden /> : <Timer className="h-4 w-4 shrink-0 text-accent-text" aria-hidden />}
       <span className="min-w-0 flex-1 leading-tight">
         {!compact ? (
           <Link href={`${leadPath(pomodoro.lead)}#projeto`} className="block truncate text-xs text-muted hover:text-fg hover:underline">

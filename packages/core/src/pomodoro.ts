@@ -56,11 +56,13 @@ export const PomodoroStartSchema = z
   .object({
     lead_id: z.uuid(),
     task_id: z.uuid().nullish().transform((v) => v ?? null),
+    /** "short_break" = descanso forçado agora (o trabalho em curso fica registado, sem contar como pomodoro completo). */
+    phase: z.enum(['work', 'short_break']).optional().default('work'),
   })
   .meta({ id: 'PomodoroStart' });
 export type PomodoroStart = z.output<typeof PomodoroStartSchema>;
 
-export const POMODORO_ACTIONS = ['pause', 'resume', 'skip', 'stop'] as const;
+export const POMODORO_ACTIONS = ['pause', 'resume', 'skip', 'restart', 'stop'] as const;
 export const PomodoroActionSchema = z.object({ action: z.enum(POMODORO_ACTIONS) }).meta({ id: 'PomodoroAction' });
 export type PomodoroAction = z.output<typeof PomodoroActionSchema>['action'];
 
@@ -118,8 +120,8 @@ export function formatCountdown(seconds: number): string {
 
 /** Texto da notificação no fim de uma fase (a fase nova). */
 export function pomodoroNotice(phase: PomodoroPhase, settings: PomodoroSettings, company: string): { title: string; body: string } {
-  if (phase === 'short_break') return { title: '🍅 Pomodoro terminado', body: `${company}: pausa de ${settings.short_break_minutes} minutos.` };
-  if (phase === 'long_break') return { title: '🍅 Pomodoro terminado', body: `${company}: pausa longa de ${settings.long_break_minutes} minutos.` };
-  if (phase === 'ready') return { title: '🍅 Pausa terminada', body: `Volta ao trabalho: ${company}.` };
-  return { title: '🍅 Pomodoro', body: `A trabalhar: ${company}.` };
+  if (phase === 'short_break') return { title: 'Pomodoro terminado', body: `${company}: pausa de ${settings.short_break_minutes} minutos.` };
+  if (phase === 'long_break') return { title: 'Pomodoro terminado', body: `${company}: pausa longa de ${settings.long_break_minutes} minutos.` };
+  if (phase === 'ready') return { title: 'Pausa terminada', body: `Volta ao trabalho: ${company}.` };
+  return { title: 'Pomodoro', body: `A trabalhar: ${company}.` };
 }

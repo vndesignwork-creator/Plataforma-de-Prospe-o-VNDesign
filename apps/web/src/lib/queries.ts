@@ -1141,7 +1141,7 @@ export function usePomodoro(enabled = true) {
 export function usePomodoroAction() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { start: { lead_id: string; task_id?: string | null } } | { action: PomodoroAction }) =>
+    mutationFn: (input: { start: { lead_id: string; task_id?: string | null; phase?: 'work' | 'short_break' } } | { action: PomodoroAction }) =>
       'start' in input
         ? api<{ data: Pomodoro }>('/pomodoro', { method: 'POST', body: input.start }).then((r) => r.data)
         : api<{ data: Pomodoro }>('/pomodoro/action', { method: 'POST', body: { action: input.action } }).then((r) => r.data),

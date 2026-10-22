@@ -429,10 +429,10 @@ Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**
 - **Remover** tira-lhe logo o acesso ao projeto.
 
 **Pomodoro**
-- No cartão de cada projeto (em **Projetos** e na ficha), bloco **🍅 Pomodoro**: escolhe a tarefa (opcional) e carrega em **Começar 25 min**.
-- Ritmo: 25 min de trabalho, 5 de pausa e, a cada 4 pomodoros, uma pausa de 15. Na pausa: **Saltar pausa**; no fim da pausa: **Começar o próximo**. **Pausar**/**Continuar** e **Parar** a qualquer momento.
+- No cartão de cada projeto (em **Projetos** e na ficha), bloco **Pomodoro** com um mostrador circular: as marcas que já passaram apagam-se e o ponteiro (laranja a trabalhar, verde na pausa) mostra onde vai a fase. Escolhe a tarefa (opcional) e carrega em **Começar 25 min**.
+- Ritmo: 25 min de trabalho, 5 de pausa e, a cada 4 pomodoros, uma pausa de 15. Botões: **Pausar** / **Continuar**, **Reiniciar** (a fase volta ao início; o trabalho já feito fica registado), **Pausa de 5 min** (descanso já, mesmo a meio do trabalho), **Saltar pausa**, **Começar o próximo** e **Parar**.
 - O trabalho conta no **registo de horas** do projeto (com a nota "Pomodoro · tarefa") e no €/hora; as pausas não. Pausar o temporizador ▶ pausa o pomodoro; começar o ▶ à parte termina o pomodoro.
-- Enquanto decorre, aparece no menu (🍅 e o tempo que falta, também no telemóvel).
+- Enquanto decorre, aparece no menu (a fase e o tempo que falta, também no telemóvel).
 - No fim de cada fase, com a app aberta: som, vibração, notificação e mensagem. Com a app fechada, o pomodoro continua no servidor e o cron dos lembretes (de 5 em 5 minutos) avança a fase, fecha as horas e envia a notificação push.
 - Os tempos e o som mudam-se em Definições → Funcionalidades → *Pomodoro*. Em **Estatísticas → Pomodoro**: hoje, últimos 7 dias, por dia e por projeto.
 

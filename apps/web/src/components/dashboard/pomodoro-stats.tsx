@@ -28,7 +28,7 @@ export function PomodoroStatsSection() {
         <p className="text-sm text-muted">Os teus blocos de trabalho completos (o trabalho conta nas horas de cada projeto).</p>
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label="Hoje" value={`${data.today} 🍅`} />
+        <StatTile label="Hoje" value={data.today} hint={data.today === 1 ? 'pomodoro completo' : 'pomodoros completos'} />
         <StatTile label="Últimos 7 dias" value={data.week} hint={`${String(avg).replace('.', ',')} por dia`} />
         <StatTile label="Tempo em pomodoros" value={formatMinutes(data.minutes_week)} hint="Últimos 7 dias" />
         <StatTile label="Projetos" value={data.by_project.length} hint="Últimos 14 dias" />
@@ -58,7 +58,7 @@ export function PomodoroStatsSection() {
                 key: p.lead.id,
                 label: projectLabel(p.lead),
                 value: p.count,
-                display: `${p.count} 🍅`,
+                display: String(p.count),
                 note: formatMinutes(p.minutes),
               }))}
             />

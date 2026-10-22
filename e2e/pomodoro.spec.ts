@@ -54,7 +54,8 @@ test('pomodoro na ficha: tarefa, pausar, continuar, fim do trabalho com aviso, p
   await box.getByLabel('Em que tarefa?').selectOption({ label: 'Montar a página inicial' });
   await box.getByRole('button', { name: 'Começar 25 min' }).click();
   await expect(page.getByText('Pomodoro de 25 minutos a contar.')).toBeVisible();
-  await expect(box).toContainText('A trabalhar · Montar a página inicial');
+  await expect(box).toContainText('A trabalhar');
+  await expect(box).toContainText('Montar a página inicial');
   await expect(box.getByRole('timer')).toHaveText(/^2[45]:\d\d$/);
   // No menu, no lugar do temporizador.
   await expect(page.getByRole('status', { name: /Pomodoro: A trabalhar, Pomodoro/ }).first()).toBeVisible();
@@ -64,6 +65,11 @@ test('pomodoro na ficha: tarefa, pausar, continuar, fim do trabalho com aviso, p
   const frozen = await box.getByRole('timer').textContent();
   await page.waitForTimeout(1500);
   await expect(box.getByRole('timer')).toHaveText(frozen!);
+  // Reiniciar: a fase volta ao início e conta logo.
+  await box.getByRole('button', { name: 'Reiniciar' }).click();
+  await expect(page.getByText('A fase recomeçou do início.')).toBeVisible();
+  await expect(box.getByRole('timer')).toHaveText(/^2[45]:\d\d$/);
+  await box.getByRole('button', { name: 'Pausar' }).click();
   await box.getByRole('button', { name: 'Continuar' }).click();
   await expect(box).toContainText('A trabalhar');
 
@@ -71,9 +77,9 @@ test('pomodoro na ficha: tarefa, pausar, continuar, fim do trabalho com aviso, p
   await setEndsAt(page.request, new Date(Date.now() + 12_000));
   await page.reload();
   await expect(box.getByRole('timer')).toHaveText(/^00:(0\d|1[0-2])$/);
-  await expect(page.getByText('🍅 Pomodoro terminado')).toBeVisible({ timeout: 25_000 });
+  await expect(page.getByText('Pomodoro terminado', { exact: true })).toBeVisible({ timeout: 25_000 });
   await expect(box).toContainText('Pausa');
-  await expect(box).toContainText(`Hoje: ${before + 1} 🍅`);
+  await expect(box).toContainText(`Hoje: ${before + 1}`);
 
   // O trabalho ficou nas horas do projeto, com a tarefa.
   const time = (await (await page.request.get(`/api/v1/leads/${lead.id}/time`)).json()).data as { entries: { notes: string | null; ended_at: string | null }[] };
@@ -83,6 +89,17 @@ test('pomodoro na ficha: tarefa, pausar, continuar, fim do trabalho com aviso, p
   await box.getByRole('button', { name: 'Saltar pausa' }).click();
   await expect(box).toContainText('Pausa terminada');
   await expect(box.getByRole('button', { name: 'Começar o próximo' })).toBeVisible();
+
+  // Descanso forçado de 5 minutos (também a meio do trabalho).
+  await box.getByRole('button', { name: 'Começar o próximo' }).click();
+  await expect(box).toContainText('A trabalhar');
+  await box.getByRole('button', { name: 'Pausa de 5 min' }).click();
+  await expect(page.getByText('Pausa de 5 minutos.')).toBeVisible();
+  await expect(box.getByRole('timer')).toHaveText(/^0[45]:\d\d$/);
+  await expect(box.getByRole('button', { name: 'Saltar pausa' })).toBeVisible();
+  const forced = (await (await page.request.get('/api/v1/pomodoro')).json()).data as { phase: string; completed: number };
+  expect(forced).toMatchObject({ phase: 'short_break', completed: 1 });
+
   await box.getByRole('button', { name: 'Parar' }).click();
   await expect(box.getByRole('button', { name: 'Começar 25 min' })).toBeVisible();
   expect((await (await page.request.get('/api/v1/pomodoro')).json()).data).toBeNull();
