@@ -183,7 +183,7 @@ export function PlanForm({ lead, onDone }: { lead: Lead; onDone?: () => void }) 
             ))}
           </Select>
         </Field>
-        <Button onClick={create} loading={plan.isPending} className="shrink-0 whitespace-nowrap">
+        <Button onClick={create} loading={plan.isPending} className="ml-auto shrink-0 whitespace-nowrap">
           Criar plano
         </Button>
       </div>
