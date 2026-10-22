@@ -19,7 +19,7 @@ export function AcceptForm({ token, defaultName }: { token: string; defaultName:
     e.preventDefault();
     setError(null);
     if (!agree) {
-      setError('Confirma que leste e aceitas o contrato.');
+      setError('Confirme que leu e aceita o contrato.');
       return;
     }
     setBusy(true);
@@ -31,11 +31,11 @@ export function AcceptForm({ token, defaultName }: { token: string; defaultName:
       });
       if (!res.ok) {
         const problem = (await res.json().catch(() => null)) as { detail?: string; title?: string } | null;
-        throw new Error(problem?.detail ?? problem?.title ?? 'Não foi possível aceitar. Tenta outra vez.');
+        throw new Error(problem?.detail ?? problem?.title ?? 'Não foi possível aceitar. Tente outra vez.');
       }
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Não foi possível aceitar. Tenta outra vez.');
+      setError(err instanceof Error ? err.message : 'Não foi possível aceitar. Tente outra vez.');
     } finally {
       setBusy(false);
     }

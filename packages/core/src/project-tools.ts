@@ -384,7 +384,7 @@ export const ClientDeliverableActionSchema = z
     comment: z.string().trim().max(500, { error: 'Máximo de 500 caracteres.' }).optional().transform((v) => v || null),
     name: z.string().trim().max(120).optional().transform((v) => v || null),
   })
-  .refine((v) => v.action === 'approve' || !!v.comment, { error: 'Descreve o que queres alterar.', path: ['comment'] })
+  .refine((v) => v.action === 'approve' || !!v.comment, { error: 'Descreva o que gostaria de alterar.', path: ['comment'] })
   .meta({ id: 'ClientDeliverableAction' });
 export type ClientDeliverableAction = z.output<typeof ClientDeliverableActionSchema>;
 

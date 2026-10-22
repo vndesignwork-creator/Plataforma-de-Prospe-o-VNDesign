@@ -25,7 +25,7 @@ export function DeliverableResponse({ token, id, title, name }: { token: string;
       });
       if (!res.ok) {
         const problem = (await res.json().catch(() => null)) as { detail?: string; title?: string; errors?: Record<string, string[]> } | null;
-        throw new Error(problem?.errors?.comment?.[0] ?? problem?.detail ?? problem?.title ?? 'Não foi possível enviar. Tenta outra vez.');
+        throw new Error(problem?.errors?.comment?.[0] ?? problem?.detail ?? problem?.title ?? 'Não foi possível enviar. Tente outra vez.');
       }
       setMessage({ ok: true, text: action === 'approve' ? 'Obrigado! Entrega aprovada.' : 'Obrigado! O pedido de alterações foi enviado.' });
       router.refresh();

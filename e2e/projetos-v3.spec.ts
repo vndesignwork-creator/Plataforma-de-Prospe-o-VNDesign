@@ -123,9 +123,9 @@ test('contrato: gerar, editar, enviar, o cliente aceita online; PDF', async ({ p
   await client.page.goto(`/c/${contracts[0]!.token}`);
   await expect(client.page.getByRole('heading', { name: `Contrato de prestação de serviços — ${name}` })).toBeVisible();
   await expect(client.page.getByText('NIF 501234567')).toBeVisible();
-  await expect(client.page.getByLabel('O teu nome completo')).toHaveValue('Marta Sol');
+  await expect(client.page.getByLabel('O seu nome completo')).toHaveValue('Marta Sol');
   await client.page.getByRole('button', { name: 'Aceitar contrato' }).click();
-  await expect(client.page.getByText('Confirma que leste e aceitas o contrato.')).toBeVisible();
+  await expect(client.page.getByText('Confirme que leu e aceita o contrato.')).toBeVisible();
   await client.page.getByLabel('Li o contrato e aceito as condições.').check();
   await client.page.getByRole('button', { name: 'Aceitar contrato' }).click();
   await expect(client.page.getByText(/Contrato aceite por Marta Sol a/)).toBeVisible();

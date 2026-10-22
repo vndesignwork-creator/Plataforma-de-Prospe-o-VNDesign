@@ -139,7 +139,7 @@ export async function submitBriefing(token: string, form: FormData): Promise<{ f
   if (!found) throw new ApiError(404, 'Briefing não encontrado');
   const { briefing, lead } = found;
   const answers = briefing.questions.map((_, i) => String(form.get(`answer_${i}`) ?? '').trim().slice(0, 5000));
-  if (!answers.some(Boolean)) throw new ApiError(422, 'Briefing vazio', 'Responde pelo menos a uma pergunta.');
+  if (!answers.some(Boolean)) throw new ApiError(422, 'Briefing vazio', 'Responda pelo menos a uma pergunta.');
   const uploads = form.getAll('files').filter((f): f is File => f instanceof File && f.size > 0);
   if (briefing.files.length + uploads.length > BRIEFING_MAX_FILES) {
     throw new ApiError(422, 'Demasiados ficheiros', `Pode enviar até ${BRIEFING_MAX_FILES} ficheiros.`);
@@ -155,7 +155,7 @@ export async function submitBriefing(token: string, form: FormData): Promise<{ f
       contentType: file.type || 'application/octet-stream',
       upsert: false,
     });
-    if (error) throw new ApiError(502, 'Falha no envio', `Não foi possível guardar "${file.name}". Tenta outra vez.`);
+    if (error) throw new ApiError(502, 'Falha no envio', `Não foi possível guardar "${file.name}". Tente outra vez.`);
     added.push({ name: file.name.slice(0, 200), path, size: file.size, type: file.type || 'application/octet-stream' });
   }
 

@@ -72,8 +72,8 @@ export type ContractUpdate = z.output<typeof ContractUpdateSchema>;
 
 export const ContractAcceptSchema = z
   .object({
-    name: text(120).min(2, { error: 'Escreve o teu nome completo.' }),
-    agree: z.literal(true, { error: 'Confirma que leste e aceitas o contrato.' }),
+    name: text(120).min(2, { error: 'Escreva o seu nome completo.' }),
+    agree: z.literal(true, { error: 'Confirme que leu e aceita o contrato.' }),
   })
   .meta({ id: 'ContractAccept' });
 
