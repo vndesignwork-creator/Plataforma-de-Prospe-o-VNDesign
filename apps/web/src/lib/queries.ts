@@ -26,6 +26,14 @@ import type {
   ApiTokenCreated,
   AuditApply,
   SiteAudit,
+  EmailTracking,
+  ProjectCollaborator,
+  LaunchChecklist,
+  LaunchCheckKey,
+  ProspectingFilter,
+  ProspectingOutcome,
+  ProspectingQueue,
+  ProspectingResult,
   BoardColumn,
   ContactTemplate,
   Signature,
@@ -179,6 +187,7 @@ export function useInvalidateLead() {
       void qc.invalidateQueries({ queryKey: qk.lead(id) });
       void qc.invalidateQueries({ queryKey: qk.activities(id) });
       void qc.invalidateQueries({ queryKey: ['proposals', id] });
+      void qc.invalidateQueries({ queryKey: ['email-tracking', id] });
       // Passar a Cliente prepara o projeto (tarefas, prazo, pagamentos).
       void qc.invalidateQueries({ queryKey: ['tasks', id] });
       void qc.invalidateQueries({ queryKey: ['payments', id] });
@@ -334,6 +343,46 @@ export function useRunAudit(leadId: string) {
     onSuccess: (audit) => {
       qc.setQueryData<SiteAudit[]>(['audits', leadId], (old) => [audit, ...(old ?? [])]);
       void qc.invalidateQueries({ queryKey: qk.activities(leadId) });
+    },
+  });
+}
+
+/** Sessão de prospeção: a fila carrega-se uma vez (a ordem não muda a meio da sessão). */
+export function useProspectingQueue(filter: ProspectingFilter) {
+  return useQuery({
+    queryKey: ['prospecting', filter],
+    queryFn: () => api<{ data: ProspectingQueue }>(`/prospecting?filter=${filter}`).then((r) => r.data),
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useProspectingOutcome() {
+  const invalidate = useInvalidateLead();
+  return useMutation({
+    mutationFn: ({ leadId, ...body }: { leadId: string; outcome: ProspectingOutcome; note?: string; days?: number }) =>
+      api<{ data: ProspectingResult }>(`/leads/${leadId}/prospecting`, { method: 'POST', body }).then((r) => r.data),
+    onSuccess: (result) => invalidate(result.lead.id),
+  });
+}
+
+/** Emails enviados pela plataforma ao lead, com aberturas e cliques. */
+export function useEmailTracking(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['email-tracking', leadId],
+    queryFn: () => api<{ data: EmailTracking[] }>(`/leads/${leadId}/email-tracking`).then((r) => r.data),
+    refetchInterval: 60_000,
+    enabled,
+  });
+}
+
+/** "Tirar imagens" do site (telemóvel e computador) para a última análise. */
+export function useCaptureScreenshots(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<{ data: SiteAudit }>(`/leads/${leadId}/screenshots`, { method: 'POST' }).then((r) => r.data),
+    onSuccess: (audit) => {
+      qc.setQueryData<SiteAudit[]>(['audits', leadId], (old) => (old ?? []).map((a) => (a.id === audit.id ? audit : a)));
     },
   });
 }
@@ -868,6 +917,49 @@ export function useExpenseAction(leadId: string) {
     onSuccess: () => {
       for (const key of [['expenses', leadId], ['time', leadId], ['projects'], ['profitability']]) void qc.invalidateQueries({ queryKey: key });
     },
+  });
+}
+
+export function useLaunchChecklist(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['launch', leadId],
+    queryFn: () => api<{ data: LaunchChecklist }>(`/leads/${leadId}/launch`).then((r) => r.data),
+    enabled,
+  });
+}
+
+/** Marcar pontos / mudar o endereço (body) ou verificar o site (check). */
+export function useLaunchAction(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { check: true } | { body: { url?: string | null; checks?: Partial<Record<LaunchCheckKey, boolean>> } }) =>
+      ('check' in input
+        ? api<{ data: LaunchChecklist }>(`/leads/${leadId}/launch/check`, { method: 'POST' })
+        : api<{ data: LaunchChecklist }>(`/leads/${leadId}/launch`, { method: 'PATCH', body: input.body })
+      ).then((r) => r.data),
+    onSuccess: (data) => qc.setQueryData(['launch', leadId], data),
+  });
+}
+
+export function useCollaborators(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['collaborators', leadId],
+    queryFn: () => api<{ data: ProjectCollaborator[] }>(`/leads/${leadId}/collaborators`).then((r) => r.data),
+    enabled,
+  });
+}
+
+/** Convidar (invite) ou remover (remove) um colaborador. */
+export function useCollaboratorAction(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { invite: { email: string; name?: string; send_email: boolean } } | { remove: string }) =>
+      'invite' in input
+        ? api<{ data: { collaborator: ProjectCollaborator; emailed: boolean } }>(`/leads/${leadId}/collaborators`, { method: 'POST', body: input.invite }).then(
+            (r) => r.data,
+          )
+        : api(`/collaborators/${input.remove}`, { method: 'DELETE' }).then(() => null),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['collaborators', leadId] }),
   });
 }
 

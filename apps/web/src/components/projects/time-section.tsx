@@ -16,7 +16,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { ApiClientError, errorMessage } from '@/lib/api-client';
-import { useAddTime, useDeleteTime, useProjectTime, useTimer, useUpdateTime } from '@/lib/queries';
+import { useAddTime, useCollaborators, useDeleteTime, useProjectTime, useTimer, useUpdateTime } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 import { SectionHeader } from './section-header';
 
@@ -160,7 +160,7 @@ function TimeDialog({ lead, onClose }: { lead: Lead; onClose: () => void }) {
 }
 
 /** Um registo: dia, duração e notas; o lápis corrige a duração e as notas. */
-function EntryRow({ lead, entry }: { lead: Lead; entry: TimeEntry }) {
+function EntryRow({ lead, entry, person }: { lead: Lead; entry: TimeEntry; person?: string }) {
   const update = useUpdateTime(lead.id);
   const remove = useDeleteTime(lead.id);
   const [edit, setEdit] = useState<{ hours: string; minutes: string; notes: string } | null>(null);
@@ -204,7 +204,10 @@ function EntryRow({ lead, entry }: { lead: Lead; entry: TimeEntry }) {
     <li className="flex items-center gap-2 text-sm">
       <span className="w-12 shrink-0 text-xs text-muted tabular">{day}</span>
       <span className="w-24 shrink-0 font-medium tabular">{formatDuration(entry.seconds)}</span>
-      <span className="min-w-0 flex-1 truncate text-muted">{entry.notes ?? ''}</span>
+      <span className="min-w-0 flex-1 truncate text-muted">
+        {person ? <span className="mr-1.5 rounded bg-surface-2 px-1.5 py-0.5 text-xs text-fg">{person}</span> : null}
+        {entry.notes ?? ''}
+      </span>
       <Button
         size="icon"
         variant="ghost"
@@ -236,6 +239,9 @@ export function TimeSection({ lead, className }: { lead: Lead; className?: strin
   const total = (time?.logged_seconds ?? 0) + Math.floor(elapsed);
   const entries = (time?.entries ?? []).filter((e) => e.ended_at);
   const shown = all ? entries : entries.slice(0, 5);
+  // Horas registadas por colaboradores: mostra o nome de quem as fez.
+  const { data: collaborators } = useCollaborators(lead.id, entries.length > 0);
+  const people = new Map((collaborators ?? []).filter((c) => c.user_id).map((c) => [c.user_id!, c.name ?? c.email]));
 
   return (
     <section aria-labelledby={`time-${lead.id}`} className={cn('border-t border-border px-4 py-3', className)}>
@@ -271,7 +277,7 @@ export function TimeSection({ lead, className }: { lead: Lead; className?: strin
       ) : shown.length ? (
         <ul className="mt-2 flex flex-col gap-1" aria-label="Horas registadas">
           {shown.map((e) => (
-            <EntryRow key={e.id} lead={lead} entry={e} />
+            <EntryRow key={e.id} lead={lead} entry={e} person={people.get(e.user_id)} />
           ))}
         </ul>
       ) : !running ? (

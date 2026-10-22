@@ -45,7 +45,14 @@ export function LoginForm() {
       );
       return;
     }
-    router.replace(safeNextPath(params.get('next')));
+    // Verificação em dois passos ligada: falta o código da app de autenticação.
+    const { data: aal } = await getSupabaseBrowserClient().auth.mfa.getAuthenticatorAssuranceLevel();
+    const next = safeNextPath(params.get('next'));
+    if (aal && aal.nextLevel === 'aal2' && aal.currentLevel !== 'aal2') {
+      router.replace(`/verificar?next=${encodeURIComponent(next)}`);
+      return;
+    }
+    router.replace(next);
     router.refresh();
   });
 

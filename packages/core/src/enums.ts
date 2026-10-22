@@ -101,6 +101,8 @@ export const ACTIVITY_TYPES = [
   'contract_sent',
   'contract_accepted',
   'briefing_received',
+  'email_opened',
+  'email_clicked',
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
@@ -151,6 +153,8 @@ export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
   contract_sent: 'Contrato enviado',
   contract_accepted: 'Contrato aceite',
   briefing_received: 'Briefing recebido',
+  email_opened: 'O lead abriu o email',
+  email_clicked: 'O lead carregou num link',
 };
 
 export const TEMPLATE_KINDS = [

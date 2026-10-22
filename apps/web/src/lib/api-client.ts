@@ -62,9 +62,11 @@ export async function api<T>(
   const payload = await res.json().catch(() => null);
   if (!res.ok) {
     if (res.status === 401 && typeof window !== 'undefined') {
-      // Sessão expirada: recarregamento completo para limpar o estado da aplicação.
+      // Sessão expirada (ou falta o código da verificação em dois passos): recarregamento
+      // completo para limpar o estado da aplicação.
+      const page = (payload as { code?: string } | null)?.code === 'mfa_required' ? '/verificar' : '/login';
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-      window.location.href = `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+      window.location.href = `${page}?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
     }
     throw new ApiClientError(
       res.status,

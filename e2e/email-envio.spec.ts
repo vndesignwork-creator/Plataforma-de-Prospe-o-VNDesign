@@ -97,7 +97,8 @@ test('enviar o email de prospeção da ficha: chega, fica na linha do tempo e o 
   const message = await mailTo(page.request, to, subject);
   const full = (await (await page.request.get(`${MAILPIT}/message/${message.ID}`)).json()) as { HTML: string; From: { Name: string; Address: string } };
   expect(full.From).toMatchObject({ Name: 'Va Teste', Address: FROM });
-  expect(full.HTML).toContain('<a href="https://exemplo.pt">https://exemplo.pt</a>');
+  // O link passa pela plataforma (para saber quando o lead carrega) e mostra o endereço original.
+  expect(full.HTML).toMatch(/<a href="[^"]+\/api\/v1\/public\/t\/[\w-]+\/0">https:\/\/exemplo\.pt<\/a>/);
 
   const updated = (await (await page.request.get(`/api/v1/leads/${lead.id}`)).json()).data;
   expect(updated.status).toBe('contactado');

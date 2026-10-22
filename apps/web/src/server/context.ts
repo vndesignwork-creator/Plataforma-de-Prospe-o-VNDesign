@@ -9,6 +9,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ApiTokenScope } from '@vndesign/core';
+import { MFA_REQUIRED, needsMfaCode } from '@/lib/mfa';
 import { ApiError } from './http';
 import { createSupabaseBearerClient, createSupabaseServerClient } from './supabase';
 import { createSupabaseAdminClient } from './supabase-admin';
@@ -34,7 +35,8 @@ export async function getApiContext(req: Request): Promise<ApiContext> {
   const authorization = req.headers.get('authorization');
   let supabase: SupabaseClient;
   let authMethod: ApiContext['authMethod'];
-  let user: { id: string; email?: string | null } | null;
+  let user: { id: string; email?: string | null; factors?: { status: string }[] | null } | null;
+  let accessToken: string | null = null;
 
   if (authorization?.toLowerCase().startsWith('bearer ')) {
     const token = authorization.slice(7).trim();
@@ -43,15 +45,22 @@ export async function getApiContext(req: Request): Promise<ApiContext> {
     const { data, error } = await supabase.auth.getUser(token);
     if (error || !data.user) throw UNAUTHORIZED();
     user = data.user;
+    accessToken = token;
     authMethod = 'bearer';
   } else {
     assertSameOrigin(req);
     supabase = await createSupabaseServerClient();
     const { data } = await supabase.auth.getUser();
     user = data.user;
+    // O token já foi validado pelo getUser (só se lê o nível de verificação).
+    if (user) accessToken = (await supabase.auth.getSession()).data.session?.access_token ?? null;
     authMethod = 'session';
   }
   if (!user) throw UNAUTHORIZED();
+  // Verificação em dois passos ligada: sem o código, a API não responde.
+  if (needsMfaCode(user, accessToken)) {
+    throw new ApiError(401, 'Falta o código de verificação', 'Escreve o código da app de autenticação para continuar.', { code: MFA_REQUIRED });
+  }
 
   // Workspace: o indicado em X-Workspace-Id ou o primeiro de que o utilizador é membro.
   const requested = req.headers.get('x-workspace-id');
@@ -125,7 +134,7 @@ async function getTokenContext(req: Request, token: string): Promise<ApiContext>
  * Proteção CSRF para pedidos autenticados por cookie: pedidos que alteram dados
  * têm de vir da própria aplicação (cabeçalho Origin igual ao host).
  */
-function assertSameOrigin(req: Request) {
+export function assertSameOrigin(req: Request) {
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return;
   const origin = req.headers.get('origin');
   if (!origin) return; // pedidos fora do browser (sem cookies de sessão de terceiros)

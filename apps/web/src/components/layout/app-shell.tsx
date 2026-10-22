@@ -1,7 +1,7 @@
 'use client';
 
 import * as RadixDialog from '@radix-ui/react-dialog';
-import { BarChart3, BriefcaseBusiness, Columns3, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Settings, Sparkles, Sun, Users, X } from 'lucide-react';
+import { BarChart3, BriefcaseBusiness, Columns3, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Settings, Sparkles, Sun, Target, Users, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
@@ -19,6 +19,7 @@ const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, match: (p: string) => p.startsWith('/dashboard') },
   // O mapa abre-se a partir dos Leads ("Ver no mapa"), por isso conta como Leads.
   { href: '/leads', label: 'Leads', icon: Users, match: (p: string) => p === '/leads' || p.startsWith('/leads/') || p.startsWith('/mapa') || p.startsWith('/importar') },
+  { href: '/prospecao', label: 'Prospeção', icon: Target, match: (p: string) => p.startsWith('/prospecao'), feature: 'prospecting_session' as const },
   { href: '/gerar-leads', label: 'Gerar leads', icon: Sparkles, match: (p: string) => p.startsWith('/gerar-leads') },
   { href: '/kanban', label: 'Kanban', icon: Columns3, match: (p: string) => p.startsWith('/kanban') },
   { href: '/projetos', label: 'Projetos', icon: BriefcaseBusiness, match: (p: string) => p.startsWith('/projetos'), feature: 'projects' as const },

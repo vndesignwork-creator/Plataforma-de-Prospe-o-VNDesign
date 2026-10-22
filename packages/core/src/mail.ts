@@ -123,6 +123,8 @@ export const LeadEmailSendSchema = z
     template: z.string().trim().max(160).optional(),
     /** Levar em anexo o relatório de diagnóstico do site (PDF). */
     attach_diagnosis: z.boolean().optional(),
+    /** Levar em anexo as imagens do site (telemóvel e computador) da última análise. */
+    attach_screenshots: z.boolean().optional(),
     /** Message-ID do email a que este responde (follow-up na mesma conversa). */
     in_reply_to: z.string().trim().max(500).optional(),
   })
@@ -177,6 +179,53 @@ export function plainTextToHtml(text: string): string {
     .map((p) => `<p style="margin:0 0 1em">${linkify(escape(p)).replace(/\n/g, '<br>')}</p>`)
     .join('\n');
 }
+
+// -----------------------------------------------------------------------------
+// Aberturas e cliques (emails enviados pela plataforma)
+// -----------------------------------------------------------------------------
+
+/**
+ * Prepara o HTML de um email para saber quando é aberto: cada link passa pela
+ * plataforma (`<base>/<n>`, só com o número — o endereço fica guardado no
+ * servidor) e junta-se uma imagem de 1×1 (`<base>/o.gif`) no fim.
+ */
+export function addEmailTracking(html: string, base: string): { html: string; links: string[] } {
+  const links: string[] = [];
+  const unescape = (s: string) => s.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  const tracked = html.replace(/href="(https?:\/\/[^"]+)"/gi, (_m, raw: string) => {
+    const url = unescape(raw);
+    let index = links.indexOf(url);
+    if (index === -1) index = links.push(url) - 1;
+    return `href="${base}/${index}"`;
+  });
+  const pixel = `<img src="${base}/o.gif" width="1" height="1" alt="" style="border:0;width:1px;height:1px">`;
+  return { html: `${tracked}\n${pixel}`, links };
+}
+
+export const EmailTrackingSchema = z
+  .object({
+    id: z.uuid(),
+    subject: z.string(),
+    sent_at: z.string(),
+    opens: z.int(),
+    first_opened_at: z.string().nullable(),
+    last_opened_at: z.string().nullable(),
+    clicks: z.int(),
+    last_clicked_at: z.string().nullable(),
+  })
+  .meta({ id: 'EmailTracking' });
+export type EmailTracking = z.infer<typeof EmailTrackingSchema>;
+
+/** "Hoje": leads que abriram um email nas últimas 48 horas (bom momento para ligar). */
+export const TodayOpenedEmailSchema = z.object({
+  id: z.uuid(),
+  subject: z.string(),
+  opens: z.int(),
+  clicks: z.int(),
+  last_opened_at: z.string(),
+  lead: z.object({ id: z.uuid(), number: z.int(), company_name: z.string(), phone: z.string().nullable(), status: z.string() }),
+});
+export type TodayOpenedEmail = z.infer<typeof TodayOpenedEmailSchema>;
 
 // -----------------------------------------------------------------------------
 // Deteção de respostas (caixa de entrada)

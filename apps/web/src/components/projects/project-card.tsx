@@ -14,8 +14,11 @@ import { DateInput } from '@/components/ui/date-input';
 import { errorMessage } from '@/lib/api-client';
 import { useProjectInfo, useSettings, useStartProject, useUpdateProjectInfo } from '@/lib/queries';
 import { Button } from '@/components/ui/button';
+import { useServiceCatalog } from '@/components/services/services';
 import { BriefingSection } from './briefing-section';
+import { CollaboratorsSection } from './collaborators-section';
 import { DeliverablesSection } from './deliverables-section';
+import { LaunchSection } from './launch-section';
 import { ExpensesSection } from './expenses-section';
 import { DueBadge, StageMenu, StageSteps } from './project-bits';
 import { RevisionsSection } from './revisions-section';
@@ -29,6 +32,9 @@ export function ProjectCard({ lead }: { lead: Lead }) {
   const start = useStartProject(lead.id);
   const [today] = useState(() => todayIso());
   const features = settings?.features;
+  const catalog = useServiceCatalog();
+  // A checklist de lançamento só faz sentido com um site (serviços de Web Design, ou ainda sem serviços).
+  const hasSite = !(lead.services ?? []).length || (lead.services ?? []).some((s) => catalog.get(s)?.category === 'web');
 
   async function prepare() {
     try {
@@ -85,7 +91,9 @@ export function ProjectCard({ lead }: { lead: Lead }) {
           {features?.time_tracking ? <TimeSection lead={lead} /> : null}
           {features?.expenses ? <ExpensesSection lead={lead} /> : null}
           {features?.deliverables ? <DeliverablesSection lead={lead} /> : null}
+          {features?.launch_checklist && hasSite ? <LaunchSection lead={lead} /> : null}
           {features?.client_page ? <ShareSection lead={lead} /> : null}
+          {features?.collaborators ? <CollaboratorsSection lead={lead} /> : null}
         </>
       )}
     </Card>

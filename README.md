@@ -241,6 +241,12 @@ chave de API*) e define `PAGESPEED_API_KEY`. A análise demora 10–40 segundos.
 **Segurança:** o servidor só abre endereços públicos em `http`/`https` (portas 80/443), nunca
 `localhost` nem a rede interna, também depois de redirecionamentos.
 
+**Imagens do site:** ao analisar, a plataforma guarda como o site aparece **no telemóvel e no
+computador** (as imagens do próprio PageSpeed). Aparecem no cartão *Diagnóstico do site* (toca para
+abrir em grande), entram no **relatório PDF** e podem ir em anexo no email (*Anexar as imagens do
+site*). Em sites analisados antes, **Tirar imagens**. Ficam no Supabase Storage (bucket privado
+`site-screenshots`). Desligam-se em Definições → Funcionalidades.
+
 ---
 
 ## Email com IA
@@ -305,6 +311,40 @@ Com a opção **Detetar respostas na caixa de entrada** ligada (Definições →
 - As respostas automáticas (férias, ausência) ficam registadas mas não mudam o estado.
 - Usa a mesma palavra-passe de aplicação do Gmail (IMAP: `imap.gmail.com:993`). Hostinger: `imap.hostinger.com:993`. Outro serviço: indica o servidor IMAP.
 - **Verificar agora** lê logo a caixa. Se a leitura falhar (ex.: palavra-passe mudada), o erro aparece nessa secção.
+
+### Saber quando o lead abre o email
+
+- Cada email enviado pela plataforma leva uma imagem invisível de 1×1 e os links passam pela plataforma (seguem logo para o endereço original).
+- Quando o lead **abre o email** ou **carrega num link**, recebes uma notificação ("📬 Padaria Sol — Abriu o email. Bom momento para ligar!"), fica na linha do tempo e aparece em **Dashboard → Hoje → Abriram o teu email** (últimas 48 horas, com o botão para ligar). Uma nova abertura volta a avisar ao fim de 6 horas.
+- Na linha do tempo, cada email enviado mostra "Aberto 3× · última vez a …" ou "Ainda não foi aberto".
+- A cópia para ti (cópia oculta) vai num email separado, sem rastreio, para não contar como aberto.
+- Limites: quem bloqueia imagens só conta quando carrega num link; o Apple Mail (proteção de privacidade) pode abrir as imagens sozinho; abrir o email na tua pasta *Enviados* pode contar como aberto.
+- Desliga-se em Definições → Funcionalidades → *Saber quando o lead abre o email*.
+
+---
+
+## Sessão de prospeção
+
+Menu **Prospeção**: um lead de cada vez, com tudo à mão.
+
+- A lista começa por quem **abriu um email** nas últimas 48 horas, depois os **follow-ups** em atraso ou para hoje e, por fim, os leads **por contactar** (os mais quentes primeiro). Os separadores filtram cada grupo.
+- Em cada lead: o motivo ("Abriu o email há 2 h"), **Ligar**, **WhatsApp** (com as mensagens prontas), **Email** (o de prospeção), o site, o ângulo de abordagem, os problemas, as notas e **Ver scripts**.
+- O resultado regista-se com um toque (com uma nota opcional):
+  - **Não atendeu** — volta a aparecer amanhã;
+  - **Contactado** — passa a Contactado e agenda o follow-up (ou, se já estava contactado, conta como follow-up feito);
+  - **Interessado** — passa a Respondeu, com "Marcar reunião ou enviar proposta" para hoje;
+  - **Mais tarde** — amanhã, 3 dias, 1 semana, 2 semanas ou 1 mês;
+  - **Sem interesse**; **Saltar** passa para o fim da fila.
+- Em cima: quantos contactos fizeste nesta sessão e hoje.
+
+---
+
+## Novo lead a partir de um link (partilhar do telemóvel)
+
+- **Android** (com a app instalada no ecrã principal): no Google Maps, no Instagram ou no browser, carrega em **Partilhar → VNDesign Leads**. Abre o formulário de novo lead já preenchido; revê e carrega em **Criar lead** (o aviso de duplicados funciona como sempre).
+- **iPhone ou computador**: menu da app (atalho *Lead a partir de um link*) ou `/partilhar` → cola o link → **Ler o link**.
+- O que se aproveita: do **Google Maps**, o nome e a morada (e a cidade pelo código postal); do **Instagram/Facebook**, o nome do perfil; do **site**, o nome, o telefone e o email (lê a página com a mesma proteção da análise de sites).
+- **Telefone e site a partir do Google Maps** (opcional): define `GOOGLE_PLACES_API_KEY` (Google Cloud → ativar *Places API (New)* → criar chave). Cada pesquisa é cobrada pela Google (tem uma quota gratuita mensal); sem a chave, preenche-se o telefone à mão.
 
 ---
 
@@ -376,6 +416,18 @@ Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**
 - O contrato também aparece na página do cliente do projeto.
 - Em Definições → Funcionalidades → *Contratos* indicas o teu NIF e as condições gerais (uma por linha) usadas nos contratos novos.
 
+**Checklist de lançamento do site**
+- No cartão Projeto (serviços de Web Design), **Checklist de lançamento → Ver lista**: indica o endereço do site novo e carrega em **Verificar o site**.
+- Verifica sozinho: HTTPS e certificado, passagem de http para https, adaptação ao telemóvel, título e descrição, favicon, imagem para partilhas, página 404, sitemap, se o Google pode indexar (robots.txt e "noindex"), estatísticas (Google Analytics, Tag Manager, Plausible…), política de privacidade/cookies e o PageSpeed no telemóvel (70 ou mais). O que falhar aparece a vermelho com o motivo.
+- Marcas à mão: formulário testado, botões e links testados, textos revistos, Search Console com o sitemap, Perfil da Empresa no Google, cópias de segurança e acessos entregues ao cliente.
+
+**Colaboradores**
+- No cartão Projeto, **Colaboradores → Convidar**: nome e email de um programador, fotógrafo ou copywriter. O convite vai por email (pela tua conta de *Email de envio*) ou copias o link (`/convite/<código>`).
+- O colaborador cria a conta (nome e palavra-passe) no link e entra num portal só dele (`/colaborador`) com os projetos para que foi convidado. Em cada um vê **as tarefas** (marca como feitas e acrescenta), **os ficheiros e entregas** (junta links, que ficam "Por enviar" — és tu que envias ao cliente), **o briefing** do cliente (respostas e ficheiros) e **as horas dele** (temporizador e registo à mão).
+- Nunca vê os leads, os contactos do cliente, as notas, os valores nem os pagamentos, e não entra no resto da plataforma.
+- Recebes uma notificação quando aceita o convite, conclui uma tarefa ou junta uma entrega. As horas dele aparecem em *Horas* com o nome.
+- **Remover** tira-lhe logo o acesso ao projeto.
+
 **Rentabilidade (Estatísticas)**
 - Em **Estatísticas → Rentabilidade**: ganho médio por hora (e depois das despesas), horas registadas, duração média e horas por projeto concluído, ganho por hora por serviço e por cliente, e gráficos das horas e do recebido nos últimos 12 meses.
 
@@ -398,6 +450,20 @@ Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**
 - É o mesmo ficheiro da exportação: pode ser reimportado em Leads → Importar / Exportar.
 - O email sai da tua conta de *Email de envio* ou, sem ela, do SMTP do servidor.
 - Em Definições → Funcionalidades escolhes o destinatário e o dia, desligas, ou carregas em **Enviar uma cópia agora**.
+
+---
+
+## Segurança da conta
+
+**Verificação em dois passos** (Definições → Conta)
+- **Ligar a verificação** mostra um código QR: lê-o com uma app de autenticação (Google Authenticator, Microsoft Authenticator, 1Password) e escreve o código de 6 dígitos.
+- A partir daí, depois da palavra-passe, o login pede o código da app. Sem o código, nem a plataforma nem a API respondem.
+- **Perdeste o telemóvel?** No Supabase → *Authentication → Users* → o teu utilizador → apaga o fator (MFA). Depois entras só com a palavra-passe e voltas a ligar.
+- No Supabase alojado, a verificação por app (TOTP) vem ligada por omissão (*Authentication → Multi-Factor*).
+
+**Sessões abertas** (Definições → Conta)
+- Lista os aparelhos com a conta aberta (browser e sistema, IP, última atividade, se entrou com o código).
+- **Terminar** fecha uma sessão; **Terminar as outras** fecha todas menos esta. O aparelho deixa de entrar em, no máximo, 1 hora.
 
 ---
 

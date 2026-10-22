@@ -7,7 +7,7 @@
  */
 import { useQueryClient } from '@tanstack/react-query';
 import { WEEKDAY_LABELS, formatDateTime, type Features } from '@vndesign/core';
-import { BadgeCheck, BriefcaseBusiness, CalendarPlus, ClipboardList, Clock, FileSignature, Receipt, Zap, DatabaseBackup, FileText, FolderOpen, Link2, MessageCircle, RefreshCcw, Star, Wallet, type LucideIcon } from 'lucide-react';
+import { BadgeCheck, BriefcaseBusiness, CalendarPlus, Camera, ClipboardList, Clock, Eye, FileSignature, Receipt, Rocket, Target, Users, Zap, DatabaseBackup, FileText, FolderOpen, Link2, MessageCircle, RefreshCcw, Star, Wallet, type LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,24 @@ const FEATURES: { key: keyof Features; label: string; description: string; icon:
     label: 'Relatório de diagnóstico em PDF',
     description: 'Na ficha (Diagnóstico do site): o PDF com a tua marca, para ver ou enviar ao cliente em anexo.',
     icon: FileText,
+  },
+  {
+    key: 'site_screenshots',
+    label: 'Imagens do site',
+    description: 'Ao analisar o site, guarda como aparece no telemóvel e no computador (no relatório PDF e em anexo no email).',
+    icon: Camera,
+  },
+  {
+    key: 'email_tracking',
+    label: 'Saber quando o lead abre o email',
+    description: 'Avisa quando o lead abre um email enviado pela plataforma ou carrega num link (e mostra-o em Hoje).',
+    icon: Eye,
+  },
+  {
+    key: 'prospecting_session',
+    label: 'Sessão de prospeção',
+    description: 'Menu Prospeção: um lead de cada vez, com o resultado do contacto registado com um toque.',
+    icon: Target,
   },
   {
     key: 'meetings',
@@ -85,6 +103,20 @@ const FEATURES: { key: keyof Features; label: string; description: string; icon:
     label: 'Ficheiros e entregas',
     description: 'Links do Drive, Figma ou Canva, com “Enviada” e “Aprovada pelo cliente”.',
     icon: FolderOpen,
+    sub: true,
+  },
+  {
+    key: 'launch_checklist',
+    label: 'Checklist de lançamento',
+    description: 'Antes de publicar o site do cliente: HTTPS, telemóvel, SEO, 404, sitemap, estatísticas… (verifica sozinho).',
+    icon: Rocket,
+    sub: true,
+  },
+  {
+    key: 'collaborators',
+    label: 'Colaboradores',
+    description: 'Convidar um freelancer para um projeto: só vê as tarefas, os ficheiros, o briefing e as horas dele.',
+    icon: Users,
     sub: true,
   },
   {

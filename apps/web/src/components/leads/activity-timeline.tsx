@@ -14,9 +14,12 @@ import {
   formatDate,
   formatDateTime,
   type Activity,
+  type EmailTracking,
   type LeadStatus,
 } from '@vndesign/core';
 import {
+  Eye,
+  MousePointerClick,
   ClipboardList,
   FileCheck2,
   FileSignature,
@@ -59,7 +62,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Select, Textarea } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
-import { useActivities, useLogActivity } from '@/lib/queries';
+import { useActivities, useEmailTracking, useLogActivity } from '@/lib/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 
@@ -98,7 +101,23 @@ const ICONS: Partial<Record<Activity['type'], LucideIcon>> = {
   contract_sent: FileSignature,
   contract_accepted: FileCheck2,
   briefing_received: ClipboardList,
+  email_opened: Eye,
+  email_clicked: MousePointerClick,
 };
+
+/** "Aberto 3× · último a …" num email enviado pela plataforma (com o rastreio ligado). */
+function OpenStatus({ tracking }: { tracking: EmailTracking | undefined }) {
+  if (!tracking) return null;
+  const opened = tracking.opens > 0;
+  return (
+    <p className={cn('mt-1 inline-flex items-center gap-1 text-xs', opened ? 'text-success' : 'text-muted')}>
+      {opened ? <Eye className="h-3.5 w-3.5" aria-hidden /> : <Mail className="h-3.5 w-3.5" aria-hidden />}
+      {opened
+        ? `Aberto ${tracking.opens}× · última vez a ${formatDateTime(tracking.last_opened_at!)}${tracking.clicks ? ` · ${tracking.clicks} clique${tracking.clicks === 1 ? '' : 's'}` : ''}`
+        : 'Ainda não foi aberto'}
+    </p>
+  );
+}
 
 const fieldLabel = (f: string) => (LEAD_FIELD_LABELS as Record<string, string>)[f] ?? f;
 const statusLabel = (s: unknown) => LEAD_STATUS_META[s as LeadStatus]?.label ?? String(s);
@@ -169,6 +188,10 @@ function describe(a: Activity): string | null {
       return p.title ? String(p.title) : null;
     case 'contract_accepted':
       return p.name ? `Aceite por ${String(p.name)}` : null;
+    case 'email_opened':
+      return a.body ? `“${a.body}”` : null;
+    case 'email_clicked':
+      return [a.body ? `“${a.body}”` : null, p.url ? String(p.url).replace(/^https?:\/\/(www\.)?/, '') : null].filter(Boolean).join(' → ') || null;
     case 'briefing_received':
       return `${Number(p.answers ?? 0)} resposta(s)${Number(p.files ?? 0) ? ` · ${Number(p.files)} ficheiro(s)` : ''}`;
     case 'email_received':
@@ -280,6 +303,10 @@ export function ActivityTimeline({
   fitTo?: RefObject<HTMLElement | null>;
 }) {
   const { data, isLoading } = useActivities(leadId);
+  // Só há aberturas a mostrar se algum email enviado pela plataforma levou o rastreio.
+  const tracked = (data ?? []).some((a) => a.type === 'email_sent' && !!(a.payload as Record<string, unknown>).tracking_id);
+  const { data: tracking } = useEmailTracking(leadId, tracked);
+  const opened = new Map((tracking ?? []).map((t) => [t.id, t]));
   const [expanded, setExpanded] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const listRef = useRef<HTMLOListElement>(null);
@@ -436,7 +463,10 @@ export function ActivityTimeline({
                         ) : null}
                       </p>
                       {detail ? <p className="text-sm text-muted">{detail}</p> : null}
-                      {a.body ? <p className="mt-1 text-sm break-words whitespace-pre-line">{a.body}</p> : null}
+                      {a.body && a.type !== 'email_opened' && a.type !== 'email_clicked' ? (
+                        <p className="mt-1 text-sm break-words whitespace-pre-line">{a.body}</p>
+                      ) : null}
+                      {a.type === 'email_sent' ? <OpenStatus tracking={opened.get(String((a.payload as Record<string, unknown>).tracking_id))} /> : null}
                       <p className="mt-0.5 text-xs text-muted tabular">
                         <time dateTime={a.created_at}>{formatDateTime(a.created_at)}</time>
                         {a.actor_token_id ? ' · via API' : null}

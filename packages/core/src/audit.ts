@@ -312,6 +312,30 @@ export const AuditIssueSchema = z.object({
   short: z.string(),
 });
 
+export const SCREENSHOT_DEVICES = ['mobile', 'desktop'] as const;
+export type ScreenshotDevice = (typeof SCREENSHOT_DEVICES)[number];
+export const SCREENSHOT_DEVICE_LABELS: Record<ScreenshotDevice, string> = { mobile: 'Telemóvel', desktop: 'Computador' };
+
+export const SiteScreenshotSchema = z
+  .object({
+    device: z.enum(SCREENSHOT_DEVICES),
+    width: z.int().nullable(),
+    height: z.int().nullable(),
+    url: z.string().meta({ description: 'Imagem (redireciona para um link temporário)' }),
+  })
+  .meta({ id: 'SiteScreenshot' });
+export type SiteScreenshot = z.infer<typeof SiteScreenshotSchema>;
+
+/** Imagem "final-screenshot" de uma resposta do PageSpeed (data URI em JPEG). */
+export function pageSpeedScreenshot(json: unknown): { data: string; width: number | null; height: number | null } | null {
+  const details = (
+    json as { lighthouseResult?: { audits?: Record<string, { details?: { data?: unknown; width?: unknown; height?: unknown } }> } } | null
+  )?.lighthouseResult?.audits?.['final-screenshot']?.details;
+  if (typeof details?.data !== 'string' || !details.data.startsWith('data:image/')) return null;
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : null);
+  return { data: details.data, width: num(details.width), height: num(details.height) };
+}
+
 export const SiteAuditSchema = z
   .object({
     id: z.uuid(),
@@ -338,6 +362,7 @@ export const SiteAuditSchema = z
     suggested_problems: z.string().nullable(),
     suggested_mobile: z.enum(MOBILE_STATUSES).nullable(),
     error: z.string().nullable(),
+    screenshots: z.array(SiteScreenshotSchema).default([]),
     created_at: z.string(),
   })
   .meta({ id: 'SiteAudit' });

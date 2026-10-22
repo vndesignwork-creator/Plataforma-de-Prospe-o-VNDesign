@@ -47,17 +47,17 @@ const TEXT_FIELDS = [
 ] as const;
 
 /** Valores iniciais do formulário (null → '' nos campos de texto). */
-function toFormValues(lead?: Lead): FormInput {
+function toFormValues(lead?: Lead, initial?: Partial<Lead>): FormInput {
   const values: Record<string, unknown> = {
     sector_id: lead?.sector_id ?? null,
     pagespeed: lead?.pagespeed ?? null,
     estimated_value: lead?.estimated_value ?? null,
     mobile: lead?.mobile ?? 'desconhecido',
     status: lead?.status ?? 'identificado',
-    channel: lead?.channel ?? null,
+    channel: lead?.channel ?? initial?.channel ?? null,
     services: lead?.services ?? [],
   };
-  for (const f of TEXT_FIELDS) values[f] = (lead?.[f] as string | null | undefined) ?? '';
+  for (const f of TEXT_FIELDS) values[f] = (lead?.[f] as string | null | undefined) ?? (initial?.[f] as string | null | undefined) ?? '';
   return values as FormInput;
 }
 
@@ -103,7 +103,8 @@ function Section({ title, description, children }: { title: string; description?
   );
 }
 
-export function LeadForm({ lead }: { lead?: Lead }) {
+/** `initial`: dados para um lead novo (ex.: partilhado do Google Maps). */
+export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lead> }) {
   const router = useRouter();
   const isEdit = Boolean(lead);
   const invalidate = useInvalidateLead();
@@ -120,7 +121,7 @@ export function LeadForm({ lead }: { lead?: Lead }) {
     formState: { errors, isSubmitting, isDirty },
   } = useForm<FormInput, unknown, LeadCreate>({
     resolver: zodResolver(LeadCreateSchema),
-    defaultValues: toFormValues(lead),
+    defaultValues: toFormValues(lead, initial),
   });
 
   // Verificação de duplicados enquanto se escreve (nome, website, email).
@@ -176,7 +177,7 @@ export function LeadForm({ lead }: { lead?: Lead }) {
   }
 
   // "Mais detalhes": aberto na edição; na criação abre se houver erros lá dentro.
-  const [moreOpen, setMoreOpen] = useState(isEdit);
+  const [moreOpen, setMoreOpen] = useState(isEdit || MORE_FIELDS.some((f) => !!initial?.[f as keyof Lead]));
   const moreHasErrors = MORE_FIELDS.some((f) => errors[f]);
   const [hadErrors, setHadErrors] = useState(false);
   if (moreHasErrors !== hadErrors) {

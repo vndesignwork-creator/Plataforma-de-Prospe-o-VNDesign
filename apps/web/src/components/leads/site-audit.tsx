@@ -3,19 +3,20 @@
 import {
   AUDIT_SEVERITY_LABELS,
   MOBILE_STATUS_META,
+  SCREENSHOT_DEVICE_LABELS,
   formatDate,
   formatDateTime,
   type Lead,
   type SiteAudit,
 } from '@vndesign/core';
-import { AlertTriangle, CheckCircle2, Gauge, History, Info, XCircle } from 'lucide-react';
+import { AlertTriangle, Camera, CheckCircle2, Gauge, History, Info, XCircle } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api-client';
-import { useApplyAudit, useAudits, useRunAudit } from '@/lib/queries';
+import { useApplyAudit, useAudits, useCaptureScreenshots, useRunAudit, useSettings } from '@/lib/queries';
 import { displayHost } from '@/lib/utils';
 import { PageSpeedScore } from './badges';
 
@@ -38,7 +39,67 @@ function Check({ ok, children }: { ok: boolean | null; children: ReactNode }) {
   );
 }
 
-function AuditResult({ audit, lead }: { audit: SiteAudit; lead: Lead }) {
+/**
+ * Imagens do site como o Google o vê (PageSpeed): no computador e no telemóvel.
+ * Servem para a conversa com o cliente, o relatório PDF e o email.
+ */
+function AuditScreenshots({ audit, lead, latest }: { audit: SiteAudit; lead: Lead; latest: boolean }) {
+  const { data: settings } = useSettings();
+  const capture = useCaptureScreenshots(lead.id);
+  if (!settings?.features.site_screenshots || !audit.final_url) return null;
+  const shots = [...audit.screenshots].sort((a) => (a.device === 'desktop' ? -1 : 1));
+
+  async function onCapture() {
+    try {
+      await capture.mutateAsync();
+      toast.success('Imagens do site guardadas.');
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
+
+  return (
+    <section aria-label="Imagens do site" className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h4 className="flex items-center gap-1.5 text-sm font-semibold">
+          <Camera className="h-4 w-4 text-muted" aria-hidden /> Como o site aparece
+        </h4>
+        {latest && !lead.anonymized_at ? (
+          <Button size="sm" variant="ghost" onClick={onCapture} loading={capture.isPending}>
+            {shots.length ? 'Tirar de novo' : 'Tirar imagens'}
+          </Button>
+        ) : null}
+      </div>
+      {capture.isPending ? <p className="text-sm text-muted" aria-live="polite">A abrir o site no telemóvel e no computador… (até 1 minuto)</p> : null}
+      {shots.length ? (
+        <div className="flex items-end gap-3 overflow-x-auto pb-1">
+          {shots.map((shot) => (
+            <figure key={shot.device} className="shrink-0">
+              <a href={shot.url} target="_blank" rel="noopener" className="block overflow-hidden rounded-lg border border-border bg-surface-2 hover:border-border-strong">
+                {/* eslint-disable-next-line @next/next/no-img-element -- imagem privada servida pela API */}
+                <img
+                  src={shot.url}
+                  alt={`O site no ${shot.device === 'mobile' ? 'telemóvel' : 'computador'}`}
+                  loading="lazy"
+                  className={shot.device === 'mobile' ? 'h-56 w-auto' : 'h-56 w-auto max-w-[min(26rem,70vw)] object-cover object-top'}
+                />
+              </a>
+              <figcaption className="mt-1 text-center text-xs text-muted">{SCREENSHOT_DEVICE_LABELS[shot.device]}</figcaption>
+            </figure>
+          ))}
+        </div>
+      ) : !capture.isPending ? (
+        <p className="text-sm text-muted">
+          {latest
+            ? 'Ainda sem imagens: tira-as para as mostrares ao cliente, no relatório PDF ou em anexo no email.'
+            : 'Esta análise não tem imagens.'}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function AuditResult({ audit, lead, latest = false }: { audit: SiteAudit; lead: Lead; latest?: boolean }) {
   const apply = useApplyAudit(lead.id);
   const canPagespeed = audit.pagespeed_mobile !== null;
   const canMobile = !!audit.suggested_mobile && audit.suggested_mobile !== 'desconhecido';
@@ -118,6 +179,8 @@ function AuditResult({ audit, lead }: { audit: SiteAudit; lead: Lead }) {
           </Check>
         </ul>
       ) : null}
+
+      <AuditScreenshots audit={audit} lead={lead} latest={latest} />
 
       {audit.issues.length ? (
         <div>
@@ -286,7 +349,14 @@ export function SiteAuditPanel({ lead }: { lead: Lead }) {
         </p>
       ) : null}
 
-      {selected ? <AuditResult key={selected.id} audit={selected} lead={lead} /> : null}
+      {selected ? (
+        <AuditResult
+          key={selected.id}
+          audit={selected}
+          lead={lead}
+          latest={selected.id === audits?.find((a) => a.status === 'done' && a.final_url)?.id}
+        />
+      ) : null}
 
       {audits && audits.length > 1 ? (
         <details className="mt-4">

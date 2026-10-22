@@ -11,10 +11,12 @@ import {
   type AuditFacts,
   type SiteAudit,
 } from '@vndesign/core';
-import { isPageSpeedEnabled, runPageSpeed, type PageSpeedOutcome } from './pagespeed';
+import { isPageSpeedEnabled, runPageSpeed, type PageSpeedOutcome, type PageSpeedShot } from './pagespeed';
 import { AuditRequestError, safeGet, type SafeResponse } from './safe-request';
 
-export type AuditRecord = Omit<SiteAudit, 'id' | 'lead_id' | 'created_at'>;
+export type AuditRecord = Omit<SiteAudit, 'id' | 'lead_id' | 'created_at' | 'screenshots'>;
+/** A análise e, se o PageSpeed correu, a imagem do site no telemóvel (vem na mesma resposta). */
+export type AuditCollected = { record: AuditRecord; mobileShot: PageSpeedShot | null };
 
 const EMPTY: Omit<AuditRecord, 'url' | 'status'> = {
   final_url: null,
@@ -51,13 +53,14 @@ async function fetchSite(url: string): Promise<SafeResponse> {
   }
 }
 
-export async function collectAudit(rawUrl: string): Promise<AuditRecord> {
+export async function collectAudit(rawUrl: string): Promise<AuditCollected> {
   const url = ensureUrlProtocol(rawUrl.trim());
   const now = new Date();
 
   if (isSocialOrDirectoryUrl(url)) {
     const findings = buildAuditFindings({ own_site: false, reachable: false }, now);
-    return { ...EMPTY, url, status: 'done', issues: findings.issues, suggested_problems: findings.suggested_problems, suggested_mobile: findings.suggested_mobile };
+    const record: AuditRecord = { ...EMPTY, url, status: 'done', issues: findings.issues, suggested_problems: findings.suggested_problems, suggested_mobile: findings.suggested_mobile };
+    return { record, mobileShot: null };
   }
 
   const pagespeedPromise: Promise<PageSpeedOutcome | null> = isPageSpeedEnabled() ? runPageSpeed(url) : Promise.resolve(null);
@@ -72,7 +75,7 @@ export async function collectAudit(rawUrl: string): Promise<AuditRecord> {
   }
 
   if (networkError?.code === 'blocked' || networkError?.code === 'protocol') {
-    return { ...EMPTY, url, status: 'error', error: networkError.message };
+    return { record: { ...EMPTY, url, status: 'error', error: networkError.message }, mobileShot: null };
   }
 
   // Sem resposta do site não vale a pena esperar pelo PageSpeed.
@@ -95,7 +98,7 @@ export async function collectAudit(rawUrl: string): Promise<AuditRecord> {
   };
   const findings = buildAuditFindings(facts, now);
 
-  return {
+  const record: AuditRecord = {
     ...EMPTY,
     url,
     status: 'done',
@@ -124,4 +127,5 @@ export async function collectAudit(rawUrl: string): Promise<AuditRecord> {
     suggested_mobile: findings.suggested_mobile,
     error: networkError?.message ?? null,
   };
+  return { record, mobileShot: pagespeed?.ok ? pagespeed.screenshot : null };
 }

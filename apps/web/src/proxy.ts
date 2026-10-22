@@ -6,9 +6,12 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { authCookieOptions } from '@/lib/env';
+import { needsMfaCode } from '@/lib/mfa';
 import { publicUrl } from '@/lib/public-url';
 
-const PUBLIC_PATHS = ['/login', '/auth/', '/api/', '/docs/', '/offline', '/a-atualizar', '/p/', '/c/', '/b/'];
+const PUBLIC_PATHS = ['/login', '/auth/', '/api/', '/docs/', '/offline', '/a-atualizar', '/p/', '/c/', '/b/', '/convite/'];
+/** Páginas dos clientes e convites: abrem mesmo com a sessão a meio da verificação. */
+const NO_MFA_PATHS = ['/auth/', '/api/', '/docs/', '/offline', '/a-atualizar', '/p/', '/c/', '/b/', '/convite/', '/verificar'];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -42,6 +45,14 @@ export async function proxy(request: NextRequest) {
   if (!user && !isPublic) {
     const next = pathname === '/' ? '' : `?next=${encodeURIComponent(pathname + search)}`;
     return NextResponse.redirect(publicUrl(`/login${next}`, request));
+  }
+  // Verificação em dois passos: com a palavra-passe certa mas sem o código, só a página do código.
+  if (user && !NO_MFA_PATHS.some((p) => pathname === p || pathname.startsWith(p))) {
+    const { data } = await supabase.auth.getSession();
+    if (needsMfaCode(user, data.session?.access_token)) {
+      const next = pathname === '/login' || pathname === '/' ? '' : `?next=${encodeURIComponent(pathname + search)}`;
+      return NextResponse.redirect(publicUrl(`/verificar${next}`, request));
+    }
   }
   if (user && pathname === '/login') {
     return NextResponse.redirect(publicUrl('/dashboard', request));

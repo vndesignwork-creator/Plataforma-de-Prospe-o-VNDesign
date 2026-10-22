@@ -88,6 +88,23 @@ import {
   PushSubscriptionCreateSchema,
   PushSubscriptionDeleteSchema,
   SiteAuditRequestSchema,
+  SCREENSHOT_DEVICES,
+  CollabTimeActionSchema,
+  CollabProjectSchema,
+  CollabProjectSummarySchema,
+  CollaboratorAcceptSchema,
+  CollaboratorInviteSchema,
+  ProjectCollaboratorSchema,
+  UserSessionSchema,
+  LaunchChecklistSchema,
+  LaunchChecklistUpdateSchema,
+  SharePayloadSchema,
+  SharedLeadDraftSchema,
+  PROSPECTING_FILTERS,
+  ProspectingOutcomeSchema,
+  ProspectingQueueSchema,
+  ProspectingResultSchema,
+  EmailTrackingSchema,
   SiteAuditSchema,
   ActivityCreateSchema,
   ContactTemplateCreateSchema,
@@ -218,6 +235,7 @@ export function getOpenApiDocument() {
       { name: 'Projetos', description: 'Pagamentos dos clientes e projetos em curso' },
       { name: 'Reuniões' },
       { name: 'Contratos', description: 'Contratos gerados a partir da proposta e aceites online' },
+      { name: 'Colaboradores', description: 'Pessoas convidadas para um projeto e o portal delas' },
       { name: 'Mapa' },
     ],
     paths: {
@@ -685,6 +703,28 @@ export function getOpenApiDocument() {
           },
         }),
       },
+      '/leads/{id}/screenshots': {
+        post: op({
+          tags: ['Auditor de sites'],
+          summary: 'Tirar as imagens do site (telemóvel e computador) para a última análise',
+          description: 'Usa o Google PageSpeed (até 1 minuto). As imagens entram no relatório PDF e podem ir em anexo no email.',
+          requestParams: { path: leadId },
+          responses: {
+            '200': ok(data(SiteAuditSchema), 'Análise com as imagens'),
+            '422': problem('Ainda não há análise do site'),
+            '502': problem('O PageSpeed não devolveu imagens'),
+            ...withNotFound,
+          },
+        }),
+      },
+      '/leads/{id}/audits/{auditId}/screenshots/{device}': {
+        get: op({
+          tags: ['Auditor de sites'],
+          summary: 'Imagem do site (redireciona para um link temporário)',
+          requestParams: { path: z.object({ id: z.uuid(), auditId: z.uuid(), device: z.enum(SCREENSHOT_DEVICES) }) },
+          responses: { '302': { description: 'Link temporário (10 minutos)' }, ...withNotFound },
+        }),
+      },
       '/leads/{id}/audits/{auditId}/apply': {
         post: op({
           tags: ['Auditor de sites'],
@@ -1005,6 +1045,200 @@ export function getOpenApiDocument() {
           security: [],
           requestParams: { path: z.object({ token: z.string() }) },
           responses: { '200': { description: 'application/pdf' }, '404': problem('Link inexistente') },
+        }),
+      },
+      '/public/t/{token}/{n}': {
+        get: op({
+          tags: ['Email'],
+          summary: 'Aberturas e cliques dos emails (sem sessão): "o.gif" é a imagem de 1×1; um número segue para esse link do email',
+          security: [],
+          requestParams: { path: z.object({ token: z.string(), n: z.string() }) },
+          responses: { '200': { description: 'Imagem GIF de 1×1' }, '302': { description: 'Segue para o link original' }, '404': problem('Link desconhecido') },
+        }),
+      },
+      '/leads/{id}/launch': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Checklist de lançamento do site do cliente',
+          requestParams: { path: leadId },
+          responses: { '200': ok(data(LaunchChecklistSchema)), ...withNotFound },
+        }),
+        patch: op({
+          tags: ['Projetos'],
+          summary: 'Endereço do site novo e pontos marcados à mão',
+          requestParams: { path: leadId },
+          requestBody: body(LaunchChecklistUpdateSchema),
+          responses: { '200': ok(data(LaunchChecklistSchema)), ...withNotFound },
+        }),
+      },
+      '/leads/{id}/launch/check': {
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Verificar sozinho o site novo (HTTPS, telemóvel, SEO, favicon, 404, sitemap, robots, estatísticas, privacidade, PageSpeed)',
+          requestParams: { path: leadId },
+          responses: { '200': ok(data(LaunchChecklistSchema)), '422': problem('Sem endereço, ou o site não abre'), ...withNotFound },
+        }),
+      },
+      '/me/sessions': {
+        get: op({
+          tags: ['Conta'],
+          summary: 'Sessões abertas da conta (aparelho, IP, última atividade, se entrou com o código)',
+          responses: { '200': ok(data(z.array(UserSessionSchema))), ...common },
+        }),
+      },
+      '/me/sessions/{id}': {
+        delete: op({
+          tags: ['Conta'],
+          summary: 'Terminar uma sessão (o aparelho deixa de entrar ao fim de, no máximo, 1 hora)',
+          requestParams: { path: idParam },
+          responses: { '204': { description: 'Terminada' }, ...withNotFound },
+        }),
+      },
+      '/leads/{id}/collaborators': {
+        get: op({
+          tags: ['Colaboradores'],
+          summary: 'Colaboradores convidados para o projeto',
+          requestParams: { path: leadId },
+          responses: { '200': ok(data(z.array(ProjectCollaboratorSchema))), ...withNotFound },
+        }),
+        post: op({
+          tags: ['Colaboradores'],
+          summary: 'Convidar um colaborador por email (só vê as tarefas, entregas, briefing e as próprias horas do projeto)',
+          requestParams: { path: leadId },
+          requestBody: body(CollaboratorInviteSchema),
+          responses: {
+            '201': ok(data(z.object({ collaborator: ProjectCollaboratorSchema, emailed: z.boolean() })), 'Convidado'),
+            '409': problem('Este email já foi convidado'),
+            ...withNotFound,
+          },
+        }),
+      },
+      '/collaborators/{id}': {
+        delete: op({
+          tags: ['Colaboradores'],
+          summary: 'Remover um colaborador (perde logo o acesso)',
+          requestParams: { path: idParam },
+          responses: { '204': { description: 'Removido' }, ...withNotFound },
+        }),
+      },
+      '/public/invites/{token}/accept': {
+        post: op({
+          tags: ['Colaboradores'],
+          summary: 'Aceitar o convite sem conta: cria a conta do colaborador (sem sessão)',
+          security: [],
+          requestParams: { path: z.object({ token: z.string() }) },
+          requestBody: body(CollaboratorAcceptSchema),
+          responses: { '200': { description: 'Conta criada' }, '404': problem('Convite inexistente'), '409': problem('Já existe conta com este email') },
+        }),
+      },
+      '/collab/invites/{token}/claim': {
+        post: op({
+          tags: ['Colaboradores'],
+          summary: 'Aceitar o convite com a conta já aberta (o email tem de ser o do convite)',
+          requestParams: { path: z.object({ token: z.string() }) },
+          responses: { '204': { description: 'Aceite' }, '403': problem('Outro email'), '404': problem('Convite inexistente') },
+        }),
+      },
+      '/collab/projects': {
+        get: op({
+          tags: ['Colaboradores'],
+          summary: 'Portal do colaborador: os projetos em que colabora',
+          responses: { '200': ok(data(z.array(CollabProjectSummarySchema))), ...common },
+        }),
+      },
+      '/collab/projects/{leadId}': {
+        get: op({
+          tags: ['Colaboradores'],
+          summary: 'Portal do colaborador: tarefas, entregas, briefing e as próprias horas',
+          requestParams: { path: z.object({ leadId: z.uuid() }) },
+          responses: { '200': ok(data(CollabProjectSchema)), ...withNotFound },
+        }),
+      },
+      '/collab/projects/{leadId}/tasks': {
+        post: op({
+          tags: ['Colaboradores'],
+          summary: 'Portal do colaborador: acrescentar uma tarefa',
+          requestParams: { path: z.object({ leadId: z.uuid() }) },
+          requestBody: body(LeadTaskCreateSchema),
+          responses: { '204': { description: 'Criada' }, ...withNotFound },
+        }),
+      },
+      '/collab/projects/{leadId}/tasks/{taskId}': {
+        patch: op({
+          tags: ['Colaboradores'],
+          summary: 'Portal do colaborador: marcar uma tarefa como feita (ou por fazer)',
+          requestParams: { path: z.object({ leadId: z.uuid(), taskId: z.uuid() }) },
+          requestBody: body(z.object({ done: z.boolean() })),
+          responses: { '204': { description: 'Atualizada' }, ...withNotFound },
+        }),
+      },
+      '/collab/projects/{leadId}/deliverables': {
+        post: op({
+          tags: ['Colaboradores'],
+          summary: 'Portal do colaborador: juntar um ficheiro ou link (fica "Por enviar")',
+          requestParams: { path: z.object({ leadId: z.uuid() }) },
+          requestBody: body(ProjectDeliverableCreateSchema),
+          responses: { '204': { description: 'Junta' }, ...withNotFound },
+        }),
+      },
+      '/collab/projects/{leadId}/time': {
+        post: op({
+          tags: ['Colaboradores'],
+          summary: 'Portal do colaborador: começar ou parar o temporizador',
+          requestParams: { path: z.object({ leadId: z.uuid() }) },
+          requestBody: body(CollabTimeActionSchema),
+          responses: { '204': { description: 'Feito' }, ...withNotFound },
+        }),
+      },
+      '/collab/projects/{leadId}/time/manual': {
+        post: op({
+          tags: ['Colaboradores'],
+          summary: 'Portal do colaborador: registar horas à mão',
+          requestParams: { path: z.object({ leadId: z.uuid() }) },
+          requestBody: body(TimeEntryCreateSchema),
+          responses: { '204': { description: 'Registado' }, ...withNotFound },
+        }),
+      },
+      '/collab/projects/{leadId}/briefing/files/{index}': {
+        get: op({
+          tags: ['Colaboradores'],
+          summary: 'Portal do colaborador: ficheiro do briefing (redireciona para um link temporário)',
+          requestParams: { path: z.object({ leadId: z.uuid(), index: z.string() }) },
+          responses: { '302': { description: 'Link temporário' }, ...withNotFound },
+        }),
+      },
+      '/share': {
+        post: op({
+          tags: ['Leads'],
+          summary: 'Interpretar um link partilhado do telemóvel (Google Maps, Instagram, Facebook ou site) num lead por gravar',
+          description: 'Resolve links curtos do Maps e lê o site (nome, telefone, email). Com GOOGLE_PLACES_API_KEY pede também telefone e site à Google.',
+          requestBody: body(SharePayloadSchema),
+          responses: { '200': ok(data(SharedLeadDraftSchema)), ...common },
+        }),
+      },
+      '/prospecting': {
+        get: op({
+          tags: ['Leads'],
+          summary: 'Sessão de prospeção: leads a contactar agora (abriram o email, follow-ups, por contactar)',
+          requestParams: { query: z.object({ filter: z.enum(PROSPECTING_FILTERS).optional() }) },
+          responses: { '200': ok(data(ProspectingQueueSchema)), ...common },
+        }),
+      },
+      '/leads/{id}/prospecting': {
+        post: op({
+          tags: ['Leads'],
+          summary: 'Registar o resultado de um contacto (não atendeu, contactado, interessado, mais tarde, sem interesse)',
+          requestParams: { path: leadId },
+          requestBody: body(ProspectingOutcomeSchema),
+          responses: { '200': ok(data(ProspectingResultSchema)), ...withNotFound },
+        }),
+      },
+      '/leads/{id}/email-tracking': {
+        get: op({
+          tags: ['Email'],
+          summary: 'Emails enviados pela plataforma ao lead, com aberturas e cliques',
+          requestParams: { path: leadId },
+          responses: { '200': ok(data(z.array(EmailTrackingSchema))), ...withNotFound },
         }),
       },
       '/public/contracts/{token}/accept': {

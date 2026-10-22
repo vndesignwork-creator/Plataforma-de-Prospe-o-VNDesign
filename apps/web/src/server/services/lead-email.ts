@@ -21,7 +21,9 @@ import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
 import { sendWithAccount } from '../mailer';
 import { renderProposalPdf } from '../proposals/pdf';
+import { latestScreenshots } from './audits';
 import { diagnosisPdf } from './diagnosis';
+import { prepareTracking } from './email-tracking';
 import { getLead } from './leads';
 import { loadSmtpAccount, sentLast24h, smtpError } from './mail-account';
 import { getProposal, markProposalSent } from './proposals';
@@ -59,21 +61,36 @@ async function deliver(
       `Já enviaste ${sent} emails nas últimas 24 horas (limite ${dailyLimit}). O limite protege o teu email de ser marcado como spam; muda-o em Definições → Email de envio.`,
     );
   }
-  const bcc = (input.bcc_self ?? bccSelf) ? account.fromEmail : undefined;
+  const wantsCopy = input.bcc_self ?? bccSelf;
+  const html = plainTextToHtml(input.body);
+  // Com o rastreio, a cópia para o próprio vai à parte e sem ele (abri-la não conta como aberto).
+  const tracking = await prepareTracking(ctx, lead.id, input.subject, html);
+  const trackingId = tracking ? await tracking.save() : null;
   let messageId: string | null = null;
   try {
     const info = await sendWithAccount(account, {
       to: input.to,
-      bcc,
+      bcc: wantsCopy && !tracking ? account.fromEmail : undefined,
       subject: input.subject,
       text: input.body,
-      html: plainTextToHtml(input.body),
+      html: tracking?.html ?? html,
       attachments: extra.attachments,
       inReplyTo: input.in_reply_to,
     });
     messageId = info.messageId ?? null;
   } catch (error) {
+    await tracking?.discard();
     throw smtpError(error, account);
+  }
+  if (wantsCopy && tracking) {
+    await sendWithAccount(account, {
+      to: account.fromEmail,
+      subject: input.subject,
+      text: input.body,
+      html,
+      attachments: extra.attachments,
+      inReplyTo: input.in_reply_to,
+    }).catch(() => undefined);
   }
 
   const { error } = await ctx.supabase.from('lead_activities').insert({
@@ -89,6 +106,7 @@ async function deliver(
       attachments: extra.attachments?.map((a) => a.filename) ?? [],
       // Para reconhecer a resposta (In-Reply-To) na caixa de entrada.
       message_id: messageId,
+      ...(trackingId ? { tracking_id: trackingId } : {}),
     },
     actor_user_id: ctx.user.id,
   });
@@ -100,12 +118,15 @@ async function deliver(
 export async function sendLeadEmail(ctx: ApiContext, leadId: string, input: LeadEmailSend): Promise<LeadEmailSendResult> {
   const lead = await getLead(ctx, leadId);
   const diagnosis = input.attach_diagnosis ? await diagnosisPdf(ctx, lead.id) : null;
-  const { sentToday, dailyLimit } = await deliver(
-    ctx,
-    lead,
-    input,
-    diagnosis ? { attachments: [{ filename: diagnosis.filename, content: diagnosis.content, contentType: 'application/pdf' }] } : {},
-  );
+  const shots = input.attach_screenshots ? await latestScreenshots(ctx, lead.id) : [];
+  if (input.attach_screenshots && !shots.length) {
+    throw new ApiError(422, 'Sem imagens do site', 'Este lead ainda não tem imagens do site: tira-as no cartão “Diagnóstico do site”.');
+  }
+  const attachments = [
+    ...(diagnosis ? [{ filename: diagnosis.filename, content: diagnosis.content, contentType: 'application/pdf' }] : []),
+    ...shots.map((sh) => ({ filename: sh.filename, content: sh.buffer, contentType: sh.contentType })),
+  ];
+  const { sentToday, dailyLimit } = await deliver(ctx, lead, input, attachments.length ? { attachments } : {});
 
   // Como "Marcar como enviado": um lead identificado passa a Contactado; num lead
   // contactado, conta como follow-up feito. A próxima ação segue a sequência.

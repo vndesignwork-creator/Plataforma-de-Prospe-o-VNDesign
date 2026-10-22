@@ -25,6 +25,8 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
   timeout: 45_000,
+  // A ficha do lead faz muitos pedidos em paralelo; no "next dev" (compila a pedido) passam dos 5 s.
+  expect: { timeout: 10_000 },
   use: {
     baseURL,
     locale: 'pt-PT',

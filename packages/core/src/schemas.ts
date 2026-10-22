@@ -18,6 +18,7 @@ import {
 import { ensureUrlProtocol } from './normalize';
 import { AiSettingsSchema, AiSettingsUpdateSchema, SERVER_AI_PROVIDER } from './ai-providers';
 import { ServiceCategoryKeySchema, ServiceKeyListSchema, ServiceKeySchema } from './services';
+import { TodayOpenedEmailSchema } from './mail';
 import { TodayMeetingSchema } from './projects';
 import { TodayTasksSchema } from './tasks';
 
@@ -488,6 +489,11 @@ export const FeaturesSchema = z.object({
   contracts: z.boolean().default(true).meta({ description: 'Contratos em PDF, aceites online pelo cliente' }),
   briefing: z.boolean().default(true).meta({ description: 'Projetos: briefing online (formulário para o cliente)' }),
   expenses: z.boolean().default(true).meta({ description: 'Projetos: despesas e lucro' }),
+  site_screenshots: z.boolean().default(true).meta({ description: 'Imagens do site do lead (telemóvel e computador)' }),
+  email_tracking: z.boolean().default(true).meta({ description: 'Saber quando o lead abre o email ou carrega num link' }),
+  prospecting_session: z.boolean().default(true).meta({ description: 'Sessão de prospeção (um lead de cada vez)' }),
+  launch_checklist: z.boolean().default(true).meta({ description: 'Projetos: checklist de lançamento do site' }),
+  collaborators: z.boolean().default(true).meta({ description: 'Projetos: convidar colaboradores' }),
 });
 export type Features = z.infer<typeof FeaturesSchema>;
 export const DEFAULT_FEATURES: Features = {
@@ -505,6 +511,11 @@ export const DEFAULT_FEATURES: Features = {
   contracts: true,
   briefing: true,
   expenses: true,
+  site_screenshots: true,
+  email_tracking: true,
+  prospecting_session: true,
+  launch_checklist: true,
+  collaborators: true,
 };
 
 /** Arranque do projeto: plano de pagamentos criado ao passar a Cliente ([] = sem plano). */
@@ -720,6 +731,7 @@ export const TodaySchema = z
     tasks: TodayTasksSchema.optional().meta({ description: 'Tarefas com prazo (em atraso, hoje e próximos 7 dias)' }),
     hot: z.array(LeadSchema).optional().meta({ description: 'Leads com maior prioridade (os mais quentes), em pipeline' }),
     meetings: z.array(TodayMeetingSchema).optional().meta({ description: 'Reuniões de hoje e dos próximos 7 dias' }),
+    opened: z.array(TodayOpenedEmailSchema).optional().meta({ description: 'Leads que abriram um email nas últimas 48 horas' }),
   })
   .meta({ id: 'Today' });
 export type Today = z.infer<typeof TodaySchema>;

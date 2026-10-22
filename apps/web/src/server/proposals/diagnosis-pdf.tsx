@@ -1,9 +1,10 @@
 /**
  * Relatório de diagnóstico do site (A4, para o cliente) a partir da última
  * análise: velocidade, telemóvel, segurança, os 3 problemas principais com o
- * porquê, e o que a VNDesign propõe. Mesma identidade do PDF das propostas.
+ * porquê, as imagens do site no computador e no telemóvel (se houver) e o que a
+ * VNDesign propõe. Mesma identidade do PDF das propostas.
  */
-import { Document, Page, StyleSheet, Text, View, renderToBuffer } from '@react-pdf/renderer';
+import { Document, Image, Page, StyleSheet, Text, View, renderToBuffer } from '@react-pdf/renderer';
 import {
   AUDIT_ISSUE_IMPACT,
   AUDIT_SEVERITY_LABELS,
@@ -48,6 +49,9 @@ const s = StyleSheet.create({
   box: { backgroundColor: SOFT, borderRadius: 6, padding: 11, marginTop: 14 },
   boxTitle: { fontFamily: 'Syne', fontWeight: 700, fontSize: 12, marginBottom: 4 },
   signature: { marginTop: 12 },
+  shots: { flexDirection: 'row', alignItems: 'flex-end', marginTop: 2 },
+  shot: { borderWidth: 1, borderColor: LINE, borderRadius: 6, padding: 4, marginRight: 10 },
+  shotLabel: { fontSize: 8, color: MUTED, marginTop: 4, textAlign: 'center' },
   footer: {
     position: 'absolute',
     bottom: 22,
@@ -68,7 +72,13 @@ export interface DiagnosisPdfData {
   lead: { company_name: string; contact_name: string | null; city: string | null; approach_angle: string | null; services: string[] };
   services: readonly ServiceInfo[];
   signature: Signature;
+  /** Imagens do site (PageSpeed): no computador e no telemóvel. */
+  screenshots?: { device: 'mobile' | 'desktop'; buffer: Buffer; contentType: string; width: number | null; height: number | null }[];
 }
+
+/** Altura comum das imagens; a largura segue a proporção de cada uma. */
+const SHOT_HEIGHT = 210;
+const SHOT_FALLBACK = { mobile: [412, 823], desktop: [1350, 940] } as const;
 
 const bareHost = (url: string | null) => (url ? url.replace(/^https?:\/\//, '').replace(/\/$/, '') : null);
 const SEVERITY_COLOR = { high: BAD, medium: WARN, low: MUTED } as const;
@@ -109,7 +119,7 @@ function tiles(audit: SiteAudit) {
   ];
 }
 
-function DiagnosisDocument({ audit, lead, services, signature }: DiagnosisPdfData) {
+function DiagnosisDocument({ audit, lead, services, signature, screenshots = [] }: DiagnosisPdfData) {
   const company = signature.company || 'VNDesign';
   const contactLine = [signature.full_name, signature.phone, signature.email, bareHost(signature.website)].filter(Boolean).join(' · ');
   const analysed = audit.created_at.slice(0, 10);
@@ -167,6 +177,30 @@ function DiagnosisDocument({ audit, lead, services, signature }: DiagnosisPdfDat
               </View>
             ))}
           </View>
+
+          {screenshots.length ? (
+            <View wrap={false}>
+              <Text style={s.h2}>Como o site aparece hoje</Text>
+              <View style={s.shots}>
+                {[...screenshots]
+                  .sort((a) => (a.device === 'desktop' ? -1 : 1))
+                  .map((shot) => {
+                    const [w, h] = shot.width && shot.height ? [shot.width, shot.height] : SHOT_FALLBACK[shot.device];
+                    const width = Math.min(Math.round((SHOT_HEIGHT * w) / h), 330);
+                    return (
+                      <View key={shot.device} style={s.shot}>
+                        {/* eslint-disable-next-line jsx-a11y/alt-text -- imagem de um PDF (o react-pdf não tem alt) */}
+                        <Image
+                          src={{ data: shot.buffer, format: shot.contentType.includes('png') ? 'png' : 'jpg' }}
+                          style={{ width, height: Math.round((width * h) / w), objectFit: 'cover' }}
+                        />
+                        <Text style={s.shotLabel}>{shot.device === 'desktop' ? 'No computador' : 'No telemóvel'}</Text>
+                      </View>
+                    );
+                  })}
+              </View>
+            </View>
+          ) : null}
 
           <Text style={s.h2}>{issues.length ? 'Os problemas principais' : 'Problemas'}</Text>
           {issues.length ? (

@@ -235,7 +235,18 @@ function requestOnce(url: URL, timeoutMs: number, maxBytes: number): Promise<Saf
 /** GET com redirecionamentos manuais (cada salto é validado). */
 export async function safeGet(
   input: string,
-  { timeoutMs = 15_000, maxBytes = 2_000_000, maxRedirects = 5 } = {},
+  {
+    timeoutMs = 15_000,
+    maxBytes = 2_000_000,
+    maxRedirects = 5,
+    stopAt,
+  }: {
+    timeoutMs?: number;
+    maxBytes?: number;
+    maxRedirects?: number;
+    /** Parar antes de seguir este redirecionamento (devolve-o em `url`, sem o abrir). */
+    stopAt?: (next: URL) => boolean;
+  } = {},
 ): Promise<SafeResponse> {
   let url: URL;
   try {
@@ -254,6 +265,7 @@ export async function safeGet(
     } catch {
       throw new AuditRequestError('redirects', 'Redirecionamento inválido.');
     }
+    if (stopAt?.(url)) return { ...res, url: url.toString() };
   }
   throw new AuditRequestError('redirects', 'Demasiados redirecionamentos.');
 }

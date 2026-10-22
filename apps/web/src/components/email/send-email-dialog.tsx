@@ -53,6 +53,9 @@ function SendEmailDialog({
   const diagnosisAvailable = !proposal && !!settings?.features.diagnosis_report && !!audits?.some((a) => a.status === 'done');
   const [attach, setAttach] = useState(attachDiagnosis ?? false);
   const withDiagnosis = diagnosisAvailable && attach;
+  // Imagens do site (telemóvel e computador) da análise mais recente que as tem.
+  const screenshotsAvailable = !proposal && !!settings?.features.site_screenshots && !!audits?.some((a) => a.screenshots.length);
+  const [attachShots, setAttachShots] = useState(false);
   const invalidate = useInvalidateLead();
   const qc = useQueryClient();
   const [form, setForm] = useState({ to: lead.email ?? '', subject, body });
@@ -73,6 +76,7 @@ function SendEmailDialog({
           template,
           ...(inReplyTo ? { in_reply_to: inReplyTo } : {}),
           ...(withDiagnosis ? { attach_diagnosis: true } : {}),
+          ...(screenshotsAvailable && attachShots ? { attach_screenshots: true } : {}),
         },
       });
       const next = data.next_action_on ? ` Próximo: ${data.next_action_text ?? 'follow-up'} a ${formatDate(data.next_action_on)}.` : '';
@@ -160,6 +164,13 @@ function SendEmailDialog({
               <input type="checkbox" className="h-4 w-4" checked={attach} onChange={(e) => setAttach(e.target.checked)} />
               <Paperclip className="h-4 w-4 text-muted" aria-hidden />
               Anexar o relatório de diagnóstico do site (PDF)
+            </label>
+          ) : null}
+          {screenshotsAvailable ? (
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input type="checkbox" className="h-4 w-4" checked={attachShots} onChange={(e) => setAttachShots(e.target.checked)} />
+              <Paperclip className="h-4 w-4 text-muted" aria-hidden />
+              Anexar as imagens do site (telemóvel e computador)
             </label>
           ) : null}
           <label className="inline-flex items-center gap-2 text-sm">

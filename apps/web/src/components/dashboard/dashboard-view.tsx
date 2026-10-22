@@ -4,15 +4,17 @@ import {
   LEAD_STATUS_META,
   formatCurrency,
   formatDate,
+  formatDateTime,
   formatPercent,
   todayIso,
+  type TodayOpenedEmail,
   type Lead,
   type LeadStatus,
   type TodayMeeting,
   type TodayTask,
   leadPath,
 } from '@vndesign/core';
-import { AlertCircle, BarChart3, BriefcaseBusiness, CalendarClock, CalendarDays, Flame, ListChecks, MapPin, Users } from 'lucide-react';
+import { AlertCircle, BarChart3, BriefcaseBusiness, CalendarClock, CalendarDays, Eye, Flame, ListChecks, MapPin, Phone, Users } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -22,6 +24,7 @@ import { FollowUpEmailButton } from '@/components/email/send-email-dialog';
 import { FollowUpActions } from '@/components/follow-up/follow-up-actions';
 import { StatusBadge } from '@/components/leads/badges';
 import { LeadScoreBadge } from '@/components/leads/lead-score';
+import { buttonClasses } from '@/components/ui/button';
 import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
 import { api, errorMessage } from '@/lib/api-client';
 import { DueChip, ReminderChip } from '@/components/tasks/tasks-card';
@@ -231,6 +234,43 @@ function TodayTasks({ title, today, tasks }: { title: string; today: string; tas
   );
 }
 
+/** Leads que abriram um email nas últimas 48 horas: bom momento para ligar. */
+function TodayOpened({ items }: { items: TodayOpenedEmail[] }) {
+  if (!items.length) return null;
+  return (
+    <section aria-label="Abriram o teu email">
+      <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold">
+        <Eye className="h-4 w-4" aria-hidden />
+        Abriram o teu email <span className="font-normal text-muted">({items.length})</span>
+      </h3>
+      <ul className="divide-y divide-border">
+        {items.map((o) => (
+          <li key={o.id} className="flex items-center gap-1">
+            <Link href={leadPath(o.lead)} className="min-w-0 flex-1 rounded-md px-2 py-2 hover:bg-surface-2">
+              <span className="block truncate text-sm font-medium">
+                <span className="text-muted tabular">#{o.lead.number}</span> {o.lead.company_name}
+              </span>
+              <span className="mt-1 block truncate text-xs text-muted">
+                {o.clicks ? 'Carregou num link' : `Abriu ${o.opens}×`} · {formatDateTime(o.last_opened_at)} · “{o.subject}”
+              </span>
+            </Link>
+            {o.lead.phone ? (
+              <a
+                href={`tel:${o.lead.phone.replace(/[^\d+]/g, '')}`}
+                className={buttonClasses('ghost', 'sm')}
+                aria-label={`Ligar a ${o.lead.company_name}`}
+                title="Ligar"
+              >
+                <Phone className="h-4 w-4" aria-hidden />
+              </a>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function TodayCard({ className }: { className?: string }) {
   const { data, isLoading } = useToday();
   // Tarefas em atraso e de hoje logo a seguir aos follow-ups de hoje; as da semana no fim.
@@ -243,7 +283,8 @@ function TodayCard({ className }: { className?: string }) {
     !data.upcoming.length &&
     !urgentTasks.length &&
     !weekTasks.length &&
-    !data.meetings?.length;
+    !data.meetings?.length &&
+    !data.opened?.length;
   return (
     <Card className={cn('flex flex-col', className)}>
       <CardHeader title="Hoje" description={data ? `Follow-ups, próximas ações e tarefas · ${formatDate(data.today)}` : undefined} />
@@ -253,6 +294,7 @@ function TodayCard({ className }: { className?: string }) {
         {data ? (
           <>
             <TodayMeetings meetings={data.meetings ?? []} />
+            <TodayOpened items={data.opened ?? []} />
             <TodayGroup title="Em atraso" tone="danger" icon={<AlertCircle className="h-4 w-4" aria-hidden />} leads={data.overdue} />
             <TodayGroup title="Para hoje" icon={<CalendarClock className="h-4 w-4" aria-hidden />} leads={data.due_today} />
             <TodayTasks title="Tarefas para hoje" today={data.today} tasks={urgentTasks} />

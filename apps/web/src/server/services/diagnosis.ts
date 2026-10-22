@@ -6,7 +6,7 @@ import { slugify } from '@vndesign/core';
 import type { ApiContext } from '../context';
 import { ApiError } from '../http';
 import { renderDiagnosisPdf } from '../proposals/diagnosis-pdf';
-import { listAudits } from './audits';
+import { latestScreenshots, listAudits } from './audits';
 import { getLead } from './leads';
 import { loadServiceCatalog } from './service-catalog';
 import { getSettings, getSignature } from './workspace';
@@ -26,7 +26,10 @@ export async function diagnosisPdf(ctx: ApiContext, leadId: string): Promise<{ c
   if (!audit) {
     throw new ApiError(422, 'Ainda não há análise do site', 'Analisa primeiro o site do lead (cartão “Diagnóstico do site” → Analisar).');
   }
+  // As imagens do site entram se existirem (uma falha no Storage não impede o relatório).
+  const shots = settings.features.site_screenshots ? await latestScreenshots(ctx, leadId).catch(() => []) : [];
   const content = await renderDiagnosisPdf({
+    screenshots: shots,
     audit,
     lead: {
       company_name: lead.company_name,
