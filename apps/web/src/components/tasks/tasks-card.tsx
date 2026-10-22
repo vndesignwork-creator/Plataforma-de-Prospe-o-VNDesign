@@ -32,7 +32,8 @@ import { Button, buttonClasses } from '@/components/ui/button';
 import { Card, Skeleton } from '@/components/ui/card';
 import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownSeparator, DropdownTrigger } from '@/components/ui/dropdown';
 import { DateInput, DateTimeInput } from '@/components/ui/date-input';
-import { Input } from '@/components/ui/input';
+import { Dialog } from '@/components/ui/dialog';
+import { Input, Textarea } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
 import { useInvalidateTasks, useLeadTasks, useTaskTemplates } from '@/lib/queries';
 import { Linkified } from '@/lib/linkify';
@@ -169,6 +170,7 @@ function PushHint() {
   );
 }
 
+/** Editar uma tarefa numa janela: o texto todo à vista (várias linhas), prazo e lembrete. */
 function TaskEditor({
   task,
   onSave,
@@ -182,31 +184,74 @@ function TaskEditor({
   const [due, setDue] = useState(task.due_on ?? '');
   const [remind, setRemind] = useState(isoToLocalInput(task.remind_at));
   const [saving, setSaving] = useState(false);
-  async function submit(e: FormEvent) {
-    e.preventDefault();
+  async function submit(e?: FormEvent) {
+    e?.preventDefault();
     if (!title.trim()) return;
     setSaving(true);
-    await onSave({ title: title.trim(), due_on: due || null, remind_at: localInputToIso(remind) });
+    await onSave({ title: title.replace(/\s*\n\s*/g, '\n').trim(), due_on: due || null, remind_at: localInputToIso(remind) });
     setSaving(false);
   }
   return (
-    <form onSubmit={submit} className="flex flex-1 flex-wrap items-center gap-2" onKeyDown={(e) => e.key === 'Escape' && onCancel()}>
-      <Input
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        aria-label="Texto da tarefa"
-        autoFocus
-        className="min-w-40 flex-[1_1_12rem]"
-      />
-      <DateInput value={due} onChange={setDue} aria-label="Prazo da tarefa" className="w-40" />
-      <DateTimeInput value={remind} onChange={setRemind} aria-label="Lembrete (dia e hora)" placeholder="🔔 lembrete" className="w-48" />
-      <Button type="submit" size="sm" loading={saving}>
-        Guardar
-      </Button>
-      <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
-        Cancelar
-      </Button>
-    </form>
+    <Dialog
+      open
+      onOpenChange={(open) => (!open ? onCancel() : undefined)}
+      title="Editar tarefa"
+      className="max-w-xl"
+      footer={
+        <>
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button type="submit" form={`task-edit-${task.id}`} loading={saving}>
+            Guardar
+          </Button>
+        </>
+      }
+    >
+      <form id={`task-edit-${task.id}`} onSubmit={submit} className="flex flex-col gap-4">
+        <div>
+          <label htmlFor={`task-title-${task.id}`} className="mb-1.5 block text-sm font-medium">
+            Texto da tarefa
+          </label>
+          <Textarea
+            id={`task-title-${task.id}`}
+            value={title}
+            maxLength={300}
+            rows={3}
+            // A caixa cresce com o texto (todo à vista, também no telemóvel): o ref corre a cada render.
+            ref={(el) => {
+              if (!el) return;
+              el.style.height = 'auto';
+              el.style.height = `${Math.min(el.scrollHeight + 2, 320)}px`;
+            }}
+            onChange={(e) => setTitle(e.target.value)}
+            // Enter guarda (como antes); Shift+Enter muda de linha.
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                void submit();
+              }
+            }}
+            className="leading-relaxed"
+          />
+          <p className="mt-1 text-right text-xs text-muted tabular">{title.length}/300</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor={`task-due-${task.id}`} className="mb-1.5 block text-sm font-medium">
+              Prazo
+            </label>
+            <DateInput id={`task-due-${task.id}`} value={due} onChange={setDue} aria-label="Prazo da tarefa" />
+          </div>
+          <div>
+            <label htmlFor={`task-remind-${task.id}`} className="mb-1.5 block text-sm font-medium">
+              Lembrete
+            </label>
+            <DateTimeInput id={`task-remind-${task.id}`} value={remind} onChange={setRemind} aria-label="Lembrete (dia e hora)" placeholder="🔔 dia e hora" />
+          </div>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 
@@ -262,51 +307,46 @@ function TaskRow({
         aria-label={done ? `Reabrir: ${task.title}` : `Concluir: ${task.title}`}
         className="mt-1 h-4 w-4 shrink-0 cursor-pointer"
       />
-      {editing ? (
-        <TaskEditor task={task} onSave={onSave} onCancel={onCancelEdit} />
-      ) : (
-        <>
-          {/* Tocar no texto edita; os links do texto abrem (o lápis faz o mesmo, para o teclado). */}
-          <span
-            onClick={(e) => {
-              if (!(e.target as HTMLElement).closest('a')) onEdit();
-            }}
-            className={cn('min-w-0 flex-1 cursor-text text-sm break-words', done && 'text-muted line-through')}
-          >
-            <Linkified text={task.title} />
-            {task.due_on ? (
-              <>
-                {' '}
-                <DueChip due={task.due_on} today={today} done={done} />
-              </>
-            ) : null}
-            {task.remind_at ? (
-              <>
-                {' '}
-                <ReminderChip task={task} />
-              </>
-            ) : null}
-          </span>
-          <span className="flex shrink-0 items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100 pointer-coarse:opacity-100">
-            <button
-              type="button"
-              onClick={onEdit}
-              aria-label={`Editar: ${task.title}`}
-              className="rounded p-1 text-muted hover:bg-surface-3 hover:text-fg pointer-coarse:p-1.5"
-            >
-              <Pencil className="h-3.5 w-3.5" aria-hidden />
-            </button>
-            <button
-              type="button"
-              onClick={onDelete}
-              aria-label={`Apagar: ${task.title}`}
-              className="rounded p-1 text-muted hover:bg-danger-soft hover:text-danger pointer-coarse:p-1.5"
-            >
-              <X className="h-4 w-4" aria-hidden />
-            </button>
-          </span>
-        </>
-      )}
+      {editing ? <TaskEditor task={task} onSave={onSave} onCancel={onCancelEdit} /> : null}
+      {/* Tocar no texto edita; os links do texto abrem (o lápis faz o mesmo, para o teclado). */}
+      <span
+        onClick={(e) => {
+          if (!(e.target as HTMLElement).closest('a')) onEdit();
+        }}
+        className={cn('min-w-0 flex-1 cursor-text text-sm break-words whitespace-pre-line', done && 'text-muted line-through')}
+      >
+        <Linkified text={task.title} />
+        {task.due_on ? (
+          <>
+            {' '}
+            <DueChip due={task.due_on} today={today} done={done} />
+          </>
+        ) : null}
+        {task.remind_at ? (
+          <>
+            {' '}
+            <ReminderChip task={task} />
+          </>
+        ) : null}
+      </span>
+      <span className="flex shrink-0 items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100 pointer-coarse:opacity-100">
+        <button
+          type="button"
+          onClick={onEdit}
+          aria-label={`Editar: ${task.title}`}
+          className="rounded p-1 text-muted hover:bg-surface-3 hover:text-fg pointer-coarse:p-1.5"
+        >
+          <Pencil className="h-3.5 w-3.5" aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          aria-label={`Apagar: ${task.title}`}
+          className="rounded p-1 text-muted hover:bg-danger-soft hover:text-danger pointer-coarse:p-1.5"
+        >
+          <X className="h-4 w-4" aria-hidden />
+        </button>
+      </span>
     </li>
   );
 }

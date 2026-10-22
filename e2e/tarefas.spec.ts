@@ -42,10 +42,23 @@ test('ficha: acrescentar, reordenar com o teclado, concluir e editar tarefas', a
 
   // Editar com prazo.
   await card.getByRole('button', { name: 'Editar: Fazer maquete' }).click();
-  await card.getByLabel('Texto da tarefa').fill('Fazer maquete da página inicial');
-  await card.getByLabel('Prazo da tarefa').fill(iso(-1));
-  await card.getByRole('button', { name: 'Guardar' }).click();
+  const edit = page.getByRole('dialog', { name: 'Editar tarefa' });
+  await edit.getByLabel('Texto da tarefa').fill('Fazer maquete da página inicial');
+  await edit.getByLabel('Prazo da tarefa').fill(iso(-1));
+  await edit.getByRole('button', { name: 'Guardar' }).click();
+  await expect(edit).toHaveCount(0);
   await expect(card.getByText('Fazer maquete da página inicial')).toBeVisible();
+
+  // Texto comprido: na janela vê-se todo, com várias linhas (Shift+Enter muda de linha).
+  await card.getByRole('button', { name: 'Editar: Fazer maquete da página inicial' }).click();
+  const long = 'Fazer maquete da página inicial com o menu, o banner com a fotografia da equipa, a secção de serviços e o formulário de contacto';
+  await edit.getByLabel('Texto da tarefa').fill(long);
+  await edit.getByLabel('Texto da tarefa').press('Shift+Enter');
+  await edit.getByLabel('Texto da tarefa').pressSequentially('Confirmar cores com o cliente');
+  await expect(edit.getByText(/^\d+\/300$/)).toBeVisible();
+  await edit.getByLabel('Texto da tarefa').press('Enter');
+  await expect(edit).toHaveCount(0);
+  await expect(card.getByText(/formulário de contacto\s*Confirmar cores com o cliente/)).toBeVisible();
   await expect(card.getByText('(em atraso)')).toBeAttached();
 
   // Links no texto ficam clicáveis (e não abrem a edição).
