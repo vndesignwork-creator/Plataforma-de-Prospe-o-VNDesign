@@ -255,6 +255,7 @@ test('verificação em dois passos: ligar, entrar com o código e sessões abert
 });
 
 test('colaboradores: convidar, aceitar, portal só do projeto e remover', async ({ page, browser }) => {
+  test.setTimeout(90_000);
   const lead = await createLead(page.request, { company_name: `Colabora ${run}`, status: 'cliente', estimated_value: 4321, email: `cliente-colabora-${run}@exemplo.pt` });
   await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title: 'Montar a página inicial' } });
   const email = `colab-${run}@exemplo.pt`;

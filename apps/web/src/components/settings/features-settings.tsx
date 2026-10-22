@@ -7,7 +7,7 @@
  */
 import { useQueryClient } from '@tanstack/react-query';
 import { WEEKDAY_LABELS, formatDateTime, type Features } from '@vndesign/core';
-import { BadgeCheck, BriefcaseBusiness, Calculator, CalendarPlus, Camera, Palette, ClipboardList, Clock, Eye, FileSignature, Receipt, Rocket, Target, Users, Zap, DatabaseBackup, FileText, FolderOpen, Link2, MessageCircle, RefreshCcw, Star, Wallet, type LucideIcon } from 'lucide-react';
+import { BadgeCheck, BriefcaseBusiness, Calculator, CalendarPlus, Camera, Palette, ClipboardList, Clock, Eye, FileSignature, Receipt, Rocket, Target, Users, Zap, DatabaseBackup, FileText, FolderOpen, Link2, MessageCircle, RefreshCcw, Star, Timer, Wallet, type LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,7 @@ import { Switch } from '@/components/ui/switch';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useMe, useSettings, type SettingsWithMail } from '@/lib/queries';
 import { cn } from '@/lib/utils';
-import { BriefingQuestionsCard, CalendarFeedCard, ContractSettingsCard, KickoffCard, QuoteSettingsCard } from './project-settings-cards';
+import { BriefingQuestionsCard, CalendarFeedCard, ContractSettingsCard, KickoffCard, PomodoroSettingsCard, QuoteSettingsCard } from './project-settings-cards';
 
 const FEATURES: { key: keyof Features; label: string; description: string; icon: LucideIcon; sub?: boolean }[] = [
   {
@@ -89,6 +89,13 @@ const FEATURES: { key: keyof Features; label: string; description: string; icon:
     label: 'Registo de horas',
     description: 'Temporizador ▶/⏸ em cada projeto e quanto ganhas por hora.',
     icon: Clock,
+    sub: true,
+  },
+  {
+    key: 'pomodoro',
+    label: 'Pomodoro',
+    description: 'Blocos de trabalho com pausas em cada projeto; o trabalho fica no registo de horas (tempos abaixo).',
+    icon: Timer,
     sub: true,
   },
   {
@@ -265,6 +272,7 @@ export function FeaturesSettings() {
       {settings.features.projects && settings.features.briefing ? <BriefingQuestionsCard settings={settings} /> : null}
       {settings.features.contracts ? <ContractSettingsCard settings={settings} /> : null}
       {settings.features.quote_calculator ? <QuoteSettingsCard settings={settings} /> : null}
+      {settings.features.projects && settings.features.time_tracking && settings.features.pomodoro ? <PomodoroSettingsCard settings={settings} /> : null}
       <CalendarFeedCard />
 
       <Card>

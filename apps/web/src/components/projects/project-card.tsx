@@ -23,6 +23,7 @@ import { ExpensesSection } from './expenses-section';
 import { DueBadge, StageMenu, StageSteps } from './project-bits';
 import { RevisionsSection } from './revisions-section';
 import { ShareSection } from './share-section';
+import { PomodoroBox } from './pomodoro';
 import { TimeSection } from './time-section';
 
 export function ProjectCard({ lead }: { lead: Lead }) {
@@ -88,6 +89,11 @@ export function ProjectCard({ lead }: { lead: Lead }) {
           </div>
           {features?.briefing ? <BriefingSection lead={lead} /> : null}
           {features?.revisions ? <RevisionsSection lead={lead} /> : null}
+          {features?.time_tracking && features.pomodoro && !lead.project_completed_at ? (
+            <div className="border-t border-border px-4 py-3">
+              <PomodoroBox lead={lead} />
+            </div>
+          ) : null}
           {features?.time_tracking ? <TimeSection lead={lead} /> : null}
           {features?.expenses ? <ExpensesSection lead={lead} /> : null}
           {features?.deliverables ? <DeliverablesSection lead={lead} /> : null}

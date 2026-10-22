@@ -2,23 +2,29 @@
 
 /**
  * Temporizador a contar, sempre à vista (menu lateral e barra do telemóvel):
- * o projeto, o tempo total do projeto e o botão para pausar.
+ * o projeto, o tempo total do projeto e o botão para pausar. Com um pomodoro,
+ * mostra o pomodoro (fase e tempo que falta).
  */
 import { formatClock, formatDuration, leadPath } from '@vndesign/core';
 import { Pause } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { errorMessage } from '@/lib/api-client';
-import { useRunningTimer, useSettings, useTimer } from '@/lib/queries';
+import { usePomodoro, useRunningTimer, useSettings, useTimer } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+import { PomodoroIndicator, usePomodoroSettings } from './pomodoro';
 import { useElapsed } from './time-section';
 
 export function RunningTimer({ compact, className }: { compact?: boolean; className?: string }) {
   const { data: settings } = useSettings();
   const enabled = !!settings?.features.projects && !!settings.features.time_tracking;
   const { data: running } = useRunningTimer(enabled);
+  const pomodoroOn = !!usePomodoroSettings();
+  const { data: pomodoro } = usePomodoro(pomodoroOn);
   const timer = useTimer();
   const elapsed = useElapsed(running?.entry.started_at ?? null);
+  // Com um pomodoro, o menu mostra a fase e o tempo que falta.
+  if (enabled && pomodoroOn && pomodoro) return <PomodoroIndicator pomodoro={pomodoro} compact={compact} className={className} />;
   if (!enabled || !running) return null;
   // Total do projeto (o já registado + esta sessão), como no botão do projeto.
   const total = running.logged_seconds + Math.floor(elapsed);

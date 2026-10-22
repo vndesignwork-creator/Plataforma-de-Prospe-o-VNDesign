@@ -19,6 +19,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { PlanForm } from './payments-card';
 import { DueBadge, ProgressBar, StageMenu } from './project-bits';
+import { PomodoroBox } from './pomodoro';
 import { ProjectToggle } from './project-toggle';
 import { TimeSection, TimerButton } from './time-section';
 
@@ -98,6 +99,7 @@ export function ProjectRow({
   const [hoursOpen, setHoursOpen] = useState(false);
   const completed = !!lead.project_completed_at;
   const rate = hourlyRate(value, time.minutes);
+  const pomodoro = !completed && features.time_tracking && features.pomodoro;
 
   return (
     <li className="flex flex-col gap-3 px-4 py-4">
@@ -134,9 +136,14 @@ export function ProjectRow({
         </div>
       </div>
 
-      <div className={cn('grid gap-x-6 gap-y-3', features.payments && 'md:grid-cols-2')}>
+      <div className={cn('grid gap-x-6 gap-y-3', (features.payments || pomodoro) && 'md:grid-cols-2')}>
         <TasksBlock project={project} />
-        {features.payments ? <PaymentsBlock project={project} /> : null}
+        {features.payments || pomodoro ? (
+          <div className="flex min-w-0 flex-col gap-4">
+            {features.payments ? <PaymentsBlock project={project} /> : null}
+            {pomodoro ? <PomodoroBox lead={lead} /> : null}
+          </div>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted">

@@ -89,6 +89,10 @@ import {
   PushSubscriptionDeleteSchema,
   SiteAuditRequestSchema,
   SCREENSHOT_DEVICES,
+  PomodoroActionSchema,
+  PomodoroSchema,
+  PomodoroStartSchema,
+  PomodoroStatsSchema,
   LeadAccessUpsertSchema,
   LeadAccessSchema,
   BrandKitUpdateSchema,
@@ -1475,6 +1479,26 @@ export function getOpenApiDocument() {
       },
       '/time/stop': {
         post: op({ tags: ['Projetos'], summary: 'Pausar o meu temporizador (o tempo fica registado; "start" continua a somar)', responses: { '200': ok(data(TimeEntrySchema.nullable())), ...common } }),
+      },
+      '/pomodoro': {
+        get: op({ tags: ['Projetos'], summary: 'O meu pomodoro em curso (null = nenhum); avança as fases que já acabaram', responses: { '200': ok(data(PomodoroSchema)), ...common } }),
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Começar um pomodoro de trabalho num projeto (e tarefa): conta no registo de horas',
+          requestBody: body(PomodoroStartSchema),
+          responses: { '201': ok(data(PomodoroSchema)), ...withNotFound },
+        }),
+      },
+      '/pomodoro/action': {
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Pausar, continuar, saltar (acabar já a fase) ou parar o pomodoro',
+          requestBody: body(PomodoroActionSchema),
+          responses: { '200': ok(data(PomodoroSchema)), '404': problem('Sem pomodoro a decorrer'), ...common },
+        }),
+      },
+      '/stats/pomodoros': {
+        get: op({ tags: ['Projetos'], summary: 'Os meus pomodoros: hoje, últimos 7 dias, por dia (14 dias) e por projeto', responses: { '200': ok(data(PomodoroStatsSchema)), ...common } }),
       },
       '/time/running': {
         get: op({ tags: ['Projetos'], summary: 'O meu temporizador a contar (com o projeto), ou null', responses: { '200': ok(data(RunningTimerSchema)), ...common } }),

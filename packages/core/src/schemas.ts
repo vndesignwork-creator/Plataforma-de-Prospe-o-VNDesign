@@ -19,6 +19,7 @@ import { ensureUrlProtocol } from './normalize';
 import { AiSettingsSchema, AiSettingsUpdateSchema, SERVER_AI_PROVIDER } from './ai-providers';
 import { ServiceCategoryKeySchema, ServiceKeyListSchema, ServiceKeySchema } from './services';
 import { TodayOpenedEmailSchema } from './mail';
+import { DEFAULT_POMODORO_SETTINGS, PomodoroSettingsSchema } from './pomodoro';
 import { DEFAULT_QUOTE_SETTINGS, QuoteSettingsSchema } from './quote';
 import { TodayMeetingSchema } from './projects';
 import { TodayTasksSchema } from './tasks';
@@ -502,6 +503,7 @@ export const FeaturesSchema = z.object({
   collaborators: z.boolean().default(true).meta({ description: 'Projetos: convidar colaboradores' }),
   brand_kit: z.boolean().default(true).meta({ description: 'Kit da marca do cliente (logótipos, cores, tipos de letra, acessos)' }),
   quote_calculator: z.boolean().default(true).meta({ description: 'Calculadora de orçamento' }),
+  pomodoro: z.boolean().default(true).meta({ description: 'Projetos: Pomodoro (blocos de trabalho com pausas, no registo de horas)' }),
 });
 export type Features = z.infer<typeof FeaturesSchema>;
 export const DEFAULT_FEATURES: Features = {
@@ -526,6 +528,7 @@ export const DEFAULT_FEATURES: Features = {
   collaborators: true,
   brand_kit: true,
   quote_calculator: true,
+  pomodoro: true,
 };
 
 /** Arranque do projeto: plano de pagamentos criado ao passar a Cliente ([] = sem plano). */
@@ -615,6 +618,7 @@ export const WorkspaceSettingsSchema = z
     weekly_backup: WeeklyBackupSchema.default(DEFAULT_WEEKLY_BACKUP),
     /** Calculadora de orçamento: objetivo por hora e os extras. */
     quote: QuoteSettingsSchema.default(DEFAULT_QUOTE_SETTINGS),
+    pomodoro: PomodoroSettingsSchema.default(DEFAULT_POMODORO_SETTINGS),
     /** Fornecedor e modelo de IA de cada função (Definições → Inteligência artificial). */
     ai: AiSettingsSchema.default({
       email: { provider: SERVER_AI_PROVIDER, model: null },
@@ -664,6 +668,7 @@ export const WorkspaceSettingsUpdateSchema = z
       weekday: z.int().min(1).max(7),
     }),
     quote: QuoteSettingsSchema,
+    pomodoro: PomodoroSettingsSchema,
   })
   .partial()
   .meta({ id: 'WorkspaceSettingsUpdate' });

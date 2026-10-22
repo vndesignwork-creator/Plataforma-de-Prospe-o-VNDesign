@@ -3,12 +3,13 @@
 /**
  * Definições → Funcionalidades (continuação): arranque automático do projeto,
  * perguntas do briefing, contratos (NIF e condições gerais), calculadora de
- * orçamento e o calendário para subscrever no telemóvel.
+ * orçamento, tempos do Pomodoro e o calendário para subscrever no telemóvel.
  */
 import { useQueryClient } from '@tanstack/react-query';
 import {
   DEFAULT_BRIEFING_QUESTIONS,
   DEFAULT_CONTRACT_CLAUSES,
+  DEFAULT_POMODORO_SETTINGS,
   DEFAULT_QUOTE_EXTRAS,
   KICKOFF_SPLITS,
   parseEuroAmount,
@@ -401,6 +402,98 @@ export function QuoteSettingsCard({ settings }: { settings: SettingsWithMail }) 
               Guardar calculadora
             </Button>
           </div>
+        </div>
+      </form>
+    </Card>
+  );
+}
+
+const POMODORO_FIELDS = [
+  { key: 'work_minutes', label: 'Trabalho (min)' },
+  { key: 'short_break_minutes', label: 'Pausa (min)' },
+  { key: 'long_break_minutes', label: 'Pausa longa (min)' },
+  { key: 'long_every', label: 'Pausa longa a cada' },
+] as const;
+type PomodoroNumbers = Record<(typeof POMODORO_FIELDS)[number]['key'], string>;
+
+export function PomodoroSettingsCard({ settings }: { settings: SettingsWithMail }) {
+  const patch = usePatchSettings();
+  const current = settings.pomodoro;
+  const [form, setForm] = useState<PomodoroNumbers | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const values: PomodoroNumbers = form ?? {
+    work_minutes: String(current.work_minutes),
+    short_break_minutes: String(current.short_break_minutes),
+    long_break_minutes: String(current.long_break_minutes),
+    long_every: String(current.long_every),
+  };
+
+  async function save(next: Partial<typeof current>, message: string) {
+    setSaving(true);
+    setError(null);
+    try {
+      await patch({ pomodoro: { ...current, ...next } });
+      setForm(null);
+      toast.success(message);
+    } catch (err) {
+      const msg = firstError(err);
+      if (msg) setError(msg);
+      else toast.error(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const numbers = Object.fromEntries(POMODORO_FIELDS.map(({ key }) => [key, Math.round(Number(values[key].replace(',', '.')))]));
+    void save(numbers, 'Tempos do Pomodoro guardados (valem a partir do próximo pomodoro).');
+  }
+
+  return (
+    <Card>
+      <CardHeader title="Pomodoro" description="Os tempos de cada fase. O trabalho fica no registo de horas do projeto; as pausas não." />
+      <form onSubmit={submit} className="flex flex-col gap-3 p-4" noValidate>
+        <div className="flex flex-wrap gap-3">
+          {POMODORO_FIELDS.map(({ key, label }) => (
+            <Field key={key} label={label} className="w-36">
+              <Input inputMode="numeric" value={values[key]} onChange={(e) => setForm({ ...values, [key]: e.target.value })} />
+            </Field>
+          ))}
+        </div>
+        <label className="inline-flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="h-4 w-4"
+            checked={current.sound}
+            onChange={(e) => void save({ sound: e.target.checked }, e.target.checked ? 'Som ligado.' : 'Som desligado.')}
+          />
+          Tocar um som no fim de cada fase
+        </label>
+        {error ? (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        ) : null}
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() =>
+              setForm({
+                work_minutes: String(DEFAULT_POMODORO_SETTINGS.work_minutes),
+                short_break_minutes: String(DEFAULT_POMODORO_SETTINGS.short_break_minutes),
+                long_break_minutes: String(DEFAULT_POMODORO_SETTINGS.long_break_minutes),
+                long_every: String(DEFAULT_POMODORO_SETTINGS.long_every),
+              })
+            }
+          >
+            Repor 25 / 5 / 15
+          </Button>
+          <Button type="submit" loading={saving} disabled={form === null}>
+            Guardar tempos
+          </Button>
         </div>
       </form>
     </Card>

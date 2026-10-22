@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 import { FollowUpNotifier } from '@/components/follow-up/follow-up-notifier';
+import { PomodoroWatcher } from '@/components/projects/pomodoro';
 import { RunningTimer } from '@/components/projects/running-timer';
 import { ReminderWatcher } from '@/components/tasks/reminder-watcher';
 import { NavigationTracker } from './back-link';
@@ -104,6 +105,7 @@ export function AppShell({ email, children }: { email: string | null; children: 
           <NavLinks />
         </nav>
         <RunningTimer />
+        <PomodoroWatcher />
         <SidebarFooter email={email} />
       </aside>
 

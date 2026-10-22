@@ -79,6 +79,9 @@ import type {
   LeadGenerationScheduleUpdate,
   LeadGenerationScheduleUpsertInput,
   MailAccount,
+  Pomodoro,
+  PomodoroAction,
+  PomodoroStats,
 } from '@vndesign/core';
 import { api } from './api-client';
 
@@ -798,6 +801,7 @@ export function useTimer() {
         : api<{ data: TimeEntry | null }>('/time/stop', { method: 'POST' }).then((r) => r.data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['time'] });
+      void qc.invalidateQueries({ queryKey: ['pomodoro'] });
       void qc.invalidateQueries({ queryKey: ['projects'] });
     },
   });
@@ -1118,5 +1122,42 @@ export function useCancelMeeting(leadId: string) {
       void qc.invalidateQueries({ queryKey: ['activities', leadId] });
       void qc.invalidateQueries({ queryKey: ['today'] });
     },
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Pomodoro
+// -----------------------------------------------------------------------------
+export function usePomodoro(enabled = true) {
+  return useQuery({
+    queryKey: ['pomodoro'],
+    queryFn: () => api<{ data: Pomodoro }>('/pomodoro').then((r) => r.data),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+/** Começar (leadId + tarefa) ou pausar/continuar/saltar/parar o pomodoro. */
+export function usePomodoroAction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { start: { lead_id: string; task_id?: string | null } } | { action: PomodoroAction }) =>
+      'start' in input
+        ? api<{ data: Pomodoro }>('/pomodoro', { method: 'POST', body: input.start }).then((r) => r.data)
+        : api<{ data: Pomodoro }>('/pomodoro/action', { method: 'POST', body: { action: input.action } }).then((r) => r.data),
+    onSuccess: (pomodoro) => {
+      qc.setQueryData(['pomodoro'], pomodoro);
+      void qc.invalidateQueries({ queryKey: ['time'] });
+      void qc.invalidateQueries({ queryKey: ['projects'] });
+      void qc.invalidateQueries({ queryKey: ['pomodoro-stats'] });
+    },
+  });
+}
+
+export function usePomodoroStats(enabled = true) {
+  return useQuery({
+    queryKey: ['pomodoro-stats'],
+    queryFn: () => api<{ data: PomodoroStats }>('/stats/pomodoros').then((r) => r.data),
+    enabled,
   });
 }
