@@ -25,6 +25,8 @@ export const PomodoroSettingsSchema = z.object({
   long_every: z.int().min(2, { error: 'Mínimo 2.' }).max(12, { error: 'Máximo 12.' }).default(4),
   /** Som no fim de cada fase (com a app aberta). */
   sound: z.boolean().default(true),
+  /** A pausa começa sozinha quando o trabalho acaba (false = fica à espera de "Começar pausa"). */
+  auto_start_break: z.boolean().default(true),
 });
 export type PomodoroSettings = z.output<typeof PomodoroSettingsSchema>;
 export const DEFAULT_POMODORO_SETTINGS: PomodoroSettings = {
@@ -33,6 +35,7 @@ export const DEFAULT_POMODORO_SETTINGS: PomodoroSettings = {
   long_break_minutes: 15,
   long_every: 4,
   sound: true,
+  auto_start_break: true,
 };
 
 export const PomodoroSchema = z
@@ -120,8 +123,9 @@ export function formatCountdown(seconds: number): string {
 
 /** Texto da notificação no fim de uma fase (a fase nova). */
 export function pomodoroNotice(phase: PomodoroPhase, settings: PomodoroSettings, company: string): { title: string; body: string } {
-  if (phase === 'short_break') return { title: 'Pomodoro terminado', body: `${company}: pausa de ${settings.short_break_minutes} minutos.` };
-  if (phase === 'long_break') return { title: 'Pomodoro terminado', body: `${company}: pausa longa de ${settings.long_break_minutes} minutos.` };
+  const later = settings.auto_start_break ? '' : ' quando quiseres (Começar pausa)';
+  if (phase === 'short_break') return { title: 'Pomodoro terminado', body: `${company}: pausa de ${settings.short_break_minutes} minutos${later}.` };
+  if (phase === 'long_break') return { title: 'Pomodoro terminado', body: `${company}: pausa longa de ${settings.long_break_minutes} minutos${later}.` };
   if (phase === 'ready') return { title: 'Pausa terminada', body: `Volta ao trabalho: ${company}.` };
   return { title: 'Pomodoro', body: `A trabalhar: ${company}.` };
 }

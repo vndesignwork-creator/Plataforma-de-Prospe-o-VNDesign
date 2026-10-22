@@ -15,7 +15,7 @@ import {
   parseEuroAmount,
   type QuoteExtra,
 } from '@vndesign/core';
-import { CalendarDays, Copy, Link2Off, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { CalendarDays, Copy, Link2Off, Plus, RefreshCw, Trash2, Volume2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -24,6 +24,7 @@ import { Card, CardHeader } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
 import { Input, Select, Textarea } from '@/components/ui/input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
+import { playChime, unlockSound } from '@/lib/pomodoro-sound';
 import { useCalendarFeed, useSetCalendarFeed, type SettingsWithMail } from '@/lib/queries';
 
 const SPLIT_LABELS = ['50% de sinal + 50% na entrega', '30% + 40% + 30%', 'Pagamento único', 'Sem plano de pagamentos'];
@@ -462,14 +463,34 @@ export function PomodoroSettingsCard({ settings }: { settings: SettingsWithMail 
             </Field>
           ))}
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="inline-flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="h-4 w-4"
+              checked={current.sound}
+              onChange={(e) => void save({ sound: e.target.checked }, e.target.checked ? 'Som ligado.' : 'Som desligado.')}
+            />
+            Tocar um som no fim de cada fase
+          </label>
+          <Button type="button" size="sm" variant="ghost" onClick={() => (unlockSound(), playChime('break'))}>
+            <Volume2 className="h-3.5 w-3.5" aria-hidden /> Testar som
+          </Button>
+        </div>
         <label className="inline-flex items-center gap-2 text-sm">
           <input
             type="checkbox"
             className="h-4 w-4"
-            checked={current.sound}
-            onChange={(e) => void save({ sound: e.target.checked }, e.target.checked ? 'Som ligado.' : 'Som desligado.')}
+            checked={current.auto_start_break}
+            onChange={(e) =>
+              void save(
+                { auto_start_break: e.target.checked },
+                e.target.checked ? 'A pausa começa sozinha no fim de cada pomodoro.' : 'A pausa fica à espera: carrega em "Começar pausa" quando quiseres.',
+              )
+            }
           />
-          Tocar um som no fim de cada fase
+          Começar a pausa automaticamente
+          <span className="text-muted">(desligado: fica à espera de “Começar pausa”)</span>
         </label>
         {error ? (
           <p className="text-sm text-danger" role="alert">

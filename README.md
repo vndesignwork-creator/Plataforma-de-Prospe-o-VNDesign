@@ -433,8 +433,9 @@ Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**
 - Ritmo: 25 min de trabalho, 5 de pausa e, a cada 4 pomodoros, uma pausa de 15. Botões: **Pausar** / **Continuar**, **Reiniciar** (a fase volta ao início; o trabalho já feito fica registado), **Pausa de 5 min** (descanso já, mesmo a meio do trabalho), **Saltar pausa**, **Começar o próximo** e **Parar**.
 - O trabalho conta no **registo de horas** do projeto (com a nota "Pomodoro · tarefa") e no €/hora; as pausas não. Pausar o temporizador ▶ pausa o pomodoro; começar o ▶ à parte termina o pomodoro.
 - Enquanto decorre, aparece no menu (a fase e o tempo que falta, também no telemóvel).
-- No fim de cada fase, com a app aberta: som, vibração, notificação e mensagem. Com a app fechada, o pomodoro continua no servidor e o cron dos lembretes (de 5 em 5 minutos) avança a fase, fecha as horas e envia a notificação push.
-- Os tempos e o som mudam-se em Definições → Funcionalidades → *Pomodoro*. Em **Estatísticas → Pomodoro**: hoje, últimos 7 dias, por dia e por projeto.
+- No fim de cada fase, com a app aberta: **som de aviso** (um toque de sino, a descer no fim do trabalho e a subir no fim da pausa), vibração, notificação e mensagem. O browser só deixa tocar som depois de um clique na app (basta um clique qualquer). Em Definições há **Testar som**. Com a app fechada, o pomodoro continua no servidor e o cron dos lembretes (de 5 em 5 minutos) avança a fase, fecha as horas e envia a notificação push.
+- **Começar a pausa automaticamente** (ligado por omissão): desligado, quando o trabalho acaba a pausa fica à espera ("Pausa por começar") até carregares em **Começar pausa** (ou **Saltar pausa**).
+- Os tempos, o som e a pausa automática mudam-se em Definições → Funcionalidades → *Pomodoro*. Em **Estatísticas → Pomodoro**: hoje, últimos 7 dias, por dia e por projeto.
 
 **Vários projetos por cliente**
 - Quando um cliente volta (ex.: site em 2025, loja online em 2026), na ficha dele, cartão **Projetos deste cliente → Novo projeto**: nome do projeto, serviços e valor.

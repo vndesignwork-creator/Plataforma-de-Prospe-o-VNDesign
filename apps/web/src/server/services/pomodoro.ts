@@ -88,8 +88,9 @@ async function advance(db: Db, row: TimerRow, settings: PomodoroSettings, now: n
   let endsAt = row.ends_at;
   let startedAt = row.phase_started_at;
   let entryId = row.entry_id;
+  let pausedLeft = row.paused_left;
   let changed = false;
-  while (endsAt && row.paused_left === null && Date.parse(endsAt) <= now) {
+  while (endsAt && pausedLeft === null && Date.parse(endsAt) <= now) {
     if (phase === 'work' && entryId) {
       const { data: entry } = await db.from('project_time_entries').select('started_at').eq('id', entryId).is('ended_at', null).maybeSingle();
       if (entry) {
@@ -107,13 +108,19 @@ async function advance(db: Db, row: TimerRow, settings: PomodoroSettings, now: n
     const next = nextPomodoroPhase(phase, completed, settings);
     const minutes = phaseMinutes(next.phase, settings);
     startedAt = endsAt;
-    endsAt = minutes ? at(Date.parse(endsAt) + minutes * 60_000) : null;
+    if (phase === 'work' && !settings.auto_start_break) {
+      // A pausa fica à espera de "Começar pausa".
+      endsAt = null;
+      pausedLeft = minutes * 60;
+    } else {
+      endsAt = minutes ? at(Date.parse(endsAt) + minutes * 60_000) : null;
+    }
     phase = next.phase;
     completed = next.completed;
     changed = true;
   }
   if (!changed) return { row, changed };
-  const patch: RowPatch = { phase, completed, ends_at: endsAt, phase_started_at: startedAt, entry_id: entryId, notified_at: notified ? at(now) : null };
+  const patch: RowPatch = { phase, completed, ends_at: endsAt, paused_left: pausedLeft, phase_started_at: startedAt, entry_id: entryId, notified_at: notified ? at(now) : null };
   const updatedAt = await saveRow(db, row, patch);
   if (!updatedAt) {
     // Outro pedido avançou primeiro: fica o estado dele.

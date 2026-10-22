@@ -39,6 +39,7 @@ describe('pomodoro', () => {
   it('avisos e definições', () => {
     expect(pomodoroNotice('short_break', s, 'Padaria Sol')).toEqual({ title: 'Pomodoro terminado', body: 'Padaria Sol: pausa de 5 minutos.' });
     expect(pomodoroNotice('ready', s, 'Padaria Sol').title).toBe('Pausa terminada');
+    expect(pomodoroNotice('short_break', { ...s, auto_start_break: false }, 'Padaria Sol').body).toBe('Padaria Sol: pausa de 5 minutos quando quiseres (Começar pausa).');
     expect(PomodoroSettingsSchema.safeParse({ work_minutes: 0 }).success).toBe(false);
     expect(PomodoroSettingsSchema.safeParse({ long_every: 1 }).success).toBe(false);
     const settings = WorkspaceSettingsSchema.parse({});

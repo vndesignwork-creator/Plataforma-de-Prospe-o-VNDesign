@@ -73,11 +73,26 @@ test('pomodoro na ficha: tarefa, pausar, continuar, fim do trabalho com aviso, p
   await box.getByRole('button', { name: 'Continuar' }).click();
   await expect(box).toContainText('A trabalhar');
 
-  // O tempo de trabalho acaba daqui a 12 s (com a página já aberta): a app avisa e passa à pausa.
+  // O tempo de trabalho acaba daqui a 12 s (com a página já aberta): a app avisa (som incluído) e passa à pausa.
+  await page.request.patch('/api/v1/settings', {
+    data: { pomodoro: { work_minutes: 25, short_break_minutes: 5, long_break_minutes: 15, long_every: 4, sound: true, auto_start_break: true } },
+  });
+  await page.addInitScript(() => {
+    // Conta as notas tocadas (o som é gerado com Web Audio).
+    const w = window as unknown as { __notes: number };
+    w.__notes = 0;
+    const original = AudioContext.prototype.createOscillator;
+    AudioContext.prototype.createOscillator = function (this: AudioContext) {
+      w.__notes++;
+      return original.call(this);
+    };
+  });
   await setEndsAt(page.request, new Date(Date.now() + 12_000));
   await page.reload();
+  await page.locator('body').click({ position: { x: 5, y: 5 } }); // o som só toca depois de um clique
   await expect(box.getByRole('timer')).toHaveText(/^00:(0\d|1[0-2])$/);
   await expect(page.getByText('Pomodoro terminado', { exact: true })).toBeVisible({ timeout: 25_000 });
+  expect(await page.evaluate(() => (window as unknown as { __notes: number }).__notes)).toBeGreaterThanOrEqual(6);
   await expect(box).toContainText('Pausa');
   await expect(box).toContainText(`Hoje: ${before + 1}`);
 
@@ -164,4 +179,33 @@ test('definições e estatísticas do pomodoro', async ({ page }) => {
   await page.goto('/estatisticas');
   await expect(page.getByRole('heading', { name: 'Pomodoro', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Pomodoros por dia' })).toBeVisible();
+});
+
+test('pausa à espera: com "Começar a pausa automaticamente" desligado, a pausa só conta depois de Começar pausa', async ({ page }) => {
+  test.setTimeout(90_000);
+  const saved = await page.request.patch('/api/v1/settings', {
+    data: { pomodoro: { work_minutes: 25, short_break_minutes: 5, long_break_minutes: 15, long_every: 4, sound: false, auto_start_break: false } },
+  });
+  expect(saved.status(), await saved.text()).toBe(200);
+  const lead = await createProject(page.request, `Pomodoro espera ${run}`);
+  await page.goto(`/leads/${lead.id}`);
+  const box = page.locator('#projeto').getByRole('region', { name: 'Pomodoro' });
+  await box.getByRole('button', { name: 'Começar 25 min' }).click();
+  await expect(box).toContainText('A trabalhar');
+
+  // O trabalho acaba: a pausa fica à espera, parada nos 05:00.
+  await setEndsAt(page.request, new Date(Date.now() + 10_000));
+  await page.reload();
+  await expect(page.getByText('Pomodoro terminado', { exact: true })).toBeVisible({ timeout: 25_000 });
+  await expect(box).toContainText('Pausa por começar');
+  await expect(box.getByRole('timer')).toHaveText('05:00');
+  await page.waitForTimeout(1500);
+  await expect(box.getByRole('timer')).toHaveText('05:00');
+  const waiting = (await (await page.request.get('/api/v1/pomodoro')).json()).data as { phase: string; paused_left: number | null; ends_at: string | null };
+  expect(waiting).toMatchObject({ phase: 'short_break', paused_left: 300, ends_at: null });
+
+  await box.getByRole('button', { name: 'Começar pausa' }).click();
+  await expect(box).toContainText('Pausa');
+  await expect(box.getByRole('timer')).toHaveText(/^04:5\d$/);
+  await box.getByRole('button', { name: 'Parar' }).click();
 });

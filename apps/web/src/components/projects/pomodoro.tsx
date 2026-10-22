@@ -26,6 +26,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api-client';
+import { playChime, unlockSound } from '@/lib/pomodoro-sound';
 import { useLeadTasks, usePomodoro, usePomodoroAction, useSettings } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
@@ -70,6 +71,7 @@ function useRun() {
   return {
     pending: action.isPending,
     async run(input: Parameters<typeof action.mutateAsync>[0], success?: string) {
+      unlockSound();
       try {
         await action.mutateAsync(input);
         if (success) toast.success(success);
@@ -152,7 +154,9 @@ export function PomodoroBox({ lead, className }: { lead: Lead; className?: strin
   const working = here?.phase === 'work';
   const total = here && here.phase !== 'ready' ? phaseMinutes(here.phase, settings) * 60 : settings.work_minutes * 60;
   const left = here && here.phase !== 'ready' ? Math.min(remaining, total) : total;
-  const label = !here ? 'Pronto' : paused ? 'Em pausa' : POMODORO_PHASE_LABELS[here.phase];
+  // Pausa por começar (com "Começar a pausa automaticamente" desligado).
+  const breakWaiting = onBreak && paused && here.paused_left! >= total;
+  const label = !here ? 'Pronto' : breakWaiting ? 'Pausa por começar' : paused ? 'Em pausa' : POMODORO_PHASE_LABELS[here.phase];
   const breakButton = (
     <Button size="sm" variant="outline" onClick={() => start('short_break')} disabled={pending}>
       <Coffee className="h-3.5 w-3.5" aria-hidden /> Pausa de {settings.short_break_minutes} min
@@ -194,6 +198,15 @@ export function PomodoroBox({ lead, className }: { lead: Lead; className?: strin
                 <Play className="h-3.5 w-3.5" aria-hidden /> Começar o próximo
               </Button>
               {breakButton}
+            </>
+          ) : breakWaiting ? (
+            <>
+              <Button size="sm" onClick={() => act('resume')} loading={pending}>
+                <Coffee className="h-3.5 w-3.5" aria-hidden /> Começar pausa
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => act('skip')} disabled={pending}>
+                <SkipForward className="h-3.5 w-3.5" aria-hidden /> Saltar pausa
+              </Button>
             </>
           ) : paused ? (
             <>
@@ -313,36 +326,15 @@ export function PomodoroIndicator({ pomodoro, compact, className }: { pomodoro: 
   );
 }
 
-/** Três toques curtos (sem ficheiros de som). */
-function beep() {
-  try {
-    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    [0, 0.35, 0.7].forEach((t) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.frequency.value = 880;
-      gain.gain.setValueAtTime(0.0001, ctx.currentTime + t);
-      gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + t + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.25);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(ctx.currentTime + t);
-      osc.stop(ctx.currentTime + t + 0.3);
-    });
-    setTimeout(() => void ctx.close().catch(() => undefined), 1500);
-  } catch {
-    // Sem som: fica o aviso no ecrã.
-  }
-}
-
 async function systemNotification(title: string, body: string) {
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
   try {
     // No telemóvel (Android) só funciona pelo service worker.
     const reg = await navigator.serviceWorker?.getRegistration();
-    if (reg) await reg.showNotification(title, { body, tag: 'pomodoro', icon: '/icons/icon-192.png' });
-    else new Notification(title, { body, tag: 'pomodoro' });
+    // Com som do sistema e a ficar à vista até ser vista (o telemóvel avisa mesmo com o ecrã noutra app).
+    const options: NotificationOptions = { body, tag: 'pomodoro', silent: false, requireInteraction: true };
+    if (reg) await reg.showNotification(title, { ...options, icon: '/icons/icon-192.png' });
+    else new Notification(title, options);
   } catch {
     // Sem notificação: fica o aviso no ecrã.
   }
@@ -361,20 +353,33 @@ export function PomodoroWatcher() {
   const due = !!pomodoro?.ends_at && pomodoro.paused_left === null && remaining <= 0;
   const key = pomodoro ? `${pomodoro.phase}:${pomodoro.phase_started_at}` : null;
 
+  // O som só pode tocar depois de um clique: autoriza-o no primeiro clique/tecla na app.
+  useEffect(() => {
+    if (!settings?.sound) return;
+    const unlock = () => unlockSound();
+    window.addEventListener('pointerdown', unlock, { once: true });
+    window.addEventListener('keydown', unlock, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+  }, [settings?.sound]);
+
   useEffect(() => {
     if (!due || !key || waiting.current === key) return;
     waiting.current = key;
+    // O som toca logo, no segundo em que o tempo acaba (o resto vem com a resposta do servidor).
+    if (settings?.sound) playChime(pomodoro?.phase === 'work' ? 'break' : 'work');
     void qc.invalidateQueries({ queryKey: ['pomodoro'] });
     void qc.invalidateQueries({ queryKey: ['time'] });
     void qc.invalidateQueries({ queryKey: ['projects'] });
-  }, [due, key, qc]);
+  }, [due, key, qc, settings?.sound, pomodoro?.phase]);
 
   useEffect(() => {
     // A fase mudou depois de acabar o tempo: avisa.
     if (!waiting.current || !pomodoro || !settings || key === waiting.current) return;
     waiting.current = null;
     const notice = pomodoroNotice(pomodoro.phase, settings, pomodoro.lead.company_name);
-    if (settings.sound) beep();
     navigator.vibrate?.([200, 100, 200]);
     void systemNotification(notice.title, notice.body);
     toast(notice.title, { description: notice.body, duration: 10_000 });
