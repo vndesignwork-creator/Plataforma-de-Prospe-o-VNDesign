@@ -53,12 +53,18 @@ import type {
   LeadPayment,
   Project,
   ProjectInfo,
+  ProjectStartResult,
   ProjectRevision,
   ProjectTime,
   ProjectDeliverable,
   RunningTimer,
   TimeEntry,
   CalendarEvent,
+  Profitability,
+  LeadContract,
+  CalendarFeed,
+  ProjectExpense,
+  ProjectBriefing,
   LeadGenerationScheduleUpdate,
   LeadGenerationScheduleUpsertInput,
   MailAccount,
@@ -173,6 +179,11 @@ export function useInvalidateLead() {
       void qc.invalidateQueries({ queryKey: qk.lead(id) });
       void qc.invalidateQueries({ queryKey: qk.activities(id) });
       void qc.invalidateQueries({ queryKey: ['proposals', id] });
+      // Passar a Cliente prepara o projeto (tarefas, prazo, pagamentos).
+      void qc.invalidateQueries({ queryKey: ['tasks', id] });
+      void qc.invalidateQueries({ queryKey: ['payments', id] });
+      void qc.invalidateQueries({ queryKey: ['project', id] });
+      void qc.invalidateQueries({ queryKey: ['projects'] });
       void qc.invalidateQueries({ queryKey: ['tasks', id] });
     }
   };
@@ -651,6 +662,19 @@ export function useUpdateProjectInfo(leadId: string) {
   });
 }
 
+/** "Preparar o projeto": completa o que faltar (prazo, revisões, tarefas, plano de pagamentos). */
+export function useStartProject(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<{ data: ProjectStartResult }>(`/leads/${leadId}/project/start`, { method: 'POST' }).then((r) => r.data),
+    onSuccess: () => {
+      for (const key of [['project', leadId], ['tasks', leadId], ['payments', leadId], ['projects'], ['activities', leadId], ['billing'], ['project-calendar']]) {
+        void qc.invalidateQueries({ queryKey: key });
+      }
+    },
+  });
+}
+
 export function useProjectShare(leadId: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -795,6 +819,98 @@ export function useDeleteDeliverable(leadId: string) {
       void qc.invalidateQueries({ queryKey: ['deliverables', leadId] });
       invalidate(leadId);
     },
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Contratos e calendário subscrito
+// -----------------------------------------------------------------------------
+
+export function useContracts(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['contracts', leadId],
+    queryFn: () => api<{ data: LeadContract[] }>(`/leads/${leadId}/contracts`).then((r) => r.data),
+    enabled,
+  });
+}
+
+/** Criar (sem id), editar (id + body), marcar como enviado (sent) ou apagar (remove). */
+export function useContractAction(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { create?: { proposal_id?: string | null }; id?: string; body?: Record<string, unknown>; sent?: boolean; remove?: boolean }) => {
+      if (input.create) return api<{ data: LeadContract }>(`/leads/${leadId}/contracts`, { method: 'POST', body: input.create }).then((r) => r.data);
+      if (input.remove) return api(`/contracts/${input.id}`, { method: 'DELETE' }).then(() => null);
+      if (input.sent) return api<{ data: LeadContract }>(`/contracts/${input.id}/sent`, { method: 'POST' }).then((r) => r.data);
+      return api<{ data: LeadContract }>(`/contracts/${input.id}`, { method: 'PATCH', body: input.body }).then((r) => r.data);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['contracts', leadId] });
+      void qc.invalidateQueries({ queryKey: ['activities', leadId] });
+    },
+  });
+}
+
+export function useExpenses(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['expenses', leadId],
+    queryFn: () => api<{ data: ProjectExpense[] }>(`/leads/${leadId}/expenses`).then((r) => r.data),
+    enabled,
+  });
+}
+
+/** Acrescentar (body) ou apagar (id) uma despesa. */
+export function useExpenseAction(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { body?: { description: string; amount: number; spent_on?: string }; id?: string }) =>
+      input.id ? api(`/expenses/${input.id}`, { method: 'DELETE' }) : api(`/leads/${leadId}/expenses`, { method: 'POST', body: input.body }),
+    onSuccess: () => {
+      for (const key of [['expenses', leadId], ['time', leadId], ['projects'], ['profitability']]) void qc.invalidateQueries({ queryKey: key });
+    },
+  });
+}
+
+export function useBriefing(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['briefing', leadId],
+    queryFn: () => api<{ data: ProjectBriefing | null }>(`/leads/${leadId}/briefing`).then((r) => r.data),
+    enabled,
+  });
+}
+
+/** Pedir (ou voltar a pedir) o briefing, ou apagá-lo (remove). */
+export function useBriefingAction(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { remove?: boolean } = {}) =>
+      input.remove
+        ? api(`/leads/${leadId}/briefing`, { method: 'DELETE' }).then(() => null)
+        : api<{ data: ProjectBriefing }>(`/leads/${leadId}/briefing`, { method: 'POST' }).then((r) => r.data),
+    onSuccess: (briefing) => qc.setQueryData(['briefing', leadId], briefing),
+  });
+}
+
+export function useCalendarFeed() {
+  return useQuery({
+    queryKey: ['calendar-feed'],
+    queryFn: () => api<{ data: CalendarFeed }>('/calendar-feed').then((r) => r.data),
+  });
+}
+
+export function useSetCalendarFeed() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { enabled: boolean; regenerate?: boolean }) => api<{ data: CalendarFeed }>('/calendar-feed', { method: 'POST', body }).then((r) => r.data),
+    onSuccess: (feed) => qc.setQueryData(['calendar-feed'], feed),
+  });
+}
+
+export function useProfitability(enabled = true) {
+  return useQuery({
+    queryKey: ['profitability'],
+    queryFn: () => api<{ data: Profitability }>('/stats/profitability').then((r) => r.data),
+    enabled,
   });
 }
 

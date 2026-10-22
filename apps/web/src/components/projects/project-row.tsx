@@ -6,7 +6,7 @@
  * feita, acrescentar tarefa, temporizador, WhatsApp, reunião, concluir).
  */
 import { formatCurrency, formatDate, formatDuration, hourlyRate, leadPath, type Features, type Lead, type Project } from '@vndesign/core';
-import { ArrowRight, CalendarClock, CalendarPlus, ChevronDown, Clock, FolderOpen, RefreshCcw, Wallet } from 'lucide-react';
+import { ArrowRight, CalendarClock, CalendarPlus, ChevronDown, Clock, FolderOpen, Receipt, RefreshCcw, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { MeetingDialog, meetingLabel } from '@/components/meetings/meetings-card';
@@ -155,6 +155,17 @@ export function ProjectRow({
             <Clock className="h-3.5 w-3.5" aria-hidden /> {formatDuration(time.logged_seconds)} registadas
             {rate ? ` · ${euros(rate)}/hora` : ''} · ver registos
           </button>
+        ) : null}
+        {features.expenses && project.expenses > 0 ? (
+          <span className="inline-flex items-center gap-1.5">
+            <Receipt className="h-3.5 w-3.5" aria-hidden /> Despesas {euros(project.expenses)}
+            {value ? (
+              <>
+                {' · lucro '}
+                <span className={value - project.expenses < 0 ? 'font-medium text-danger' : 'font-medium text-success'}>{euros(value - project.expenses)}</span>
+              </>
+            ) : null}
+          </span>
         ) : null}
         {features.deliverables && deliverables.total > 0 ? (
           <span className="inline-flex items-center gap-1.5">

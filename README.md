@@ -333,7 +333,7 @@ Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**
 **Pagamentos**
 - Na ficha (leads com proposta enviada ou clientes), cartão **Pagamentos**: **Criar plano** (50% sinal + 50% na entrega, 30/40/30 ou pagamento único) a partir do valor da proposta ou do valor estimado; ou **Acrescentar um pagamento à mão**.
 - Marca a caixa quando receberes um pagamento: fica "Pagamento recebido" na linha do tempo.
-- Dashboard → **Faturação**: recebido este mês, por receber, em atraso e projetos em curso.
+- Dashboard → **Projetos**: projetos em curso, entregas próximas e o que está por receber ou em atraso.
 
 **Projetos**
 - Menu **Projetos**, com três vistas (a última escolhida fica lembrada neste browser):
@@ -347,7 +347,43 @@ Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**
 - **Página para o cliente**: **Criar link** gera uma página só de leitura (sem login, endereço `/p/<código>`) com a fase, o progresso das tarefas, a entrega prevista, a próxima reunião, as entregas enviadas, os pagamentos (total, pago, em falta) e as revisões. Não mostra notas, horas nem valores internos. **Enviar por WhatsApp**, **Novo link** (o antigo deixa de abrir) ou **Desligar**.
 - **Concluir projeto** abre os passos finais: criar a tarefa *Juntar o projeto ao portefólio* (daqui a 7 dias), lembrar de *propor um novo serviço* daqui a 3, 6 ou 12 meses (tarefas que aparecem em "Hoje" no dia) e, no fim, **pedir uma avaliação no Google** por WhatsApp ou email (modelos *pedido de avaliação* em Scripts, com `{{avaliacao}}`). O link de avaliação guarda-se em Definições → Funcionalidades → *Avaliações no Google*. **Reabrir projeto** volta a pô-lo em curso.
 - **Resumo diário por email**: inclui as entregas de projeto atrasadas e dos próximos 7 dias e os pagamentos em atraso.
-- Revisões, horas, entregas e página do cliente desligam-se uma a uma em Definições → Funcionalidades.
+- Arranque automático, briefing, revisões, horas, despesas, entregas, página do cliente e aprovação pelo cliente desligam-se uma a uma em Definições → Funcionalidades.
+
+**Arranque automático do projeto**
+- Em **Definições → Serviços**, cada serviço tem o **Prazo de entrega (dias)** e as **Revisões incluídas** (já vêm preenchidos: landing page 14 dias, site 30, loja online 45, identidade visual 21…).
+- Quando um lead passa a **Cliente**, o projeto prepara-se sozinho: prazo de entrega (hoje + o maior prazo dos serviços), revisões incluídas, tarefas das listas de cada serviço (se ainda não tiver tarefas) e plano de pagamentos sobre a proposta aceite ou o valor estimado (se ainda não tiver pagamentos). Fica "Projeto preparado" na linha do tempo.
+- O plano de pagamentos escolhe-se em Definições → Funcionalidades → *Arranque automático do projeto* (50/50, 30/40/30, pagamento único ou nenhum).
+- Para clientes antigos, o botão **⚡ Preparar** no cartão Projeto faz o mesmo (não mexe no que já existe).
+
+**Briefing online**
+- No cartão Projeto, **Pedir briefing** cria um link `/b/<código>` (sem login) para enviar por WhatsApp, email ou copiar.
+- O cliente responde às perguntas e pode enviar até **10 ficheiros de 15 MB** (logótipo, fotografias, textos…). Pode voltar ao link e completar.
+- Quando responde: recebes uma notificação, fica "Briefing recebido" na linha do tempo e a fase passa de *Briefing* a *Em produção*. **Ver respostas** mostra as respostas e os ficheiros; **Pedir de novo** reabre o formulário.
+- As perguntas editam-se em Definições → Funcionalidades → *Briefing online*. Os ficheiros ficam no Supabase Storage (privados).
+
+**Despesas e lucro**
+- No cartão Projeto, secção **Despesas e lucro**: regista custos do projeto (tema, plugin, fotografias, subcontratação…) com valor e data.
+- Mostra o valor do projeto, o **lucro** (valor − despesas) e o **ganho líquido por hora**. Na lista de projetos aparece "Despesas X € · lucro Y €".
+
+**Aprovação pelo cliente**
+- Na página do cliente (`/p/<código>`), cada entrega *Enviada* tem **Aprovar** e **Pedir alterações**.
+- Aprovar marca a entrega como *Aprovada pelo cliente*. Pedir alterações (com comentário obrigatório) volta a pô-la *Por enviar* e regista uma ronda de revisão — marcada "A cobrar" se já passou das incluídas. Recebes uma notificação e fica na linha do tempo ("via cliente").
+
+**Contratos**
+- Na ficha, cartão **Contratos → Gerar contrato**: a partir da proposta aceite (ou de outra escolhida), com as partes, o objeto (serviços), o prazo, as revisões incluídas, o valor e o plano de pagamentos e as condições gerais.
+- **Editar** permite mudar o título, as partes e o texto de cada cláusula antes de enviar. **PDF** descarrega-o.
+- **Copiar link**, **Enviar por email** ou **WhatsApp** enviam o link `/c/<código>`: o cliente lê o contrato, descarrega o PDF e aceita com o nome completo e a caixa "Li o contrato e aceito as condições". Ficam guardados o nome, a data, a hora e o IP; recebes uma notificação e fica "Contrato aceite" na linha do tempo. Depois de aceite, o contrato já não pode ser alterado.
+- O contrato também aparece na página do cliente do projeto.
+- Em Definições → Funcionalidades → *Contratos* indicas o teu NIF e as condições gerais (uma por linha) usadas nos contratos novos.
+
+**Rentabilidade (Estatísticas)**
+- Em **Estatísticas → Rentabilidade**: ganho médio por hora (e depois das despesas), horas registadas, duração média e horas por projeto concluído, ganho por hora por serviço e por cliente, e gráficos das horas e do recebido nos últimos 12 meses.
+
+**Calendário no telemóvel (subscrição)**
+- Em Definições → Funcionalidades → *Calendário no telemóvel*, **Criar link** gera um endereço privado com as reuniões, as entregas dos projetos, os pagamentos previstos e as tarefas (do último mês até 6 meses à frente). Atualiza-se sozinho.
+- **iPhone / Mac:** carrega em **Abrir no iPhone / Mac** e confirma "Subscrever".
+- **Google Calendar:** no computador, calendar.google.com → ⚙ → *Adicionar calendário* → *A partir do URL* → cola o link. O Google atualiza-o de algumas em algumas horas.
+- Quem tiver o link vê estes dados: **Novo link** troca-o (o antigo deixa de funcionar) e **Desligar** apaga-o.
 
 **Reuniões**
 - Na ficha, cartão **Reuniões → Marcar reunião**: dia e hora, duração, local ou link (Google Meet, Zoom, morada) e notas.

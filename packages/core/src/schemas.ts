@@ -483,6 +483,11 @@ export const FeaturesSchema = z.object({
   time_tracking: z.boolean().default(true).meta({ description: 'Projetos: registo de horas' }),
   deliverables: z.boolean().default(true).meta({ description: 'Projetos: ficheiros e entregas' }),
   client_page: z.boolean().default(true).meta({ description: 'Projetos: página de acompanhamento para o cliente' }),
+  client_approvals: z.boolean().default(true).meta({ description: 'Página do cliente: aprovar entregas ou pedir alterações' }),
+  project_kickoff: z.boolean().default(true).meta({ description: 'Preparar o projeto sozinho quando o lead passa a Cliente' }),
+  contracts: z.boolean().default(true).meta({ description: 'Contratos em PDF, aceites online pelo cliente' }),
+  briefing: z.boolean().default(true).meta({ description: 'Projetos: briefing online (formulário para o cliente)' }),
+  expenses: z.boolean().default(true).meta({ description: 'Projetos: despesas e lucro' }),
 });
 export type Features = z.infer<typeof FeaturesSchema>;
 export const DEFAULT_FEATURES: Features = {
@@ -495,7 +500,41 @@ export const DEFAULT_FEATURES: Features = {
   time_tracking: true,
   deliverables: true,
   client_page: true,
+  client_approvals: true,
+  project_kickoff: true,
+  contracts: true,
+  briefing: true,
+  expenses: true,
 };
+
+/** Arranque do projeto: plano de pagamentos criado ao passar a Cliente ([] = sem plano). */
+export const KICKOFF_SPLITS = [[50, 50], [30, 40, 30], [100], []] as const;
+const PaymentSplitSchema = z
+  .array(z.int().min(1).max(100))
+  .max(6)
+  .refine((s) => !s.length || s.reduce((a, b) => a + b, 0) === 100, { error: 'As percentagens têm de somar 100.' });
+
+/** Condições gerais por omissão dos contratos (editáveis em Definições → Propostas e contratos). */
+export const DEFAULT_CONTRACT_CLAUSES = [
+  'Conteúdos: o cliente fornece os textos, imagens e acessos necessários. O prazo de entrega conta a partir da receção desses conteúdos.',
+  'Alterações: as rondas de revisão incluídas estão indicadas acima. Alterações adicionais ou fora do âmbito são orçamentadas à parte, antes de serem feitas.',
+  'Propriedade: após o pagamento integral, o cliente fica com todos os direitos de utilização do trabalho final. Os ficheiros de trabalho e esboços não aprovados continuam a ser do prestador.',
+  'Portefólio: o prestador pode mostrar o trabalho no seu portefólio e redes sociais, salvo pedido em contrário do cliente.',
+  'Cancelamento: se o cliente cancelar o projeto, os pagamentos já feitos cobrem o trabalho realizado até essa data e não são devolvidos.',
+  'Confidencialidade: ambas as partes mantêm confidencial a informação partilhada durante o projeto.',
+].join('\n');
+
+/** Perguntas por omissão do briefing online (editáveis em Definições → Funcionalidades). */
+export const DEFAULT_BRIEFING_QUESTIONS = [
+  'Fale-nos do seu negócio: o que faz e o que o distingue.',
+  'Quem são os seus clientes (público-alvo)?',
+  'Qual é o principal objetivo deste projeto?',
+  'Que cores, tipos de letra ou estilos prefere? E o que não quer?',
+  'Referências: sites, marcas ou trabalhos de que gosta (links).',
+  'Textos e conteúdos: já os tem ou precisa de ajuda?',
+  'Domínio, alojamento e acessos (se for um site): o que já existe?',
+  'Há algum prazo ou data importante?',
+];
 
 /** Cópia de segurança semanal: os leads em Excel por email. */
 export const WeeklyBackupSchema = z.object({
@@ -544,6 +583,14 @@ export const WorkspaceSettingsSchema = z
     features: FeaturesSchema.default(DEFAULT_FEATURES),
     /** Link para os clientes deixarem uma avaliação no Google ({{avaliacao}}). */
     google_review_url: z.string().nullable().default(null),
+    /** Arranque automático do projeto (ao passar a Cliente). */
+    project_kickoff: z.object({ payment_split: PaymentSplitSchema.default([50, 50]) }).default({ payment_split: [50, 50] }),
+    /** Briefing online: as perguntas do formulário. */
+    briefing: z.object({ questions: z.array(z.string()).default(DEFAULT_BRIEFING_QUESTIONS) }).default({ questions: DEFAULT_BRIEFING_QUESTIONS }),
+    /** Contratos: o teu NIF e as condições gerais. */
+    contract: z
+      .object({ provider_nif: z.string().default(''), clauses: z.string().default(DEFAULT_CONTRACT_CLAUSES) })
+      .default({ provider_nif: '', clauses: DEFAULT_CONTRACT_CLAUSES }),
     weekly_backup: WeeklyBackupSchema.default(DEFAULT_WEEKLY_BACKUP),
     /** Fornecedor e modelo de IA de cada função (Definições → Inteligência artificial). */
     ai: AiSettingsSchema.default({
@@ -577,6 +624,17 @@ export const WorkspaceSettingsUpdateSchema = z
     ai: AiSettingsUpdateSchema,
     features: FeaturesSchema.partial(),
     google_review_url: nullableUrl,
+    project_kickoff: z.object({ payment_split: PaymentSplitSchema }),
+    briefing: z.object({
+      questions: z
+        .array(z.string().trim().min(1).max(300, { error: 'Máximo de 300 caracteres por pergunta.' }))
+        .min(1, { error: 'Indica pelo menos uma pergunta.' })
+        .max(30, { error: 'Máximo de 30 perguntas.' }),
+    }),
+    contract: z.object({
+      provider_nif: z.string().trim().max(20, { error: 'Máximo de 20 caracteres.' }),
+      clauses: z.string().trim().max(5000, { error: 'Máximo de 5000 caracteres.' }),
+    }),
     weekly_backup: z.object({
       enabled: z.boolean(),
       recipient: nullableEmail,

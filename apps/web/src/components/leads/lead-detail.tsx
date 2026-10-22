@@ -76,6 +76,7 @@ import { LeadScoreDetails } from '@/components/leads/lead-score';
 import { WhatsAppMenu } from '@/components/leads/whatsapp-menu';
 import { MeetingsCard } from '@/components/meetings/meetings-card';
 import { PaymentsCard } from '@/components/projects/payments-card';
+import { ContractsCard } from '@/components/projects/contracts-card';
 import { ProjectCard } from '@/components/projects/project-card';
 import { ProjectToggle } from '@/components/projects/project-toggle';
 
@@ -194,10 +195,12 @@ export function LeadDetail({ id }: { id: string }) {
         scheduled
           ? `Estado: ${LEAD_STATUS_META[status].label}. Follow-up agendado para ${formatDate(updated.next_action_on)}.`
           : status === 'cliente'
-            ? 'Novo cliente! 🎉 Organiza o projeto nas tarefas.'
+            ? settings?.features.projects && settings.features.project_kickoff
+              ? 'Novo cliente! 🎉 O projeto ficou preparado: tarefas, prazo e pagamentos.'
+              : 'Novo cliente! 🎉 Organiza o projeto nas tarefas.'
             : `Estado: ${LEAD_STATUS_META[status].label}.`,
         status === 'cliente'
-          ? { action: { label: 'Ver tarefas', onClick: () => document.getElementById('tarefas')?.scrollIntoView({ behavior: 'smooth' }) } }
+          ? { action: { label: 'Ver projeto', onClick: () => document.getElementById(settings?.features.projects ? 'projeto' : 'tarefas')?.scrollIntoView({ behavior: 'smooth' }) } }
           : undefined,
       );
     } catch (err) {
@@ -559,6 +562,7 @@ export function LeadDetail({ id }: { id: string }) {
           {settings?.features.payments ? <PaymentsCard lead={lead} /> : null}
           <NotesCard lead={lead} />
           <ProposalsCard lead={lead} />
+          {settings?.features.contracts ? <ContractsCard lead={lead} /> : null}
           <div id="atividade" className="scroll-mt-20">
             <ActivityTimeline leadId={lead.id} currentUserId={me?.user.id} fitTo={mainColumn} />
           </div>

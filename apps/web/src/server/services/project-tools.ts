@@ -21,17 +21,23 @@ import {
   type ProjectInfoUpdate,
   type ProjectRevision,
   type ProjectRevisionCreate,
+  type ProjectStartResult,
   type ProjectTime,
   type RunningTimer,
   type SharedProject,
   type TimeEntry,
   type TimeEntryCreate,
   type TimeEntryUpdate,
+  type ClientDeliverableAction,
+  type ProjectExpense,
+  type ProjectExpenseCreate,
+  projectProfit,
 } from '@vndesign/core';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
 import { createSupabaseAdminClient } from '../supabase-admin';
 import { getLead } from './leads';
+import { sendUserPush } from './push';
 
 async function logActivity(ctx: ApiContext, leadId: string, type: string, body: string | null, payload: Record<string, unknown> = {}) {
   await ctx.supabase.from('lead_activities').insert({
@@ -85,6 +91,15 @@ export async function updateProjectInfo(ctx: ApiContext, leadId: string, patch: 
     await logActivity(ctx, leadId, 'project_stage_changed', null, { from: before.stage, to: patch.stage, label: PROJECT_STAGE_LABELS[patch.stage] });
   }
   return info;
+}
+
+/** Prepara o projeto (o mesmo que acontece sozinho ao passar a Cliente), completando o que faltar. */
+export async function startProject(ctx: ApiContext, leadId: string): Promise<ProjectStartResult> {
+  await getLead(ctx, leadId);
+  const { data, error } = await ctx.supabase.rpc('start_project', { p_lead_id: leadId });
+  if (error) throw fromPostgrest(error, 'Lead não encontrado');
+  if (!data) throw new ApiError(422, 'Lead arquivado ou anonimizado', 'Não é possível preparar o projeto deste lead.');
+  return data as ProjectStartResult;
 }
 
 /** Liga, desliga ou renova o link da página do cliente. */
@@ -194,8 +209,14 @@ export async function getProjectTime(ctx: ApiContext, leadId: string): Promise<P
   const now = Date.now();
   const entries = ((data ?? []) as TimeRow[]).map((r) => toEntry(r, now));
   const total = Math.floor(entries.reduce((sum, e) => sum + e.seconds, 0) / 60);
-  const value = (await projectValues(ctx, [lead])).get(leadId) ?? null;
+  const [values, expenses] = await Promise.all([projectValues(ctx, [lead]), expenseTotals(ctx, [leadId])]);
+  const value = values.get(leadId) ?? null;
+  const spent = expenses.get(leadId) ?? 0;
+  const { profit, net_rate } = projectProfit(value, spent, total);
   return {
+    expenses: spent,
+    profit,
+    net_rate,
     entries,
     total_minutes: total,
     logged_seconds: entries.filter((e) => e.ended_at).reduce((sum, e) => sum + e.seconds, 0),
@@ -319,6 +340,53 @@ export async function deleteTimeEntry(ctx: ApiContext, id: string): Promise<void
   const { data, error } = await ctx.supabase.from('project_time_entries').delete().eq('workspace_id', ctx.workspaceId).eq('id', id).select('id');
   if (error) throw fromPostgrest(error, 'Registo não encontrado');
   if (!data?.length) throw new ApiError(404, 'Registo não encontrado');
+}
+
+// -----------------------------------------------------------------------------
+// Despesas
+// -----------------------------------------------------------------------------
+
+const EXPENSE_SELECT = 'id, lead_id, description, amount, spent_on, created_at';
+type ExpenseRow = Omit<ProjectExpense, 'amount'> & { amount: number | string };
+
+export async function listExpenses(ctx: ApiContext, leadId: string): Promise<ProjectExpense[]> {
+  const { data, error } = await ctx.supabase
+    .from('project_expenses')
+    .select(EXPENSE_SELECT)
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('lead_id', leadId)
+    .order('spent_on', { ascending: false })
+    .order('created_at', { ascending: false });
+  if (error) throw fromPostgrest(error);
+  return ((data ?? []) as ExpenseRow[]).map((r) => ({ ...r, amount: Number(r.amount) }));
+}
+
+export async function createExpense(ctx: ApiContext, leadId: string, input: ProjectExpenseCreate): Promise<ProjectExpense> {
+  await getLead(ctx, leadId);
+  const { data, error } = await ctx.supabase
+    .from('project_expenses')
+    .insert({ ...input, spent_on: input.spent_on ?? todayIso(), workspace_id: ctx.workspaceId, lead_id: leadId, created_by: ctx.user.id })
+    .select(EXPENSE_SELECT)
+    .single();
+  if (error) throw fromPostgrest(error);
+  const row = data as ExpenseRow;
+  return { ...row, amount: Number(row.amount) };
+}
+
+export async function deleteExpense(ctx: ApiContext, id: string): Promise<void> {
+  const { data, error } = await ctx.supabase.from('project_expenses').delete().eq('workspace_id', ctx.workspaceId).eq('id', id).select('id');
+  if (error) throw fromPostgrest(error, 'Despesa não encontrada');
+  if (!data?.length) throw new ApiError(404, 'Despesa não encontrada');
+}
+
+/** Total das despesas de vários projetos. */
+export async function expenseTotals(ctx: ApiContext, leadIds: string[]): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  if (!leadIds.length) return map;
+  const { data, error } = await ctx.supabase.from('project_expenses').select('lead_id, amount').eq('workspace_id', ctx.workspaceId).in('lead_id', leadIds);
+  if (error) throw fromPostgrest(error);
+  for (const r of (data ?? []) as { lead_id: string; amount: number | string }[]) map.set(r.lead_id, Math.round(((map.get(r.lead_id) ?? 0) + Number(r.amount)) * 100) / 100);
+  return map;
 }
 
 // -----------------------------------------------------------------------------
@@ -463,6 +531,73 @@ export async function projectCalendar(ctx: ApiContext, from: string, to: string)
 // Página de acompanhamento para o cliente (sem sessão)
 // -----------------------------------------------------------------------------
 
+/**
+ * O cliente aprova uma entrega ou pede alterações (na página /p/<código>).
+ * Aprovar: "Aprovada pelo cliente". Pedir alterações: volta a "Por enviar" e
+ * fica uma revisão com o pedido (a cobrar se já passou das incluídas). Avisa
+ * quem criou o lead com uma notificação.
+ */
+export async function clientDeliverableAction(
+  token: string,
+  deliverableId: string,
+  input: ClientDeliverableAction,
+): Promise<{ status: ProjectDeliverable['status']; revision: number | null }> {
+  const shared = await getSharedProject(token);
+  if (!shared?.approvals) throw new ApiError(404, 'Página não encontrada');
+  const target = shared.deliverables.find((d) => d.id === deliverableId);
+  if (!target) throw new ApiError(404, DELIVERABLE_NOT_FOUND);
+  if (target.status !== 'enviada') throw new ApiError(409, 'Já respondido', 'Esta entrega já foi aprovada ou está a ser alterada.');
+  const admin = createSupabaseAdminClient();
+  const { data: project } = await admin.from('lead_projects').select('lead_id, workspace_id, revisions_included').eq('share_token', token).maybeSingle();
+  if (!project) throw new ApiError(404, 'Página não encontrada');
+  const ws = project.workspace_id as string;
+  const leadId = project.lead_id as string;
+  const who = input.name ? `${input.name} (cliente)` : 'O cliente';
+  const now = new Date().toISOString();
+  let revision: number | null = null;
+
+  if (input.action === 'approve') {
+    const { error } = await admin.from('project_deliverables').update({ status: 'aprovada', approved_at: now }).eq('id', deliverableId).eq('lead_id', leadId);
+    if (error) throw fromPostgrest(error, DELIVERABLE_NOT_FOUND);
+    await admin.from('lead_activities').insert({
+      workspace_id: ws,
+      lead_id: leadId,
+      type: 'deliverable_approved',
+      body: target.title,
+      payload: { via: 'cliente', name: input.name, comment: input.comment },
+    });
+  } else {
+    const { count } = await admin.from('project_revisions').select('id', { count: 'exact', head: true }).eq('lead_id', leadId);
+    revision = (count ?? 0) + 1;
+    const included = project.revisions_included as number;
+    const billable = revision > included;
+    const description = `${target.title}: ${input.comment}`.slice(0, 500);
+    const [upd, rev] = await Promise.all([
+      admin.from('project_deliverables').update({ status: 'rascunho', sent_at: null, approved_at: null }).eq('id', deliverableId).eq('lead_id', leadId),
+      admin.from('project_revisions').insert({ workspace_id: ws, lead_id: leadId, description, billable, requested_on: todayIso() }),
+    ]);
+    for (const r of [upd, rev]) if (r.error) throw fromPostgrest(r.error);
+    await admin.from('lead_activities').insert({
+      workspace_id: ws,
+      lead_id: leadId,
+      type: 'revision_requested',
+      body: description,
+      payload: { via: 'cliente', name: input.name, number: revision, included, billable, label: `Revisão ${revision} de ${included}${billable ? ' · a cobrar à parte' : ''}` },
+    });
+  }
+
+  const { data: lead } = await admin.from('leads').select('created_by, number, company_name').eq('id', leadId).maybeSingle();
+  if (lead?.created_by) {
+    await sendUserPush(ws, lead.created_by as string, {
+      title: input.action === 'approve' ? `✅ Entrega aprovada · ${lead.company_name}` : `✏️ Pedido de alterações · ${lead.company_name}`,
+      body: input.action === 'approve' ? `${who} aprovou "${target.title}".` : `${who}: ${input.comment}`,
+      url: `/leads/${leadId}#projeto`,
+      tag: `deliverable-${deliverableId}`,
+    }).catch(() => undefined);
+  }
+  return { status: input.action === 'approve' ? 'aprovada' : 'rascunho', revision };
+}
+
 /** O projeto do link /p/<código>, ou null se o link não existir ou estiver desligado. */
 export async function getSharedProject(token: string): Promise<SharedProject | null> {
   if (!/^[A-Za-z0-9_-]{16,64}$/.test(token)) return null;
@@ -488,7 +623,7 @@ export async function getSharedProject(token: string): Promise<SharedProject | n
   const features = WorkspaceSettingsSchema.parse(workspace.settings ?? {}).features;
   if (!features.projects || !features.client_page) return null;
 
-  const [tasks, meetings, deliverables, payments, revisions, signatures] = await Promise.all([
+  const [tasks, meetings, deliverables, payments, revisions, signatures, contracts] = await Promise.all([
     admin.from('lead_tasks').select('title, done_at, position').eq('workspace_id', ws).eq('lead_id', leadId).order('position', { ascending: true }),
     features.meetings
       ? admin
@@ -504,7 +639,7 @@ export async function getSharedProject(token: string): Promise<SharedProject | n
     features.deliverables
       ? admin
           .from('project_deliverables')
-          .select('title, url, status, sent_at, approved_at, created_at')
+          .select('id, title, url, status, sent_at, approved_at, created_at')
           .eq('workspace_id', ws)
           .eq('lead_id', leadId)
           .neq('status', 'rascunho')
@@ -521,6 +656,16 @@ export async function getSharedProject(token: string): Promise<SharedProject | n
       .select('full_name, company, email, phone, website, user_id, is_default')
       .eq('workspace_id', ws)
       .order('is_default', { ascending: false }),
+    features.contracts
+      ? admin
+          .from('lead_contracts')
+          .select('token, status, title')
+          .eq('workspace_id', ws)
+          .eq('lead_id', leadId)
+          .neq('status', 'rascunho')
+          .order('created_at', { ascending: false })
+          .limit(1)
+      : Promise.resolve({ data: [] }),
   ]);
 
   const sigs = (signatures.data ?? []) as { full_name: string; company: string | null; email: string | null; phone: string | null; website: string | null; user_id: string }[];
@@ -541,9 +686,11 @@ export async function getSharedProject(token: string): Promise<SharedProject | n
     completed_at: (lead.project_completed_at as string | null) ?? null,
     tasks: ((tasks.data ?? []) as { title: string; done_at: string | null }[]).map((t) => ({ title: t.title, done: !!t.done_at })),
     next_meeting: meeting,
-    deliverables: ((deliverables.data ?? []) as { title: string; url: string | null; status: SharedProject['deliverables'][number]['status']; sent_at: string | null; approved_at: string | null }[]).map(
-      (d) => ({ title: d.title, url: d.url, status: d.status, date: d.approved_at ?? d.sent_at }),
-    ),
+    deliverables: (
+      (deliverables.data ?? []) as { id: string; title: string; url: string | null; status: SharedProject['deliverables'][number]['status']; sent_at: string | null; approved_at: string | null }[]
+    ).map((d) => ({ id: d.id, title: d.title, url: d.url, status: d.status, date: d.approved_at ?? d.sent_at })),
+    approvals: features.deliverables && features.client_approvals && !lead.project_completed_at,
+    contract: ((contracts.data ?? []) as SharedProject['contract'][])[0] ?? null,
     payments: sum
       ? { total: sum.total, paid: sum.paid, outstanding: sum.outstanding, next: nextPay ? { description: nextPay.description, amount: nextPay.amount, due_on: nextPay.due_on } : null }
       : null,

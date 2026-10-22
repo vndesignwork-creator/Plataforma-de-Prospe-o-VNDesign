@@ -7,11 +7,12 @@ import {
   formatDateTime,
   type SharedProject,
 } from '@vndesign/core';
-import { CalendarClock, CheckCircle2, ExternalLink, FolderOpen, Globe, ListChecks, Mail, PackageCheck, Phone, RefreshCcw, Wallet } from 'lucide-react';
+import { CalendarClock, CheckCircle2, ExternalLink, FileSignature, FolderOpen, Globe, ListChecks, Mail, PackageCheck, Phone, RefreshCcw, Wallet } from 'lucide-react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { StageSteps } from '@/components/projects/project-bits';
 import { getSharedProject } from '@/server/services/project-tools';
+import { DeliverableResponse } from './deliverable-response';
 
 /*
  * Página de acompanhamento para o cliente (link /p/<código>, sem login): a
@@ -78,7 +79,8 @@ function Contacts({ from }: { from: SharedProject['from'] }) {
 }
 
 export default async function SharedProjectPage({ params }: Props) {
-  const project = await getSharedProject((await params).token);
+  const token = (await params).token;
+  const project = await getSharedProject(token);
   if (!project) notFound();
   const { tasks, payments, deliverables, revisions, next_meeting: meeting } = project;
   const done = tasks.filter((t) => t.done).length;
@@ -155,9 +157,12 @@ export default async function SharedProjectPage({ params }: Props) {
         ) : null}
         {deliverables.length ? (
           <Box icon={FolderOpen} title="Entregas" className="sm:col-span-2">
+            {project.approvals && deliverables.some((d) => d.status === 'enviada') ? (
+              <p className="mb-2 text-sm text-muted">Veja cada entrega e diga-nos se está aprovada ou o que gostaria de alterar.</p>
+            ) : null}
             <ul className="flex flex-col gap-2 text-sm">
-              {deliverables.map((d, i) => (
-                <li key={i} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              {deliverables.map((d) => (
+                <li key={d.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   {d.url ? (
                     <a href={d.url} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 font-medium text-accent-text hover:underline">
                       {d.title} <ExternalLink className="h-3.5 w-3.5" aria-hidden />
@@ -170,9 +175,25 @@ export default async function SharedProjectPage({ params }: Props) {
                     {DELIVERABLE_STATUS_LABELS[d.status]}
                     {d.date ? ` a ${formatDate(d.date)}` : ''}
                   </span>
+                  {project.approvals && d.status === 'enviada' ? (
+                    <DeliverableResponse token={token} id={d.id} title={d.title} name={project.contact_name} />
+                  ) : null}
                 </li>
               ))}
             </ul>
+          </Box>
+        ) : null}
+        {project.contract ? (
+          <Box icon={FileSignature} title="Contrato" className="sm:col-span-2">
+            <p className="text-sm">
+              {project.contract.title} —{' '}
+              <span className={project.contract.status === 'aceite' ? 'text-success' : 'text-warning'}>
+                {project.contract.status === 'aceite' ? 'aceite' : 'por aceitar'}
+              </span>
+            </p>
+            <a href={`/c/${project.contract.token}`} className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-accent-text hover:underline">
+              {project.contract.status === 'aceite' ? 'Ver o contrato' : 'Ler e aceitar o contrato'} <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+            </a>
           </Box>
         ) : null}
         {payments ? (

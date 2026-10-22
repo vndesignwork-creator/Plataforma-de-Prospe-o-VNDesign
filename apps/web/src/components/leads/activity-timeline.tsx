@@ -5,6 +5,7 @@ import {
   AI_EMAIL_KIND_LABELS,
   PROPOSAL_STATUS_LABELS,
   PROJECT_STAGE_LABELS,
+  describeProjectStart,
   type AiEmailKind,
   type ProjectStage,
   type ProposalStatus,
@@ -16,6 +17,10 @@ import {
   type LeadStatus,
 } from '@vndesign/core';
 import {
+  ClipboardList,
+  FileCheck2,
+  FileSignature,
+  Zap,
   BadgeCheck,
   Milestone,
   RefreshCcw,
@@ -89,6 +94,10 @@ const ICONS: Partial<Record<Activity['type'], LucideIcon>> = {
   revision_requested: RefreshCcw,
   deliverable_sent: Send,
   deliverable_approved: BadgeCheck,
+  project_started: Zap,
+  contract_sent: FileSignature,
+  contract_accepted: FileCheck2,
+  briefing_received: ClipboardList,
 };
 
 const fieldLabel = (f: string) => (LEAD_FIELD_LABELS as Record<string, string>)[f] ?? f;
@@ -142,7 +151,26 @@ function describe(a: Activity): string | null {
       return p.from ? `${stage(p.from)} → ${stage(p.to)}` : null;
     }
     case 'revision_requested':
-      return p.label ? String(p.label) : null;
+      return [p.label ? String(p.label) : null, p.via === 'cliente' ? 'pedido pelo cliente na página do projeto' : null].filter(Boolean).join(' · ') || null;
+    case 'deliverable_approved':
+      return p.via === 'cliente' ? 'Aprovada pelo cliente na página do projeto' : null;
+    case 'project_started':
+      return describeProjectStart(
+        {
+          tasks: Number(p.tasks ?? 0),
+          templates: Array.isArray(p.templates) ? (p.templates as string[]) : [],
+          due_on: p.due_on ? String(p.due_on) : null,
+          payments: Number(p.payments ?? 0),
+          revisions: Number(p.revisions ?? 0),
+        },
+        formatDate,
+      );
+    case 'contract_sent':
+      return p.title ? String(p.title) : null;
+    case 'contract_accepted':
+      return p.name ? `Aceite por ${String(p.name)}` : null;
+    case 'briefing_received':
+      return `${Number(p.answers ?? 0)} resposta(s)${Number(p.files ?? 0) ? ` · ${Number(p.files)} ficheiro(s)` : ''}`;
     case 'email_received':
       return [p.from ? `De ${String(p.from)}` : null, p.subject ? `“${String(p.subject)}”` : null, p.auto ? 'resposta automática' : null]
         .filter(Boolean)

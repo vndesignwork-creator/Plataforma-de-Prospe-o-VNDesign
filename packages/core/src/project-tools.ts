@@ -6,7 +6,7 @@
 import { z } from 'zod';
 import { addDays, daysBetween } from './format';
 import { LeadSchema, nullableDate, nullableUrl } from './schemas';
-import { PaymentSummarySchema } from './projects';
+import { PaymentSummarySchema, icsDate, icsFold, icsText } from './projects';
 
 // -----------------------------------------------------------------------------
 // Fases e prazo
@@ -50,6 +50,28 @@ export const ProjectInfoUpdateSchema = z
   .partial()
   .meta({ id: 'ProjectInfoUpdate' });
 export type ProjectInfoUpdate = z.output<typeof ProjectInfoUpdateSchema>;
+
+export const ProjectStartResultSchema = z
+  .object({
+    tasks: z.int().meta({ description: 'Tarefas acrescentadas (das listas dos serviços)' }),
+    templates: z.array(z.string()).meta({ description: 'Listas de tarefas usadas' }),
+    due_on: z.string().nullable().meta({ description: 'Prazo de entrega' }),
+    payments: z.int().meta({ description: 'Pagamentos criados (plano)' }),
+    revisions: z.int().meta({ description: 'Revisões incluídas' }),
+  })
+  .meta({ id: 'ProjectStartResult' });
+export type ProjectStartResult = z.infer<typeof ProjectStartResultSchema>;
+
+/** "8 tarefas (Site Institucional) · entrega a 21/11/2026 · plano de 2 pagamentos" */
+export function describeProjectStart(r: ProjectStartResult, formatDay: (iso: string) => string): string {
+  const parts = [
+    r.tasks ? `${r.tasks} tarefa${r.tasks === 1 ? '' : 's'}${r.templates.length ? ` (${r.templates.join(', ')})` : ''}` : null,
+    r.due_on ? `entrega a ${formatDay(r.due_on)}` : null,
+    r.payments ? `plano de ${r.payments} pagamento${r.payments === 1 ? '' : 's'}` : null,
+    `${r.revisions} revis${r.revisions === 1 ? 'ão incluída' : 'ões incluídas'}`,
+  ].filter(Boolean);
+  return parts.join(' · ');
+}
 
 export const ProjectShareSchema = z
   .object({
@@ -152,6 +174,9 @@ export const ProjectTimeSchema = z
     running: TimeEntrySchema.nullable(),
     value: z.number().nullable().meta({ description: 'Valor do projeto (proposta aceite, pagamentos ou valor estimado)' }),
     hourly_rate: z.number().nullable().meta({ description: 'Valor ÷ horas (€/hora)' }),
+    expenses: z.number().meta({ description: 'Total das despesas do projeto' }),
+    profit: z.number().nullable().meta({ description: 'Valor − despesas' }),
+    net_rate: z.number().nullable().meta({ description: 'Lucro ÷ horas (€/hora líquido)' }),
   })
   .meta({ id: 'ProjectTime' });
 export type ProjectTime = z.infer<typeof ProjectTimeSchema>;
@@ -295,6 +320,7 @@ export const ProjectSchema = z
     }),
     deliverables: z.object({ total: z.int(), approved: z.int() }),
     value: z.number().nullable().meta({ description: 'Valor do projeto' }),
+    expenses: z.number().meta({ description: 'Total das despesas' }),
   })
   .meta({ id: 'Project' });
 export type Project = z.infer<typeof ProjectSchema>;
@@ -352,6 +378,20 @@ export function monthGrid(month: string): string[] {
 // Página de acompanhamento para o cliente (/p/<código>)
 // -----------------------------------------------------------------------------
 
+export const ClientDeliverableActionSchema = z
+  .object({
+    action: z.enum(['approve', 'changes']),
+    comment: z.string().trim().max(500, { error: 'Máximo de 500 caracteres.' }).optional().transform((v) => v || null),
+    name: z.string().trim().max(120).optional().transform((v) => v || null),
+  })
+  .refine((v) => v.action === 'approve' || !!v.comment, { error: 'Descreve o que queres alterar.', path: ['comment'] })
+  .meta({ id: 'ClientDeliverableAction' });
+export type ClientDeliverableAction = z.output<typeof ClientDeliverableActionSchema>;
+
+// -----------------------------------------------------------------------------
+// Página do cliente: dados
+// -----------------------------------------------------------------------------
+
 export interface SharedProject {
   company_name: string;
   contact_name: string | null;
@@ -360,9 +400,173 @@ export interface SharedProject {
   completed_at: string | null;
   tasks: { title: string; done: boolean }[];
   next_meeting: { starts_at: string; location: string | null } | null;
-  deliverables: { title: string; url: string | null; status: DeliverableStatus; date: string | null }[];
+  deliverables: { id: string; title: string; url: string | null; status: DeliverableStatus; date: string | null }[];
+  /** O cliente pode aprovar entregas ou pedir alterações nesta página. */
+  approvals: boolean;
+  /** Último contrato enviado (link /c/<token>). */
+  contract: { token: string; status: 'enviado' | 'aceite'; title: string } | null;
   payments: { total: number; paid: number; outstanding: number; next: { description: string; amount: number; due_on: string | null } | null } | null;
   revisions: { used: number; included: number } | null;
   from: { name: string; company: string | null; email: string | null; phone: string | null; website: string | null };
   updated_at: string;
 }
+
+// -----------------------------------------------------------------------------
+// Rentabilidade (Estatísticas)
+// -----------------------------------------------------------------------------
+
+const leadRefSchema = z.object({ id: z.uuid(), number: z.int(), company_name: z.string() });
+
+export const ProfitabilitySchema = z
+  .object({
+    totals: z.object({
+      expenses: z.number().meta({ description: 'Despesas registadas nos projetos' }),
+      net_rate: z.number().nullable().meta({ description: '€/hora líquido (valor − despesas)' }),
+      projects: z.int().meta({ description: 'Clientes com projeto (em curso ou concluído)' }),
+      completed: z.int(),
+      minutes: z.int().meta({ description: 'Horas registadas (em minutos)' }),
+      rate: z.number().nullable().meta({ description: '€/hora médio (projetos com horas e valor)' }),
+      avg_days: z.number().nullable().meta({ description: 'Duração média dos projetos concluídos (dias)' }),
+      avg_minutes: z.number().nullable().meta({ description: 'Horas médias por projeto concluído (minutos)' }),
+    }),
+    by_service: z.array(
+      z.object({ service: z.string(), projects: z.int(), minutes: z.int(), value: z.number(), rate: z.number().nullable() }),
+    ),
+    by_client: z.array(
+      z.object({
+        lead: leadRefSchema,
+        minutes: z.int(),
+        value: z.number().nullable(),
+        expenses: z.number(),
+        rate: z.number().nullable(),
+        net_rate: z.number().nullable(),
+        completed: z.boolean(),
+      }),
+    ),
+    monthly: z.array(z.object({ month: z.string().meta({ description: 'AAAA-MM' }), minutes: z.int(), received: z.number() })),
+  })
+  .meta({ id: 'Profitability' });
+export type Profitability = z.infer<typeof ProfitabilitySchema>;
+
+/** Os últimos N meses (AAAA-MM), do mais antigo para o atual. */
+export function lastMonths(today: string, n = 12): string[] {
+  const [y, m] = today.split('-').map(Number) as [number, number];
+  return Array.from({ length: n }, (_, i) => {
+    const d = new Date(Date.UTC(y, m - 1 - (n - 1 - i), 1));
+    return d.toISOString().slice(0, 7);
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Calendário subscrito (Google Calendar, iPhone, Outlook)
+// -----------------------------------------------------------------------------
+
+export const CalendarFeedSchema = z
+  .object({ token: z.string().nullable().meta({ description: 'Código do link (/api/v1/calendar/<código>.ics); null = desligado' }) })
+  .meta({ id: 'CalendarFeed' });
+export type CalendarFeed = z.infer<typeof CalendarFeedSchema>;
+
+export const CalendarFeedUpdateSchema = z
+  .object({ enabled: z.boolean(), regenerate: z.boolean().default(false) })
+  .meta({ id: 'CalendarFeedUpdate' });
+
+export interface FeedEvent {
+  uid: string;
+  title: string;
+  description?: string | null;
+  location?: string | null;
+  url?: string | null;
+  /** Com hora (reuniões): início e duração. */
+  startsAt?: string;
+  durationMin?: number;
+  /** Dia inteiro (entregas, pagamentos, tarefas): AAAA-MM-DD. */
+  date?: string;
+}
+
+/** Calendário .ics para subscrever: atualiza-se sozinho no Google Calendar / iPhone. */
+export function buildCalendarFeed(events: FeedEvent[], options: { name: string; now?: Date }): string {
+  const stamp = icsDate(options.now ?? new Date());
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//VNDesign//VNDesign Leads//PT',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    `X-WR-CALNAME:${icsText(options.name)}`,
+    'X-WR-TIMEZONE:Europe/Lisbon',
+    'REFRESH-INTERVAL;VALUE=DURATION:PT1H',
+    'X-PUBLISHED-TTL:PT1H',
+  ];
+  for (const e of events) {
+    lines.push('BEGIN:VEVENT', `UID:${e.uid}`, `DTSTAMP:${stamp}`);
+    if (e.startsAt) {
+      const start = new Date(e.startsAt);
+      lines.push(`DTSTART:${icsDate(start)}`, `DTEND:${icsDate(new Date(start.getTime() + (e.durationMin ?? 30) * 60_000))}`);
+    } else if (e.date) {
+      const day = e.date.replace(/-/g, '');
+      lines.push(`DTSTART;VALUE=DATE:${day}`, `DTEND;VALUE=DATE:${addDays(e.date, 1).replace(/-/g, '')}`, 'TRANSP:TRANSPARENT');
+    }
+    lines.push(`SUMMARY:${icsText(e.title)}`);
+    if (e.description) lines.push(`DESCRIPTION:${icsText(e.description)}`);
+    if (e.location) lines.push(`LOCATION:${icsText(e.location)}`);
+    if (e.url) lines.push(`URL:${e.url}`);
+    lines.push('END:VEVENT');
+  }
+  lines.push('END:VCALENDAR');
+  return lines.map(icsFold).join('\r\n') + '\r\n';
+}
+
+// -----------------------------------------------------------------------------
+// Despesas do projeto
+// -----------------------------------------------------------------------------
+
+export const ProjectExpenseSchema = z
+  .object({ id: z.uuid(), lead_id: z.uuid(), description: z.string(), amount: z.number(), spent_on: z.string(), created_at: z.string() })
+  .meta({ id: 'ProjectExpense' });
+export type ProjectExpense = z.infer<typeof ProjectExpenseSchema>;
+
+export const ProjectExpenseCreateSchema = z
+  .object({
+    description: z.string({ error: 'Descreve a despesa.' }).trim().min(1, { error: 'Descreve a despesa.' }).max(200),
+    amount: z
+      .number({ error: 'Indica o valor.' })
+      .positive({ error: 'O valor tem de ser maior que zero.' })
+      .max(9_999_999)
+      .transform((v) => Math.round(v * 100) / 100),
+    spent_on: z.iso.date({ error: 'Data inválida.' }).optional(),
+  })
+  .meta({ id: 'ProjectExpenseCreate' });
+export type ProjectExpenseCreate = z.output<typeof ProjectExpenseCreateSchema>;
+
+/** Lucro: valor − despesas; ganho líquido por hora (só com 15 minutos ou mais). */
+export function projectProfit(value: number | null | undefined, expenses: number, minutes: number): { profit: number | null; net_rate: number | null } {
+  if (!value) return { profit: expenses ? -expenses : null, net_rate: null };
+  const profit = Math.round((value - expenses) * 100) / 100;
+  return { profit, net_rate: minutes >= 15 ? Math.round((profit / (minutes / 60)) * 100) / 100 : null };
+}
+
+// -----------------------------------------------------------------------------
+// Briefing online (/b/<código>)
+// -----------------------------------------------------------------------------
+
+export const BriefingFileSchema = z.object({ name: z.string(), path: z.string(), size: z.int(), type: z.string() });
+export type BriefingFile = z.infer<typeof BriefingFileSchema>;
+
+export const ProjectBriefingSchema = z
+  .object({
+    id: z.uuid(),
+    lead_id: z.uuid(),
+    token: z.string().meta({ description: 'Link do cliente: /b/<token>' }),
+    questions: z.array(z.string()),
+    answers: z.array(z.string()),
+    files: z.array(BriefingFileSchema),
+    status: z.enum(['pendente', 'respondido']),
+    submitted_at: z.string().nullable(),
+    created_at: z.string(),
+  })
+  .meta({ id: 'ProjectBriefing' });
+export type ProjectBriefing = z.infer<typeof ProjectBriefingSchema>;
+
+/** Limites dos ficheiros do briefing. */
+export const BRIEFING_MAX_FILES = 10;
+export const BRIEFING_MAX_FILE_BYTES = 15 * 1024 * 1024;

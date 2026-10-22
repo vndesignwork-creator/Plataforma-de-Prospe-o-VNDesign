@@ -11,7 +11,19 @@ export interface ColumnItem {
  * Colunas de uma só série (evolução semanal). Rótulos de valor só no máximo e
  * na última coluna; o resto fica no tooltip e na tabela para leitores de ecrã.
  */
-export function ColumnChart({ items, caption, unit = 'leads' }: { items: ColumnItem[]; caption: string; unit?: string }) {
+export function ColumnChart({
+  items,
+  caption,
+  unit = 'leads',
+  format,
+}: {
+  items: ColumnItem[];
+  caption: string;
+  unit?: string;
+  /** Texto do valor (ex.: "1250 €", "12 h"); por omissão o número e a unidade. */
+  format?: (value: number) => string;
+}) {
+  const show = (v: number) => (format ? format(v) : String(v));
   const max = Math.max(1, ...items.map((i) => i.value));
   const maxIndex = items.reduce((best, item, i) => (item.value > (items[best]?.value ?? -1) ? i : best), 0);
   const height = 144;
@@ -24,13 +36,13 @@ export function ColumnChart({ items, caption, unit = 'leads' }: { items: ColumnI
             const showLabel = item.value > 0 && (i === maxIndex || i === items.length - 1);
             return (
               <div key={item.key} className="group relative flex h-full flex-1 flex-col items-center justify-end">
-                {showLabel ? <span className="mb-1 text-xs font-medium tabular text-fg">{item.value}</span> : null}
+                {showLabel ? <span className="mb-1 text-xs font-medium whitespace-nowrap tabular text-fg">{show(item.value)}</span> : null}
                 <span className="w-full max-w-6 rounded-t bg-accent transition-[height] duration-500" style={{ height: h }} />
                 <span
                   role="tooltip"
                   className="pointer-events-none absolute bottom-full z-10 mb-1 hidden rounded-md border border-border bg-surface px-2 py-1 text-xs whitespace-nowrap text-fg shadow-card group-hover:block"
                 >
-                  {item.fullLabel}: {item.value} {unit}
+                  {item.fullLabel}: {format ? format(item.value) : `${item.value} ${unit}`}
                 </span>
               </div>
             );
@@ -58,7 +70,7 @@ export function ColumnChart({ items, caption, unit = 'leads' }: { items: ColumnI
           {items.map((i) => (
             <tr key={i.key}>
               <th scope="row">{i.fullLabel}</th>
-              <td>{i.value}</td>
+              <td>{show(i.value)}</td>
             </tr>
           ))}
         </tbody>

@@ -98,7 +98,11 @@ describe('serviços geridos em Definições', () => {
       category: 'outros',
       icon: 'sparkles',
       value_phrase: null,
+      delivery_days: null,
+      revisions_included: null,
     });
+    expect(ServiceUpdateSchema.parse({ delivery_days: 30, revisions_included: 2 })).toEqual({ delivery_days: 30, revisions_included: 2 });
+    expect(ServiceUpdateSchema.safeParse({ delivery_days: 0 }).success).toBe(false);
     expect(ServiceUpdateSchema.parse({ value_phrase: '  uma ideia  ' })).toEqual({ value_phrase: 'uma ideia' });
     expect(ServiceUpdateSchema.parse({ value_phrase: '' })).toEqual({ value_phrase: null });
     expect(ServiceCreateSchema.safeParse({ label: '' }).success).toBe(false);

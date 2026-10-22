@@ -17,6 +17,7 @@ import { ServiceIcon, useServiceCatalog } from '@/components/services/services';
 import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
 import { errorMessage } from '@/lib/api-client';
 import { useDashboard, useSectors } from '@/lib/queries';
+import { ProfitabilitySection } from './profitability-section';
 
 const euros = (v: number) => formatCurrency(v, { decimals: false });
 
@@ -194,6 +195,8 @@ export function StatsView() {
           </div>
         </Card>
       </div>
+
+      <ProfitabilitySection />
     </div>
   );
 }

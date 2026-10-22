@@ -30,6 +30,7 @@ import {
   ProjectInfoSchema,
   ProjectInfoUpdateSchema,
   ProjectShareSchema,
+  ProjectStartResultSchema,
   ProjectRevisionSchema,
   ProjectRevisionCreateSchema,
   ProjectTimeSchema,
@@ -42,6 +43,17 @@ import {
   ProjectDeliverableCreateSchema,
   ProjectDeliverableUpdateSchema,
   CalendarEventSchema,
+  ProfitabilitySchema,
+  CalendarFeedSchema,
+  LeadContractSchema,
+  ContractCreateSchema,
+  ContractUpdateSchema,
+  ContractAcceptSchema,
+  ClientDeliverableActionSchema,
+  ProjectExpenseSchema,
+  ProjectExpenseCreateSchema,
+  ProjectBriefingSchema,
+  CalendarFeedUpdateSchema,
   CalendarQuerySchema,
   BillingSummarySchema,
   LeadMeetingSchema,
@@ -205,6 +217,7 @@ export function getOpenApiDocument() {
       { name: 'Email' },
       { name: 'Projetos', description: 'Pagamentos dos clientes e projetos em curso' },
       { name: 'Reuniões' },
+      { name: 'Contratos', description: 'Contratos gerados a partir da proposta e aceites online' },
       { name: 'Mapa' },
     ],
     paths: {
@@ -941,6 +954,15 @@ export function getOpenApiDocument() {
           responses: { '200': ok(data(LeadSchema)), ...withNotFound },
         }),
       },
+      '/leads/{id}/project/start': {
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Preparar o projeto: prazo e revisões pelos serviços; tarefas das listas e plano de pagamentos, se ainda não houver',
+          description: 'É o que acontece sozinho quando o lead passa a "Cliente" (Definições → Funcionalidades → Arranque automático).',
+          requestParams: { path: idParam },
+          responses: { '200': ok(data(ProjectStartResultSchema)), '422': problem('Lead arquivado ou anonimizado'), ...withNotFound },
+        }),
+      },
       '/leads/{id}/project/share': {
         post: op({
           tags: ['Projetos'],
@@ -948,6 +970,127 @@ export function getOpenApiDocument() {
           requestParams: { path: idParam },
           requestBody: body(ProjectShareSchema),
           responses: { '200': ok(data(ProjectInfoSchema)), ...withNotFound },
+        }),
+      },
+      '/leads/{id}/contracts': {
+        get: op({ tags: ['Contratos'], summary: 'Contratos do lead', requestParams: { path: idParam }, responses: { '200': ok(data(z.array(LeadContractSchema))), ...withNotFound } }),
+        post: op({
+          tags: ['Contratos'],
+          summary: 'Gerar um contrato a partir da proposta (objeto, prazo, revisões, valor, pagamentos e condições gerais)',
+          requestParams: { path: idParam },
+          requestBody: body(ContractCreateSchema),
+          responses: { '201': ok(data(LeadContractSchema), 'Criado'), ...withNotFound },
+        }),
+      },
+      '/contracts/{id}': {
+        patch: op({
+          tags: ['Contratos'],
+          summary: 'Editar o título ou as cláusulas (só até o cliente aceitar)',
+          requestParams: { path: idParam },
+          requestBody: body(ContractUpdateSchema),
+          responses: { '200': ok(data(LeadContractSchema)), '422': problem('Contrato já aceite'), ...withNotFound },
+        }),
+        delete: op({ tags: ['Contratos'], summary: 'Apagar (só se não tiver sido aceite)', requestParams: { path: idParam }, responses: { '204': { description: 'Apagado' }, '422': problem('Contrato já aceite'), ...withNotFound } }),
+      },
+      '/contracts/{id}/sent': {
+        post: op({ tags: ['Contratos'], summary: 'Marcar como enviado (regista "Contrato enviado")', requestParams: { path: idParam }, responses: { '200': ok(data(LeadContractSchema)), ...withNotFound } }),
+      },
+      '/contracts/{id}/pdf': {
+        get: op({ tags: ['Contratos'], summary: 'O contrato em PDF (?download=1 para descarregar)', requestParams: { path: idParam }, responses: { '200': { description: 'application/pdf' }, ...withNotFound } }),
+      },
+      '/public/contracts/{token}/pdf': {
+        get: op({
+          tags: ['Contratos'],
+          summary: 'O contrato em PDF, para o cliente (sem sessão)',
+          security: [],
+          requestParams: { path: z.object({ token: z.string() }) },
+          responses: { '200': { description: 'application/pdf' }, '404': problem('Link inexistente') },
+        }),
+      },
+      '/public/contracts/{token}/accept': {
+        post: op({
+          tags: ['Contratos'],
+          summary: 'O cliente aceita o contrato (sem sessão): nome, data e hora e IP ficam registados',
+          security: [],
+          requestParams: { path: z.object({ token: z.string() }) },
+          requestBody: body(ContractAcceptSchema),
+          responses: { '200': { description: 'Aceite' }, '404': problem('Link inexistente'), '422': problem('Falta o nome ou a confirmação') },
+        }),
+      },
+      '/public/projects/{token}/deliverables/{id}': {
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Na página do cliente (sem sessão): aprovar uma entrega ou pedir alterações (cria uma revisão)',
+          security: [],
+          requestParams: { path: z.object({ token: z.string(), id: z.uuid() }) },
+          requestBody: body(ClientDeliverableActionSchema),
+          responses: { '200': { description: 'Respondido' }, '404': problem('Página ou entrega inexistente'), '409': problem('Já respondida') },
+        }),
+      },
+      '/leads/{id}/expenses': {
+        get: op({ tags: ['Projetos'], summary: 'Despesas do projeto', requestParams: { path: idParam }, responses: { '200': ok(data(z.array(ProjectExpenseSchema))), ...withNotFound } }),
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Registar uma despesa (alojamento, plugins, fotos, impressão…)',
+          requestParams: { path: idParam },
+          requestBody: body(ProjectExpenseCreateSchema),
+          responses: { '201': ok(data(ProjectExpenseSchema), 'Criada'), ...withNotFound },
+        }),
+      },
+      '/expenses/{id}': {
+        delete: op({ tags: ['Projetos'], summary: 'Apagar uma despesa', requestParams: { path: idParam }, responses: { '204': { description: 'Apagada' }, ...withNotFound } }),
+      },
+      '/leads/{id}/briefing': {
+        get: op({ tags: ['Projetos'], summary: 'Briefing do projeto (null se ainda não foi pedido)', requestParams: { path: idParam }, responses: { '200': ok(data(ProjectBriefingSchema.nullable())), ...withNotFound } }),
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Criar o link do briefing (/b/{token}) com as perguntas das Definições, ou voltar a pedi-lo',
+          requestParams: { path: idParam },
+          responses: { '201': ok(data(ProjectBriefingSchema), 'Criado'), ...withNotFound },
+        }),
+        delete: op({ tags: ['Projetos'], summary: 'Apagar o briefing e os ficheiros enviados', requestParams: { path: idParam }, responses: { '204': { description: 'Apagado' }, ...withNotFound } }),
+      },
+      '/leads/{id}/briefing/files/{index}': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Descarregar um ficheiro do briefing (redireciona para um link temporário de 10 minutos)',
+          requestParams: { path: z.object({ id: z.uuid(), index: z.string() }) },
+          responses: { '302': { description: 'Link temporário' }, ...withNotFound },
+        }),
+      },
+      '/public/briefings/{token}': {
+        post: op({
+          tags: ['Projetos'],
+          summary: 'O cliente envia o briefing (sem sessão; multipart: answer_0, answer_1…, files — até 10 ficheiros de 15 MB)',
+          security: [],
+          requestParams: { path: z.object({ token: z.string() }) },
+          responses: { '200': { description: 'Recebido' }, '404': problem('Link inexistente'), '422': problem('Sem respostas ou ficheiros a mais') },
+        }),
+      },
+      '/calendar-feed': {
+        get: op({ tags: ['Projetos'], summary: 'O meu link do calendário subscrito (token null = desligado)', responses: { '200': ok(data(CalendarFeedSchema)), ...common } }),
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Criar, renovar ou desligar o link do calendário subscrito',
+          requestBody: body(CalendarFeedUpdateSchema),
+          responses: { '200': ok(data(CalendarFeedSchema)), ...common },
+        }),
+      },
+      '/calendar/{token}.ics': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Calendário subscrito (iCalendar, sem sessão): reuniões, entregas, pagamentos previstos e tarefas',
+          description: 'Para o Google Calendar ("A partir do URL"), o iPhone (webcal://) ou o Outlook. O código secreto é a autorização.',
+          security: [],
+          requestParams: { path: z.object({ token: z.string() }) },
+          responses: { '200': { description: 'text/calendar' }, '404': problem('Link inexistente ou desligado') },
+        }),
+      },
+      '/stats/profitability': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Rentabilidade: €/hora por serviço e por cliente, horas e valor recebido por mês, duração média dos projetos',
+          responses: { '200': ok(data(ProfitabilitySchema)), ...common },
         }),
       },
       '/projects/calendar': {

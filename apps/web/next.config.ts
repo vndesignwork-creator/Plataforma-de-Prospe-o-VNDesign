@@ -42,6 +42,9 @@ const nextConfig: NextConfig = {
     '/api/v1/proposals/**': ['../../node_modules/pdfkit/js/standard-fonts/**/*', '../../node_modules/pdfkit/js/data/**/*'],
     // Relatório de diagnóstico (e o email que o leva em anexo).
     '/api/v1/leads/**': ['../../node_modules/pdfkit/js/standard-fonts/**/*', '../../node_modules/pdfkit/js/data/**/*'],
+    // Contratos (na plataforma e no link do cliente).
+    '/api/v1/contracts/**': ['../../node_modules/pdfkit/js/standard-fonts/**/*', '../../node_modules/pdfkit/js/data/**/*'],
+    '/api/v1/public/**': ['../../node_modules/pdfkit/js/standard-fonts/**/*', '../../node_modules/pdfkit/js/data/**/*'],
   },
   // Permite fixar a raiz do monorepo (evita avisos com vários lockfiles).
   turbopack: { root: path.join(__dirname, '..', '..') },

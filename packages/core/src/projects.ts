@@ -177,10 +177,10 @@ export const TodayMeetingSchema = z.object({
 export type TodayMeeting = z.infer<typeof TodayMeetingSchema>;
 
 /** Texto de um campo do iCalendar (RFC 5545): escapa e dobra linhas compridas. */
-function icsText(value: string): string {
+export function icsText(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
 }
-function icsFold(line: string): string {
+export function icsFold(line: string): string {
   const out: string[] = [];
   let rest = line;
   while (rest.length > 74) {
@@ -190,7 +190,7 @@ function icsFold(line: string): string {
   out.push(rest);
   return out.join('\r\n');
 }
-const icsDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+export const icsDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 
 /** Convite de calendário (.ics) que o Gmail, o Outlook e o iPhone abrem com "Adicionar". */
 export function buildMeetingIcs(input: {

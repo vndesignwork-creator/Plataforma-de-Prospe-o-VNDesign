@@ -21,6 +21,8 @@ interface Draft {
   category: string;
   icon: ServiceIconKey;
   value_phrase: string;
+  delivery_days: string;
+  revisions_included: string;
 }
 
 const toIconKey = (icon: string | null | undefined, fallback: ServiceIconKey): ServiceIconKey =>
@@ -58,7 +60,17 @@ function IconPicker({ value, onChange, label }: { value: ServiceIconKey; onChang
   );
 }
 
-const emptyDraft: Draft = { id: null, label: '', short_label: '', category: 'outros', icon: 'sparkles', value_phrase: '' };
+const emptyDraft: Draft = {
+  id: null,
+  label: '',
+  short_label: '',
+  category: 'outros',
+  icon: 'sparkles',
+  value_phrase: '',
+  delivery_days: '',
+  revisions_included: '',
+};
+const numberOrNull = (v: string) => (v.trim() === '' ? null : Number(v));
 
 function ServiceDialog({ draft, onClose }: { draft: Draft; onClose: () => void }) {
   const invalidate = useInvalidateServices();
@@ -76,6 +88,8 @@ function ServiceDialog({ draft, onClose }: { draft: Draft; onClose: () => void }
       category: form.category,
       icon: form.icon,
       value_phrase: form.value_phrase.trim() || null,
+      delivery_days: numberOrNull(form.delivery_days),
+      revisions_included: numberOrNull(form.revisions_included),
     };
     try {
       await api(form.id ? `/services/${form.id}` : '/services', { method: form.id ? 'PATCH' : 'POST', body });
@@ -143,6 +157,12 @@ function ServiceDialog({ draft, onClose }: { draft: Draft; onClose: () => void }
             placeholder="Ex.: uma imagem coerente que os clientes reconhecem à primeira vista"
             onChange={(e) => setForm({ ...form, value_phrase: e.target.value })}
           />
+        </Field>
+        <Field label="Prazo de entrega (dias)" error={errors.delivery_days?.[0]} hint="Ao passar a Cliente, o prazo do projeto fica a contar daqui.">
+          <Input type="number" inputMode="numeric" min={1} max={365} value={form.delivery_days} onChange={(e) => setForm({ ...form, delivery_days: e.target.value })} placeholder="Ex.: 30" />
+        </Field>
+        <Field label="Revisões incluídas" error={errors.revisions_included?.[0]} hint="Rondas de revisão incluídas no preço deste serviço.">
+          <Input type="number" inputMode="numeric" min={0} max={50} value={form.revisions_included} onChange={(e) => setForm({ ...form, revisions_included: e.target.value })} placeholder="Ex.: 2" />
         </Field>
         <IconPicker label="Ícone do serviço" value={form.icon} onChange={(icon) => setForm({ ...form, icon })} />
         <button type="submit" hidden />
@@ -260,6 +280,8 @@ function ServicesList() {
                               category: s.category,
                               icon: toIconKey(s.icon, 'sparkles'),
                               value_phrase: s.value_phrase ?? '',
+                              delivery_days: s.delivery_days === null ? '' : String(s.delivery_days),
+                              revisions_included: s.revisions_included === null ? '' : String(s.revisions_included),
                             })
                           }
                         >

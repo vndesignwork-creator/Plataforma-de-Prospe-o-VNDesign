@@ -2,12 +2,19 @@ import { DEFAULT_SERVICES, serviceKeyFromLabel, type Service, type ServiceCreate
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
 
-const SERVICE_SELECT = 'id, key, label, short_label, category, icon, value_phrase, sort_order, archived_at';
-// Antes da migração 20261023000100 (sem a frase de valor): continua a funcionar.
-const LEGACY_SELECT = SERVICE_SELECT.replace(' value_phrase,', '');
+const SERVICE_SELECT = 'id, key, label, short_label, category, icon, value_phrase, delivery_days, revisions_included, sort_order, archived_at';
+// Antes das migrações 20261023000100 / 20261101000100 (sem a frase de valor, o prazo e as revisões): continua a funcionar.
+const LEGACY_SELECT = 'id, key, label, short_label, category, icon, sort_order, archived_at';
 const missingColumn = (error: { code?: string } | null) => error?.code === '42703';
 
 type ServiceRow = Omit<Service, 'lead_count'>;
+/** Colunas que podem faltar numa base de dados ainda sem as migrações. */
+const withDefaults = (row: ServiceRow): ServiceRow => ({
+  ...row,
+  value_phrase: row.value_phrase ?? null,
+  delivery_days: row.delivery_days ?? null,
+  revisions_included: row.revisions_included ?? null,
+});
 
 async function leadCounts(ctx: ApiContext): Promise<Map<string, number>> {
   const { data, error } = await ctx.supabase.rpc('service_lead_counts', { p_workspace_id: ctx.workspaceId });
@@ -26,7 +33,7 @@ export async function listServices(ctx: ApiContext, includeArchived = false): Pr
   let { data, error } = first;
   if (missingColumn(error)) ({ data, error } = await query(LEGACY_SELECT));
   if (error) throw fromPostgrest(error);
-  return ((data ?? []) as unknown as ServiceRow[]).map((s) => ({ ...s, value_phrase: s.value_phrase ?? null, lead_count: counts.get(s.key) ?? 0 }));
+  return ((data ?? []) as unknown as ServiceRow[]).map((s) => ({ ...withDefaults(s), lead_count: counts.get(s.key) ?? 0 }));
 }
 
 /**
@@ -57,7 +64,7 @@ async function getService(ctx: ApiContext, id: string): Promise<Service> {
   if (!data) throw new ApiError(404, 'Serviço não encontrado');
   const counts = await leadCounts(ctx);
   const row = data as unknown as ServiceRow;
-  return { ...row, value_phrase: row.value_phrase ?? null, lead_count: counts.get(row.key) ?? 0 };
+  return { ...withDefaults(row), lead_count: counts.get(row.key) ?? 0 };
 }
 
 export async function createService(ctx: ApiContext, input: ServiceCreate): Promise<Service> {

@@ -7,7 +7,7 @@ import { DEFAULT_PROJECT_INFO, addDays, addMonths, entrySeconds, summarizePaymen
 import type { ApiContext } from '../context';
 import { fromPostgrest } from '../http';
 import { LEAD_SELECT, getLead } from './leads';
-import { projectInfoMap, projectValues } from './project-tools';
+import { expenseTotals, projectInfoMap, projectValues } from './project-tools';
 import { createTask } from './tasks';
 
 export async function listProjects(ctx: ApiContext, state: 'active' | 'completed'): Promise<Project[]> {
@@ -30,7 +30,7 @@ export async function listProjects(ctx: ApiContext, state: 'active' | 'completed
 
   const now = new Date().toISOString();
   const ws = ctx.workspaceId;
-  const [tasks, payments, meetings, revisions, time, deliverables, infos, values] = await Promise.all([
+  const [tasks, payments, meetings, revisions, time, deliverables, infos, values, expenses] = await Promise.all([
     ctx.supabase.from('lead_tasks').select('id, lead_id, title, due_on, done_at, position').eq('workspace_id', ws).in('lead_id', ids).order('position', { ascending: true }),
     ctx.supabase.from('lead_payments').select('lead_id, amount, due_on, paid_on').eq('workspace_id', ws).in('lead_id', ids),
     ctx.supabase
@@ -46,6 +46,7 @@ export async function listProjects(ctx: ApiContext, state: 'active' | 'completed
     ctx.supabase.from('project_deliverables').select('lead_id, status').eq('workspace_id', ws).in('lead_id', ids),
     projectInfoMap(ctx, ids),
     projectValues(ctx, leads),
+    expenseTotals(ctx, ids),
   ]);
   for (const r of [tasks, payments, meetings, revisions, time, deliverables]) if (r.error) throw fromPostgrest(r.error);
   const today = todayIso();
@@ -81,6 +82,7 @@ export async function listProjects(ctx: ApiContext, state: 'active' | 'completed
       },
       deliverables: { total: delivered.length, approved: delivered.filter((d) => d.status === 'aprovada').length },
       value: values.get(lead.id) ?? null,
+      expenses: expenses.get(lead.id) ?? 0,
     };
   });
   // Em curso: primeiro os com prazo mais próximo (os sem prazo no fim).

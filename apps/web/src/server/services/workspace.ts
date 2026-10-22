@@ -65,6 +65,9 @@ export async function updateSettings(
     ai?: Partial<WorkspaceSettings['ai']>;
     features?: Partial<WorkspaceSettings['features']>;
     google_review_url?: string | null;
+    project_kickoff?: { payment_split: number[] };
+    briefing?: { questions: string[] };
+    contract?: { provider_nif: string; clauses: string };
     weekly_backup?: { enabled: boolean; recipient: string | null; weekday: number };
   },
 ): Promise<WorkspaceSettings> {

@@ -200,6 +200,8 @@ export const ServiceSchema = z
     category: ServiceCategoryKeySchema,
     icon: z.string().nullable(),
     value_phrase: z.string().nullable().meta({ description: 'Frase de valor (variável {{beneficio}} dos scripts)' }),
+    delivery_days: z.int().nullable().meta({ description: 'Prazo de entrega habitual (dias), usado ao preparar o projeto' }),
+    revisions_included: z.int().nullable().meta({ description: 'Rondas de revisão incluídas, usado ao preparar o projeto' }),
     sort_order: z.int(),
     archived_at: z.string().nullable(),
     lead_count: z.int().meta({ description: 'Leads com este serviço de interesse' }),
@@ -220,6 +222,18 @@ const valuePhraseField = z
   .max(300, { error: 'Máximo de 300 caracteres.' })
   .nullish()
   .transform((v) => v || null);
+const deliveryDaysField = z
+  .int({ error: 'Indica um número de dias.' })
+  .min(1, { error: 'Mínimo 1 dia.' })
+  .max(365, { error: 'Máximo 365 dias.' })
+  .nullish()
+  .transform((v) => v ?? null);
+const revisionsField = z
+  .int({ error: 'Indica um número.' })
+  .min(0, { error: 'Mínimo 0.' })
+  .max(50, { error: 'Máximo 50.' })
+  .nullish()
+  .transform((v) => v ?? null);
 const iconField = z.enum(SERVICE_ICON_KEYS as [ServiceIconKey, ...ServiceIconKey[]], { error: 'Ícone inválido.' });
 
 export const ServiceCreateSchema = z
@@ -229,6 +243,8 @@ export const ServiceCreateSchema = z
     category: ServiceCategoryKeySchema.default('outros'),
     icon: iconField.default('sparkles'),
     value_phrase: valuePhraseField,
+    delivery_days: deliveryDaysField,
+    revisions_included: revisionsField,
   })
   .meta({ id: 'ServiceCreate' });
 export type ServiceCreate = z.output<typeof ServiceCreateSchema>;
@@ -241,6 +257,8 @@ export const ServiceUpdateSchema = z
     category: ServiceCategoryKeySchema.optional(),
     icon: iconField.optional(),
     value_phrase: valuePhraseField.optional(),
+    delivery_days: deliveryDaysField.optional(),
+    revisions_included: revisionsField.optional(),
     archived: z.boolean().optional().meta({ description: 'Esconder (true) ou voltar a mostrar (false)' }),
   })
   .meta({ id: 'ServiceUpdate' });

@@ -97,6 +97,10 @@ export const ACTIVITY_TYPES = [
   'revision_requested',
   'deliverable_sent',
   'deliverable_approved',
+  'project_started',
+  'contract_sent',
+  'contract_accepted',
+  'briefing_received',
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
@@ -143,6 +147,10 @@ export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
   revision_requested: 'Revisão pedida',
   deliverable_sent: 'Entrega enviada',
   deliverable_approved: 'Entrega aprovada',
+  project_started: 'Projeto preparado',
+  contract_sent: 'Contrato enviado',
+  contract_accepted: 'Contrato aceite',
+  briefing_received: 'Briefing recebido',
 };
 
 export const TEMPLATE_KINDS = [

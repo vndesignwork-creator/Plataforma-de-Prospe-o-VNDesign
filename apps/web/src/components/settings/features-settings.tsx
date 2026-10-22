@@ -7,7 +7,7 @@
  */
 import { useQueryClient } from '@tanstack/react-query';
 import { WEEKDAY_LABELS, formatDateTime, type Features } from '@vndesign/core';
-import { BriefcaseBusiness, CalendarPlus, Clock, DatabaseBackup, FileText, FolderOpen, Link2, MessageCircle, RefreshCcw, Star, Wallet, type LucideIcon } from 'lucide-react';
+import { BadgeCheck, BriefcaseBusiness, CalendarPlus, ClipboardList, Clock, FileSignature, Receipt, Zap, DatabaseBackup, FileText, FolderOpen, Link2, MessageCircle, RefreshCcw, Star, Wallet, type LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { Switch } from '@/components/ui/switch';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useMe, useSettings, type SettingsWithMail } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+import { BriefingQuestionsCard, CalendarFeedCard, ContractSettingsCard, KickoffCard } from './project-settings-cards';
 
 const FEATURES: { key: keyof Features; label: string; description: string; icon: LucideIcon; sub?: boolean }[] = [
   {
@@ -45,6 +46,20 @@ const FEATURES: { key: keyof Features; label: string; description: string; icon:
     icon: BriefcaseBusiness,
   },
   {
+    key: 'project_kickoff',
+    label: 'Arranque automático do projeto',
+    description: 'Ao passar a Cliente: prazo, revisões, tarefas e plano de pagamentos (detalhes abaixo).',
+    icon: Zap,
+    sub: true,
+  },
+  {
+    key: 'briefing',
+    label: 'Briefing online',
+    description: 'Um formulário para o cliente (objetivos, cores, conteúdos, ficheiros). Perguntas abaixo.',
+    icon: ClipboardList,
+    sub: true,
+  },
+  {
     key: 'revisions',
     label: 'Rondas de revisão',
     description: 'Quantas revisões estão incluídas e as que o cliente pediu; avisa quando passa das incluídas.',
@@ -56,6 +71,13 @@ const FEATURES: { key: keyof Features; label: string; description: string; icon:
     label: 'Registo de horas',
     description: 'Temporizador ▶/⏸ em cada projeto e quanto ganhas por hora.',
     icon: Clock,
+    sub: true,
+  },
+  {
+    key: 'expenses',
+    label: 'Despesas e lucro',
+    description: 'Custos de cada projeto, lucro real e ganho líquido por hora.',
+    icon: Receipt,
     sub: true,
   },
   {
@@ -71,6 +93,19 @@ const FEATURES: { key: keyof Features; label: string; description: string; icon:
     description: 'Um link só de leitura para o cliente acompanhar o projeto (sem login).',
     icon: Link2,
     sub: true,
+  },
+  {
+    key: 'client_approvals',
+    label: 'Aprovação pelo cliente',
+    description: 'Na página do cliente: “Aprovar” ou “Pedir alterações” em cada entrega enviada (cria uma revisão).',
+    icon: BadgeCheck,
+    sub: true,
+  },
+  {
+    key: 'contracts',
+    label: 'Contratos',
+    description: 'Contrato em PDF gerado a partir da proposta, aceite online pelo cliente.',
+    icon: FileSignature,
   },
   {
     key: 'whatsapp_templates',
@@ -181,6 +216,11 @@ export function FeaturesSettings() {
           ))}
         </ul>
       </Card>
+
+      {settings.features.projects && settings.features.project_kickoff ? <KickoffCard settings={settings} /> : null}
+      {settings.features.projects && settings.features.briefing ? <BriefingQuestionsCard settings={settings} /> : null}
+      {settings.features.contracts ? <ContractSettingsCard settings={settings} /> : null}
+      <CalendarFeedCard />
 
       <Card>
         <CardHeader
