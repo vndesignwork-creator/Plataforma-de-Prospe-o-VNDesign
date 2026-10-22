@@ -336,6 +336,10 @@ Menu **Prospeção**: um lead de cada vez, com tudo à mão.
   - **Mais tarde** — amanhã, 3 dias, 1 semana, 2 semanas ou 1 mês;
   - **Sem interesse**; **Saltar** passa para o fim da fila.
 - Em cima: quantos contactos fizeste nesta sessão e hoje.
+- **Procurar contacto** (leads sem telefone ou email; também na ficha, no cartão *Empresa e contacto*):
+  - **Procurar automaticamente** lê o site do lead e a página de contactos (telefones em links e no texto, perto de "Telefone"/"Telemóvel"; o NIF não conta) e, com `GOOGLE_PLACES_API_KEY`, o Google Maps. Mostra o que encontrou para escolheres; nada é guardado sem carregares em **Guardar contactos**.
+  - Atalhos **Google**, **Google Maps**, **Facebook** e **Instagram** já com o nome e a cidade (as páginas do Facebook/Instagram não se leem automaticamente).
+  - Cola o telefone ou o email e **Guardar contactos**: aparecem logo **Ligar**, **WhatsApp** e **Email**.
 
 ---
 

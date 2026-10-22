@@ -2,7 +2,8 @@
  * Servidores falsos para os testes E2E da Fase E (sem rede nem custos):
  *  - API da Anthropic (AI_BASE_URL=http://127.0.0.1:4621);
  *  - geocodificador compatível com Nominatim (GEOCODER_URL=http://127.0.0.1:4620/search);
- *  - PageSpeed com as imagens do site (PAGESPEED_ENDPOINT=http://127.0.0.1:4622/pagespeed).
+ *  - PageSpeed com as imagens do site (PAGESPEED_ENDPOINT=http://127.0.0.1:4622/pagespeed);
+ *  - site de um negócio com página de contactos (http://127.0.0.1:4623), para "Procurar contacto".
  */
 import http from 'node:http';
 
@@ -225,6 +226,18 @@ export async function startStubs() {
     );
   });
 
-  const servers = await Promise.all([listen(anthropic, 4621), listen(geocoder, 4620), listen(pagespeed, 4622)]);
+  const business = http.createServer((req, res) => {
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    if (req.url?.startsWith('/contactos')) {
+      res.end(
+        '<html><body><h1>Contactos</h1><p>NIF 212345678</p><p>Telefone: 213 456 789</p><p>Telemóvel: +351 912 345 678</p>' +
+          '<a href="mailto:reservas@tasca-exemplo.pt">Escreva-nos</a></body></html>',
+      );
+      return;
+    }
+    res.end('<html><head><title>Tasca Exemplo | Restaurante</title></head><body><a href="/contactos">Contactos</a></body></html>');
+  });
+
+  const servers = await Promise.all([listen(anthropic, 4621), listen(geocoder, 4620), listen(pagespeed, 4622), listen(business, 4623)]);
   return () => servers.forEach((s) => s?.close());
 }

@@ -67,6 +67,7 @@ import { SiteAuditPanel } from './site-audit';
 import { AiEmailCard } from './ai-email-card';
 import { LeadLocation } from './lead-location';
 import { ProposalsCard } from '@/components/proposals/proposals-card';
+import { ContactFinder } from './contact-finder';
 import { TasksCard } from '@/components/tasks/tasks-card';
 import { NotesCard } from './notes-card';
 import { SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
@@ -487,6 +488,11 @@ export function LeadDetail({ id }: { id: string }) {
                 <ExternalUrl url={lead.source_url} />
               </Row>
             </dl>
+            {(!lead.phone || !lead.email) && !lead.anonymized_at ? (
+              <div className="px-4 pb-4">
+                <ContactFinder key={lead.updated_at} lead={lead} />
+              </div>
+            ) : null}
           </Card>
 
           <SiteDiagnosisCard lead={lead} />

@@ -89,6 +89,7 @@ import {
   PushSubscriptionDeleteSchema,
   SiteAuditRequestSchema,
   SCREENSHOT_DEVICES,
+  ContactFindingsSchema,
   PomodoroActionSchema,
   PomodoroSchema,
   PomodoroStartSchema,
@@ -1463,6 +1464,14 @@ export function getOpenApiDocument() {
       },
       '/revisions/{id}': {
         delete: op({ tags: ['Projetos'], summary: 'Apagar uma revisão', requestParams: { path: idParam }, responses: { '204': { description: 'Apagada' }, ...withNotFound } }),
+      },
+      '/leads/{id}/find-contacts': {
+        post: op({
+          tags: ['Leads'],
+          summary: 'Procurar telefone e email do lead no site, na página de contactos e no Google Maps (não guarda nada)',
+          requestParams: { path: idParam },
+          responses: { '200': ok(data(ContactFindingsSchema)), ...withNotFound },
+        }),
       },
       '/leads/{id}/time': {
         get: op({ tags: ['Projetos'], summary: 'Horas registadas, total, temporizador e valor por hora', requestParams: { path: idParam }, responses: { '200': ok(data(ProjectTimeSchema)), ...withNotFound } }),

@@ -35,6 +35,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { SendEmailButton } from '@/components/email/send-email-dialog';
 import { StatusBadge } from '@/components/leads/badges';
+import { ContactFinder } from '@/components/leads/contact-finder';
 import { LeadScoreBadge } from '@/components/leads/lead-score';
 import { WhatsAppMenu } from '@/components/leads/whatsapp-menu';
 import { ContactScriptsCard } from '@/components/scripts/contact-scripts-card';
@@ -167,7 +168,9 @@ function LeadCard({
   onDone: (doneToday: number) => void;
   onSkip: () => void;
 }) {
-  const { lead } = item;
+  // Depois de guardar contactos encontrados, o cartão passa a usar o lead atualizado.
+  const [saved, setSaved] = useState<typeof item.lead | null>(null);
+  const lead = saved ?? item.lead;
   const { data: settings } = useSettings();
   const outcome = useProspectingOutcome();
   const [note, setNote] = useState('');
@@ -244,12 +247,12 @@ function LeadCard({
             />
           ) : null}
           {lead.website ? (
-            <a href={lead.website} target="_blank" rel="noreferrer" className={buttonClasses('ghost', 'md', 'justify-center')}>
-              <Globe className="h-4 w-4" aria-hidden /> {displayHost(lead.website)}
+            <a href={lead.website} target="_blank" rel="noreferrer" className={buttonClasses('ghost', 'md', 'col-span-2 min-w-0 justify-center')}>
+              <Globe className="h-4 w-4 shrink-0" aria-hidden /> <span className="truncate">{displayHost(lead.website)}</span>
             </a>
           ) : null}
-          {!lead.phone && !lead.email && !wa ? <p className="col-span-2 text-sm text-muted">Sem telefone nem email: procura o contacto no site ou nas redes.</p> : null}
         </nav>
+        {!lead.phone || !lead.email ? <ContactFinder key={lead.updated_at} lead={lead} onSaved={setSaved} /> : null}
       </div>
 
       <dl className="grid gap-x-6 gap-y-3 p-4 text-sm sm:grid-cols-2 sm:p-5">

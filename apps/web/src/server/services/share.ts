@@ -43,7 +43,7 @@ async function resolveMapsLink(url: string): Promise<string> {
 type Place = { name: string | null; address: string | null; phone: string | null; website: string | null };
 
 /** Google Places (opcional): telefone, site e morada do negócio. */
-async function lookupPlace(query: string): Promise<Place | null> {
+export async function lookupPlace(query: string): Promise<Place | null> {
   const key = process.env.GOOGLE_PLACES_API_KEY;
   if (!key || !query.trim()) return null;
   try {
