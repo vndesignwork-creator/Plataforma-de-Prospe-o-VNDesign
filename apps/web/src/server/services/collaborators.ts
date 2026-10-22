@@ -31,7 +31,9 @@ import { isMailConfigured, sendMail, sendWithAccount } from '../mailer';
 import { requestOrigin } from '../request-origin';
 import { createSupabaseBearerClient, createSupabaseServerClient } from '../supabase';
 import { createSupabaseAdminClient } from '../supabase-admin';
+import { brandFileUrlFor, listAccessesFor, revealAccess, toBrandKit } from './brand-kit';
 import { getBriefing } from './briefing';
+import { mainClientId } from './client-projects';
 import { loadSmtpAccount } from './mail-account';
 import { addTimeEntry, createDeliverable, getProjectTime, startTimer } from './project-tools';
 import { sendUserPush } from './push';
@@ -362,6 +364,12 @@ export async function getCollabProject(user: CollabUser, leadId: string): Promis
   ]);
   if (!lead) throw new ApiError(404, 'Projeto não encontrado');
   const mine = time.entries.filter((e) => e.user_id === user.id);
+  // Kit da marca do cliente (no registo principal) e os acessos marcados para partilhar.
+  const mainId = await mainClientId(ctx, leadId);
+  const [{ data: kitRow }, accesses] = await Promise.all([
+    admin.from('lead_brand_kits').select('colors, fonts, links, files, notes, updated_at').eq('workspace_id', row.workspace_id).eq('lead_id', mainId).maybeSingle(),
+    listAccessesFor(ctx, mainId, true),
+  ]);
   return {
     lead_id: leadId,
     company_name: (lead as LeadInfo).company_name,
@@ -372,6 +380,8 @@ export async function getCollabProject(user: CollabUser, leadId: string): Promis
     tasks: tasks.map((t: LeadTask) => ({ id: t.id, title: t.title, due_on: t.due_on, done: !!t.done_at })),
     deliverables: (deliverables.data ?? []) as CollabProject['deliverables'],
     briefing: settings.features.briefing ? briefingView(leadId, briefing) : null,
+    brand: kitRow ? toBrandKit(mainId, kitRow as Parameters<typeof toBrandKit>[1], (i) => `/api/v1/collab/projects/${leadId}/brand-files/${i}`) : null,
+    accesses,
     time: {
       entries: mine,
       total_minutes: Math.floor(mine.reduce((s, e) => s + e.seconds, 0) / 60),
@@ -431,4 +441,15 @@ export async function collabBriefingFileUrl(user: CollabUser, leadId: string, in
   const { data, error } = await createSupabaseAdminClient().storage.from('project-files').createSignedUrl(file.path, 600, { download: file.name });
   if (error || !data) throw new ApiError(502, 'Ficheiro indisponível', 'Não foi possível abrir o ficheiro. Tenta outra vez.');
   return data.signedUrl;
+}
+
+export async function collabBrandFileUrl(user: CollabUser, leadId: string, index: number): Promise<string> {
+  const { ctx } = await access(user, leadId);
+  return brandFileUrlFor(ctx, await mainClientId(ctx, leadId), index);
+}
+
+/** Palavra-passe de um acesso partilhado com os colaboradores deste projeto. */
+export async function collabRevealAccess(user: CollabUser, leadId: string, accessId: string): Promise<string | null> {
+  const { ctx } = await access(user, leadId);
+  return revealAccess(ctx, accessId, { mainId: await mainClientId(ctx, leadId) });
 }

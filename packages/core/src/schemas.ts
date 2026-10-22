@@ -19,6 +19,7 @@ import { ensureUrlProtocol } from './normalize';
 import { AiSettingsSchema, AiSettingsUpdateSchema, SERVER_AI_PROVIDER } from './ai-providers';
 import { ServiceCategoryKeySchema, ServiceKeyListSchema, ServiceKeySchema } from './services';
 import { TodayOpenedEmailSchema } from './mail';
+import { DEFAULT_QUOTE_SETTINGS, QuoteSettingsSchema } from './quote';
 import { TodayMeetingSchema } from './projects';
 import { TodayTasksSchema } from './tasks';
 
@@ -118,6 +119,8 @@ const leadFields = {
   email_body: nullableText(20_000),
   /** Serviços de interesse (chaves de GET /services; a base de dados confirma que existem). */
   services: ServiceKeyListSchema,
+  /** Nome do projeto (ex.: "Loja online"), sobretudo quando o cliente tem vários. */
+  project_title: nullableText(120),
 };
 
 export const EDITABLE_LEAD_FIELDS = Object.keys(leadFields) as (keyof typeof leadFields)[];
@@ -193,6 +196,9 @@ export const LeadSchema = z
     follow_up_count: z.int().optional(),
     /** Projeto do cliente concluído (página Projetos). */
     project_completed_at: z.string().nullable().optional(),
+    /** Projeto novo de um cliente que volta: o registo principal do cliente. */
+    client_of: z.uuid().nullable().optional(),
+    project_title: z.string().nullable().optional(),
     created_by: z.uuid().nullable(),
     created_at: z.string(),
     updated_at: z.string(),
@@ -494,6 +500,8 @@ export const FeaturesSchema = z.object({
   prospecting_session: z.boolean().default(true).meta({ description: 'Sessão de prospeção (um lead de cada vez)' }),
   launch_checklist: z.boolean().default(true).meta({ description: 'Projetos: checklist de lançamento do site' }),
   collaborators: z.boolean().default(true).meta({ description: 'Projetos: convidar colaboradores' }),
+  brand_kit: z.boolean().default(true).meta({ description: 'Kit da marca do cliente (logótipos, cores, tipos de letra, acessos)' }),
+  quote_calculator: z.boolean().default(true).meta({ description: 'Calculadora de orçamento' }),
 });
 export type Features = z.infer<typeof FeaturesSchema>;
 export const DEFAULT_FEATURES: Features = {
@@ -516,6 +524,8 @@ export const DEFAULT_FEATURES: Features = {
   prospecting_session: true,
   launch_checklist: true,
   collaborators: true,
+  brand_kit: true,
+  quote_calculator: true,
 };
 
 /** Arranque do projeto: plano de pagamentos criado ao passar a Cliente ([] = sem plano). */
@@ -603,6 +613,8 @@ export const WorkspaceSettingsSchema = z
       .object({ provider_nif: z.string().default(''), clauses: z.string().default(DEFAULT_CONTRACT_CLAUSES) })
       .default({ provider_nif: '', clauses: DEFAULT_CONTRACT_CLAUSES }),
     weekly_backup: WeeklyBackupSchema.default(DEFAULT_WEEKLY_BACKUP),
+    /** Calculadora de orçamento: objetivo por hora e os extras. */
+    quote: QuoteSettingsSchema.default(DEFAULT_QUOTE_SETTINGS),
     /** Fornecedor e modelo de IA de cada função (Definições → Inteligência artificial). */
     ai: AiSettingsSchema.default({
       email: { provider: SERVER_AI_PROVIDER, model: null },
@@ -651,6 +663,7 @@ export const WorkspaceSettingsUpdateSchema = z
       recipient: nullableEmail,
       weekday: z.int().min(1).max(7),
     }),
+    quote: QuoteSettingsSchema,
   })
   .partial()
   .meta({ id: 'WorkspaceSettingsUpdate' });

@@ -2,12 +2,19 @@
 
 /**
  * Definições → Funcionalidades (continuação): arranque automático do projeto,
- * perguntas do briefing, contratos (NIF e condições gerais) e o calendário
- * para subscrever no telemóvel.
+ * perguntas do briefing, contratos (NIF e condições gerais), calculadora de
+ * orçamento e o calendário para subscrever no telemóvel.
  */
 import { useQueryClient } from '@tanstack/react-query';
-import { DEFAULT_BRIEFING_QUESTIONS, DEFAULT_CONTRACT_CLAUSES, KICKOFF_SPLITS } from '@vndesign/core';
-import { CalendarDays, Copy, Link2Off, RefreshCw } from 'lucide-react';
+import {
+  DEFAULT_BRIEFING_QUESTIONS,
+  DEFAULT_CONTRACT_CLAUSES,
+  DEFAULT_QUOTE_EXTRAS,
+  KICKOFF_SPLITS,
+  parseEuroAmount,
+  type QuoteExtra,
+} from '@vndesign/core';
+import { CalendarDays, Copy, Link2Off, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -241,6 +248,161 @@ export function CalendarFeedCard() {
           <p className="text-xs text-muted">O link é pessoal: quem o tiver vê estes eventos. Se o partilhares por engano, carrega em “Novo link”.</p>
         </div>
       ) : null}
+    </Card>
+  );
+}
+
+/** Extra em edição (números como texto para aceitar "1,5"). */
+interface DraftExtra {
+  name: string;
+  price: string;
+  kind: QuoteExtra['kind'];
+  unit: string;
+  hours: string;
+  recurring: boolean;
+}
+const num = (v: number) => String(v).replace('.', ',');
+const toDraftExtra = (e: QuoteExtra): DraftExtra => ({ ...e, price: num(e.price), hours: num(e.hours) });
+
+export function QuoteSettingsCard({ settings }: { settings: SettingsWithMail }) {
+  const patch = usePatchSettings();
+  const [target, setTarget] = useState<string | null>(null);
+  const [rows, setRows] = useState<DraftExtra[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const list = rows ?? settings.quote.extras.map(toDraftExtra);
+  const targetValue = target ?? (settings.quote.hourly_target === null ? '' : num(settings.quote.hourly_target));
+  const dirty = target !== null || rows !== null;
+
+  function edit(i: number, change: Partial<DraftExtra>) {
+    setRows(list.map((r, j) => (j === i ? { ...r, ...change } : r)));
+  }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      await patch({
+        quote: {
+          hourly_target: targetValue.trim() ? parseEuroAmount(targetValue) : null,
+          extras: list
+            .filter((r) => r.name.trim())
+            .map((r) => ({
+              name: r.name.trim(),
+              price: parseEuroAmount(r.price) ?? 0,
+              kind: r.kind,
+              unit: r.unit.trim(),
+              hours: parseEuroAmount(r.hours) ?? 0,
+              recurring: r.kind === 'fixed' && r.recurring,
+            })),
+        },
+      });
+      setTarget(null);
+      setRows(null);
+      toast.success('Calculadora de orçamento guardada.');
+    } catch (err) {
+      const msg = firstError(err);
+      if (msg) setError(msg);
+      else toast.error(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader
+        title="Calculadora de orçamento"
+        description="Os extras que podes juntar aos pacotes (na ficha: Propostas → Calcular) e quanto queres ganhar por hora."
+      />
+      <form onSubmit={save} className="flex flex-col gap-4 p-4" noValidate>
+        <Field label="Objetivo por hora (€)" hint="Vazio = sem comparação." className="w-48">
+          <Input inputMode="decimal" placeholder="35" value={targetValue} onChange={(e) => setTarget(e.target.value)} />
+        </Field>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[40rem] text-sm">
+            <caption className="sr-only">Extras da calculadora</caption>
+            <thead>
+              <tr className="text-left text-xs text-muted">
+                <th className="py-1 pr-2 font-medium">Extra</th>
+                <th className="py-1 pr-2 font-medium">Preço</th>
+                <th className="py-1 pr-2 font-medium">Tipo</th>
+                <th className="py-1 pr-2 font-medium">Unidade</th>
+                <th className="py-1 pr-2 font-medium">Horas/unid.</th>
+                <th className="py-1 pr-2 font-medium">Mensal</th>
+                <th className="py-1">
+                  <span className="sr-only">Apagar</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((r, i) => (
+                <tr key={i}>
+                  <td className="py-1 pr-2">
+                    <Input aria-label={`Nome do extra ${i + 1}`} maxLength={80} value={r.name} onChange={(e) => edit(i, { name: e.target.value })} />
+                  </td>
+                  <td className="py-1 pr-2">
+                    <Input aria-label={`Preço do extra ${i + 1}`} inputMode="decimal" className="w-24" value={r.price} onChange={(e) => edit(i, { price: e.target.value })} />
+                  </td>
+                  <td className="py-1 pr-2">
+                    <Select aria-label={`Tipo do extra ${i + 1}`} value={r.kind} onChange={(e) => edit(i, { kind: e.target.value as QuoteExtra['kind'] })}>
+                      <option value="fixed">€ por unidade</option>
+                      <option value="percent">% sobre o total</option>
+                    </Select>
+                  </td>
+                  <td className="py-1 pr-2">
+                    <Input aria-label={`Unidade do extra ${i + 1}`} maxLength={20} className="w-24" placeholder="página" value={r.unit} onChange={(e) => edit(i, { unit: e.target.value })} />
+                  </td>
+                  <td className="py-1 pr-2">
+                    <Input aria-label={`Horas do extra ${i + 1}`} inputMode="decimal" className="w-20" value={r.hours} onChange={(e) => edit(i, { hours: e.target.value })} />
+                  </td>
+                  <td className="py-1 pr-2 text-center">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      aria-label={`Mensal: extra ${i + 1}`}
+                      disabled={r.kind === 'percent'}
+                      checked={r.kind === 'fixed' && r.recurring}
+                      onChange={(e) => edit(i, { recurring: e.target.checked })}
+                    />
+                  </td>
+                  <td className="py-1">
+                    <Button type="button" size="sm" variant="ghost" onClick={() => setRows(list.filter((_, j) => j !== i))}>
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                      <span className="sr-only">Apagar extra {r.name || i + 1}</span>
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {error ? (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        ) : null}
+        <div className="flex flex-wrap justify-between gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={list.length >= 40}
+            onClick={() => setRows([...list, { name: '', price: '0', kind: 'fixed', unit: '', hours: '0', recurring: false }])}
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden /> Juntar extra
+          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="ghost" onClick={() => setRows(DEFAULT_QUOTE_EXTRAS.map(toDraftExtra))}>
+              Repor os de origem
+            </Button>
+            <Button type="submit" loading={saving} disabled={!dirty}>
+              Guardar calculadora
+            </Button>
+          </div>
+        </div>
+      </form>
     </Card>
   );
 }

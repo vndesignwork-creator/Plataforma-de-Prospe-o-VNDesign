@@ -27,6 +27,9 @@ import type {
   AuditApply,
   SiteAudit,
   EmailTracking,
+  BrandKit,
+  LeadAccess,
+  ClientProjects,
   ProjectCollaborator,
   LaunchChecklist,
   LaunchCheckKey,
@@ -960,6 +963,74 @@ export function useCollaboratorAction(leadId: string) {
           )
         : api(`/collaborators/${input.remove}`, { method: 'DELETE' }).then(() => null),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['collaborators', leadId] }),
+  });
+}
+
+export function useClientProjects(leadId: string) {
+  return useQuery({
+    queryKey: ['client-projects', leadId],
+    queryFn: () => api<{ data: ClientProjects }>(`/leads/${leadId}/client-projects`).then((r) => r.data),
+  });
+}
+
+export function useCreateClientProject(leadId: string) {
+  const qc = useQueryClient();
+  const invalidate = useInvalidateLead();
+  return useMutation({
+    mutationFn: (body: { title: string; services: string[]; estimated_value: number | null }) =>
+      api<{ data: Lead }>(`/leads/${leadId}/client-projects`, { method: 'POST', body }).then((r) => r.data),
+    onSuccess: (lead) => {
+      void qc.invalidateQueries({ queryKey: ['client-projects'] });
+      void qc.invalidateQueries({ queryKey: ['projects'] });
+      invalidate(lead.id);
+    },
+  });
+}
+
+export function useBrandKit(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['brand-kit', leadId],
+    queryFn: () => api<{ data: BrandKit }>(`/leads/${leadId}/brand-kit`).then((r) => r.data),
+    enabled,
+  });
+}
+
+/** Guardar cores/tipos de letra/links/notas (body), juntar ficheiros (files) ou apagar um (removeFile). */
+export function useBrandKitAction(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { body: Record<string, unknown> } | { files: File[] } | { removeFile: number }) => {
+      if ('body' in input) return api<{ data: BrandKit }>(`/leads/${leadId}/brand-kit`, { method: 'PATCH', body: input.body }).then((r) => r.data);
+      if ('removeFile' in input) return api<{ data: BrandKit }>(`/leads/${leadId}/brand-kit/files/${input.removeFile}`, { method: 'DELETE' }).then((r) => r.data);
+      const form = new FormData();
+      for (const f of input.files) form.append('files', f);
+      const res = await fetch(`/api/v1/leads/${leadId}/brand-kit/files`, { method: 'POST', body: form });
+      const json = (await res.json().catch(() => null)) as { data?: BrandKit; detail?: string; title?: string } | null;
+      if (!res.ok || !json?.data) throw new Error(json?.detail ?? json?.title ?? 'Não foi possível juntar os ficheiros.');
+      return json.data;
+    },
+    onSuccess: (kit) => qc.setQueryData(['brand-kit', leadId], kit),
+  });
+}
+
+export function useAccesses(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['accesses', leadId],
+    queryFn: () => api<{ data: LeadAccess[] }>(`/leads/${leadId}/accesses`).then((r) => r.data),
+    enabled,
+  });
+}
+
+export function useAccessAction(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id?: string; body?: Record<string, unknown>; remove?: boolean }) =>
+      input.remove
+        ? api(`/accesses/${input.id}`, { method: 'DELETE' })
+        : input.id
+          ? api(`/accesses/${input.id}`, { method: 'PATCH', body: input.body })
+          : api(`/leads/${leadId}/accesses`, { method: 'POST', body: input.body }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['accesses', leadId] }),
   });
 }
 

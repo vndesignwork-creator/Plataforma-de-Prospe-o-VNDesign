@@ -428,6 +428,25 @@ Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**
 - Recebes uma notificação quando aceita o convite, conclui uma tarefa ou junta uma entrega. As horas dele aparecem em *Horas* com o nome.
 - **Remover** tira-lhe logo o acesso ao projeto.
 
+**Vários projetos por cliente**
+- Quando um cliente volta (ex.: site em 2025, loja online em 2026), na ficha dele, cartão **Projetos deste cliente → Novo projeto**: nome do projeto, serviços e valor.
+- Cria um registo próprio para o projeto novo, com os contactos do cliente, e prepara-o logo (prazo, tarefas e plano de pagamentos). Tarefas, pagamentos, horas, contrato, briefing e entregas ficam separados por projeto.
+- O cartão mostra todos os projetos do cliente (fase ou "Concluído") e o nome do projeto aparece na lista de leads, no Kanban e em Projetos ("Padaria Sol · Loja online").
+- No Dashboard, o cliente conta uma vez (o valor dos projetos novos soma-se ao ganho); em Estatísticas → Rentabilidade, o ganho por cliente junta todos os projetos dele.
+
+**Kit da marca do cliente**
+- Na ficha de um cliente, cartão **Kit da marca** (é o mesmo em todos os projetos dele):
+  - **Editar**: cores (com o código, copia-se com um toque), tipos de letra e links (Drive, Figma, Canva…) e notas;
+  - **Juntar ficheiros**: logótipos e outros ficheiros (até 30, de 25 MB cada), privados no Supabase Storage;
+  - **Acessos**: domínio, alojamento, redes sociais… com o endereço, o utilizador e a palavra-passe. A palavra-passe fica **cifrada** no servidor e só aparece quando carregas em 👁 (ou copias).
+- Marca **Partilhar com os colaboradores** num acesso para o colaborador o ver no portal dele. O kit (cores, tipos de letra, links e ficheiros) aparece sempre aos colaboradores dos projetos do cliente; os acessos não partilhados nunca.
+
+**Calculadora de orçamento**
+- Na ficha, cartão **Propostas → Calcular**: escolhe os pacotes (começa com os dos serviços do lead) e os extras (páginas, idiomas, textos, urgência +20%, manutenção mensal…) e o desconto.
+- Mostra o total, o valor mensal, as **horas previstas** (média dos teus projetos de cada serviço com horas registadas + as horas de cada extra; ou escreves as horas) e **quanto ganhas por hora**. Abaixo do teu objetivo, diz quanto deverias cobrar.
+- **Guardar como valor estimado** passa o total para o lead; **Criar proposta** cria a proposta com estes itens e abre-a para rever.
+- Os extras (nome, preço, € ou %, unidade, horas, mensal) e o objetivo por hora editam-se em Definições → Funcionalidades → *Calculadora de orçamento*.
+
 **Rentabilidade (Estatísticas)**
 - Em **Estatísticas → Rentabilidade**: ganho médio por hora (e depois das despesas), horas registadas, duração média e horas por projeto concluído, ganho por hora por serviço e por cliente, e gráficos das horas e do recebido nos últimos 12 meses.
 

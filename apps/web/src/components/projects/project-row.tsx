@@ -105,7 +105,7 @@ export function ProjectRow({
         <div className="flex min-w-0 flex-col gap-1.5 sm:flex-[1_1_16rem]">
           <Link href={leadPath(lead)} className="font-semibold hover:text-accent-text hover:underline">
             <span className="mr-1.5 text-muted tabular">#{lead.number}</span>
-            {lead.company_name}
+            {lead.company_name} {lead.project_title ? <span className="font-normal text-muted">· {lead.project_title}</span> : null}
           </Link>
           <div className="flex flex-wrap items-center gap-2">
             {completed ? (

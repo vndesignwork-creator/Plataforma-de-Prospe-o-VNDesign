@@ -1,4 +1,4 @@
-import { WorkspaceSettingsSchema, type Me, type Signature, type WorkspaceSettings } from '@vndesign/core';
+import { WorkspaceSettingsSchema, type Me, type QuoteSettings, type Signature, type WorkspaceSettings } from '@vndesign/core';
 import { assertAiProviderExists } from '../ai/providers';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest, unwrap } from '../http';
@@ -68,6 +68,7 @@ export async function updateSettings(
     project_kickoff?: { payment_split: number[] };
     briefing?: { questions: string[] };
     contract?: { provider_nif: string; clauses: string };
+    quote?: QuoteSettings;
     weekly_backup?: { enabled: boolean; recipient: string | null; weekday: number };
   },
 ): Promise<WorkspaceSettings> {

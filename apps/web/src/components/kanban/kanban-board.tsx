@@ -102,7 +102,7 @@ function LeadCard({
             className="block font-semibold leading-snug hover:text-accent-text hover:underline"
             draggable={false}
           >
-            <span className="text-muted tabular">#{lead.number}</span> {lead.company_name}
+            <span className="text-muted tabular">#{lead.number}</span> {lead.company_name} {lead.project_title ? <span className="font-normal text-muted">· {lead.project_title}</span> : null}
           </Link>
           <p className="mt-1 flex flex-wrap gap-x-2 text-xs text-muted">
             {lead.sector ? (

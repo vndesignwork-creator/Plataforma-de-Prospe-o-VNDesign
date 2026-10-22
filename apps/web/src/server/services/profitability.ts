@@ -11,6 +11,7 @@ type LeadRow = {
   id: string;
   number: number;
   company_name: string;
+  client_of: string | null;
   services: string[] | null;
   estimated_value: number | string | null;
   status_changed_at: string;
@@ -27,7 +28,7 @@ export async function profitability(ctx: ApiContext): Promise<Profitability> {
   const [leadsRes, timeRes, paidRes] = await Promise.all([
     ctx.supabase
       .from('leads')
-      .select('id, number, company_name, services, estimated_value, status_changed_at, project_completed_at')
+      .select('id, number, company_name, client_of, services, estimated_value, status_changed_at, project_completed_at')
       .eq('workspace_id', ws)
       .eq('status', 'cliente')
       .is('archived_at', null)
@@ -63,7 +64,8 @@ export async function profitability(ctx: ApiContext): Promise<Profitability> {
   let totalExpenses = 0;
   const completedDays: number[] = [];
   const completedMinutes: number[] = [];
-  const clients: Profitability['by_client'] = [];
+  // Por cliente: os vários projetos de um cliente que volta somam-se (registo principal).
+  const byClient = new Map<string, { lead: LeadRow; minutes: number; value: number | null; expenses: number; completed: boolean; main: boolean }>();
   for (const lead of leads) {
     const minutes = minutesByLead.get(lead.id) ?? 0;
     const value = values.get(lead.id) ?? null;
@@ -79,14 +81,15 @@ export async function profitability(ctx: ApiContext): Promise<Profitability> {
       if (minutes > 0) completedMinutes.push(minutes);
     }
     if (minutes > 0 || value || spent) {
-      clients.push({
-        lead: { id: lead.id, number: lead.number, company_name: lead.company_name },
-        minutes: Math.round(minutes),
-        value,
-        expenses: spent,
-        rate: hourlyRate(value, minutes),
-        net_rate: projectProfit(value, spent, minutes).net_rate,
-        completed: !!lead.project_completed_at,
+      const key = lead.client_of ?? lead.id;
+      const prev = byClient.get(key);
+      byClient.set(key, {
+        lead: prev && (prev.main || lead.client_of) ? prev.lead : lead,
+        main: !!prev?.main || !lead.client_of,
+        minutes: (prev?.minutes ?? 0) + minutes,
+        value: value || prev?.value ? (prev?.value ?? 0) + (value ?? 0) : null,
+        expenses: (prev?.expenses ?? 0) + spent,
+        completed: (prev ? prev.completed : true) && !!lead.project_completed_at,
       });
     }
     const keys = lead.services ?? [];
@@ -105,6 +108,16 @@ export async function profitability(ctx: ApiContext): Promise<Profitability> {
   }
   const avg = (list: number[]) => (list.length ? round2(list.reduce((a, b) => a + b, 0) / list.length) : null);
 
+  const clients = (): Profitability['by_client'] =>
+    [...byClient.values()].map((c) => ({
+      lead: { id: c.lead.client_of ?? c.lead.id, number: c.lead.number, company_name: c.lead.company_name },
+      minutes: Math.round(c.minutes),
+      value: c.value,
+      expenses: c.expenses,
+      rate: hourlyRate(c.value, c.minutes),
+      net_rate: projectProfit(c.value, c.expenses, c.minutes).net_rate,
+      completed: c.completed,
+    }));
   return {
     totals: {
       expenses: round2(totalExpenses),
@@ -125,7 +138,7 @@ export async function profitability(ctx: ApiContext): Promise<Profitability> {
         rate: hourlyRate(s.valueWithTime, s.minutesWithValue),
       }))
       .sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1) || b.value - a.value),
-    by_client: clients.sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1) || (b.value ?? 0) - (a.value ?? 0)).slice(0, 15),
+    by_client: clients().sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1) || (b.value ?? 0) - (a.value ?? 0)).slice(0, 15),
     monthly: months.map((month) => ({
       month,
       minutes: Math.round(minutesByMonth.get(month) ?? 0),

@@ -125,7 +125,7 @@ function buildColumns(today: string): Col[] {
             href={leadPath(row.original)}
             className="font-semibold text-fg hover:text-accent-text hover:underline"
           >
-            {row.original.company_name}
+            {row.original.company_name} {row.original.project_title ? <span className="font-normal text-muted">· {row.original.project_title}</span> : null}
           </Link>
           {row.original.archived_at ? <ArchivedBadge /> : null}
           <TaskProgress progress={row.original.task_progress} className="mt-1 flex w-fit" />
@@ -782,7 +782,7 @@ export function LeadsTable() {
                     <span className="flex items-start justify-between gap-3">
                       <span className="font-semibold">
                         <span className="mr-1.5 text-muted tabular">#{lead.number}</span>
-                        {lead.company_name}
+                        {lead.company_name} {lead.project_title ? <span className="font-normal text-muted">· {lead.project_title}</span> : null}
                         {lead.archived_at ? <ArchivedBadge /> : null}
                       </span>
                       <span className="flex shrink-0 flex-col items-end gap-1">

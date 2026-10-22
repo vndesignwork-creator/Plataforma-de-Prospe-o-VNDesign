@@ -89,6 +89,12 @@ import {
   PushSubscriptionDeleteSchema,
   SiteAuditRequestSchema,
   SCREENSHOT_DEVICES,
+  LeadAccessUpsertSchema,
+  LeadAccessSchema,
+  BrandKitUpdateSchema,
+  BrandKitSchema,
+  ClientProjectsSchema,
+  ClientProjectCreateSchema,
   CollabTimeActionSchema,
   CollabProjectSchema,
   CollabProjectSummarySchema,
@@ -1205,6 +1211,112 @@ export function getOpenApiDocument() {
           summary: 'Portal do colaborador: ficheiro do briefing (redireciona para um link temporário)',
           requestParams: { path: z.object({ leadId: z.uuid(), index: z.string() }) },
           responses: { '302': { description: 'Link temporário' }, ...withNotFound },
+        }),
+      },
+      '/leads/{id}/client-projects': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Todos os projetos do cliente (o registo principal e os projetos novos ligados)',
+          requestParams: { path: leadId },
+          responses: { '200': ok(data(ClientProjectsSchema)), ...withNotFound },
+        }),
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Novo projeto para um cliente que volta: registo próprio (tarefas, pagamentos, horas, contrato), já preparado',
+          requestParams: { path: leadId },
+          requestBody: body(ClientProjectCreateSchema),
+          responses: { '201': ok(data(LeadSchema), 'Criado'), ...withNotFound },
+        }),
+      },
+      '/leads/{id}/brand-kit': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Kit da marca do cliente (logótipos, cores, tipos de letra, links); o mesmo em todos os projetos dele',
+          requestParams: { path: leadId },
+          responses: { '200': ok(data(BrandKitSchema)), ...withNotFound },
+        }),
+        patch: op({
+          tags: ['Projetos'],
+          summary: 'Atualizar cores, tipos de letra, links e notas do kit da marca',
+          requestParams: { path: leadId },
+          requestBody: body(BrandKitUpdateSchema),
+          responses: { '200': ok(data(BrandKitSchema)), ...withNotFound },
+        }),
+      },
+      '/leads/{id}/brand-kit/files': {
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Juntar ficheiros ao kit da marca (multipart, campo "files"; até 30 ficheiros de 25 MB)',
+          requestParams: { path: leadId },
+          responses: { '201': ok(data(BrandKitSchema)), '422': problem('Sem ficheiros, demasiados ou demasiado grandes'), ...withNotFound },
+        }),
+      },
+      '/leads/{id}/brand-kit/files/{index}': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Descarregar um ficheiro do kit (redireciona para um link temporário)',
+          requestParams: { path: z.object({ id: z.uuid(), index: z.string() }) },
+          responses: { '302': { description: 'Link temporário' }, ...withNotFound },
+        }),
+        delete: op({
+          tags: ['Projetos'],
+          summary: 'Apagar um ficheiro do kit',
+          requestParams: { path: z.object({ id: z.uuid(), index: z.string() }) },
+          responses: { '200': ok(data(BrandKitSchema)), ...withNotFound },
+        }),
+      },
+      '/leads/{id}/accesses': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Acessos do cliente (domínio, alojamento, redes) — sem as palavras-passe',
+          requestParams: { path: leadId },
+          responses: { '200': ok(data(z.array(LeadAccessSchema))), ...withNotFound },
+        }),
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Novo acesso (a palavra-passe fica cifrada no servidor)',
+          requestParams: { path: leadId },
+          requestBody: body(LeadAccessUpsertSchema),
+          responses: { '201': ok(data(LeadAccessSchema), 'Criado'), ...withNotFound },
+        }),
+      },
+      '/accesses/{id}': {
+        patch: op({
+          tags: ['Projetos'],
+          summary: 'Editar um acesso (secret vazio mantém a palavra-passe; null apaga-a)',
+          requestParams: { path: idParam },
+          requestBody: body(LeadAccessUpsertSchema),
+          responses: { '200': ok(data(LeadAccessSchema)), ...withNotFound },
+        }),
+        delete: op({
+          tags: ['Projetos'],
+          summary: 'Apagar um acesso',
+          requestParams: { path: idParam },
+          responses: { '204': { description: 'Apagado' }, ...withNotFound },
+        }),
+      },
+      '/accesses/{id}/secret': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'A palavra-passe de um acesso, em claro (para mostrar ou copiar)',
+          requestParams: { path: idParam },
+          responses: { '200': ok(data(z.object({ secret: z.string().nullable() }))), ...withNotFound },
+        }),
+      },
+      '/collab/projects/{leadId}/brand-files/{index}': {
+        get: op({
+          tags: ['Colaboradores'],
+          summary: 'Portal do colaborador: ficheiro do kit da marca (redireciona para um link temporário)',
+          requestParams: { path: z.object({ leadId: z.uuid(), index: z.string() }) },
+          responses: { '302': { description: 'Link temporário' }, ...withNotFound },
+        }),
+      },
+      '/collab/projects/{leadId}/accesses/{id}/secret': {
+        get: op({
+          tags: ['Colaboradores'],
+          summary: 'Portal do colaborador: palavra-passe de um acesso partilhado com os colaboradores',
+          requestParams: { path: z.object({ leadId: z.uuid(), id: z.uuid() }) },
+          responses: { '200': ok(data(z.object({ secret: z.string().nullable() }))), ...withNotFound },
         }),
       },
       '/share': {

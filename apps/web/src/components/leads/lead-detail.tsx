@@ -77,6 +77,8 @@ import { WhatsAppMenu } from '@/components/leads/whatsapp-menu';
 import { MeetingsCard } from '@/components/meetings/meetings-card';
 import { PaymentsCard } from '@/components/projects/payments-card';
 import { ContractsCard } from '@/components/projects/contracts-card';
+import { BrandKitCard } from '@/components/projects/brand-kit-card';
+import { ClientProjectsCard } from '@/components/projects/client-projects-card';
 import { ProjectCard } from '@/components/projects/project-card';
 import { ProjectToggle } from '@/components/projects/project-toggle';
 
@@ -266,11 +268,27 @@ export function LeadDetail({ id }: { id: string }) {
                 <span className="ml-2 inline-flex align-middle">
                   <LeadScoreDetails lead={lead} />
                 </span>
+                {lead.client_of ? (
+                  <>
+                    {' · '}
+                    <Link href={`/leads/${lead.client_of}`} className="text-accent-text hover:underline">
+                      projeto de um cliente que voltou (ver o cliente)
+                    </Link>
+                  </>
+                ) : null}
               </>
             }
           />
         }
-        title={lead.company_name}
+        title={
+          lead.project_title ? (
+            <>
+              {lead.company_name} <span className="text-muted">· {lead.project_title}</span>
+            </>
+          ) : (
+            lead.company_name
+          )
+        }
         // Telemóvel/tablet: grelha de 2 colunas sem buracos (Estado | Editar ⋯ / Tarefas | Linha do tempo);
         // no computador volta a ser uma fila de botões.
         actionsClassName="grid w-full grid-cols-2 lg:flex lg:w-auto"
@@ -558,6 +576,8 @@ export function LeadDetail({ id }: { id: string }) {
         <aside aria-label="Tarefas, notas, propostas e atividade" className="flex flex-col gap-5">
           {!lead.anonymized_at ? <TasksCard lead={lead} /> : null}
           {lead.status === 'cliente' && settings?.features.projects && !lead.anonymized_at ? <ProjectCard lead={lead} /> : null}
+          {settings?.features.projects ? <ClientProjectsCard lead={lead} /> : null}
+          {settings?.features.brand_kit && (lead.status === 'cliente' || lead.client_of) && !lead.anonymized_at ? <BrandKitCard lead={lead} /> : null}
           {settings?.features.meetings ? <MeetingsCard lead={lead} /> : null}
           {settings?.features.payments ? <PaymentsCard lead={lead} /> : null}
           <NotesCard lead={lead} />

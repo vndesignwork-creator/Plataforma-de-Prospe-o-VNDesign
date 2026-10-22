@@ -28,3 +28,6 @@ export * from './share';
 export * from './launch';
 export * from './account';
 export * from './collaborators';
+export * from './client-projects';
+export * from './brand-kit';
+export * from './quote';

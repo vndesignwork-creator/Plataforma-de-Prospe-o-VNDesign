@@ -1,11 +1,13 @@
 'use client';
 
 import { PROPOSAL_STATUS_LABELS, formatCurrency, formatDate, type Lead, type ProposalStatus, leadPath } from '@vndesign/core';
-import { FileText, Plus } from 'lucide-react';
+import { Calculator, FileText, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { buttonClasses } from '@/components/ui/button';
+import { useState } from 'react';
+import { Button, buttonClasses } from '@/components/ui/button';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
-import { useProposals } from '@/lib/queries';
+import { useProposals, useSettings } from '@/lib/queries';
+import { QuoteCalculatorDialog } from './quote-calculator';
 
 export const PROPOSAL_TONES: Record<ProposalStatus, 'neutral' | 'accent' | 'success' | 'danger'> = {
   rascunho: 'neutral',
@@ -16,6 +18,8 @@ export const PROPOSAL_TONES: Record<ProposalStatus, 'neutral' | 'accent' | 'succ
 
 export function ProposalsCard({ lead }: { lead: Lead }) {
   const { data, isLoading } = useProposals(lead.id);
+  const { data: settings } = useSettings();
+  const [calculating, setCalculating] = useState(false);
   if (lead.anonymized_at && !data?.length) return null;
 
   return (
@@ -25,9 +29,16 @@ export function ProposalsCard({ lead }: { lead: Lead }) {
         description="Proposta em PDF com os teus pacotes, pronta a enviar."
         actions={
           !lead.anonymized_at ? (
-            <Link href={leadPath(lead, '/propostas/nova')} className={buttonClasses('outline', 'sm')}>
-              <Plus className="h-3.5 w-3.5" aria-hidden /> Nova proposta
-            </Link>
+            <>
+              {settings?.features.quote_calculator ? (
+                <Button size="sm" variant="ghost" onClick={() => setCalculating(true)}>
+                  <Calculator className="h-3.5 w-3.5" aria-hidden /> Calcular
+                </Button>
+              ) : null}
+              <Link href={leadPath(lead, '/propostas/nova')} className={buttonClasses('outline', 'sm')}>
+                <Plus className="h-3.5 w-3.5" aria-hidden /> Nova proposta
+              </Link>
+            </>
           ) : null
         }
       />
@@ -65,6 +76,7 @@ export function ProposalsCard({ lead }: { lead: Lead }) {
       ) : (
         <p className="p-4 text-sm text-muted">Ainda não há propostas para este lead.</p>
       )}
+      {calculating && settings ? <QuoteCalculatorDialog lead={lead} settings={settings} onClose={() => setCalculating(false)} /> : null}
     </Card>
   );
 }

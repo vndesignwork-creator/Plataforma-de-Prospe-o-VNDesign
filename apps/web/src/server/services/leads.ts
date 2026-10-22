@@ -30,7 +30,7 @@ export const LEAD_SELECT = [
   'email', 'phone', 'contact_name', 'status', 'channel', 'first_contact_on', 'last_follow_up_on',
   'next_action_text', 'next_action_on', 'estimated_value', 'notes', 'approach_angle', 'source_url',
   'suggested_on', 'email_subject', 'email_body', 'services', 'kanban_position', 'status_changed_at',
-  'anonymized_at', 'archived_at', 'score', 'score_reasons', 'follow_up_count', 'project_completed_at', 'created_by', 'created_at', 'updated_at',
+  'anonymized_at', 'archived_at', 'score', 'score_reasons', 'follow_up_count', 'project_completed_at', 'client_of', 'project_title', 'created_by', 'created_at', 'updated_at',
 ].join(', ');
 
 const NOT_FOUND = 'Lead não encontrado';

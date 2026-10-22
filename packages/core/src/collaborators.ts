@@ -4,6 +4,7 @@
  * entregas, o briefing e as horas desse projeto — nunca os leads nem valores.
  */
 import { z } from 'zod';
+import { BrandKitSchema, LeadAccessSchema } from './brand-kit';
 import { DELIVERABLE_STATUSES, PROJECT_STAGES, TimeEntrySchema } from './project-tools';
 
 export const COLLABORATOR_STATUSES = ['convidado', 'ativo'] as const;
@@ -78,6 +79,8 @@ export const CollabProjectSchema = z
         files: z.array(z.object({ name: z.string(), size: z.int(), url: z.string() })),
       })
       .nullable(),
+    brand: BrandKitSchema.nullable().meta({ description: 'Kit da marca do cliente (logótipos, cores, tipos de letra, links)' }),
+    accesses: z.array(LeadAccessSchema).meta({ description: 'Só os acessos marcados para partilhar com os colaboradores' }),
     time: z.object({
       entries: z.array(TimeEntrySchema).meta({ description: 'Só os registos do próprio colaborador' }),
       total_minutes: z.int(),

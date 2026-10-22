@@ -140,6 +140,7 @@ export function CollabProjectView({ leadId }: { leadId: string }) {
         <TimeBox project={data} />
         <DeliverablesBox project={data} />
         {data.briefing ? <BriefingBox project={data} /> : null}
+        {data.brand || data.accesses.length ? <BrandBox project={data} /> : null}
       </div>
     </div>
   );
@@ -362,6 +363,93 @@ function BriefingBox({ project }: { project: CollabProject }) {
           </div>
         ) : null}
         {!b.items.length && !b.files.length ? <p className="text-muted">Ainda sem respostas.</p> : null}
+      </div>
+    </Card>
+  );
+}
+
+/** Kit da marca do cliente e os acessos partilhados com os colaboradores. */
+function BrandBox({ project }: { project: CollabProject }) {
+  const kit = project.brand;
+  const [shown, setShown] = useState<Record<string, string | null>>({});
+
+  async function reveal(id: string) {
+    if (id in shown) return setShown((s) => Object.fromEntries(Object.entries(s).filter(([k]) => k !== id)));
+    try {
+      const { data } = await api<{ data: { secret: string | null } }>(`/collab/projects/${project.lead_id}/accesses/${id}/secret`);
+      setShown((s) => ({ ...s, [id]: data.secret }));
+    } catch (e) {
+      toast.error(errorMessage(e));
+    }
+  }
+
+  return (
+    <Card className="lg:col-span-2">
+      <CardHeader title="Kit da marca" description="Logótipos, cores, tipos de letra e acessos do cliente." />
+      <div className="flex flex-col gap-3 p-4 text-sm">
+        {kit?.colors.length ? (
+          <ul className="flex flex-wrap gap-2" aria-label="Cores">
+            {kit.colors.map((c, i) => (
+              <li key={i} className="flex items-center gap-2 rounded-lg border border-border px-2 py-1">
+                <span className="h-6 w-6 rounded-md border border-border" style={{ backgroundColor: c.hex }} aria-hidden />
+                <span className="leading-tight">
+                  {c.name ? <span className="block text-xs">{c.name}</span> : null}
+                  <span className="block font-mono text-xs text-muted uppercase">{c.hex}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {kit?.fonts.length ? <p>Tipos de letra: {kit.fonts.map((f) => (f.usage ? `${f.name} (${f.usage})` : f.name)).join(', ')}</p> : null}
+        {kit?.links.length ? (
+          <ul className="flex flex-col gap-0.5">
+            {kit.links.map((l, i) => (
+              <li key={i}>
+                <a href={l.url} target="_blank" rel="noreferrer noopener" className="text-accent-text hover:underline">
+                  {l.label || l.url}
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {kit?.files.length ? (
+          <ul className="flex flex-col gap-1" aria-label="Ficheiros da marca">
+            {kit.files.map((f) => (
+              <li key={f.url}>
+                <a href={f.url} className="text-accent-text hover:underline">
+                  {f.name}
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {kit?.notes ? <p className="whitespace-pre-line text-muted">{kit.notes}</p> : null}
+        {project.accesses.length ? (
+          <ul className="flex flex-col divide-y divide-border" aria-label="Acessos">
+            {project.accesses.map((a) => (
+              <li key={a.id} className="flex items-center gap-2 py-1.5">
+                <span className="min-w-0 flex-1">
+                  {a.url ? (
+                    <a href={a.url} target="_blank" rel="noreferrer noopener" className="font-medium text-accent-text hover:underline">
+                      {a.label}
+                    </a>
+                  ) : (
+                    <span className="font-medium">{a.label}</span>
+                  )}
+                  <span className="block text-xs text-muted">
+                    {a.username ?? ''}
+                    {a.has_secret ? <span className="font-mono">{a.username ? ' · ' : ''}{a.id in shown ? shown[a.id] : '••••••••'}</span> : null}
+                  </span>
+                </span>
+                {a.has_secret ? (
+                  <Button size="sm" variant="ghost" onClick={() => void reveal(a.id)}>
+                    {a.id in shown ? 'Esconder' : 'Mostrar'}
+                  </Button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </div>
     </Card>
   );

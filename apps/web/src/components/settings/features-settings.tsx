@@ -7,7 +7,7 @@
  */
 import { useQueryClient } from '@tanstack/react-query';
 import { WEEKDAY_LABELS, formatDateTime, type Features } from '@vndesign/core';
-import { BadgeCheck, BriefcaseBusiness, CalendarPlus, Camera, ClipboardList, Clock, Eye, FileSignature, Receipt, Rocket, Target, Users, Zap, DatabaseBackup, FileText, FolderOpen, Link2, MessageCircle, RefreshCcw, Star, Wallet, type LucideIcon } from 'lucide-react';
+import { BadgeCheck, BriefcaseBusiness, Calculator, CalendarPlus, Camera, Palette, ClipboardList, Clock, Eye, FileSignature, Receipt, Rocket, Target, Users, Zap, DatabaseBackup, FileText, FolderOpen, Link2, MessageCircle, RefreshCcw, Star, Wallet, type LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,7 @@ import { Switch } from '@/components/ui/switch';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useMe, useSettings, type SettingsWithMail } from '@/lib/queries';
 import { cn } from '@/lib/utils';
-import { BriefingQuestionsCard, CalendarFeedCard, ContractSettingsCard, KickoffCard } from './project-settings-cards';
+import { BriefingQuestionsCard, CalendarFeedCard, ContractSettingsCard, KickoffCard, QuoteSettingsCard } from './project-settings-cards';
 
 const FEATURES: { key: keyof Features; label: string; description: string; icon: LucideIcon; sub?: boolean }[] = [
   {
@@ -132,6 +132,18 @@ const FEATURES: { key: keyof Features; label: string; description: string; icon:
     description: 'Na página do cliente: “Aprovar” ou “Pedir alterações” em cada entrega enviada (cria uma revisão).',
     icon: BadgeCheck,
     sub: true,
+  },
+  {
+    key: 'brand_kit',
+    label: 'Kit da marca do cliente',
+    description: 'Logótipos, cores, tipos de letra, links e acessos (palavras-passe cifradas), iguais em todos os projetos do cliente.',
+    icon: Palette,
+  },
+  {
+    key: 'quote_calculator',
+    label: 'Calculadora de orçamento',
+    description: 'Serviços e extras → preço sugerido, horas estimadas e €/hora (detalhes abaixo).',
+    icon: Calculator,
   },
   {
     key: 'contracts',
@@ -252,6 +264,7 @@ export function FeaturesSettings() {
       {settings.features.projects && settings.features.project_kickoff ? <KickoffCard settings={settings} /> : null}
       {settings.features.projects && settings.features.briefing ? <BriefingQuestionsCard settings={settings} /> : null}
       {settings.features.contracts ? <ContractSettingsCard settings={settings} /> : null}
+      {settings.features.quote_calculator ? <QuoteSettingsCard settings={settings} /> : null}
       <CalendarFeedCard />
 
       <Card>
