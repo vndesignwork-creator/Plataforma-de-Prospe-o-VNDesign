@@ -843,6 +843,19 @@ export function useDeleteTime(leadId: string) {
   });
 }
 
+/** Pôr as horas do projeto a zero (apaga todos os registos). */
+export function useClearTime(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<{ data: { deleted: number } }>(`/leads/${leadId}/time`, { method: 'DELETE' }).then((r) => r.data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['time'] });
+      void qc.invalidateQueries({ queryKey: ['pomodoro'] });
+      void qc.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+}
+
 export function useDeliverables(leadId: string, enabled = true) {
   return useQuery({
     queryKey: ['deliverables', leadId],

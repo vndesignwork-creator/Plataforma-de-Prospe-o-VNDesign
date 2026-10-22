@@ -1467,6 +1467,12 @@ export function getOpenApiDocument() {
       '/leads/{id}/time': {
         get: op({ tags: ['Projetos'], summary: 'Horas registadas, total, temporizador e valor por hora', requestParams: { path: idParam }, responses: { '200': ok(data(ProjectTimeSchema)), ...withNotFound } }),
         post: op({ tags: ['Projetos'], summary: 'Registar horas à mão', requestParams: { path: idParam }, requestBody: body(TimeEntryCreateSchema), responses: { '201': ok(data(TimeEntrySchema), 'Criado'), ...withNotFound } }),
+        delete: op({
+          tags: ['Projetos'],
+          summary: 'Pôr as horas do projeto a zero (apaga todos os registos; para o temporizador e o pomodoro)',
+          requestParams: { path: idParam },
+          responses: { '200': ok(data(z.object({ deleted: z.int() }))), ...withNotFound },
+        }),
       },
       '/leads/{id}/time/start': {
         post: op({

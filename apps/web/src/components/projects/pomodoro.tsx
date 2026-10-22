@@ -227,7 +227,12 @@ export function PomodoroBox({ lead, className }: { lead: Lead; className?: strin
                   <SkipForward className="h-3.5 w-3.5" aria-hidden /> Saltar pausa
                 </Button>
               ) : (
-                breakButton
+                <>
+                  <Button size="sm" variant="outline" onClick={() => act('restart', 'O pomodoro recomeçou do início.')} disabled={pending}>
+                    <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Reiniciar
+                  </Button>
+                  {breakButton}
+                </>
               )}
             </>
           )}

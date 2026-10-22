@@ -226,6 +226,9 @@ export async function getProjectTime(ctx: ApiContext, leadId: string): Promise<P
   };
 }
 
+/** Registos mais curtos do que isto (começar e pausar logo a seguir) não ficam guardados. */
+export const MIN_ENTRY_SECONDS = 5;
+
 /** Para o temporizador que estiver a contar (em qualquer projeto). */
 async function stopRunning(ctx: ApiContext): Promise<TimeRow[]> {
   const { data, error } = await ctx.supabase
@@ -236,7 +239,10 @@ async function stopRunning(ctx: ApiContext): Promise<TimeRow[]> {
     .is('ended_at', null)
     .select(TIME_SELECT);
   if (error) throw fromPostgrest(error);
-  return (data ?? []) as TimeRow[];
+  const rows = (data ?? []) as TimeRow[];
+  const tiny = rows.filter((r) => entrySeconds(r) < MIN_ENTRY_SECONDS).map((r) => r.id);
+  if (tiny.length) await ctx.supabase.from('project_time_entries').delete().eq('workspace_id', ctx.workspaceId).in('id', tiny);
+  return rows;
 }
 
 export async function startTimer(ctx: ApiContext, leadId: string, notes: string | null): Promise<TimeEntry> {
@@ -340,6 +346,16 @@ export async function deleteTimeEntry(ctx: ApiContext, id: string): Promise<void
   const { data, error } = await ctx.supabase.from('project_time_entries').delete().eq('workspace_id', ctx.workspaceId).eq('id', id).select('id');
   if (error) throw fromPostgrest(error, 'Registo não encontrado');
   if (!data?.length) throw new ApiError(404, 'Registo não encontrado');
+}
+
+/** Pôr as horas do projeto a zero: apaga todos os registos (e para o temporizador e o pomodoro deste projeto). */
+export async function clearProjectTime(ctx: ApiContext, leadId: string): Promise<{ deleted: number }> {
+  await getLead(ctx, leadId);
+  const { error: pError } = await ctx.supabase.from('pomodoro_timers').delete().eq('workspace_id', ctx.workspaceId).eq('lead_id', leadId);
+  if (pError) throw fromPostgrest(pError);
+  const { data, error } = await ctx.supabase.from('project_time_entries').delete().eq('workspace_id', ctx.workspaceId).eq('lead_id', leadId).select('id');
+  if (error) throw fromPostgrest(error);
+  return { deleted: data?.length ?? 0 };
 }
 
 // -----------------------------------------------------------------------------

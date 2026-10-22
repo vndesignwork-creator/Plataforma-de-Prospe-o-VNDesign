@@ -6,7 +6,7 @@
  * corrigir ou apagar registos e o valor ganho por hora.
  */
 import { formatClock, formatCurrency, formatDate, formatDuration, todayIso, type Lead, type TimeEntry } from '@vndesign/core';
-import { Check, Clock, Pause, Pencil, Play, Plus, Trash2, X } from 'lucide-react';
+import { Check, Clock, Pause, Pencil, Play, Plus, RotateCcw, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { ApiClientError, errorMessage } from '@/lib/api-client';
-import { useAddTime, useCollaborators, useDeleteTime, useProjectTime, useTimer, useUpdateTime } from '@/lib/queries';
+import { useAddTime, useClearTime, useCollaborators, useDeleteTime, useProjectTime, useTimer, useUpdateTime } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 import { SectionHeader } from './section-header';
 
@@ -234,6 +234,8 @@ export function TimeSection({ lead, className }: { lead: Lead; className?: strin
   const { data: time, isLoading } = useProjectTime(lead.id);
   const [adding, setAdding] = useState(false);
   const [all, setAll] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const clear = useClearTime(lead.id);
   const running = time?.running ?? null;
   const elapsed = useElapsed(running?.started_at ?? null);
   const total = (time?.logged_seconds ?? 0) + Math.floor(elapsed);
@@ -262,6 +264,11 @@ export function TimeSection({ lead, className }: { lead: Lead; className?: strin
             <Button size="sm" variant="ghost" onClick={() => setAdding(true)}>
               <Plus className="h-3.5 w-3.5" aria-hidden /> À mão
             </Button>
+            {entries.length || running ? (
+              <Button size="sm" variant="ghost" onClick={() => setResetting(true)}>
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Pôr a zero
+              </Button>
+            ) : null}
             {time ? <TimerButton leadId={lead.id} runningSince={running?.started_at ?? null} loggedSeconds={time.logged_seconds} /> : null}
           </>
         }
@@ -289,6 +296,39 @@ export function TimeSection({ lead, className }: { lead: Lead; className?: strin
         </Button>
       ) : null}
       {adding ? <TimeDialog lead={lead} onClose={() => setAdding(false)} /> : null}
+      {resetting ? (
+        <Dialog
+          open
+          onOpenChange={(o) => (!o ? setResetting(false) : undefined)}
+          title="Pôr as horas a zero?"
+          description={`Apaga ${entries.length + (running ? 1 : 0)} registo${entries.length + (running ? 1 : 0) === 1 ? '' : 's'} (${formatDuration(total)}) de ${lead.company_name} e para o temporizador. Não dá para desfazer.`}
+          className="max-w-md"
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setResetting(false)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                loading={clear.isPending}
+                onClick={() =>
+                  clear.mutate(undefined, {
+                    onSuccess: () => {
+                      setResetting(false);
+                      toast.success('Horas a zero.');
+                    },
+                    onError: (e) => toast.error(errorMessage(e)),
+                  })
+                }
+              >
+                <RotateCcw className="h-4 w-4" aria-hidden /> Apagar todas as horas
+              </Button>
+            </>
+          }
+        >
+          <p className="text-sm text-muted">Se só queres corrigir um registo, usa o ✎ ao lado dele.</p>
+        </Dialog>
+      ) : null}
     </section>
   );
 }

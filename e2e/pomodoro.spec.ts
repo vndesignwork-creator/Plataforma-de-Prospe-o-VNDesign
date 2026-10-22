@@ -98,7 +98,8 @@ test('pomodoro na ficha: tarefa, pausar, continuar, fim do trabalho com aviso, p
 
   // O trabalho ficou nas horas do projeto, com a tarefa.
   const time = (await (await page.request.get(`/api/v1/leads/${lead.id}/time`)).json()).data as { entries: { notes: string | null; ended_at: string | null }[] };
-  expect(time.entries.length).toBeGreaterThanOrEqual(2);
+  // (As sessões de menos de 5 s, como pausar e continuar logo, não ficam guardadas.)
+  expect(time.entries.length).toBeGreaterThanOrEqual(1);
   expect(time.entries.every((e) => e.notes === 'Pomodoro · Montar a página inicial' && e.ended_at)).toBe(true);
 
   await box.getByRole('button', { name: 'Saltar pausa' }).click();
@@ -208,4 +209,24 @@ test('pausa à espera: com "Começar a pausa automaticamente" desligado, a pausa
   await expect(box).toContainText('Pausa');
   await expect(box.getByRole('timer')).toHaveText(/^04:5\d$/);
   await box.getByRole('button', { name: 'Parar' }).click();
+});
+
+test('horas: pôr a zero apaga todos os registos do projeto e para o pomodoro', async ({ page }) => {
+  const lead = await createProject(page.request, `Horas zero ${run}`);
+  for (const minutes of [30, 45]) {
+    const res = await page.request.post(`/api/v1/leads/${lead.id}/time`, { data: { date: '2026-10-20', minutes } });
+    expect(res.status()).toBe(201);
+  }
+  expect((await page.request.post('/api/v1/pomodoro', { data: { lead_id: lead.id } })).status()).toBe(201);
+  await page.goto(`/leads/${lead.id}`);
+  const hours = page.locator('#projeto').getByRole('region', { name: 'Horas' });
+  await hours.getByRole('button', { name: 'Pôr a zero' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Pôr as horas a zero?' });
+  await expect(dialog).toContainText('Apaga 3 registos');
+  await dialog.getByRole('button', { name: 'Apagar todas as horas' }).click();
+  await expect(page.getByText('Horas a zero.')).toBeVisible();
+  const time = (await (await page.request.get(`/api/v1/leads/${lead.id}/time`)).json()).data as { entries: unknown[]; running: unknown };
+  expect(time.entries).toHaveLength(0);
+  expect(time.running).toBeNull();
+  expect((await (await page.request.get('/api/v1/pomodoro')).json()).data).toBeNull();
 });

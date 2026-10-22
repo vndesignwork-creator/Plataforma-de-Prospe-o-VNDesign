@@ -24,6 +24,7 @@ test.afterAll(async ({ browser }) => {
 });
 
 test('lista: prazo, fase, ações rápidas, plano de pagamentos, temporizador, fases e calendário', async ({ page }) => {
+  test.setTimeout(90_000);
   const name = `Atelier Prazo ${run}`;
   const lead = await createClient(page.request, { company_name: name, phone: '912 345 678', estimated_value: 800 });
   const due = iso(5);
@@ -77,7 +78,8 @@ test('lista: prazo, fase, ações rápidas, plano de pagamentos, temporizador, f
   // Temporizador: começar, pausar (o total fica) e continuar a somar.
   await row.getByRole('button', { name: 'Começar a contar o tempo' }).click();
   await expect(page.getByRole('status', { name: new RegExp(`Temporizador a contar: ${name}`) }).first()).toBeVisible();
-  await page.waitForTimeout(2200);
+  // (Registos com menos de 5 s não ficam guardados.)
+  await page.waitForTimeout(5500);
   await row.getByRole('button', { name: /Pausar o temporizador/ }).click();
   await expect(page.getByText(/Em pausa\. Total registado: \d+ s\./)).toBeVisible();
   await expect(page.getByRole('status', { name: /Temporizador a contar/ })).toHaveCount(0);
@@ -86,11 +88,12 @@ test('lista: prazo, fase, ações rápidas, plano de pagamentos, temporizador, f
   await resume.click();
   await expect(page.getByText('A continuar a contar.')).toBeVisible();
   await expect(row.getByRole('button', { name: /Pausar o temporizador \(total 0:00:0[2-9]\)/ })).toBeVisible();
+  await page.waitForTimeout(5500);
   await row.getByRole('button', { name: /Pausar o temporizador/ }).click();
   await expect(row.getByRole('button', { name: /Continuar a contar o tempo/ })).toBeVisible();
   const time = (await (await page.request.get(`/api/v1/leads/${lead.id}/time`)).json()).data;
   expect(time.entries).toHaveLength(2);
-  expect(time.logged_seconds).toBeGreaterThanOrEqual(2);
+  expect(time.logged_seconds).toBeGreaterThanOrEqual(10);
   expect(time.running).toBeNull();
 
   // Fases: o cartão está em "Em produção"; muda para "Revisões" pelo botão da fase.

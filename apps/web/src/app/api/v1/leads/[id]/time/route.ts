@@ -1,6 +1,6 @@
 import { TimeEntryCreateSchema } from '@vndesign/core';
 import { apiRoute, json, parseId, parseJson } from '@/server/http';
-import { addTimeEntry, getProjectTime } from '@/server/services/project-tools';
+import { addTimeEntry, clearProjectTime, getProjectTime } from '@/server/services/project-tools';
 
 /** GET /api/v1/leads/{id}/time — horas registadas, total, temporizador e €/hora. */
 export const GET = apiRoute<{ id: string }>(async (_req, ctx, { id }) => json({ data: await getProjectTime(ctx, parseId(id)) }));
@@ -10,3 +10,6 @@ export const POST = apiRoute<{ id: string }>(async (req, ctx, { id }) => {
   const input = await parseJson(req, TimeEntryCreateSchema);
   return json({ data: await addTimeEntry(ctx, parseId(id), input) }, { status: 201 });
 });
+
+/** DELETE /api/v1/leads/{id}/time — pôr as horas do projeto a zero (apaga todos os registos; para o temporizador e o pomodoro). */
+export const DELETE = apiRoute<{ id: string }>(async (_req, ctx, { id }) => json({ data: await clearProjectTime(ctx, parseId(id)) }));
