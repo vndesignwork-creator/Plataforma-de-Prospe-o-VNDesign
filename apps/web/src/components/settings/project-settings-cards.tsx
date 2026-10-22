@@ -10,9 +10,12 @@ import {
   DEFAULT_BRIEFING_QUESTIONS,
   DEFAULT_CONTRACT_CLAUSES,
   DEFAULT_POMODORO_SETTINGS,
+  POMODORO_SOUNDS,
+  POMODORO_SOUND_LABELS,
   DEFAULT_QUOTE_EXTRAS,
   KICKOFF_SPLITS,
   parseEuroAmount,
+  type PomodoroSound,
   type QuoteExtra,
 } from '@vndesign/core';
 import { CalendarDays, Copy, Link2Off, Plus, RefreshCw, Trash2, Volume2 } from 'lucide-react';
@@ -473,7 +476,25 @@ export function PomodoroSettingsCard({ settings }: { settings: SettingsWithMail 
             />
             Tocar um som no fim de cada fase
           </label>
-          <Button type="button" size="sm" variant="ghost" onClick={() => (unlockSound(), playChime('break'))}>
+          <Select
+            aria-label="Som do aviso"
+            value={current.sound_name}
+            disabled={!current.sound}
+            className="h-9 w-44 text-sm"
+            onChange={(e) => {
+              const sound = e.target.value as PomodoroSound;
+              unlockSound();
+              playChime(sound);
+              void save({ sound_name: sound }, `Som: ${POMODORO_SOUND_LABELS[sound]}.`);
+            }}
+          >
+            {POMODORO_SOUNDS.map((s) => (
+              <option key={s} value={s}>
+                {POMODORO_SOUND_LABELS[s]}
+              </option>
+            ))}
+          </Select>
+          <Button type="button" size="sm" variant="ghost" disabled={!current.sound} onClick={() => (unlockSound(), playChime(current.sound_name))}>
             <Volume2 className="h-3.5 w-3.5" aria-hidden /> Testar som
           </Button>
         </div>

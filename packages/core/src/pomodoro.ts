@@ -15,6 +15,18 @@ export const POMODORO_PHASE_LABELS: Record<PomodoroPhase, string> = {
   ready: 'Pausa terminada',
 };
 
+/** Sons do aviso (um só toque, gerado no browser). */
+export const POMODORO_SOUNDS = ['sino', 'taca', 'madeira', 'digital', 'gota', 'marimba'] as const;
+export type PomodoroSound = (typeof POMODORO_SOUNDS)[number];
+export const POMODORO_SOUND_LABELS: Record<PomodoroSound, string> = {
+  sino: 'Sino',
+  taca: 'Taça tibetana',
+  madeira: 'Madeira',
+  digital: 'Digital',
+  gota: 'Gota',
+  marimba: 'Marimba',
+};
+
 const minutes = (max: number, error: string) => z.int({ error }).min(1, { error: 'Mínimo 1 minuto.' }).max(max, { error: `Máximo ${max} minutos.` });
 
 export const PomodoroSettingsSchema = z.object({
@@ -25,6 +37,8 @@ export const PomodoroSettingsSchema = z.object({
   long_every: z.int().min(2, { error: 'Mínimo 2.' }).max(12, { error: 'Máximo 12.' }).default(4),
   /** Som no fim de cada fase (com a app aberta). */
   sound: z.boolean().default(true),
+  /** Qual o som (um só toque). */
+  sound_name: z.enum(POMODORO_SOUNDS).default('sino'),
   /** A pausa começa sozinha quando o trabalho acaba (false = fica à espera de "Começar pausa"). */
   auto_start_break: z.boolean().default(true),
 });
@@ -35,6 +49,7 @@ export const DEFAULT_POMODORO_SETTINGS: PomodoroSettings = {
   long_break_minutes: 15,
   long_every: 4,
   sound: true,
+  sound_name: 'sino',
   auto_start_break: true,
 };
 

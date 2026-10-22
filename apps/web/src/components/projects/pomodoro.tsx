@@ -374,11 +374,11 @@ export function PomodoroWatcher() {
     if (!due || !key || waiting.current === key) return;
     waiting.current = key;
     // O som toca logo, no segundo em que o tempo acaba (o resto vem com a resposta do servidor).
-    if (settings?.sound) playChime(pomodoro?.phase === 'work' ? 'break' : 'work');
+    if (settings?.sound) playChime(settings.sound_name);
     void qc.invalidateQueries({ queryKey: ['pomodoro'] });
     void qc.invalidateQueries({ queryKey: ['time'] });
     void qc.invalidateQueries({ queryKey: ['projects'] });
-  }, [due, key, qc, settings?.sound, pomodoro?.phase]);
+  }, [due, key, qc, settings?.sound, settings?.sound_name]);
 
   useEffect(() => {
     // A fase mudou depois de acabar o tempo: avisa.
