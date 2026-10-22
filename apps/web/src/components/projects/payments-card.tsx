@@ -169,11 +169,12 @@ export function PlanForm({ lead, onDone }: { lead: Lead; onDone?: () => void }) 
         Cria o plano de pagamentos do projeto{accepted ? ` (proposta ${accepted.code}: ${euros(accepted.total)})` : ''}. Depois, marca cada
         pagamento quando o receberes.
       </p>
-      <div className="grid gap-3 sm:grid-cols-[8rem_1fr_auto] sm:items-end">
-        <Field label="Total (€)">
+      {/* Em linha quando cabe; numa coluna estreita (ficha) o botão passa para baixo. */}
+      <div className="flex flex-wrap items-end gap-3">
+        <Field label="Total (€)" className="w-32 shrink-0">
           <Input inputMode="decimal" value={total} onChange={(e) => setTotal(e.target.value)} placeholder="0,00" />
         </Field>
-        <Field label="Plano">
+        <Field label="Plano" className="min-w-0 flex-[1_1_16rem]">
           <Select value={split} onChange={(e) => setSplit(e.target.value)}>
             {PAYMENT_PLANS.map((p, i) => (
               <option key={p.label} value={String(i)}>
@@ -182,7 +183,7 @@ export function PlanForm({ lead, onDone }: { lead: Lead; onDone?: () => void }) 
             ))}
           </Select>
         </Field>
-        <Button onClick={create} loading={plan.isPending}>
+        <Button onClick={create} loading={plan.isPending} className="shrink-0 whitespace-nowrap">
           Criar plano
         </Button>
       </div>
