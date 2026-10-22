@@ -169,7 +169,7 @@ export function ContractSettingsCard({ settings }: { settings: SettingsWithMail 
             Repor as de origem
           </Button>
           <Button type="submit" loading={saving} disabled={form === null}>
-            Guardar
+            Guardar condições
           </Button>
         </div>
       </form>
