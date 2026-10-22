@@ -175,8 +175,9 @@ export default async function SharedProjectPage({ params }: Props) {
                     {DELIVERABLE_STATUS_LABELS[d.status]}
                     {d.date ? ` a ${formatDate(d.date)}` : ''}
                   </span>
-                  {project.approvals && d.status === 'enviada' ? (
-                    <DeliverableResponse token={token} id={d.id} title={d.title} name={project.contact_name} />
+                  {/* Fica montado depois de responder, para a confirmação não desaparecer ao atualizar. */}
+                  {project.approvals ? (
+                    <DeliverableResponse token={token} id={d.id} title={d.title} name={project.contact_name} pending={d.status === 'enviada'} />
                   ) : null}
                 </li>
               ))}

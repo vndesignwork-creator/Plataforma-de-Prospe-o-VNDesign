@@ -7,7 +7,20 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/input';
 
-export function DeliverableResponse({ token, id, title, name }: { token: string; id: string; title: string; name: string | null }) {
+export function DeliverableResponse({
+  token,
+  id,
+  title,
+  name,
+  pending,
+}: {
+  token: string;
+  id: string;
+  title: string;
+  name: string | null;
+  /** Entrega à espera de resposta (estado "Enviada"). */
+  pending: boolean;
+}) {
   const router = useRouter();
   const [mode, setMode] = useState<'idle' | 'changes'>('idle');
   const [comment, setComment] = useState('');
@@ -36,9 +49,10 @@ export function DeliverableResponse({ token, id, title, name }: { token: string;
     }
   }
 
+  if (!pending && !message) return null;
   return (
     <div className="mt-2 flex w-full flex-col gap-2">
-      {mode === 'idle' ? (
+      {!pending ? null : mode === 'idle' ? (
         <div className="flex flex-wrap gap-2">
           <Button size="sm" onClick={() => void send('approve')} loading={busy} aria-label={`Aprovar: ${title}`}>
             <Check className="h-3.5 w-3.5" aria-hidden /> Aprovar
