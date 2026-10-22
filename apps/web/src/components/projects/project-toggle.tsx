@@ -188,7 +188,17 @@ export function WrapUpDialog({ lead, onClose }: { lead: Lead; onClose: () => voi
  * `onWrapUp`: quem mostra os passos finais (a página Projetos, porque a linha
  * do projeto sai da lista "Em curso" mal fica concluído).
  */
-export function ProjectToggle({ lead, size = 'sm', onWrapUp }: { lead: Lead; size?: 'sm' | 'md'; onWrapUp?: (lead: Lead) => void }) {
+export function ProjectToggle({
+  lead,
+  size = 'sm',
+  onWrapUp,
+  className,
+}: {
+  lead: Lead;
+  size?: 'sm' | 'md';
+  onWrapUp?: (lead: Lead) => void;
+  className?: string;
+}) {
   const set = useSetProjectCompleted();
   const [wrapUp, setWrapUp] = useState(false);
   const completed = !!lead.project_completed_at;
@@ -204,7 +214,7 @@ export function ProjectToggle({ lead, size = 'sm', onWrapUp }: { lead: Lead; siz
 
   return (
     <>
-      <Button size={size} variant={completed ? 'ghost' : 'outline'} onClick={completed ? reopen : () => (onWrapUp ? onWrapUp(lead) : setWrapUp(true))} loading={set.isPending && completed}>
+      <Button size={size} variant={completed ? 'ghost' : 'outline'} className={className} onClick={completed ? reopen : () => (onWrapUp ? onWrapUp(lead) : setWrapUp(true))} loading={set.isPending && completed}>
         {completed ? <RotateCcw className="h-3.5 w-3.5" aria-hidden /> : <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />}
         {completed ? 'Reabrir projeto' : 'Concluir projeto'}
       </Button>

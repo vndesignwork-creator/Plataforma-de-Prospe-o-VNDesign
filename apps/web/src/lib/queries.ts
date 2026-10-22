@@ -592,10 +592,11 @@ export function useBilling(enabled = true) {
   });
 }
 
-export function useProjects(state: 'active' | 'completed') {
+export function useProjects(state: 'active' | 'completed', enabled = true) {
   return useQuery({
     queryKey: ['projects', state],
     queryFn: () => api<{ data: Project[] }>('/projects', { query: { state } }).then((r) => r.data),
+    enabled,
   });
 }
 

@@ -38,14 +38,19 @@ function Segmented<T extends string>({
   options: readonly { value: T; label: string; icon?: typeof List }[];
 }) {
   return (
-    <div className="flex gap-1.5" role="group" aria-label={label}>
+    <div
+      className="grid gap-1.5 sm:flex"
+      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+      role="group"
+      aria-label={label}
+    >
       {options.map(({ value: v, label: l, icon: Icon }) => (
         <button
           key={v}
           type="button"
           aria-pressed={value === v}
           onClick={() => onChange(v)}
-          className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm font-medium text-muted hover:bg-surface-2 aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-accent-text"
+          className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-border px-3 text-sm font-medium text-muted hover:bg-surface-2 aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-accent-text pointer-coarse:min-h-10"
         >
           {Icon ? <Icon className="h-4 w-4" aria-hidden /> : null}
           {l}
@@ -108,7 +113,7 @@ export function ProjectsView() {
         </section>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4">
         <Segmented label="Vista" value={view} onChange={changeView} options={VIEWS} />
         {view === 'list' ? (
           <Segmented

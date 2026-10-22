@@ -90,7 +90,16 @@ export function TimerButton({
       }
     >
       {running ? <Pause className="h-3.5 w-3.5" aria-hidden /> : <Play className="h-3.5 w-3.5" aria-hidden />}
-      {running ? formatClock(total) : logged ? `Continuar · ${formatClock(total)}` : 'Começar'}
+      {running ? (
+        formatClock(total)
+      ) : logged ? (
+        <>
+          {/* No telemóvel só o relógio (o ▶ já diz que continua). */}
+          <span className="max-sm:hidden">Continuar ·</span> {formatClock(total)}
+        </>
+      ) : (
+        'Começar'
+      )}
     </Button>
   );
 }

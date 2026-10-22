@@ -5,6 +5,7 @@ import {
   formatCurrency,
   formatDate,
   formatPercent,
+  todayIso,
   type Lead,
   type LeadStatus,
   type TodayMeeting,
@@ -25,7 +26,9 @@ import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
 import { api, errorMessage } from '@/lib/api-client';
 import { DueChip, ReminderChip } from '@/components/tasks/tasks-card';
 import { Linkified } from '@/lib/linkify';
-import { useBilling, useDashboard, useSettings, useToday } from '@/lib/queries';
+import { useBilling, useDashboard, useProjects, useSettings, useToday } from '@/lib/queries';
+import { cn } from '@/lib/utils';
+import { DueBadge, ProgressBar, StageLabel } from '@/components/projects/project-bits';
 import { meetingLabel } from '@/components/meetings/meetings-card';
 import { StatusIcon } from '@/components/icons/lead-icons';
 
@@ -94,44 +97,78 @@ function TodayMeetings({ meetings }: { meetings: TodayMeeting[] }) {
   );
 }
 
-/** Faturação (com os pagamentos ligados): recebido este mês, por receber e em atraso. */
-function BillingCard() {
+/** Projetos em curso: os de entrega mais próxima, com a fase e o progresso das tarefas. */
+function ProjectsCard({ className }: { className?: string }) {
   const { data: settings } = useSettings();
-  const enabled = settings?.features.payments ?? false;
-  const { data } = useBilling(enabled);
-  if (!enabled || !data || (!data.received_month && !data.outstanding && !data.active_projects)) return null;
+  const enabled = settings?.features.projects ?? false;
+  const { data: projects, isLoading } = useProjects('active', enabled);
+  const { data: billing } = useBilling(enabled && !!settings?.features.payments);
+  const [today] = useState(() => todayIso());
+  if (!enabled) return null;
+  const list = projects ?? [];
+  // Uma só linha (alinhada com o cabeçalho do Pipeline): o atraso, se houver; senão, o que falta receber.
+  const money = billing?.overdue ? (
+    <span className="text-danger"> · {euros(billing.overdue)} em atraso</span>
+  ) : billing?.outstanding ? (
+    ` · ${euros(billing.outstanding)} por receber`
+  ) : null;
   return (
-    <Card>
+    <Card className={cn('flex flex-col', className)}>
       <CardHeader
-        title="Faturação"
-        description="Pagamentos dos clientes"
+        title="Projetos"
+        description={
+          isLoading ? (
+            'Clientes com o projeto em curso'
+          ) : (
+            <>
+              {list.length} em curso{money}
+            </>
+          )
+        }
         actions={
           <Link href="/projetos" className="text-sm text-accent-text hover:underline">
-            Projetos
+            Ver todos
           </Link>
         }
       />
-      <dl className="grid grid-cols-2 gap-3 p-4 text-sm">
-        <div>
-          <dt className="text-muted">Recebido este mês</dt>
-          <dd className="text-lg font-semibold tabular">{euros(data.received_month)}</dd>
+      {isLoading ? (
+        <div className="p-4">
+          <Skeleton className="h-24" />
         </div>
-        <div>
-          <dt className="text-muted">Por receber</dt>
-          <dd className="text-lg font-semibold tabular">{euros(data.outstanding)}</dd>
-        </div>
-        <div>
-          <dt className="text-muted">Em atraso</dt>
-          <dd className={`text-lg font-semibold tabular ${data.overdue ? 'text-danger' : ''}`}>{euros(data.overdue)}</dd>
-        </div>
-        <div>
-          <dt className="text-muted">Projetos em curso</dt>
-          <dd className="inline-flex items-center gap-1.5 text-lg font-semibold tabular">
-            <BriefcaseBusiness className="h-4 w-4 text-muted" aria-hidden />
-            {data.active_projects}
-          </dd>
-        </div>
-      </dl>
+      ) : list.length ? (
+        <ul className="flex flex-col p-2" aria-label="Projetos em curso">
+          {list.slice(0, 3).map(({ lead, info, tasks }) => (
+            <li key={lead.id}>
+              <Link href={`${leadPath(lead)}#projeto`} className="flex flex-col gap-1 rounded-md px-2 py-1.5 text-sm hover:bg-surface-2">
+                <span className="flex min-w-0 items-center gap-2">
+                  <BriefcaseBusiness className="h-3.5 w-3.5 shrink-0 text-muted" aria-hidden />
+                  <span className="min-w-0 flex-1 truncate font-medium">{lead.company_name}</span>
+                  <DueBadge dueOn={info.due_on} today={today} className="shrink-0" />
+                </span>
+                <span className="flex items-center gap-3 pl-5.5 text-xs text-muted">
+                  <StageLabel stage={info.stage} />
+                  {tasks.total ? (
+                    <ProgressBar className="min-w-0 flex-1" value={tasks.done} total={tasks.total} label={`Tarefas de ${lead.company_name}: ${tasks.done} de ${tasks.total}`} />
+                  ) : (
+                    <span>Sem tarefas</span>
+                  )}
+                </span>
+              </Link>
+            </li>
+          ))}
+          {list.length > 3 ? (
+            <li className="px-2 pt-1 text-xs text-muted">
+              <Link href="/projetos" className="hover:text-fg hover:underline">
+                + {list.length - 3} projeto{list.length - 3 === 1 ? '' : 's'}
+              </Link>
+            </li>
+          ) : null}
+        </ul>
+      ) : (
+        <p className="flex flex-1 items-center justify-center p-4 text-center text-sm text-muted">
+          Sem projetos em curso. Quando um lead passa a “Cliente”, aparece aqui.
+        </p>
+      )}
     </Card>
   );
 }
@@ -208,7 +245,7 @@ function TodayCard({ className }: { className?: string }) {
     !weekTasks.length &&
     !data.meetings?.length;
   return (
-    <Card className={className}>
+    <Card className={cn('flex flex-col', className)}>
       <CardHeader title="Hoje" description={data ? `Follow-ups, próximas ações e tarefas · ${formatDate(data.today)}` : undefined} />
       <div className="flex max-h-[26rem] flex-col gap-4 overflow-y-auto p-3">
         {isLoading ? <Skeleton className="h-40" /> : null}
@@ -229,12 +266,11 @@ function TodayCard({ className }: { className?: string }) {
 }
 
 /** Os leads com maior prioridade (pontuação calculada pela base de dados). */
-function HotLeadsCard() {
+function HotLeadsCard({ className }: { className?: string }) {
   const { data } = useToday();
   const hot = data?.hot ?? [];
-  if (!hot.length) return null;
   return (
-    <Card>
+    <Card className={cn('flex flex-col', className)}>
       <CardHeader
         title="Leads mais quentes"
         description="Quem vale mais a pena contactar agora"
@@ -244,7 +280,10 @@ function HotLeadsCard() {
           </Link>
         }
       />
-      <ul className="flex flex-col p-2" aria-label="Leads mais quentes">
+      {data && !hot.length ? (
+        <p className="flex flex-1 items-center justify-center p-4 text-center text-sm text-muted">Sem leads quentes de momento.</p>
+      ) : null}
+      <ul className="flex flex-col p-2 empty:hidden" aria-label="Leads mais quentes">
         {hot.map((l) => (
           <li key={l.id}>
             <Link
@@ -272,7 +311,7 @@ function HotLeadsCard() {
 function PipelineCard({ byStatus, className }: { byStatus: { status: LeadStatus; count: number }[]; className?: string }) {
   const max = Math.max(1, ...byStatus.map((s) => s.count));
   return (
-    <Card className={className}>
+    <Card className={cn('flex flex-col', className)}>
       <CardHeader
         title="Pipeline"
         description="Leads em cada estado"
@@ -288,7 +327,8 @@ function PipelineCard({ byStatus, className }: { byStatus: { status: LeadStatus;
         }
       />
       {/* No computador, em duas colunas (por baixo do "Hoje", que é largo). */}
-      <ul className="grid p-2 lg:grid-flow-col lg:grid-rows-4 lg:gap-x-6" aria-label="Leads por estado">
+      {/* Ocupa a altura toda do cartão (fica alinhado com o cartão Projetos ao lado). */}
+      <ul className="grid flex-1 p-2 lg:grid-flow-col lg:grid-rows-4 lg:content-evenly lg:gap-x-6" aria-label="Leads por estado">
         {byStatus.map(({ status, count }) => (
           <li key={status}>
             <Link
@@ -312,6 +352,8 @@ function PipelineCard({ byStatus, className }: { byStatus: { status: LeadStatus;
 /** Dashboard: o que há para fazer hoje e quatro números essenciais (o resto em Estatísticas). */
 export function DashboardView() {
   const { data, isLoading, error } = useDashboard();
+  const { data: settings } = useSettings();
+  const projectsOn = settings?.features.projects ?? false;
 
   if (error) {
     return (
@@ -358,17 +400,16 @@ export function DashboardView() {
         <StatTile label="Valor do pipeline" value={euros(t.value_pipeline)} hint="Soma dos leads ativos" />
       </section>
 
-      {/* Telemóvel: uma só coluna ("contents"), com o "Hoje" no topo (é o que se abre o dia a ver) e o Pipeline no fim.
-          Computador: "Hoje" e Pipeline à esquerda; os leads mais quentes e a faturação à direita. */}
-      <div className="contents lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-start lg:gap-5">
-        <div className="contents lg:flex lg:flex-col lg:gap-5">
-          <TodayCard className="max-lg:order-first" />
-          <PipelineCard byStatus={data.by_status} className="max-lg:order-last" />
-        </div>
-        <div className="flex flex-col gap-5">
-          <HotLeadsCard />
-          <BillingCard />
-        </div>
+      {/* Duas filas alinhadas (cartões da mesma fila com a mesma altura): Hoje | Leads mais quentes e
+          Pipeline | Projetos. Telemóvel: uma coluna, com o "Hoje" no topo e o Pipeline no fim. */}
+      <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+        <TodayCard className="lg:col-start-1 lg:row-start-1" />
+        <HotLeadsCard className="lg:col-start-2 lg:row-start-1" />
+        <PipelineCard
+          byStatus={data.by_status}
+          className={cn('max-lg:order-last lg:col-start-1 lg:row-start-2', !projectsOn && 'lg:col-span-2')}
+        />
+        <ProjectsCard className="lg:col-start-2 lg:row-start-2" />
       </div>
     </div>
   );

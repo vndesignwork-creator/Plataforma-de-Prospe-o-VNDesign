@@ -101,13 +101,13 @@ export function ProjectRow({
 
   return (
     <li className="flex flex-col gap-3 px-4 py-4">
-      <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
-        <div className="min-w-0 flex-[1_1_16rem]">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start">
+        <div className="flex min-w-0 flex-col gap-1.5 sm:flex-[1_1_16rem]">
+          <Link href={leadPath(lead)} className="font-semibold hover:text-accent-text hover:underline">
+            <span className="mr-1.5 text-muted tabular">#{lead.number}</span>
+            {lead.company_name}
+          </Link>
           <div className="flex flex-wrap items-center gap-2">
-            <Link href={leadPath(lead)} className="font-semibold hover:text-accent-text hover:underline">
-              <span className="mr-1.5 text-muted tabular">#{lead.number}</span>
-              {lead.company_name}
-            </Link>
             {completed ? (
               <Badge tone="success">Concluído a {formatDate(lead.project_completed_at!.slice(0, 10))}</Badge>
             ) : (
@@ -116,18 +116,21 @@ export function ProjectRow({
                 <DueBadge dueOn={info.due_on} today={today} />
               </>
             )}
+            {lead.services?.length ? <ServiceChips services={lead.services} /> : null}
           </div>
-          {lead.services?.length ? <ServiceChips services={lead.services} className="mt-1.5" /> : null}
         </div>
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-          {!completed && features.time_tracking ? <TimerButton leadId={lead.id} runningSince={time.running_since} loggedSeconds={time.logged_seconds} /> : null}
-          {!completed ? <WhatsAppMenu lead={lead} className={buttonClasses('outline', 'sm')} /> : null}
+        {/* Telemóvel: botões em duas colunas, a toda a largura (o último ocupa a linha se sobrar). Computador: à direita. */}
+        <div className="grid grid-cols-2 gap-2 sm:ml-auto sm:flex sm:flex-wrap sm:items-center sm:justify-end [&>*:last-child:nth-child(odd)]:col-span-2">
+          {!completed && features.time_tracking ? (
+            <TimerButton leadId={lead.id} runningSince={time.running_since} loggedSeconds={time.logged_seconds} className="max-sm:w-full" />
+          ) : null}
+          {!completed ? <WhatsAppMenu lead={lead} className={buttonClasses('outline', 'sm', 'max-sm:w-full')} /> : null}
           {!completed && features.meetings ? (
-            <Button size="sm" variant="outline" onClick={() => setMeetingOpen(true)}>
+            <Button size="sm" variant="outline" onClick={() => setMeetingOpen(true)} className="max-sm:w-full">
               <CalendarPlus className="h-3.5 w-3.5" aria-hidden /> Reunião
             </Button>
           ) : null}
-          <ProjectToggle lead={lead} onWrapUp={onWrapUp} />
+          <ProjectToggle lead={lead} onWrapUp={onWrapUp} className="max-sm:w-full" />
         </div>
       </div>
 
