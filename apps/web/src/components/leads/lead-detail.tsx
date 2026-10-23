@@ -203,6 +203,7 @@ export function LeadDetail({ id }: { id: string }) {
   const log = useLogActivity(id);
   const invalidate = useInvalidateLead();
   const [dialog, setDialog] = useState<null | 'delete' | 'anonymize' | 'merge'>(null);
+  const [emailCollapsed, setEmailCollapsed] = useCollapsed('email-de-prospecao');
   // Prospetor: só a parte comercial (sem valores, propostas, pagamentos, projetos nem apagar).
   const staff = me ? me.role !== 'prospector' : false;
 
@@ -556,7 +557,14 @@ export function LeadDetail({ id }: { id: string }) {
           <Card>
             <CardHeader
               title="Email de prospeção"
-              description="Pronto a enviar, copiar ou abrir no teu cliente de email."
+              description={
+                emailCollapsed && lead.email_subject ? (
+                  <span className="line-clamp-1">Assunto: {lead.email_subject}</span>
+                ) : (
+                  'Pronto a enviar, copiar ou abrir no teu cliente de email.'
+                )
+              }
+              className={emailCollapsed ? 'border-b-0' : undefined}
               actions={
                 <>
                   {!lead.anonymized_at ? (
@@ -587,10 +595,11 @@ export function LeadDetail({ id }: { id: string }) {
                       />
                     </>
                   ) : null}
+                  <CollapseButton collapsed={emailCollapsed} onToggle={() => setEmailCollapsed(!emailCollapsed)} label="Email de prospeção" />
                 </>
               }
             />
-            {lead.email_body || lead.email_subject ? (
+            {emailCollapsed ? null : lead.email_body || lead.email_subject ? (
               <div className="flex flex-col gap-4 p-4">
                 {/* Cada parte tem a sua barra com o botão de copiar, para nunca tapar o texto. */}
                 <section aria-label="Assunto do email">
