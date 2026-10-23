@@ -303,37 +303,60 @@ export function PomodoroBox({ lead, className }: { lead: Lead; className?: strin
 
 /**
  * Modo foco: o mostrador em ecrã inteiro, só com a fase, o tempo e a tarefa.
- * Pede ao browser o ecrã inteiro (se deixar); Esc ou "Sair" voltam ao normal.
+ * Pede ao browser o ecrã inteiro e que o ecrã não se apague (se deixar); Esc ou "Sair" voltam ao normal.
  */
 export function FocusMode({ onClose }: { onClose: () => void }) {
   const settings = usePomodoroSettings();
   const { data: pomodoro } = usePomodoro(!!settings);
   const remaining = usePomodoroClock(pomodoro ?? null);
   const { run, pending } = useRun();
+  // O onClose muda a cada segundo (o relógio redesenha o bloco): guardado à parte,
+  // para o ecrã inteiro não ser desligado e voltado a pedir (o que fechava o modo foco).
+  const close = useRef(onClose);
+  useEffect(() => {
+    close.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     const el = document.documentElement;
     if (!document.fullscreenElement) void el.requestFullscreen?.().catch(() => undefined);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') close.current();
     };
     // Sair do ecrã inteiro (Esc do browser) também fecha o modo foco.
     const onFull = () => {
-      if (!document.fullscreenElement) onClose();
+      if (!document.fullscreenElement) close.current();
     };
+    // Ecrã sempre ligado enquanto o modo foco estiver aberto (o browser larga-o ao mudar de separador).
+    let lock: WakeLockSentinel | null = null;
+    let closed = false;
+    const keepAwake = async () => {
+      if (closed || document.visibilityState !== 'visible' || !('wakeLock' in navigator)) return;
+      try {
+        lock = await navigator.wakeLock.request('screen');
+        if (closed) void lock.release().catch(() => undefined);
+      } catch {
+        // Sem autorização (ex.: poupança de bateria): o modo foco continua, sem segurar o ecrã.
+      }
+    };
+    void keepAwake();
     window.addEventListener('keydown', onKey);
     document.addEventListener('fullscreenchange', onFull);
+    document.addEventListener('visibilitychange', keepAwake);
     return () => {
+      closed = true;
       window.removeEventListener('keydown', onKey);
       document.removeEventListener('fullscreenchange', onFull);
+      document.removeEventListener('visibilitychange', keepAwake);
+      void lock?.release().catch(() => undefined);
       if (document.fullscreenElement) void document.exitFullscreen?.().catch(() => undefined);
     };
-  }, [onClose]);
+  }, []);
 
   // O pomodoro acabou (ou foi parado noutro sítio): sai do modo foco.
   useEffect(() => {
-    if (pomodoro === null) onClose();
-  }, [pomodoro, onClose]);
+    if (pomodoro === null) close.current();
+  }, [pomodoro]);
 
   if (!settings || !pomodoro) return null;
   const paused = pomodoro.paused_left !== null;

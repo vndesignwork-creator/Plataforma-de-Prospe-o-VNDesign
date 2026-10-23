@@ -121,6 +121,11 @@ test('pomodoro: modo foco em ecrã inteiro e Esc para sair', async ({ page }) =>
   const focus = page.getByRole('dialog', { name: 'Modo foco' });
   await expect(focus.getByRole('timer', { name: 'Tempo que falta' })).toBeVisible();
   await expect(focus.getByRole('button', { name: 'Pausar' })).toBeVisible();
+  // Continua aberto enquanto o tempo corre (não fecha sozinho ao fim de 1 segundo).
+  const first = await focus.getByRole('timer').textContent();
+  await page.waitForTimeout(3_500);
+  await expect(focus).toBeVisible();
+  await expect(focus.getByRole('timer')).not.toHaveText(first!);
   await page.keyboard.press('Escape');
   await expect(focus).toHaveCount(0);
   await box.getByRole('button', { name: 'Parar' }).click();
