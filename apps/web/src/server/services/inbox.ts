@@ -104,7 +104,8 @@ export async function checkReplies(ctx: ApiContext): Promise<ReplyCheckResult> {
     const lead = leadId ? byId.get(leadId) : undefined;
     if (!lead) continue;
     // Só depois do primeiro contacto (emails antigos da mesma empresa não contam).
-    if (lead.first_contact_on && message.date.slice(0, 10) < lead.first_contact_on) continue;
+    // O dia em Lisboa: em UTC, uma resposta logo depois da meia-noite ainda é "ontem".
+    if (lead.first_contact_on && todayIso(new Date(message.date)) < lead.first_contact_on) continue;
     matches.push({ message, lead });
   }
 
