@@ -10,6 +10,7 @@ import { Bot, CheckCircle2, ChevronDown, Copy, ExternalLink, Loader2, Plus, Tras
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api-client';
@@ -22,6 +23,7 @@ export function AiVisibilityCard({ lead }: { lead: Lead }) {
   const { data: checks, isLoading } = useAiVisibility(lead.id, !lead.anonymized_at);
   const start = useStartAiVisibility(lead.id);
   const [editing, setEditing] = useState<string[] | null>(null);
+  const [collapsed, setCollapsed] = useCollapsed('aparece-nas-ias');
   if (lead.anonymized_at) return null;
   const latest = checks?.[0] ?? null;
   const running = latest?.status === 'running';
@@ -45,16 +47,31 @@ export function AiVisibilityCard({ lead }: { lead: Lead }) {
             <Bot className="h-4 w-4 text-accent-text" aria-hidden /> Aparece nas IAs? <span className="text-sm font-normal text-muted">(GEO)</span>
           </span>
         }
-        description="Perguntamos a uma IA com pesquisa na internet o que um cliente perguntaria (sem dizer qual é este lead) e vemos se ele aparece."
-        actions={
-          !editing && !running ? (
-            <Button size="sm" variant={latest ? 'outline' : 'primary'} onClick={() => setEditing(suggested())}>
-              {latest ? 'Testar outra vez' : 'Testar'}
-            </Button>
-          ) : null
+        description={
+          collapsed && latest?.status === 'done'
+            ? `Aparece em ${latest.mentioned_count} de ${latest.results.length} · ${formatDateTime(latest.created_at)}`
+            : 'Perguntamos a uma IA com pesquisa na internet o que um cliente perguntaria (sem dizer qual é este lead) e vemos se ele aparece.'
         }
+        actions={
+          <>
+            {!editing && !running ? (
+              <Button
+                size="sm"
+                variant={latest ? 'outline' : 'primary'}
+                onClick={() => {
+                  setCollapsed(false);
+                  setEditing(suggested());
+                }}
+              >
+                {latest ? 'Testar outra vez' : 'Testar'}
+              </Button>
+            ) : null}
+            <CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label="Aparece nas IAs?" />
+          </>
+        }
+        className={collapsed ? 'border-b-0' : undefined}
       />
-      <div className="flex flex-col gap-4 p-4">
+      <div className={cn('flex flex-col gap-4 p-4', collapsed && 'hidden')}>
         {editing ? (
           <QuestionsEditor questions={editing} onChange={setEditing} onCancel={() => setEditing(null)} onRun={() => void run(editing)} busy={start.isPending} />
         ) : isLoading ? (

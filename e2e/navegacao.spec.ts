@@ -46,14 +46,38 @@ test('diagnóstico do site: recolhido quando o lead só tem serviços fora do We
   await expect(page.getByRole('heading', { name: 'Análise automática do site' })).toHaveCount(0);
   // O ângulo de abordagem já não está dentro do diagnóstico: vê-se sempre.
   await expect(page.getByText(`Ângulo ${run}`, { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Mostrar' }).click();
+  await page.getByRole('button', { name: 'Expandir: Diagnóstico do site' }).click();
   await expect(page.getByRole('heading', { name: 'Análise automática do site' })).toBeVisible();
-  await page.getByRole('button', { name: 'Esconder' }).click();
+  await page.getByRole('button', { name: 'Recolher: Diagnóstico do site' }).click();
   await expect(page.getByRole('heading', { name: 'Análise automática do site' })).toHaveCount(0);
 
   await page.goto(`/leads/${web.id}`);
   await expect(page.getByRole('heading', { name: 'Análise automática do site' })).toBeVisible();
   await expect(page.getByText('Não é relevante para os serviços escolhidos.')).toHaveCount(0);
+});
+
+test('diagnóstico, "Aparece nas IAs?" e Kit GEO: recolher fica lembrado neste browser', async ({ page }) => {
+  const post = async (data: object) => (await (await page.request.post('/api/v1/leads', { data })).json()).data;
+  const a = await post({ company_name: `Recolher A ${run}`, services: ['landing_page'], pagespeed: 42, problems: 'Sem HTTPS' });
+  const b = await post({ company_name: `Recolher B ${run}`, services: ['landing_page'] });
+
+  await page.goto(`/leads/${a.id}`);
+  for (const label of ['Diagnóstico do site', 'Aparece nas IAs?', 'Kit GEO']) {
+    await page.getByRole('button', { name: `Recolher: ${label}` }).click();
+    await expect(page.getByRole('button', { name: `Expandir: ${label}` })).toHaveAttribute('aria-expanded', 'false');
+  }
+  await expect(page.getByRole('heading', { name: 'Análise automática do site' })).toHaveCount(0);
+  await expect(page.getByRole('tab', { name: 'Perfil do Google' })).toHaveCount(0);
+  // Recolhido, o diagnóstico mostra o resumo.
+  await expect(page.getByText('PageSpeed 42 · Sem HTTPS')).toBeVisible();
+
+  // Noutro lead continua recolhido; expandir volta a mostrar.
+  await page.goto(`/leads/${b.id}`);
+  await expect(page.getByRole('button', { name: 'Expandir: Kit GEO' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Análise automática do site' })).toHaveCount(0);
+  for (const label of ['Diagnóstico do site', 'Aparece nas IAs?', 'Kit GEO']) await page.getByRole('button', { name: `Expandir: ${label}` }).click();
+  await expect(page.getByRole('heading', { name: 'Análise automática do site' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Perfil do Google' })).toBeVisible();
 });
 
 test('listas de escolha: menu da plataforma (não a lista do sistema) e o valor é gravado', async ({ page }) => {

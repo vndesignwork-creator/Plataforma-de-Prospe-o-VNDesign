@@ -26,6 +26,7 @@ import { Code2, Copy, Download, ExternalLink, FileText, MapPin, MessageCircleQue
 import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
 import { Input, Select, Textarea } from '@/components/ui/input';
@@ -72,6 +73,7 @@ function CodeBox({ code, label, children }: { code: string; label: string; child
 export function GeoKitCard({ lead }: { lead: Lead }) {
   const { data: geo, isLoading } = useLeadGeo(lead.id, !lead.anonymized_at);
   const [tab, setTab] = useState<Tab>('google');
+  const [collapsed, setCollapsed] = useCollapsed('kit-geo');
   if (lead.anonymized_at) return null;
   return (
     <Card role="region" aria-label="Kit GEO">
@@ -82,37 +84,43 @@ export function GeoKitCard({ lead }: { lead: Lead }) {
           </span>
         }
         description="O que entregas para o site aparecer nas IAs: perfil do Google, dados estruturados, perguntas frequentes e llms.txt."
+        actions={<CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label="Kit GEO" />}
+        className={collapsed ? 'border-b-0' : undefined}
       />
-      <div role="tablist" aria-label="Kit GEO" className="flex gap-1 overflow-x-auto border-b border-border px-2 [scrollbar-width:none]">
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            onClick={() => setTab(id)}
-            className={cn(
-              '-mb-px inline-flex min-h-10 shrink-0 items-center gap-1.5 border-b-2 px-2.5 text-sm',
-              tab === id ? 'border-accent font-medium text-accent-text' : 'border-transparent text-muted hover:text-fg',
+      {collapsed ? null : (
+        <>
+          <div role="tablist" aria-label="Kit GEO" className="flex gap-1 overflow-x-auto border-b border-border px-2 [scrollbar-width:none]">
+            {TABS.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={tab === id}
+                onClick={() => setTab(id)}
+                className={cn(
+                  '-mb-px inline-flex min-h-10 shrink-0 items-center gap-1.5 border-b-2 px-2.5 text-sm',
+                  tab === id ? 'border-accent font-medium text-accent-text' : 'border-transparent text-muted hover:text-fg',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" aria-hidden /> {label}
+              </button>
+            ))}
+          </div>
+          <div className="p-4" role="tabpanel">
+            {isLoading || !geo ? (
+              <Skeleton className="h-24" />
+            ) : tab === 'google' ? (
+              <GoogleTab leadId={lead.id} geo={geo} />
+            ) : tab === 'schema' ? (
+              <SchemaTab key={JSON.stringify(geo.business)} leadId={lead.id} geo={geo} />
+            ) : tab === 'faq' ? (
+              <FaqTab key={geo.faq_generated_at ?? 'faq'} leadId={lead.id} geo={geo} />
+            ) : (
+              <LlmsTab geo={geo} />
             )}
-          >
-            <Icon className="h-3.5 w-3.5" aria-hidden /> {label}
-          </button>
-        ))}
-      </div>
-      <div className="p-4" role="tabpanel">
-        {isLoading || !geo ? (
-          <Skeleton className="h-24" />
-        ) : tab === 'google' ? (
-          <GoogleTab leadId={lead.id} geo={geo} />
-        ) : tab === 'schema' ? (
-          <SchemaTab key={JSON.stringify(geo.business)} leadId={lead.id} geo={geo} />
-        ) : tab === 'faq' ? (
-          <FaqTab key={geo.faq_generated_at ?? 'faq'} leadId={lead.id} geo={geo} />
-        ) : (
-          <LlmsTab geo={geo} />
-        )}
-      </div>
+          </div>
+        </>
+      )}
     </Card>
   );
 }

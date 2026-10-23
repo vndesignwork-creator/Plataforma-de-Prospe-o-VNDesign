@@ -16,7 +16,6 @@ import {
 import {
   Archive,
   ArchiveRestore,
-  ChevronDown,
   Copy,
   Edit3,
   ExternalLink,
@@ -40,6 +39,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
+import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { Dialog } from '@/components/ui/dialog';
 import { DropdownContent, DropdownItem, DropdownRoot, DropdownSeparator, DropdownTrigger } from '@/components/ui/dropdown';
 import { Input, Select } from '@/components/ui/input';
@@ -856,25 +856,33 @@ function DiagnosisReportActions({ lead }: { lead: Lead }) {
 
 function SiteDiagnosisCard({ lead }: { lead: Lead }) {
   const catalog = useServiceCatalog();
-  const [expanded, setExpanded] = useState(false);
   const services = lead.services ?? [];
   const relevant = !services.length || services.some((s) => catalog.get(s)?.category === 'web');
-  const open = relevant || expanded;
+  // Recolher fica lembrado (para todos os leads); sem serviços de site começa recolhido, só nesta ficha.
+  const [stored, setStored] = useCollapsed('diagnostico');
+  const [shown, setShown] = useState(false);
+  const collapsed = relevant ? stored : !shown;
+  const open = !collapsed;
+  const summary = [
+    lead.pagespeed !== null ? `PageSpeed ${lead.pagespeed}` : null,
+    lead.mobile === 'sim' ? 'Adaptado a telemóvel' : lead.mobile === 'nao' ? 'Não adaptado a telemóvel' : null,
+    lead.problems?.replace(/\s+/g, ' ') ?? null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <Card>
       <CardHeader
         title="Diagnóstico do site"
-        description={relevant ? undefined : 'Não é relevante para os serviços escolhidos.'}
+        description={
+          !relevant ? 'Não é relevante para os serviços escolhidos.' : collapsed && summary ? <span className="line-clamp-1">{summary}</span> : undefined
+        }
         actions={
-          relevant ? (
-            <DiagnosisReportActions lead={lead} />
-          ) : (
-            <Button size="sm" variant="ghost" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>
-              <ChevronDown className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')} aria-hidden />
-              {expanded ? 'Esconder' : 'Mostrar'}
-            </Button>
-          )
+          <>
+            {relevant ? <DiagnosisReportActions lead={lead} /> : null}
+            <CollapseButton collapsed={collapsed} onToggle={() => (relevant ? setStored(!collapsed) : setShown(!shown))} label="Diagnóstico do site" />
+          </>
         }
         className={open ? undefined : 'border-b-0'}
       />
