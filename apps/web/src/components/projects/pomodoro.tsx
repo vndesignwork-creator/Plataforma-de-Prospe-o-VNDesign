@@ -140,7 +140,8 @@ function Dial({
   );
 }
 
-export function PomodoroBox({ lead, className }: { lead: Lead; className?: string }) {
+/** compact: mais pequeno (na página Projetos, ao lado das tarefas). */
+export function PomodoroBox({ lead, compact, className }: { lead: Lead; compact?: boolean; className?: string }) {
   const settings = usePomodoroSettings();
   const { data: pomodoro } = usePomodoro(!!settings);
   const { data: tasks } = useLeadTasks(lead.id);
@@ -205,9 +206,13 @@ export function PomodoroBox({ lead, className }: { lead: Lead; className?: strin
         </span>
       </div>
 
-      <Dial fraction={1 - left / total} tone={!here || paused || here.phase === 'ready' ? 'muted' : onBreak ? 'success' : 'accent'}>
+      <Dial
+        fraction={1 - left / total}
+        tone={!here || paused || here.phase === 'ready' ? 'muted' : onBreak ? 'success' : 'accent'}
+        className={compact ? 'max-w-[11rem]' : undefined}
+      >
         <span className={cn('text-xs font-medium', onBreak ? 'text-success' : here?.phase === 'ready' ? 'text-warning' : here ? 'text-accent-text' : 'text-muted')}>{label}</span>
-        <span className="text-5xl font-extralight tabular tracking-tight" role="timer" aria-live="off" aria-label="Tempo que falta">
+        <span className={cn('font-extralight tabular tracking-tight', compact ? 'text-4xl' : 'text-5xl')} role="timer" aria-live="off" aria-label="Tempo que falta">
           {formatCountdown(left)}
         </span>
         {here?.task ? <span className="line-clamp-2 text-xs text-muted">{here.task.title}</span> : null}
@@ -290,7 +295,7 @@ export function PomodoroBox({ lead, className }: { lead: Lead; className?: strin
             </Button>
             {breakButton}
           </div>
-          <p className="text-center text-xs text-muted">
+          <p className={cn('text-center text-xs text-muted', compact && 'sr-only')}>
             {settings.work_minutes} min de trabalho, {settings.short_break_minutes} de pausa; a cada {settings.long_every}, pausa de {settings.long_break_minutes}. O trabalho fica nas horas do
             projeto.
           </p>

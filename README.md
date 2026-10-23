@@ -427,7 +427,12 @@ Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**
 
 **Projetos**
 - Menu **Projetos**, com três vistas (a última escolhida fica lembrada neste browser):
-  - **Lista**: os projetos em curso ordenados pelo prazo de entrega ("Faltam 5 dias", "Entrega hoje", "Atrasado 2 dias" a vermelho), a fase, barras de progresso das tarefas e dos pagamentos, revisões, horas, entregas e próxima reunião. Cada projeto mostra **todas as tarefas** (a mesma lista da ficha: marcar como feitas, arrastar pela pega ⠿ para mudar a ordem, editar, apagar e acrescentar; **Esconder tarefas** recolhe a lista). Ações rápidas sem abrir a ficha: ▶ temporizador, **WhatsApp**, **Reunião**, **Criar plano** de pagamentos e **Concluir projeto**. "Concluídos" mostra os terminados.
+  - **Lista**: os projetos em curso ordenados pelo prazo de entrega ("Faltam 5 dias", "Entrega hoje", "Atrasado 2 dias" a vermelho). Cada projeto tem, de cima para baixo:
+    - o nome, a fase, o prazo e as ações (**WhatsApp**, **Reunião**, **Concluir projeto**);
+    - o **resumo** em caixinhas: **Pagamentos** (recebido de total, em atraso, ou **Criar plano**), **Tarefas** (feitas de total), **Revisões** e **Horas** (com €/hora e **Ver registos**);
+    - **todas as tarefas** (a mesma lista da ficha: marcar como feitas, arrastar pela pega ⠿ para mudar a ordem, editar, apagar e acrescentar; **Esconder tarefas** recolhe a lista) e, ao lado, o bloco **Tempo** com o Pomodoro e o ▶ cronómetro (no telemóvel fica por baixo das tarefas);
+    - em baixo, a próxima reunião, despesas, entregas e **Detalhes do projeto**.
+  - "Concluídos" mostra os terminados.
   - **Fases**: colunas Briefing → Em produção → Revisões → Entrega. Arrasta o cartão (no telemóvel, mantém o dedo) ou usa o botão da fase.
   - **Calendário**: o mês com as entregas, reuniões, pagamentos previstos e tarefas (no telemóvel, a lista dos dias com alguma coisa).
 - Na ficha de um cliente, cartão **Projeto**: prazo de entrega, fase e as secções abaixo.

@@ -1,12 +1,12 @@
 'use client';
 
 /**
- * Um projeto na página Projetos: prazo, fase, progresso das tarefas e dos
- * pagamentos, e ações rápidas sem abrir a ficha (marcar a próxima tarefa como
- * feita, acrescentar tarefa, temporizador, WhatsApp, reunião, concluir).
+ * Um projeto na página Projetos: em cima o prazo, a fase e as ações (WhatsApp,
+ * reunião, concluir); depois o resumo (pagamentos, tarefas, revisões, horas);
+ * as tarefas e, ao lado, o tempo (Pomodoro e cronómetro); em baixo o resto.
  */
 import { formatCurrency, formatDate, formatDuration, hourlyRate, leadPath, type Features, type Lead, type Project } from '@vndesign/core';
-import { ArrowRight, CalendarClock, CalendarPlus, ChevronDown, Clock, FolderOpen, Receipt, RefreshCcw, Wallet } from 'lucide-react';
+import { ArrowRight, CalendarClock, CalendarPlus, ChevronDown, Clock, FolderOpen, ListChecks, Plus, Receipt, RefreshCcw, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { MeetingDialog, meetingLabel } from '@/components/meetings/meetings-card';
@@ -25,17 +25,79 @@ import { TimeSection, TimerButton } from './time-section';
 
 const euros = (v: number) => formatCurrency(v, { decimals: false });
 
+/** Uma caixinha do resumo: título, número e barra (ou a ação, quando ainda não há nada). */
+function Stat({
+  icon: Icon,
+  title,
+  value,
+  tone,
+  children,
+}: {
+  icon: typeof Wallet;
+  title: string;
+  value: React.ReactNode;
+  tone?: 'danger' | 'warning';
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5 rounded-lg border border-border px-3 py-2">
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted">
+        <Icon className="h-3.5 w-3.5" aria-hidden /> {title}
+      </span>
+      <span className={cn('text-sm font-semibold tabular', tone === 'danger' ? 'text-danger' : tone === 'warning' ? 'text-warning' : 'text-fg')}>{value}</span>
+      {children}
+    </div>
+  );
+}
+
+function PaymentsStat({ project }: { project: Project }) {
+  const { lead, payments } = project;
+  const [plan, setPlan] = useState(false);
+  return (
+    <Stat
+      icon={Wallet}
+      title="Pagamentos"
+      tone={payments.overdue ? 'danger' : undefined}
+      value={
+        payments.total ? (
+          <>
+            {euros(payments.paid)} de {euros(payments.total)}
+            {payments.overdue ? <span className="block text-xs font-medium">{euros(payments.overdue)} em atraso</span> : null}
+          </>
+        ) : (
+          <span className="font-normal text-muted">Sem plano</span>
+        )
+      }
+    >
+      {payments.total ? (
+        <ProgressBar value={payments.paid} total={payments.total} tone="success" label={`Recebido de ${lead.company_name}: ${euros(payments.paid)} de ${euros(payments.total)}`} />
+      ) : (
+        <button type="button" onClick={() => setPlan(true)} className="inline-flex items-center gap-1 self-start text-xs font-medium text-accent-text hover:underline">
+          <Plus className="h-3.5 w-3.5" aria-hidden /> Criar plano
+        </button>
+      )}
+      {plan ? (
+        <Dialog open onOpenChange={(o) => (!o ? setPlan(false) : undefined)} title="Plano de pagamentos" description={lead.company_name} className="max-w-xl">
+          <div className="-m-4">
+            <PlanForm lead={lead} onDone={() => setPlan(false)} />
+          </div>
+        </Dialog>
+      ) : null}
+    </Stat>
+  );
+}
+
 /**
  * Todas as tarefas do projeto (a mesma lista da ficha): marcar como feitas,
  * arrastar pela pega para mudar a ordem, editar, apagar e acrescentar.
  */
 function TasksBlock({ project }: { project: Project }) {
-  const { lead, tasks } = project;
+  const { lead } = project;
   const [open, setOpen] = useState(true);
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       <div className="flex items-center justify-between gap-2 text-xs">
-        <span className="font-medium text-muted">Tarefas{tasks.total ? ` · ${tasks.done} de ${tasks.total}` : ''}</span>
+        <span className="font-medium text-muted">Tarefas</span>
         <button
           type="button"
           onClick={() => setOpen(!open)}
@@ -46,39 +108,7 @@ function TasksBlock({ project }: { project: Project }) {
           {open ? 'Esconder tarefas' : 'Mostrar tarefas'}
         </button>
       </div>
-      {tasks.total ? <ProgressBar value={tasks.done} total={tasks.total} label={`Tarefas de ${lead.company_name}: ${tasks.done} de ${tasks.total}`} /> : null}
       {open ? <TasksCard lead={lead} embedded /> : null}
-    </div>
-  );
-}
-
-function PaymentsBlock({ project }: { project: Project }) {
-  const { lead, payments } = project;
-  const [plan, setPlan] = useState(false);
-  return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <span className={cn('text-xs font-medium', payments.overdue ? 'text-danger' : 'text-muted')}>
-        Pagamentos
-        {payments.total ? ` · ${euros(payments.paid)} de ${euros(payments.total)}` : ''}
-        {payments.overdue ? ` · ${euros(payments.overdue)} em atraso` : ''}
-      </span>
-      {payments.total ? (
-        <ProgressBar value={payments.paid} total={payments.total} tone="success" label={`Recebido de ${lead.company_name}: ${euros(payments.paid)} de ${euros(payments.total)}`} />
-      ) : (
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted">
-          Sem plano de pagamentos.
-          <Button size="sm" variant="outline" onClick={() => setPlan(true)}>
-            <Wallet className="h-3.5 w-3.5" aria-hidden /> Criar plano
-          </Button>
-        </div>
-      )}
-      {plan ? (
-        <Dialog open onOpenChange={(o) => (!o ? setPlan(false) : undefined)} title="Plano de pagamentos" description={lead.company_name} className="max-w-xl">
-          <div className="-m-4">
-            <PlanForm lead={lead} onDone={() => setPlan(false)} />
-          </div>
-        </Dialog>
-      ) : null}
     </div>
   );
 }
@@ -94,12 +124,14 @@ export function ProjectRow({
   features: Features;
   onWrapUp: (lead: Lead) => void;
 }) {
-  const { lead, info, next_meeting: meeting, revisions, time, deliverables, value } = project;
+  const { lead, info, next_meeting: meeting, revisions, time, deliverables, value, tasks } = project;
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [hoursOpen, setHoursOpen] = useState(false);
   const completed = !!lead.project_completed_at;
   const rate = hourlyRate(value, time.minutes);
   const pomodoro = !completed && features.time_tracking && features.pomodoro;
+
+  const timeColumn = !completed && features.time_tracking;
 
   return (
     <li className="flex flex-col gap-3 px-4 py-4">
@@ -123,9 +155,6 @@ export function ProjectRow({
         </div>
         {/* Telemóvel: botões em duas colunas, a toda a largura (o último ocupa a linha se sobrar). Computador: à direita. */}
         <div className="grid grid-cols-2 gap-2 sm:ml-auto sm:flex sm:flex-wrap sm:items-center sm:justify-end [&>*:last-child:nth-child(odd)]:col-span-2">
-          {!completed && features.time_tracking ? (
-            <TimerButton leadId={lead.id} runningSince={time.running_since} loggedSeconds={time.logged_seconds} className="max-sm:w-full" />
-          ) : null}
           {!completed ? <WhatsAppMenu lead={lead} className={buttonClasses('outline', 'sm', 'max-sm:w-full')} /> : null}
           {!completed && features.meetings ? (
             <Button size="sm" variant="outline" onClick={() => setMeetingOpen(true)} className="max-sm:w-full">
@@ -136,12 +165,54 @@ export function ProjectRow({
         </div>
       </div>
 
-      <div className={cn('grid gap-x-6 gap-y-3', (features.payments || pomodoro) && 'md:grid-cols-2')}>
+      {/* Resumo: pagamentos, tarefas, revisões e horas (2 por linha no telemóvel). */}
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))]" role="group" aria-label={`Resumo de ${lead.company_name}`}>
+        {features.payments ? <PaymentsStat project={project} /> : null}
+        <Stat icon={ListChecks} title="Tarefas" value={tasks.total ? `${tasks.done} de ${tasks.total}` : <span className="font-normal text-muted">Sem tarefas</span>}>
+          {tasks.total ? <ProgressBar value={tasks.done} total={tasks.total} label={`Tarefas de ${lead.company_name}: ${tasks.done} de ${tasks.total}`} /> : null}
+        </Stat>
+        {features.revisions ? (
+          <Stat icon={RefreshCcw} title="Revisões" value={`${revisions.used} de ${info.revisions_included}`} tone={revisions.used > info.revisions_included ? 'warning' : undefined}>
+            {revisions.used > info.revisions_included ? <span className="text-xs text-warning">{revisions.used - info.revisions_included} a cobrar à parte</span> : null}
+          </Stat>
+        ) : null}
+        {features.time_tracking ? (
+          <Stat
+            icon={Clock}
+            title="Horas"
+            value={
+              time.logged_seconds > 0 ? (
+                <>
+                  {formatDuration(time.logged_seconds)}
+                  {rate ? <span className="font-normal text-muted"> · {euros(rate)}/hora</span> : null}
+                </>
+              ) : (
+                <span className="font-normal text-muted">Sem registos</span>
+              )
+            }
+          >
+            {time.minutes > 0 || time.logged_seconds > 0 ? (
+              <button type="button" onClick={() => setHoursOpen(true)} className="self-start text-xs font-medium text-accent-text hover:underline">
+                Ver registos
+              </button>
+            ) : null}
+          </Stat>
+        ) : null}
+      </div>
+
+      {/* Tarefas (mais largo) e o tempo: Pomodoro e cronómetro juntos. */}
+      <div className={cn('grid gap-x-6 gap-y-3', timeColumn && (pomodoro ? 'md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]' : 'md:grid-cols-[minmax(0,1fr)_auto]'))}>
         <TasksBlock project={project} />
-        {features.payments || pomodoro ? (
-          <div className="flex min-w-0 flex-col gap-4">
-            {features.payments ? <PaymentsBlock project={project} /> : null}
-            {pomodoro ? <PomodoroBox lead={lead} /> : null}
+        {timeColumn ? (
+          <div className="flex min-w-0 flex-col gap-1.5" role="group" aria-label="Tempo">
+            <span className="text-xs font-medium text-muted">Tempo</span>
+            {pomodoro ? <PomodoroBox lead={lead} compact /> : null}
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted">
+                <Clock className="h-3.5 w-3.5" aria-hidden /> Cronómetro
+              </span>
+              <TimerButton leadId={lead.id} runningSince={time.running_since} loggedSeconds={time.logged_seconds} />
+            </div>
           </div>
         ) : null}
       </div>
@@ -151,17 +222,6 @@ export function ProjectRow({
           <span className="inline-flex items-center gap-1.5">
             <CalendarClock className="h-3.5 w-3.5" aria-hidden /> Reunião: {meetingLabel(meeting.starts_at)}
           </span>
-        ) : null}
-        {features.revisions ? (
-          <span className={cn('inline-flex items-center gap-1.5', revisions.used > info.revisions_included && 'font-medium text-warning')}>
-            <RefreshCcw className="h-3.5 w-3.5" aria-hidden /> Revisões {revisions.used} de {info.revisions_included}
-          </span>
-        ) : null}
-        {features.time_tracking && (time.minutes > 0 || time.logged_seconds > 0) ? (
-          <button type="button" onClick={() => setHoursOpen(true)} className="inline-flex items-center gap-1.5 hover:text-fg hover:underline">
-            <Clock className="h-3.5 w-3.5" aria-hidden /> {formatDuration(time.logged_seconds)} registadas
-            {rate ? ` · ${euros(rate)}/hora` : ''} · ver registos
-          </button>
         ) : null}
         {features.expenses && project.expenses > 0 ? (
           <span className="inline-flex items-center gap-1.5">

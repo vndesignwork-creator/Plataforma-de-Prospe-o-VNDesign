@@ -46,10 +46,10 @@ test('lista: prazo, fase, ações rápidas, plano de pagamentos, temporizador, f
   const list = row.getByRole('list', { name: 'Tarefas por fazer' });
   await expect(list.getByRole('listitem')).toHaveCount(2);
   await list.getByRole('checkbox', { name: 'Concluir: Briefing com o cliente' }).click();
-  await expect(row.getByText('Tarefas · 1 de 2')).toBeVisible();
+  await expect(row.getByRole('progressbar', { name: /Tarefas de .*: 1 de 2/ })).toBeVisible();
   await row.getByRole('textbox', { name: 'Nova tarefa' }).fill('Enviar ficheiros finais');
   await row.getByRole('button', { name: 'Acrescentar' }).click();
-  await expect(row.getByText('Tarefas · 1 de 3')).toBeVisible();
+  await expect(row.getByRole('progressbar', { name: /Tarefas de .*: 1 de 3/ })).toBeVisible();
   await expect(list.getByRole('listitem')).toHaveCount(2);
   const handle = list.getByRole('button', { name: 'Mover a tarefa: Enviar ficheiros finais' });
   await handle.focus();
@@ -73,7 +73,11 @@ test('lista: prazo, fase, ações rápidas, plano de pagamentos, temporizador, f
   const planDialog = page.getByRole('dialog', { name: 'Plano de pagamentos' });
   await expect(planDialog.getByLabel('Total (€)')).toHaveValue('800');
   await planDialog.getByRole('button', { name: 'Criar plano' }).click();
-  await expect(row.getByText(/Pagamentos · 0\s€ de 800\s€/)).toBeVisible();
+  const summary = row.getByRole('group', { name: `Resumo de ${name}` });
+  await expect(summary.getByText(/0\s€ de 800\s€/)).toBeVisible();
+  await expect(summary.getByRole('progressbar', { name: /Recebido de .*: 0\s€ de 800\s€/ })).toBeVisible();
+  // O cronómetro e o Pomodoro ficam juntos no bloco "Tempo".
+  await expect(row.getByRole('group', { name: 'Tempo' }).getByRole('button', { name: 'Começar a contar o tempo' })).toBeVisible();
 
   // Temporizador: começar, pausar (o total fica) e continuar a somar.
   await row.getByRole('button', { name: 'Começar a contar o tempo' }).click();
