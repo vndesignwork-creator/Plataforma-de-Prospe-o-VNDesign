@@ -260,6 +260,16 @@ recomendar o negócio (bloco **Preparado para as IAs (GEO)**, "x de 6"):
 - **Contactos visíveis**: telefone (`tel:` ou número português) ou morada (código postal ou `<address>`).
 - **Perguntas frequentes** e **ligação ao Google Maps** (estes dois só aparecem no diagnóstico; não entram na coluna "Problemas").
 
+### Kit GEO (ficha do lead)
+
+O que se entrega ao cliente para o site aparecer nas IAs, tudo pronto a copiar (WordPress/Bricks: elemento "Código"):
+- **Perfil do Google**: nota e número de avaliações do lead e dos concorrentes do último "Aparece nas IAs?", com uma frase de comparação para o cliente (também no relatório PDF). Com `GOOGLE_PLACES_API_KEY` usa a Google Places API (dados exatos); sem ela, a IA com pesquisa (aproximado — confirmar no Maps).
+- **Dados estruturados**: o código schema.org (JSON-LD) do negócio — tipo, morada, telefone, horário ("Seg–Sex 09:00–18:00"), redes, serviços — sugerido a partir da ficha e editável.
+- **Perguntas frequentes**: a IA (fornecedor do "Email com IA") escreve 8 a 10 perguntas e respostas do setor, editáveis; sai o HTML (acordeão) e o JSON-LD FAQPage.
+- **llms.txt**: resumo do negócio para as IAs, para pôr na raiz do site (descarregar ou copiar).
+
+**GEO como serviço**: o catálogo tem o serviço **Otimização para IAs (GEO)** (Web Design), os pacotes *GEO — Preparar para as IAs* e *GEO — Acompanhamento mensal* (preços para ajustar em Definições → Propostas) e 4 scripts GEO (email, follow-up, mensagem curta e guião de chamada) com a variável **{{visibilidade_ia}}** (a frase do último "Aparece nas IAs?"). No diagnóstico, quando há pontos GEO a melhorar, o botão **Juntar o serviço ao lead** acrescenta-o.
+
 ### Aparece nas IAs? (GEO)
 
 Na ficha do lead, o cartão **Aparece nas IAs?** faz a uma IA com pesquisa na internet 1 a 5 perguntas de um
@@ -346,6 +356,14 @@ Com a opção **Detetar respostas na caixa de entrada** ligada (Definições →
 
 ---
 
+## Formulário do site
+
+Definições → **Formulário do site** → **Ligar** cria um endereço secreto (`/api/v1/public/forms/<código>`). Cada pedido de contacto do site:
+- entra como lead (canal **Formulário do site**, estado Respondeu, próxima ação "Responder ao pedido do site" para hoje) — ou junta-se ao lead com o mesmo email;
+- fica com a mensagem na linha do tempo, a tarefa **Responder ao pedido do site** e um aviso no telemóvel.
+
+Como ligar: no Bricks, elemento Formulário → ações → **Webhook** (POST, JSON) para o endereço; ou o **HTML pronto a colar** (elemento "Código"). Aceita JSON, multipart e formulários HTML normais (`_next` = página para onde voltar), reconhece os nomes de campo habituais (nome, email, telefone, empresa, mensagem…) e, sem eles, adivinha pelo conteúdo. Proteções: campo escondido `_gotcha`, 5 pedidos por 10 minutos por endereço IP e é preciso email ou telefone. "Criar outro endereço" invalida o antigo.
+
 ## Sessão de prospeção
 
 Menu **Prospeção**: um lead de cada vez, com tudo à mão.
@@ -363,6 +381,11 @@ Menu **Prospeção**: um lead de cada vez, com tudo à mão.
   - **Procurar automaticamente** lê o site do lead e a página de contactos (telefones em links e no texto, perto de "Telefone"/"Telemóvel"; o NIF não conta) e, com `GOOGLE_PLACES_API_KEY`, o Google Maps. Mostra o que encontrou para escolheres; nada é guardado sem carregares em **Guardar contactos**.
   - Atalhos **Google**, **Google Maps**, **Facebook** e **Instagram** já com o nome e a cidade (as páginas do Facebook/Instagram não se leem automaticamente).
   - Cola o telefone ou o email e **Guardar contactos**: aparecem logo **Ligar**, **WhatsApp** e **Email**.
+
+**Sequência multicanal** (Definições → Follow-up e lembretes → *Sequência multicanal na Prospeção*, desligada por omissão)
+- Um plano por lead, por exemplo **dia 0 WhatsApp, dia 3 email, dia 7 ligar, dia 14 email** (até 8 passos; canal WhatsApp, Email, Ligar ou Mensagem nas redes; modelo por passo ou o 1.º modelo desse canal).
+- Na Prospeção, cada lead mostra **"Passo 2 de 4: Email (dia 3)"** com a mensagem já preenchida (abrir no WhatsApp, enviar o email, ligar ou copiar).
+- **Contactado** faz o passo e agenda o seguinte para o dia certo (a linha do tempo regista "Contactado — Passo 1 de 4: WhatsApp"); **Interessado** ou **Sem interesse** tiram o lead da sequência; no fim, fica "tentar mais tarde ou marcar Sem interesse".
 
 ---
 
@@ -463,6 +486,7 @@ Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**
 - Enquanto decorre, aparece no menu (a fase e o tempo que falta, também no telemóvel).
 - No fim de cada fase, com a app aberta: **som de aviso** (um só toque; 6 à escolha em Definições: Sino, Taça tibetana, Madeira, Digital, Gota, Marimba — toca ao escolher), vibração, notificação e mensagem. O browser só deixa tocar som depois de um clique na app (basta um clique qualquer). Em Definições há **Testar som**. Com a app fechada, o pomodoro continua no servidor e o cron dos lembretes (de 5 em 5 minutos) avança a fase, fecha as horas e envia a notificação push.
 - **Começar a pausa automaticamente** (ligado por omissão): desligado, quando o trabalho acaba a pausa fica à espera ("Pausa por começar") até carregares em **Começar pausa** (ou **Saltar pausa**).
+- **Modo foco** (botão "Foco" no bloco): o mostrador em ecrã inteiro, só com a fase, o tempo e a tarefa; Esc para sair.
 - Os tempos, o som e a pausa automática mudam-se em Definições → Funcionalidades → *Pomodoro*. Em **Estatísticas → Pomodoro**: hoje, últimos 7 dias, por dia e por projeto.
 
 **Vários projetos por cliente**
@@ -544,6 +568,8 @@ Pessoas que te ajudam a procurar, gerar, organizar e contactar leads, cada uma c
 
 **Gerador de leads**
 - A pesquisa com IA é paga pela tua conta: cada prospetor junta no máximo **50 leads por semana** (últimos 7 dias). Muda-se em Equipa → Prospeção (0 = sem gerador). As pesquisas automáticas são só tuas.
+
+**Equipa → Atividade** ("quem fez o quê"): os registos de cada pessoa nos leads (contactos, estados, emails, notas), com filtro por pessoa e período. Na linha do tempo de cada lead aparece quem fez cada coisa, com filtro por pessoa.
 
 **Estatísticas → Equipa** — por pessoa, nos últimos 30 dias: contactos (e hoje), responderam, reuniões, clientes, leads criados, leads em aberto e o gerador da semana. Aparece quando a equipa tem mais de uma pessoa.
 

@@ -218,11 +218,13 @@ export function visibilitySummary(check: {
   const others = joinNames(check.competitors.slice(0, 3).map((c) => c.name));
   if (check.mentioned_count === 0) {
     return others
-      ? `Quando se pergunta ao ${who} ${example}, aparecem ${others} — a sua empresa não aparece em nenhuma das ${total} respostas.`
+      ? `Quando se pergunta ao ${who} ${example}, aparecem ${others} — a sua empresa não aparece ${total === 1 ? 'na resposta' : `em nenhuma das ${total} respostas`}.`
       : `Perguntámos ao ${who} ${example} e outras perguntas parecidas: a sua empresa não aparece em nenhuma resposta.`;
   }
   if (check.mentioned_count === total) {
-    return `A sua empresa aparece nas ${total} respostas do ${who} a perguntas como ${example}.`;
+    return total === 1
+      ? `A sua empresa aparece na resposta do ${who} a ${example}.`
+      : `A sua empresa aparece nas ${total} respostas do ${who} a perguntas como ${example}.`;
   }
   return `A sua empresa aparece em ${check.mentioned_count} de ${total} respostas do ${who}${others ? `; nas outras aparecem ${others}` : ''}.`;
 }

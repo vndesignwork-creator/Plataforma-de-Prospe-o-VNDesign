@@ -5,6 +5,7 @@
  * - PomodoroBox: no cartão do projeto (Projetos e ficha).
  * - PomodoroIndicator: sempre à vista no menu (no lugar do temporizador).
  * - PomodoroWatcher: avisa (som e notificação) quando uma fase acaba.
+ * - FocusMode: o mostrador em ecrã inteiro, só com a tarefa e o tempo (Esc para sair).
  */
 import {
   POMODORO_PHASE_LABELS,
@@ -19,7 +20,7 @@ import {
   type PomodoroSettings,
 } from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { CircleCheck, Coffee, Pause, Play, RotateCcw, SkipForward, Square, Timer } from 'lucide-react';
+import { CircleCheck, Coffee, Maximize2, Pause, Play, RotateCcw, SkipForward, Square, Timer, X } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -91,11 +92,21 @@ function askNotifications() {
  * Mostrador circular com 60 marcas: as que já passaram ficam apagadas e o
  * ponteiro (laranja a trabalhar, verde na pausa) mostra onde vai a fase.
  */
-function Dial({ fraction, tone, children }: { fraction: number; tone: 'accent' | 'success' | 'muted'; children: React.ReactNode }) {
+function Dial({
+  fraction,
+  tone,
+  children,
+  className,
+}: {
+  fraction: number;
+  tone: 'accent' | 'success' | 'muted';
+  children: React.ReactNode;
+  className?: string;
+}) {
   const f = Math.min(1, Math.max(0, fraction));
   const angle = f * 360;
   return (
-    <div className="relative mx-auto aspect-square w-full max-w-[13.5rem]">
+    <div className={cn('relative mx-auto aspect-square w-full max-w-[13.5rem]', className)}>
       <svg viewBox="-100 -100 200 200" className="absolute inset-0 h-full w-full" aria-hidden>
         {Array.from({ length: 60 }, (_, i) => {
           const a = (i * 6 * Math.PI) / 180;
@@ -136,6 +147,7 @@ export function PomodoroBox({ lead, className }: { lead: Lead; className?: strin
   const [taskId, setTaskId] = useState('');
   const remaining = usePomodoroClock(pomodoro ?? null);
   const { run, pending } = useRun();
+  const [focus, setFocus] = useState(false);
   if (!settings) return null;
 
   const here = pomodoro?.lead.id === lead.id ? pomodoro : null;
@@ -178,6 +190,17 @@ export function PomodoroBox({ lead, className }: { lead: Lead; className?: strin
             <span className="inline-flex items-center gap-1" title="Pomodoros completos hoje">
               <CircleCheck className="h-3.5 w-3.5" aria-hidden /> Hoje: {here.today}
             </span>
+          ) : null}
+          {here ? (
+            <button
+              type="button"
+              onClick={() => setFocus(true)}
+              className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium text-accent-text hover:bg-accent-soft"
+              aria-label="Modo foco (ecrã inteiro)"
+              title="Modo foco"
+            >
+              <Maximize2 className="h-3.5 w-3.5" aria-hidden /> Foco
+            </button>
           ) : null}
         </span>
       </div>
@@ -273,7 +296,91 @@ export function PomodoroBox({ lead, className }: { lead: Lead; className?: strin
           </p>
         </>
       )}
+      {focus && here ? <FocusMode onClose={() => setFocus(false)} /> : null}
     </section>
+  );
+}
+
+/**
+ * Modo foco: o mostrador em ecrã inteiro, só com a fase, o tempo e a tarefa.
+ * Pede ao browser o ecrã inteiro (se deixar); Esc ou "Sair" voltam ao normal.
+ */
+export function FocusMode({ onClose }: { onClose: () => void }) {
+  const settings = usePomodoroSettings();
+  const { data: pomodoro } = usePomodoro(!!settings);
+  const remaining = usePomodoroClock(pomodoro ?? null);
+  const { run, pending } = useRun();
+
+  useEffect(() => {
+    const el = document.documentElement;
+    if (!document.fullscreenElement) void el.requestFullscreen?.().catch(() => undefined);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    // Sair do ecrã inteiro (Esc do browser) também fecha o modo foco.
+    const onFull = () => {
+      if (!document.fullscreenElement) onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    document.addEventListener('fullscreenchange', onFull);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.removeEventListener('fullscreenchange', onFull);
+      if (document.fullscreenElement) void document.exitFullscreen?.().catch(() => undefined);
+    };
+  }, [onClose]);
+
+  // O pomodoro acabou (ou foi parado noutro sítio): sai do modo foco.
+  useEffect(() => {
+    if (pomodoro === null) onClose();
+  }, [pomodoro, onClose]);
+
+  if (!settings || !pomodoro) return null;
+  const paused = pomodoro.paused_left !== null;
+  const onBreak = pomodoro.phase === 'short_break' || pomodoro.phase === 'long_break';
+  const total = pomodoro.phase !== 'ready' ? phaseMinutes(pomodoro.phase, settings) * 60 : settings.work_minutes * 60;
+  const left = pomodoro.phase !== 'ready' ? Math.min(remaining, total) : total;
+  const label = paused ? 'Em pausa' : POMODORO_PHASE_LABELS[pomodoro.phase];
+
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Modo foco" className="fixed inset-0 z-[70] flex flex-col items-center justify-center gap-8 bg-bg p-6">
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute top-4 right-4 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted hover:bg-surface-2 hover:text-fg"
+      >
+        <X className="h-4 w-4" aria-hidden /> Sair <span className="text-xs">(Esc)</span>
+      </button>
+      <Dial
+        fraction={1 - left / total}
+        tone={paused || pomodoro.phase === 'ready' ? 'muted' : onBreak ? 'success' : 'accent'}
+        className="max-w-[min(80vw,62vh,34rem)]"
+      >
+        <span className={cn('text-sm font-medium sm:text-base', onBreak ? 'text-success' : pomodoro.phase === 'ready' ? 'text-warning' : 'text-accent-text')}>{label}</span>
+        <span className="text-6xl font-extralight tabular tracking-tight sm:text-8xl" role="timer" aria-live="off" aria-label="Tempo que falta">
+          {pomodoro.phase === 'ready' ? '—' : formatCountdown(left)}
+        </span>
+        <span className="line-clamp-2 max-w-[80%] text-sm text-muted sm:text-base">{pomodoro.task?.title ?? pomodoro.lead.company_name}</span>
+      </Dial>
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        <Dots completed={pomodoro.completed} every={pomodoro.long_every} />
+        {pomodoro.phase === 'ready' ? (
+          <Button onClick={() => void run({ start: { lead_id: pomodoro.lead.id, task_id: pomodoro.task?.id ?? null } })} loading={pending}>
+            <Play className="h-4 w-4" aria-hidden /> Começar o próximo
+          </Button>
+        ) : (
+          <Button variant="outline" onClick={() => void run({ action: paused ? 'resume' : 'pause' })} loading={pending}>
+            {paused ? <Play className="h-4 w-4" aria-hidden /> : <Pause className="h-4 w-4" aria-hidden />}
+            {paused ? 'Continuar' : 'Pausar'}
+          </Button>
+        )}
+        {onBreak ? (
+          <Button variant="ghost" onClick={() => void run({ action: 'skip' })} disabled={pending}>
+            <SkipForward className="h-4 w-4" aria-hidden /> Saltar pausa
+          </Button>
+        ) : null}
+      </div>
+    </div>
   );
 }
 

@@ -16,6 +16,9 @@ describe('prospetor: API', () => {
       ['GET', '/board'],
       ['GET', '/stats/team'],
       ['HEAD', '/dashboard/today'],
+      ['GET', `/leads/${id}/geo`],
+      ['POST', `/leads/${id}/geo/faq`],
+      ['POST', `/leads/${id}/ai-visibility`],
     ]) {
       expect(prospectorAllowed(m!, p!), `${m} ${p}`).toBe(true);
     }
@@ -34,6 +37,8 @@ describe('prospetor: API', () => {
       ['GET', '/leads/export'],
       ['POST', '/imports'],
       ['GET', '/lead-generation/schedules/x/y'],
+      ['POST', '/site-form'],
+      ['GET', '/team/activity'],
     ]) {
       expect(prospectorAllowed(m!, p!), `${m} ${p}`).toBe(false);
     }

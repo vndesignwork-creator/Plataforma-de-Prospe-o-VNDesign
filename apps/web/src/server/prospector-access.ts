@@ -32,6 +32,8 @@ const RULES: Rule[] = [
   ['GET', new RegExp(`^/leads/${ID}/(diagnosis-pdf|email-tracking|follow-up-draft)$`)],
   ['POST', new RegExp(`^/leads/${ID}/(ai-email|email|find-contacts|follow-up|location|move|prospecting|render-template|screenshots)$`)],
   ['POST', new RegExp(`^/leads/${ID}/tasks/(reorder|template)$`)],
+  ['GET PATCH', new RegExp(`^/leads/${ID}/geo$`)],
+  ['POST', new RegExp(`^/leads/${ID}/geo/(faq|google)$`)],
   ['GET', /^\/map$/],
   ['POST', /^\/map\/geocode$/],
   ['POST', new RegExp(`^/meetings/${ID}/cancel$`)],

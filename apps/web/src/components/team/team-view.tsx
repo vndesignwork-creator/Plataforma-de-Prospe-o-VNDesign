@@ -7,10 +7,11 @@
  * Um só "Convidar", que pergunta primeiro para quê.
  */
 import { MEMBER_ROLE_LABELS, projectLabel, type CollaboratorPerson, type InviteRole } from '@vndesign/core';
-import { BriefcaseBusiness, Target, UserPlus } from 'lucide-react';
+import { BriefcaseBusiness, History, Target, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { CollaboratorsList, collabInviteUrl } from '@/components/collaborators/collaborators-view';
+import { TeamActivityList } from './team-activity';
 import { GenerationLimitCard, ProspectorAccessCard, TeamMembers, teamInviteUrl } from '@/components/settings/team-settings';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
@@ -20,7 +21,7 @@ import { ApiClientError, errorMessage } from '@/lib/api-client';
 import { useAllCollaborators, useCollaboratorsAdmin, useProjects, useSettings, useTeam, useTeamAction } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
-export type TeamTab = 'prospecao' | 'projetos';
+export type TeamTab = 'prospecao' | 'projetos' | 'atividade';
 type Kind = 'leads' | 'project';
 type InviteInitial = { kind: Kind; name: string; email: string; exclude: string[] };
 
@@ -31,18 +32,19 @@ export function TeamView({ initialTab }: { initialTab: TeamTab }) {
   const { data: team } = useTeam();
   const { data: collaborators } = useAllCollaborators(projectsOn);
   const [chosen, setChosen] = useState<TeamTab>(initialTab);
-  const tab: TeamTab = projectsOn ? chosen : 'prospecao';
+  const tab: TeamTab = chosen === 'projetos' && !projectsOn ? 'prospecao' : chosen;
   const [inviting, setInviting] = useState<InviteInitial | null>(null);
 
   function select(next: TeamTab) {
     setChosen(next);
     // O separador fica no endereço (voltar atrás ou partilhar o link abre o mesmo).
-    window.history.replaceState(null, '', next === 'projetos' ? '/equipa?ver=projetos' : '/equipa');
+    window.history.replaceState(null, '', next === 'prospecao' ? '/equipa' : `/equipa?ver=${next}`);
   }
 
   const tabs: { id: TeamTab; label: string; icon: typeof Target; count?: number }[] = [
     { id: 'prospecao', label: 'Prospeção', icon: Target, count: team ? team.members.length + team.invites.length : undefined },
     ...(projectsOn ? [{ id: 'projetos' as const, label: 'Projetos', icon: BriefcaseBusiness, count: collaborators?.length }] : []),
+    { id: 'atividade', label: 'Atividade', icon: History },
   ];
 
   return (
@@ -80,6 +82,10 @@ export function TeamView({ initialTab }: { initialTab: TeamTab }) {
           <TeamMembers />
           <ProspectorAccessCard />
           <GenerationLimitCard />
+        </div>
+      ) : tab === 'atividade' ? (
+        <div role="tabpanel" id="painel-atividade" aria-labelledby="tab-atividade">
+          <TeamActivityList />
         </div>
       ) : (
         <div role="tabpanel" id="painel-projetos" aria-labelledby="tab-projetos">

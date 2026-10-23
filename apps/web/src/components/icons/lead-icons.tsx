@@ -60,6 +60,7 @@ import {
   Wine,
   Wrench,
   X,
+  Inbox,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -81,6 +82,7 @@ export const CHANNEL_ICONS: Record<LeadChannel, LucideIcon> = {
   instagram: Camera,
   linkedin: Briefcase,
   google_maps: MapPin,
+  site: Inbox,
   whatsapp: MessageCircle,
   pessoal: Hand,
   outro: Globe,

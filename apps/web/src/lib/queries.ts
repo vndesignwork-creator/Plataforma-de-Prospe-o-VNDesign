@@ -27,6 +27,9 @@ import type {
   AuditApply,
   SiteAudit,
   AiVisibilityCheck,
+  GeoBusiness,
+  GeoFaqItem,
+  LeadGeo,
   EmailTracking,
   BrandKit,
   LeadAccess,
@@ -86,6 +89,7 @@ import type {
   Team,
   TeamInvite,
   TeamStats,
+  TeamActivity,
   Pomodoro,
   PomodoroAction,
   PomodoroStats,
@@ -364,6 +368,27 @@ export function useStartAiVisibility(leadId: string) {
     mutationFn: (questions: string[]) =>
       api<{ data: AiVisibilityCheck }>(`/leads/${leadId}/ai-visibility`, { method: 'POST', body: { questions } }).then((r) => r.data),
     onSuccess: (check) => qc.setQueryData<AiVisibilityCheck[]>(['ai-visibility', leadId], (old) => [check, ...(old ?? [])].slice(0, 5)),
+  });
+}
+
+/** Kit GEO do lead (dados do negócio, perguntas frequentes, perfil do Google). */
+export function useLeadGeo(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['lead-geo', leadId],
+    queryFn: () => api<{ data: LeadGeo }>(`/leads/${leadId}/geo`).then((r) => r.data),
+    enabled,
+  });
+}
+
+export function useLeadGeoAction(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { save: { business?: GeoBusiness; faq?: GeoFaqItem[] } } | { generate: 'faq' | 'google' }) =>
+      ('save' in input
+        ? api<{ data: LeadGeo }>(`/leads/${leadId}/geo`, { method: 'PATCH', body: input.save })
+        : api<{ data: LeadGeo }>(`/leads/${leadId}/geo/${input.generate}`, { method: 'POST' })
+      ).then((r) => r.data),
+    onSuccess: (geo) => qc.setQueryData(['lead-geo', leadId], geo),
   });
 }
 
@@ -1262,6 +1287,15 @@ export function useTeamAction() {
       void qc.invalidateQueries({ queryKey: ['team'] });
       void qc.invalidateQueries({ queryKey: ['team-stats'] });
     },
+  });
+}
+
+/** Equipa → Atividade: o que cada pessoa fez nos leads. */
+export function useTeamActivity(query: { user?: string; days: number }, enabled = true) {
+  return useQuery({
+    queryKey: ['team-activity', query],
+    queryFn: () => api<{ data: TeamActivity[] }>('/team/activity', { query }).then((r) => r.data),
+    enabled,
   });
 }
 

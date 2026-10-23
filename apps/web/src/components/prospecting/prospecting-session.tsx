@@ -39,6 +39,7 @@ import { ContactFinder } from '@/components/leads/contact-finder';
 import { LeadScoreBadge } from '@/components/leads/lead-score';
 import { WhatsAppMenu } from '@/components/leads/whatsapp-menu';
 import { ContactScriptsCard } from '@/components/scripts/contact-scripts-card';
+import { SequenceStep } from './sequence-step';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Badge, Card, EmptyState, Skeleton } from '@/components/ui/card';
 import { DropdownContent, DropdownItem, DropdownRoot, DropdownTrigger } from '@/components/ui/dropdown';
@@ -219,6 +220,7 @@ function LeadCard({
           <KindIcon className="mt-0.5 h-4 w-4 shrink-0 text-accent-text" aria-hidden />
           <span>{item.reason}</span>
         </p>
+        {item.sequence ? <SequenceStep lead={lead} step={item.sequence} /> : null}
 
         <nav aria-label="Contactar" className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           {lead.phone ? (
@@ -309,7 +311,7 @@ function LeadCard({
             <PhoneOff className="h-4 w-4" aria-hidden /> Não atendeu
           </Button>
           <Button variant="outline" onClick={() => record('contacted')} disabled={outcome.isPending}>
-            <UserCheck className="h-4 w-4" aria-hidden /> Contactado
+            <UserCheck className="h-4 w-4" aria-hidden /> {item.sequence ? `Contactado (passo ${item.sequence.step})` : 'Contactado'}
           </Button>
           <Button onClick={() => record('interested')} disabled={outcome.isPending}>
             <ThumbsUp className="h-4 w-4" aria-hidden /> Interessado

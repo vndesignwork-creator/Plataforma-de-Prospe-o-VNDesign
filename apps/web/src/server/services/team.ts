@@ -16,6 +16,7 @@ import {
   type TeamInviteCreate,
   type TeamInviteInfo,
   type TeamMember,
+  type TeamActivity,
   type TeamStats,
 } from '@vndesign/core';
 import type { ApiContext } from '../context';
@@ -365,4 +366,29 @@ export async function teamStats(ctx: ApiContext, days = 30): Promise<TeamStats> 
   }
   members.sort((a, b) => b.contacts - a.contacts);
   return { days, members };
+}
+
+// -----------------------------------------------------------------------------
+// Equipa → Atividade ("quem fez o quê")
+// -----------------------------------------------------------------------------
+
+/** O que cada pessoa fez nos leads nos últimos dias (dono ou administrador). */
+export async function teamActivity(ctx: ApiContext, query: { user?: string; days: number }): Promise<TeamActivity[]> {
+  assertAdmin(ctx);
+  let q = ctx.supabase
+    .from('lead_activities')
+    .select('id, type, body, payload, created_at, actor_user_id, lead:leads!inner(id, number, company_name)')
+    .eq('workspace_id', ctx.workspaceId)
+    .not('actor_user_id', 'is', null)
+    .gte('created_at', new Date(Date.now() - query.days * 86_400_000).toISOString())
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (query.user) q = q.eq('actor_user_id', query.user);
+  const [{ data, error }, names] = await Promise.all([q, teamNames(ctx)]);
+  if (error) throw fromPostgrest(error);
+  const byId = new Map(names.map((n) => [n.user_id, n.name]));
+  return ((data ?? []) as unknown as Omit<TeamActivity, 'actor_name'>[]).map((a) => ({
+    ...a,
+    actor_name: a.actor_user_id ? (byId.get(a.actor_user_id) ?? null) : null,
+  }));
 }

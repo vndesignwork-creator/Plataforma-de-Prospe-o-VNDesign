@@ -5,6 +5,8 @@
  * valores em euros com 2 casas decimais.
  */
 import { z } from 'zod';
+import { DEFAULT_SITE_FORM, SiteFormSettingsSchema } from './site-form';
+import { DEFAULT_PROSPECTING_SEQUENCE, ProspectingSequenceSchema } from './prospecting-sequence';
 import {
   ACTIVITY_TYPES,
   LEAD_CHANNELS,
@@ -631,6 +633,10 @@ export const WorkspaceSettingsSchema = z
     quote: QuoteSettingsSchema.default(DEFAULT_QUOTE_SETTINGS),
     pomodoro: PomodoroSettingsSchema.default(DEFAULT_POMODORO_SETTINGS),
     team: TeamSettingsSchema.default(DEFAULT_TEAM_SETTINGS),
+    /** Formulário do site (endereço público com código; null = desligado). */
+    site_form: SiteFormSettingsSchema.default(DEFAULT_SITE_FORM),
+    /** Sequência multicanal na Prospeção (ex.: dia 0 WhatsApp, dia 3 email, dia 7 ligar). */
+    prospecting_sequence: ProspectingSequenceSchema.default(DEFAULT_PROSPECTING_SEQUENCE),
     /** Fornecedor e modelo de IA de cada função (Definições → Inteligência artificial). */
     ai: AiSettingsSchema.default({
       email: { provider: SERVER_AI_PROVIDER, model: null },
@@ -645,6 +651,7 @@ export const WorkspaceSettingsUpdateSchema = z
   .object({
     follow_up_days: z.int({ error: 'Indica um número de dias.' }).min(1, { error: 'Mínimo 1 dia.' }).max(60, { error: 'Máximo 60 dias.' }),
     follow_up_sequence: z.object({ enabled: z.boolean(), steps: FollowUpStepsSchema }),
+    prospecting_sequence: ProspectingSequenceSchema.optional(),
     auto_archive_days: z
       .int({ error: 'Indica um número de dias.' })
       .min(7, { error: 'Mínimo 7 dias.' })

@@ -4,6 +4,7 @@
  * resultado de cada contacto registado com um toque.
  */
 import { z } from 'zod';
+import { SEQUENCE_CHANNELS } from './prospecting-sequence';
 import { LeadSchema } from './schemas';
 
 export const PROSPECTING_FILTERS = ['all', 'opened', 'follow_up', 'new'] as const;
@@ -40,6 +41,11 @@ export const ProspectingItemSchema = z
     lead: LeadSchema,
     kind: z.enum(['opened', 'follow_up', 'new']),
     reason: z.string().meta({ description: 'Porque está na lista (ex.: "Abriu o email há 2 h")' }),
+    /** Com a sequência multicanal ligada: o passo a fazer agora. */
+    sequence: z
+      .object({ step: z.int(), total: z.int(), day: z.int(), channel: z.enum(SEQUENCE_CHANNELS), template_id: z.uuid().nullable() })
+      .nullable()
+      .optional(),
   })
   .meta({ id: 'ProspectingItem' });
 export type ProspectingItem = z.infer<typeof ProspectingItemSchema>;

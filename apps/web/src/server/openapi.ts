@@ -126,6 +126,11 @@ import {
   EmailTrackingSchema,
   SiteAuditSchema,
   AiVisibilityCheckSchema,
+  SiteFormToggleSchema,
+  LeadGeoSchema,
+  LeadGeoUpdateSchema,
+  TeamActivityQuerySchema,
+  TeamActivitySchema,
   AiVisibilityRequestSchema,
   ActivityCreateSchema,
   ContactTemplateCreateSchema,
@@ -748,6 +753,39 @@ export function getOpenApiDocument() {
           },
         }),
       },
+      '/leads/{id}/geo': {
+        get: op({
+          tags: ['Auditor de sites'],
+          summary: 'Kit GEO do lead: dados do negócio (schema.org/llms.txt), perguntas frequentes e perfil do Google',
+          requestParams: { path: leadId },
+          responses: { '200': ok(data(LeadGeoSchema)), ...withNotFound },
+        }),
+        patch: op({
+          tags: ['Auditor de sites'],
+          summary: 'Guardar os dados do negócio e/ou as perguntas frequentes',
+          requestParams: { path: leadId },
+          requestBody: body(LeadGeoUpdateSchema),
+          responses: { '200': ok(data(LeadGeoSchema)), ...withNotFound },
+        }),
+      },
+      '/leads/{id}/geo/faq': {
+        post: op({
+          tags: ['Auditor de sites'],
+          summary: 'Perguntas frequentes com IA (8 a 10, substituem as atuais)',
+          description: 'Usa o fornecedor do "Email com IA" (Definições → Inteligência artificial).',
+          requestParams: { path: leadId },
+          responses: { '200': ok(data(LeadGeoSchema)), ...withNotFound },
+        }),
+      },
+      '/leads/{id}/geo/google': {
+        post: op({
+          tags: ['Auditor de sites'],
+          summary: 'Perfil do Google: nota e avaliações do lead e dos concorrentes do último "Aparece nas IAs?"',
+          description: 'Com GOOGLE_PLACES_API_KEY usa a Google Places API (exato); sem ela, a IA com pesquisa na internet (aproximado).',
+          requestParams: { path: leadId },
+          responses: { '200': ok(data(LeadGeoSchema)), '502': problem('A Google ou a IA não responderam'), ...withNotFound },
+        }),
+      },
       '/leads/{id}/screenshots': {
         post: op({
           tags: ['Auditor de sites'],
@@ -1168,6 +1206,14 @@ export function getOpenApiDocument() {
           responses: { '200': ok(data(z.array(z.object({ user_id: z.uuid(), name: z.string(), role: z.enum(MEMBER_ROLES) })))), ...common },
         }),
       },
+      '/team/activity': {
+        get: op({
+          tags: ['Equipa'],
+          summary: 'O que cada pessoa fez nos leads (dono ou administrador)',
+          requestParams: { query: TeamActivityQuerySchema },
+          responses: { '200': ok(data(z.array(TeamActivitySchema))), ...common },
+        }),
+      },
       '/team/invites': {
         post: op({
           tags: ['Equipa'],
@@ -1204,6 +1250,30 @@ export function getOpenApiDocument() {
           requestParams: { path: z.object({ token: z.string() }) },
           requestBody: body(TeamAcceptSchema),
           responses: { '200': ok(data(z.object({ email: z.string() }))), '409': problem('Já existe conta com este email'), '404': problem('Convite não encontrado') },
+        }),
+      },
+      '/site-form': {
+        post: op({
+          tags: ['Leads'],
+          summary: 'Ligar/desligar o formulário do site (ou trocar o código)',
+          description: 'Devolve { token }; o endereço público é /api/v1/public/forms/{token}. Dono ou administrador.',
+          requestBody: body(SiteFormToggleSchema),
+          responses: { '200': ok(data(z.object({ token: z.string().nullable() }))), ...common },
+        }),
+      },
+      '/public/forms/{token}': {
+        post: op({
+          tags: ['Leads'],
+          summary: 'Formulário do site: cria o lead, a tarefa "Responder hoje" e avisa (sem sessão)',
+          description:
+            'Aceita JSON, multipart ou formulário HTML (nome, email, telefone, empresa, mensagem, site, servico; _gotcha = campo escondido contra robôs; _next = página para onde voltar). CORS aberto. Até 5 pedidos por 10 minutos por endereço.',
+          requestParams: { path: z.object({ token: z.string() }) },
+          responses: {
+            '200': ok(z.object({ ok: z.boolean(), message: z.string() }), 'Pedido recebido'),
+            '404': problem('Formulário desconhecido ou desligado'),
+            '422': problem('Falta o email ou o telefone'),
+            '429': problem('Demasiados pedidos'),
+          },
         }),
       },
       '/stats/team': {

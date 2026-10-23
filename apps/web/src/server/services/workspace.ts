@@ -71,6 +71,7 @@ export async function updateSettings(
     quote?: QuoteSettings;
     pomodoro?: PomodoroSettings;
     weekly_backup?: { enabled: boolean; recipient: string | null; weekday: number };
+    prospecting_sequence?: WorkspaceSettings['prospecting_sequence'];
   },
 ): Promise<WorkspaceSettings> {
   if (ctx.role === 'member') throw new ApiError(403, 'Sem permissão', 'Só o dono ou um administrador pode alterar as definições.');

@@ -72,6 +72,8 @@ export interface DiagnosisPdfData {
   lead: { company_name: string; contact_name: string | null; city: string | null; approach_angle: string | null; services: string[] };
   services: readonly ServiceInfo[];
   signature: Signature;
+  /** Perfil do Google (Kit GEO): frase de comparação com os concorrentes. */
+  google?: { sentence: string | null; source: 'places' | 'ia'; date: string } | null;
   /** Último teste "Aparece nas IAs?" (GEO), se houver. */
   visibility?: { summary: string; assistant: string | null; mentioned: number; total: number; competitors: string[]; date: string } | null;
   /** Imagens do site (PageSpeed): no computador e no telemóvel. */
@@ -121,7 +123,7 @@ function tiles(audit: SiteAudit) {
   ];
 }
 
-function DiagnosisDocument({ audit, lead, services, signature, screenshots = [], visibility = null }: DiagnosisPdfData) {
+function DiagnosisDocument({ audit, lead, services, signature, screenshots = [], visibility = null, google = null }: DiagnosisPdfData) {
   const company = signature.company || 'VNDesign';
   const contactLine = [signature.full_name, signature.phone, signature.email, bareHost(signature.website)].filter(Boolean).join(' · ');
   const analysed = audit.created_at.slice(0, 10);
@@ -240,6 +242,16 @@ function DiagnosisDocument({ audit, lead, services, signature, screenshots = [],
               <Text style={{ color: MUTED, fontSize: 8 }}>
                 Teste feito a {formatDate(visibility.date)}{visibility.assistant ? ` no ${visibility.assistant}` : ''}, com pesquisa na internet. As
                 respostas das IAs variam de pessoa para pessoa e de dia para dia.
+              </Text>
+            </View>
+          ) : null}
+
+          {google?.sentence ? (
+            <View wrap={false}>
+              <Text style={s.h2}>No Google Maps</Text>
+              <Text style={s.paragraph}>{google.sentence}</Text>
+              <Text style={{ color: MUTED, fontSize: 8 }}>
+                Dados de {formatDate(google.date)}. As avaliações pesam na escolha dos clientes e nas recomendações das IAs.
               </Text>
             </View>
           ) : null}

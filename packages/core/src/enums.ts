@@ -40,6 +40,7 @@ export const LEAD_CHANNELS = [
   'google_maps',
   'whatsapp',
   'pessoal',
+  'site',
   'outro',
 ] as const;
 export type LeadChannel = (typeof LEAD_CHANNELS)[number];
@@ -52,6 +53,7 @@ export const LEAD_CHANNEL_META: Record<LeadChannel, { label: string; emoji: stri
   google_maps: { label: 'Google Maps', emoji: '🗺️' },
   whatsapp: { label: 'WhatsApp', emoji: '💬' },
   pessoal: { label: 'Pessoal', emoji: '👋' },
+  site: { label: 'Formulário do site', emoji: '📥' },
   outro: { label: 'Outro', emoji: '🌐' },
 };
 

@@ -66,6 +66,7 @@ import { ActivityTimeline } from './activity-timeline';
 import { ChannelLabel, MobileLabel, PageSpeedScore } from './badges';
 import { SiteAuditPanel } from './site-audit';
 import { AiVisibilityCard } from './ai-visibility';
+import { GeoKitCard } from './geo-kit';
 import { AiEmailCard } from './ai-email-card';
 import { LeadLocation } from './lead-location';
 import { ProposalsCard } from '@/components/proposals/proposals-card';
@@ -542,6 +543,8 @@ export function LeadDetail({ id }: { id: string }) {
           <SiteDiagnosisCard lead={lead} />
 
           <AiVisibilityCard lead={lead} />
+
+          <GeoKitCard lead={lead} />
 
           {!lead.anonymized_at ? <ContactScriptsCard lead={lead} /> : null}
 

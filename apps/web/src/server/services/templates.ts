@@ -11,6 +11,7 @@ import { getLead } from './leads';
 import { loadServiceCatalog } from './service-catalog';
 import { loadServiceCategories } from './service-categories';
 import { getSignature, getSettings } from './workspace';
+import { listVisibilityChecks } from './ai-visibility';
 
 const TEMPLATE_SELECT = 'id, kind, name, subject, body, sector_id, category, is_default, sort_order, updated_at';
 // Antes da migração 20261023000100 (sem categoria): continua a funcionar.
@@ -90,13 +91,14 @@ export async function renderForLead(
   leadId: string,
   input: { template_id?: string; subject?: string; body?: string },
 ): Promise<RenderedTemplate> {
-  const [lead, signature, settings, template, services, categories] = await Promise.all([
+  const [lead, signature, settings, template, services, categories, checks] = await Promise.all([
     getLead(ctx, leadId),
     getSignature(ctx),
     getSettings(ctx),
     input.template_id ? getTemplate(ctx, input.template_id) : Promise.resolve(null),
     loadServiceCatalog(ctx),
     loadServiceCategories(ctx),
+    listVisibilityChecks(ctx, leadId).catch(() => []),
   ]);
   let sectorArguments: string | null = null;
   if (lead.sector_id) {
@@ -112,6 +114,7 @@ export async function renderForLead(
     services,
     categories,
     reviewUrl: settings.google_review_url,
+    aiVisibility: checks.find((c) => c.status === 'done')?.summary ?? null,
   });
   const subject = renderTemplate(input.subject ?? template?.subject ?? '', context);
   const body = renderTemplate(input.body ?? template?.body ?? '', context);

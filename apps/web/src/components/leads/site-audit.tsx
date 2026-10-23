@@ -19,7 +19,8 @@ import { Badge } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ApiClientError, errorMessage } from '@/lib/api-client';
-import { useApplyAudit, useAudits, useCaptureScreenshots, useRunAudit, useSettings } from '@/lib/queries';
+import { useApplyAudit, useAudits, useCaptureScreenshots, useRunAudit, useSettings, useUpdateLead } from '@/lib/queries';
+import { useServiceCatalog } from '@/components/services/services';
 import { displayHost } from '@/lib/utils';
 import { PageSpeedScore } from './badges';
 
@@ -43,9 +44,22 @@ function Check({ ok, children }: { ok: boolean | null; children: ReactNode }) {
 }
 
 /** GEO: o site está preparado para as IAs (ChatGPT, Claude, Perplexity)? */
-function GeoReadiness({ geo }: { geo: GeoFacts }) {
+function GeoReadiness({ geo, lead }: { geo: GeoFacts; lead: Lead }) {
   const checks = geoChecklist(geo);
   const ok = checks.filter((c) => c.ok).length;
+  // GEO como serviço: sugere juntar o serviço ao lead quando há pontos a melhorar.
+  const catalog = useServiceCatalog();
+  const update = useUpdateLead(lead.id);
+  const geoService = catalog.all.find((svc) => svc.key === 'geo' && !svc.archived_at);
+  const canSuggest = ok < checks.length && !!geoService && !(lead.services ?? []).includes('geo') && !lead.anonymized_at;
+  async function addService() {
+    try {
+      await update.mutateAsync({ services: [...(lead.services ?? []), 'geo'] });
+      toast.success(`Serviço “${geoService!.label}” juntado ao lead: aparece nos scripts e na proposta.`);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
   return (
     <section aria-label="Preparado para as IAs (GEO)" className="flex flex-col gap-2">
       <h4 className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold">
@@ -62,6 +76,13 @@ function GeoReadiness({ geo }: { geo: GeoFacts }) {
           </Check>
         ))}
       </ul>
+      {canSuggest ? (
+        <div>
+          <Button size="sm" variant="outline" onClick={() => void addService()} loading={update.isPending}>
+            Juntar o serviço “{geoService!.label}” ao lead
+          </Button>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -211,7 +232,7 @@ function AuditResult({ audit, lead, latest = false }: { audit: SiteAudit; lead: 
         </ul>
       ) : null}
 
-      {ownSite && reachable && isGeoFacts(m.geo) ? <GeoReadiness geo={m.geo} /> : null}
+      {ownSite && reachable && isGeoFacts(m.geo) ? <GeoReadiness geo={m.geo} lead={lead} /> : null}
 
       <AuditScreenshots audit={audit} lead={lead} latest={latest} />
 

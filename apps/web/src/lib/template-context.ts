@@ -2,7 +2,7 @@
 
 import { buildTemplateContext, todayIso, type Lead, type TemplateContext } from '@vndesign/core';
 import { useServiceCatalog } from '@/components/services/services';
-import { useSectors, useSettings, useSignature } from './queries';
+import { useAiVisibility, useSectors, useSettings, useSignature } from './queries';
 
 /** Contexto das variáveis ({{empresa}}, {{assinatura}}…) para pré-visualizar no browser. */
 export function useTemplateContext(
@@ -13,6 +13,8 @@ export function useTemplateContext(
   const { data: settings } = useSettings();
   const { data: sectors } = useSectors(true);
   const catalog = useServiceCatalog();
+  // {{visibilidade_ia}}: a frase do último teste "Aparece nas IAs?" deste lead.
+  const { data: checks } = useAiVisibility(lead?.id ?? '', !!lead?.id);
   const sectorArguments = lead?.sector_id ? (sectors?.find((s) => s.id === lead.sector_id)?.sales_arguments ?? null) : null;
   return buildTemplateContext({
     lead,
@@ -24,6 +26,7 @@ export function useTemplateContext(
     categories: catalog.categories,
     meeting,
     reviewUrl: settings?.google_review_url ?? null,
+    aiVisibility: checks?.find((c) => c.status === 'done')?.summary ?? null,
   });
 }
 

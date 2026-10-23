@@ -2,11 +2,12 @@
  * Relatório de diagnóstico do site (PDF para o cliente), a partir da última
  * análise do site do lead. Pode desligar-se em Definições → Funcionalidades.
  */
-import { slugify } from '@vndesign/core';
+import { googleComparison, slugify } from '@vndesign/core';
 import type { ApiContext } from '../context';
 import { ApiError } from '../http';
 import { renderDiagnosisPdf } from '../proposals/diagnosis-pdf';
 import { listVisibilityChecks } from './ai-visibility';
+import { getLeadGeo } from './geo-kit';
 import { latestScreenshots, listAudits } from './audits';
 import { getLead } from './leads';
 import { loadServiceCatalog } from './service-catalog';
@@ -31,8 +32,11 @@ export async function diagnosisPdf(ctx: ApiContext, leadId: string): Promise<{ c
   const shots = settings.features.site_screenshots ? await latestScreenshots(ctx, leadId).catch(() => []) : [];
   // O último teste "Aparece nas IAs?" concluído (opcional).
   const check = (await listVisibilityChecks(ctx, leadId).catch(() => [])).find((c) => c.status === 'done' && c.summary);
+  // Perfil do Google (Kit GEO), se já foi visto.
+  const google = (await getLeadGeo(ctx, leadId).catch(() => null))?.google ?? null;
   const content = await renderDiagnosisPdf({
     screenshots: shots,
+    google: google ? { sentence: googleComparison(google), source: google.source, date: google.checked_at.slice(0, 10) } : null,
     visibility: check
       ? {
           summary: check.summary!,

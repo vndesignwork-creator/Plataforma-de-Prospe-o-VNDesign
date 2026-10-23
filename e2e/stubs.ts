@@ -216,6 +216,37 @@ export async function startStubs() {
         visibilityAnswers(body, res);
         return;
       }
+      // Kit GEO: perfil do Google (o 1.º é o lead; os outros, concorrentes com mais avaliações).
+      if ((body.tools ?? []).some((t: { name?: string }) => t.name === 'entregar_perfis')) {
+        const lines = [...String(body.messages?.[0]?.content ?? '').matchAll(/^\d+\. (.+?)(?: \(| —|$)/gm)].map((m) => m[1]!);
+        const perfis = lines.map((nome: string, i: number) => ({
+          nome,
+          encontrado: true,
+          nota: i === 0 ? 4.1 : 4.7,
+          avaliacoes: i === 0 ? 12 : 150,
+          link_maps: `https://maps.google.com/?q=${encodeURIComponent(nome)}`,
+          morada: null,
+        }));
+        sendJson(res, 200, {
+          id: 'msg_stub_perfis', type: 'message', role: 'assistant', model: body.model ?? 'claude-sonnet-5-5',
+          content: [{ type: 'tool_use', id: 'toolu_stub_perfis', name: 'entregar_perfis', input: { perfis } }],
+          stop_reason: 'tool_use', stop_sequence: null, usage: { input_tokens: 3_000, output_tokens: 300, server_tool_use: { web_search_requests: 2 } },
+        });
+        return;
+      }
+      // Kit GEO: perguntas frequentes (texto estruturado, como o email com IA).
+      if (JSON.stringify(body.system ?? '').includes('perguntas frequentes')) {
+        const perguntas = [
+          { pergunta: 'Fazem orçamentos sem compromisso?', resposta: 'Sim. Peça o seu orçamento pelo telefone ou pelo formulário do site e respondemos no próprio dia.' },
+          { pergunta: 'Em que zonas trabalham?', resposta: 'Trabalhamos na zona indicada no pedido e arredores; confirme connosco a sua localidade.' },
+        ];
+        sendJson(res, 200, {
+          id: 'msg_stub_faq', type: 'message', role: 'assistant', model: body.model ?? 'claude-opus-5-5',
+          content: [{ type: 'text', text: JSON.stringify({ perguntas }) }],
+          stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 1_000, output_tokens: 400 },
+        });
+        return;
+      }
       const prompt = JSON.stringify(body.messages ?? '');
       const company = /<dados_do_lead>\\nEmpresa: ([^\\]+?)\\n/.exec(prompt)?.[1] ?? 'empresa';
       const draft = {

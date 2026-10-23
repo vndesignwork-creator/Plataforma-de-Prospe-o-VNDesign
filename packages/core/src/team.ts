@@ -4,6 +4,7 @@
  * mapa, scripts); "admin" vê tudo, como o dono.
  */
 import { z } from 'zod';
+import { ACTIVITY_TYPES } from './enums';
 
 export const MEMBER_ROLES = ['owner', 'admin', 'member', 'prospector'] as const;
 export type MemberRole = (typeof MEMBER_ROLES)[number];
@@ -108,3 +109,23 @@ export const TeamStatsSchema = z
   })
   .meta({ id: 'TeamStats' });
 export type TeamStats = z.infer<typeof TeamStatsSchema>;
+
+/** Equipa → Atividade: o que cada pessoa fez nos leads (mais recente primeiro). */
+export const TeamActivitySchema = z
+  .object({
+    id: z.uuid(),
+    type: z.enum(ACTIVITY_TYPES),
+    body: z.string().nullable(),
+    payload: z.record(z.string(), z.unknown()),
+    created_at: z.string(),
+    actor_user_id: z.uuid().nullable(),
+    actor_name: z.string().nullable(),
+    lead: z.object({ id: z.uuid(), number: z.int(), company_name: z.string() }),
+  })
+  .meta({ id: 'TeamActivity' });
+export type TeamActivity = z.infer<typeof TeamActivitySchema>;
+
+export const TeamActivityQuerySchema = z.object({
+  user: z.uuid().optional(),
+  days: z.coerce.number().int().min(1).max(90).default(7),
+});

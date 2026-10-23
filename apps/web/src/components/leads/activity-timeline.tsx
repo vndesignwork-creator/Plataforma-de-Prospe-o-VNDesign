@@ -62,11 +62,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Select, Textarea } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
-import { useActivities, useEmailTracking, useLogActivity } from '@/lib/queries';
+import { useActivities, useEmailTracking, useLogActivity, useTeamNames } from '@/lib/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 
-const ICONS: Partial<Record<Activity['type'], LucideIcon>> = {
+export const ICONS: Partial<Record<Activity["type"], LucideIcon>> = {
   created: Plus,
   updated: Edit3,
   status_changed: Repeat,
@@ -122,7 +122,7 @@ function OpenStatus({ tracking }: { tracking: EmailTracking | undefined }) {
 const fieldLabel = (f: string) => (LEAD_FIELD_LABELS as Record<string, string>)[f] ?? f;
 const statusLabel = (s: unknown) => LEAD_STATUS_META[s as LeadStatus]?.label ?? String(s);
 
-function describe(a: Activity): string | null {
+export function describe(a: Activity): string | null {
   const p = a.payload as Record<string, unknown>;
   switch (a.type) {
     case 'status_changed':
@@ -302,7 +302,13 @@ export function ActivityTimeline({
   /** Coluna principal da ficha: no computador, a linha do tempo recolhe-se ao chegar ao fim dela. */
   fitTo?: RefObject<HTMLElement | null>;
 }) {
-  const { data, isLoading } = useActivities(leadId);
+  const { data: all, isLoading } = useActivities(leadId);
+  // Equipa: quem fez cada coisa e filtro por pessoa.
+  const { data: team } = useTeamNames();
+  const hasTeam = (team?.length ?? 0) > 1;
+  const names = new Map((team ?? []).map((m) => [m.user_id, m.user_id === currentUserId ? 'tu' : m.name]));
+  const [person, setPerson] = useState('');
+  const data = person ? all?.filter((a) => a.actor_user_id === person) : all;
   // Só há aberturas a mostrar se algum email enviado pela plataforma levou o rastreio.
   const tracked = (data ?? []).some((a) => a.type === 'email_sent' && !!(a.payload as Record<string, unknown>).tracking_id);
   const { data: tracking } = useEmailTracking(leadId, tracked);
@@ -354,10 +360,22 @@ export function ActivityTimeline({
         as="h2"
         actions={
           open ? null : (
-            <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-              <Plus className="h-3.5 w-3.5" aria-hidden />
-              Registar
-            </Button>
+            <>
+              {hasTeam ? (
+                <Select value={person} onChange={(e) => setPerson(e.target.value)} aria-label="Filtrar por pessoa" className="h-8 w-auto max-w-40 text-sm">
+                  <option value="">Todos</option>
+                  {(team ?? []).map((m) => (
+                    <option key={m.user_id} value={m.user_id}>
+                      {m.user_id === currentUserId ? `${m.name} (tu)` : m.name}
+                    </option>
+                  ))}
+                </Select>
+              ) : null}
+              <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+                <Plus className="h-3.5 w-3.5" aria-hidden />
+                Registar
+              </Button>
+            </>
           )
         }
       />
@@ -469,7 +487,7 @@ export function ActivityTimeline({
                       {a.type === 'email_sent' ? <OpenStatus tracking={opened.get(String((a.payload as Record<string, unknown>).tracking_id))} /> : null}
                       <p className="mt-0.5 text-xs text-muted tabular">
                         <time dateTime={a.created_at}>{formatDateTime(a.created_at)}</time>
-                        {a.actor_token_id ? ' · via API' : null}
+                        {a.actor_token_id ? ' · via API' : hasTeam && a.actor_user_id && names.get(a.actor_user_id) ? ` · ${names.get(a.actor_user_id)}` : null}
                       </p>
                     </div>
                   </li>

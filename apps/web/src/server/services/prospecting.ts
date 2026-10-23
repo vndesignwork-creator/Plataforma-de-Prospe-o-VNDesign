@@ -8,6 +8,8 @@
 import {
   PROSPECTING_OUTCOME_LABELS,
   formatDate,
+  planSequenceAdvance,
+  sequenceStepText,
   timeAgo,
   todayIso,
   type Lead,
@@ -25,6 +27,31 @@ import { LEAD_SELECT, getLead, updateLead } from './leads';
 import { getSettings } from './workspace';
 
 const MAX_ITEMS = 150;
+
+/** Sequência multicanal: em que passo vai cada lead (ausente = o primeiro). */
+async function sequenceSteps(ctx: ApiContext, leadIds: string[]): Promise<Map<string, number>> {
+  if (!leadIds.length) return new Map();
+  const { data, error } = await ctx.supabase
+    .from('lead_sequence_state')
+    .select('lead_id, step')
+    .eq('workspace_id', ctx.workspaceId)
+    .in('lead_id', leadIds);
+  if (error) throw fromPostgrest(error);
+  return new Map(((data ?? []) as { lead_id: string; step: number }[]).map((r) => [r.lead_id, r.step]));
+}
+
+async function setSequenceStep(ctx: ApiContext, leadId: string, step: number | null) {
+  const q =
+    step === null
+      ? ctx.supabase.from('lead_sequence_state').delete().eq('workspace_id', ctx.workspaceId).eq('lead_id', leadId)
+      : ctx.supabase
+          .from('lead_sequence_state')
+          .upsert({ workspace_id: ctx.workspaceId, lead_id: leadId, step, updated_at: new Date().toISOString() }, { onConflict: 'workspace_id,lead_id' });
+  const { error } = await q;
+  if (error) throw fromPostgrest(error);
+}
+
+const IN_SEQUENCE = new Set(['identificado', 'contactado']);
 
 /** Início do dia de hoje em Lisboa, como instante UTC. */
 function lisbonMidnight(day: string): string {
@@ -107,6 +134,18 @@ export async function getProspectingQueue(ctx: ApiContext, filter: ProspectingFi
   for (const lead of (fresh?.data ?? []) as unknown as Lead[]) {
     push(lead, 'new', lead.next_action_on ? `${lead.next_action_text ?? 'Primeiro contacto'} — ${formatDate(lead.next_action_on)}` : 'Ainda não foi contactado');
   }
+
+  // Sequência multicanal: o passo a fazer agora em cada lead (com o canal e o modelo).
+  const seq = (await getSettings(ctx)).prospecting_sequence;
+  if (seq.enabled && items.length) {
+    const steps = await sequenceSteps(ctx, items.map((i) => i.lead.id));
+    for (const item of items) {
+      const index = steps.get(item.lead.id) ?? 0;
+      const step = seq.steps[index];
+      if (!step || !IN_SEQUENCE.has(item.lead.status)) continue;
+      item.sequence = { step: index + 1, total: seq.steps.length, day: step.day, channel: step.channel, template_id: step.template_id };
+    }
+  }
   return { items, done_today: done };
 }
 
@@ -115,8 +154,27 @@ export async function recordProspectingOutcome(ctx: ApiContext, leadId: string, 
   const lead = await getLead(ctx, leadId);
   if (lead.anonymized_at) throw new ApiError(422, 'Lead anonimizado', 'Não é possível registar contactos num lead anonimizado.');
   const tomorrow = 1;
+  const seq = (await getSettings(ctx)).prospecting_sequence;
+  const inSequence = seq.enabled && IN_SEQUENCE.has(lead.status);
+  let seqDone: string | null = null;
 
-  switch (input.outcome) {
+  // Sequência multicanal: "Contactado" faz o passo atual e agenda o seguinte (no dia certo e no canal certo).
+  if (inSequence && input.outcome === 'contacted') {
+    const current = (await sequenceSteps(ctx, [leadId])).get(leadId) ?? 0;
+    const plan = planSequenceAdvance(seq, Math.min(current, seq.steps.length - 1), todayIso());
+    await updateLead(ctx, leadId, {
+      ...(lead.status === 'identificado' ? { status: 'contactado' as const } : {}),
+      next_action_on: plan.on,
+      next_action_text: plan.text,
+    });
+    await setSequenceStep(ctx, leadId, plan.step);
+    seqDone = sequenceStepText(seq, Math.min(current, seq.steps.length - 1));
+  } else if (seq.enabled && (input.outcome === 'interested' || input.outcome === 'not_interested')) {
+    // Respondeu ou desistiu: sai da sequência.
+    await setSequenceStep(ctx, leadId, null);
+  }
+
+  switch (inSequence && input.outcome === 'contacted' ? null : input.outcome) {
     case 'no_answer':
       // Volta a aparecer amanhã.
       await completeFollowUp(ctx, leadId, { action: 'snooze', days: tomorrow, note: null });
@@ -145,7 +203,7 @@ export async function recordProspectingOutcome(ctx: ApiContext, leadId: string, 
       break;
   }
 
-  const label = PROSPECTING_OUTCOME_LABELS[input.outcome];
+  const label = seqDone ? `${PROSPECTING_OUTCOME_LABELS[input.outcome]} — ${seqDone}` : PROSPECTING_OUTCOME_LABELS[input.outcome];
   const { error } = await ctx.supabase.from('lead_activities').insert({
     workspace_id: ctx.workspaceId,
     lead_id: leadId,
