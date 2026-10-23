@@ -201,7 +201,7 @@ export function PaymentsCard({ lead }: { lead: Lead }) {
   const sum = summarizePayments(payments ?? [], today);
 
   return (
-    <Card>
+    <Card id="pagamentos" className="scroll-mt-20">
       <CardHeader
         title="Pagamentos"
         description={

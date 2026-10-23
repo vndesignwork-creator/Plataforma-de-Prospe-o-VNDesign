@@ -497,6 +497,9 @@ export function LeadDetail({ id }: { id: string }) {
             </dl>
           </Card>
 
+          {/* Cliente: o projeto logo a seguir ao pipeline, na coluna larga. */}
+          {staff && lead.status === 'cliente' && settings?.features.projects && !lead.anonymized_at ? <ProjectCard lead={lead} /> : null}
+
           <Card>
             <CardHeader title="Empresa e contacto" />
             <dl className="grid px-4 py-2 md:grid-cols-2 md:gap-x-6">
@@ -628,13 +631,12 @@ export function LeadDetail({ id }: { id: string }) {
         </div>
 
         {/* Coluna lateral (computador): o que se consulta durante uma chamada — notas, propostas e atividade. */}
-        <aside aria-label="Tarefas, notas, propostas e atividade" className="flex flex-col gap-5">
+        <aside aria-label="Tarefas, pagamentos, notas, propostas e atividade" className="flex flex-col gap-5">
           {!lead.anonymized_at ? <TasksCard lead={lead} /> : null}
-          {staff && lead.status === 'cliente' && settings?.features.projects && !lead.anonymized_at ? <ProjectCard lead={lead} /> : null}
+          {staff && settings?.features.payments ? <PaymentsCard lead={lead} /> : null}
           {staff && settings?.features.projects ? <ClientProjectsCard lead={lead} /> : null}
           {staff && settings?.features.brand_kit && (lead.status === 'cliente' || lead.client_of) && !lead.anonymized_at ? <BrandKitCard lead={lead} /> : null}
           {settings?.features.meetings ? <MeetingsCard lead={lead} /> : null}
-          {staff && settings?.features.payments ? <PaymentsCard lead={lead} /> : null}
           <NotesCard lead={lead} />
           {staff ? <ProposalsCard lead={lead} /> : null}
           {staff && settings?.features.contracts ? <ContractsCard lead={lead} /> : null}

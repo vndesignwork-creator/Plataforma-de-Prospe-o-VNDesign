@@ -18,43 +18,18 @@ import { Badge } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { PlanForm } from './payments-card';
-import { DueBadge, ProgressBar, StageMenu } from './project-bits';
+import { DueBadge, ProgressBar, StageMenu, SummaryStat } from './project-bits';
 import { PomodoroBox } from './pomodoro';
 import { ProjectToggle } from './project-toggle';
 import { TimeSection, TimerButton } from './time-section';
 
 const euros = (v: number) => formatCurrency(v, { decimals: false });
 
-/** Uma caixinha do resumo: título, número e barra (ou a ação, quando ainda não há nada). */
-function Stat({
-  icon: Icon,
-  title,
-  value,
-  tone,
-  children,
-}: {
-  icon: typeof Wallet;
-  title: string;
-  value: React.ReactNode;
-  tone?: 'danger' | 'warning';
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className="flex min-w-0 flex-col gap-1.5 rounded-lg border border-border px-3 py-2">
-      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted">
-        <Icon className="h-3.5 w-3.5" aria-hidden /> {title}
-      </span>
-      <span className={cn('text-sm font-semibold tabular', tone === 'danger' ? 'text-danger' : tone === 'warning' ? 'text-warning' : 'text-fg')}>{value}</span>
-      {children}
-    </div>
-  );
-}
-
 function PaymentsStat({ project }: { project: Project }) {
   const { lead, payments } = project;
   const [plan, setPlan] = useState(false);
   return (
-    <Stat
+    <SummaryStat
       icon={Wallet}
       title="Pagamentos"
       tone={payments.overdue ? 'danger' : undefined}
@@ -83,7 +58,7 @@ function PaymentsStat({ project }: { project: Project }) {
           </div>
         </Dialog>
       ) : null}
-    </Stat>
+    </SummaryStat>
   );
 }
 
@@ -168,16 +143,16 @@ export function ProjectRow({
       {/* Resumo: pagamentos, tarefas, revisões e horas (2 por linha no telemóvel). */}
       <div className="grid grid-cols-2 gap-2 md:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))]" role="group" aria-label={`Resumo de ${lead.company_name}`}>
         {features.payments ? <PaymentsStat project={project} /> : null}
-        <Stat icon={ListChecks} title="Tarefas" value={tasks.total ? `${tasks.done} de ${tasks.total}` : <span className="font-normal text-muted">Sem tarefas</span>}>
+        <SummaryStat icon={ListChecks} title="Tarefas" value={tasks.total ? `${tasks.done} de ${tasks.total}` : <span className="font-normal text-muted">Sem tarefas</span>}>
           {tasks.total ? <ProgressBar value={tasks.done} total={tasks.total} label={`Tarefas de ${lead.company_name}: ${tasks.done} de ${tasks.total}`} /> : null}
-        </Stat>
+        </SummaryStat>
         {features.revisions ? (
-          <Stat icon={RefreshCcw} title="Revisões" value={`${revisions.used} de ${info.revisions_included}`} tone={revisions.used > info.revisions_included ? 'warning' : undefined}>
+          <SummaryStat icon={RefreshCcw} title="Revisões" value={`${revisions.used} de ${info.revisions_included}`} tone={revisions.used > info.revisions_included ? 'warning' : undefined}>
             {revisions.used > info.revisions_included ? <span className="text-xs text-warning">{revisions.used - info.revisions_included} a cobrar à parte</span> : null}
-          </Stat>
+          </SummaryStat>
         ) : null}
         {features.time_tracking ? (
-          <Stat
+          <SummaryStat
             icon={Clock}
             title="Horas"
             value={
@@ -196,7 +171,7 @@ export function ProjectRow({
                 Ver registos
               </button>
             ) : null}
-          </Stat>
+          </SummaryStat>
         ) : null}
       </div>
 

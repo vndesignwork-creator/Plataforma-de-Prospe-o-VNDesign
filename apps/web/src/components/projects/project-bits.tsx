@@ -2,7 +2,7 @@
 
 /** Peças pequenas dos projetos: prazo ("Faltam 5 dias"), fase (menu) e barra de progresso. */
 import { PROJECT_STAGE_LABELS, PROJECT_STAGES, dueStatus, formatDate, type ProjectStage } from '@vndesign/core';
-import { CalendarClock, ChevronDown } from 'lucide-react';
+import { CalendarClock, ChevronDown, type LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { DropdownContent, DropdownLabel, DropdownRadioGroup, DropdownRadioItem, DropdownRoot, DropdownTrigger } from '@/components/ui/dropdown';
 import { errorMessage } from '@/lib/api-client';
@@ -138,3 +138,27 @@ export function ProgressBar({
   );
 }
 
+/** Uma caixinha do resumo do projeto: título, número e barra (ou a ação, quando ainda não há nada). */
+export function SummaryStat({
+  icon: Icon,
+  title,
+  value,
+  tone,
+  children,
+}: {
+  icon: LucideIcon;
+  title: string;
+  value: React.ReactNode;
+  tone?: 'danger' | 'warning';
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5 rounded-lg border border-border px-3 py-2">
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted">
+        <Icon className="h-3.5 w-3.5" aria-hidden /> {title}
+      </span>
+      <span className={cn('text-sm font-semibold tabular', tone === 'danger' ? 'text-danger' : tone === 'warning' ? 'text-warning' : 'text-fg')}>{value}</span>
+      {children}
+    </div>
+  );
+}
