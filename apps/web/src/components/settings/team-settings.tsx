@@ -1,36 +1,36 @@
 'use client';
 
 /**
- * Definições → Equipa: convidar pessoas (prospetor: só a parte comercial;
- * administrador: tudo), mudar o papel, remover e o limite semanal do gerador
- * de leads para os prospetores.
+ * Equipa → Prospeção: quem tem conta na plataforma (prospetor: só a parte
+ * comercial; administrador: tudo), mudar o papel, remover, convites por
+ * aceitar e o limite semanal do gerador de leads para os prospetores.
+ * O convite em si está em components/team/team-view.tsx.
  */
 import { useQueryClient } from '@tanstack/react-query';
 import { MEMBER_ROLE_LABELS, formatDate, type InviteRole } from '@vndesign/core';
-import { Check, Copy, Mail, Trash2, UserPlus, X } from 'lucide-react';
+import { Check, Copy, Mail, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
 import { Input, Select } from '@/components/ui/input';
-import { ApiClientError, api, errorMessage } from '@/lib/api-client';
+import { api, errorMessage } from '@/lib/api-client';
 import { useSettings, useTeam, useTeamAction, type SettingsWithMail } from '@/lib/queries';
 
-const inviteUrl = (token: string) => `${typeof window === 'undefined' ? '' : window.location.origin}/equipa/${token}`;
+export const teamInviteUrl = (token: string) => `${typeof window === 'undefined' ? '' : window.location.origin}/equipa/${token}`;
 
 async function copyLink(token: string) {
   try {
-    await navigator.clipboard.writeText(inviteUrl(token));
+    await navigator.clipboard.writeText(teamInviteUrl(token));
     toast.success('Link do convite copiado.');
   } catch {
     toast.error('Não foi possível copiar o link.');
   }
 }
 
-export function TeamSettings() {
+export function TeamMembers() {
   const { data: team, isLoading } = useTeam();
-  const { data: settings } = useSettings();
   const action = useTeamAction();
   const [confirm, setConfirm] = useState<string | null>(null);
 
@@ -45,10 +45,9 @@ export function TeamSettings() {
   }
 
   return (
-    <div className="flex flex-col gap-5">
       <Card>
         <CardHeader
-          title="Equipa"
+          title="Equipa de prospeção"
           description="Quem te ajuda a procurar, gerar, organizar e contactar leads. Cada pessoa entra com a sua conta."
         />
         {isLoading || !team ? (
@@ -120,9 +119,15 @@ export function TeamSettings() {
             ))}
           </ul>
         )}
-        <InviteForm />
+        {team && team.members.length < 2 && !team.invites.length ? (
+          <p className="border-t border-border px-4 py-3 text-sm text-muted">Ainda só tu. Usa “Convidar” para alguém te ajudar com os leads.</p>
+        ) : null}
       </Card>
+  );
+}
 
+export function ProspectorAccessCard() {
+  return (
       <Card>
         <CardHeader title="O que um prospetor vê" />
         <ul className="grid gap-1.5 p-4 text-sm sm:grid-cols-2">
@@ -143,66 +148,15 @@ export function TeamSettings() {
           ))}
         </ul>
       </Card>
-
-      {settings ? <GenerationLimitCard settings={settings} /> : null}
-    </div>
   );
 }
 
-function InviteForm() {
-  const action = useTeamAction();
-  const [form, setForm] = useState({ name: '', email: '', role: 'prospector' as InviteRole, send: true });
-  const [errors, setErrors] = useState<Record<string, string[]>>({});
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setErrors({});
-    try {
-      const result = await action.mutateAsync({ invite: { email: form.email, name: form.name || undefined, role: form.role, send_email: form.send } });
-      if (!result || !('invite' in result)) return;
-      setForm({ name: '', email: '', role: 'prospector', send: true });
-      if (result.emailed) toast.success(`Convite enviado para ${result.invite.email}.`);
-      else {
-        await navigator.clipboard.writeText(inviteUrl(result.invite.token)).catch(() => undefined);
-        toast.success('Convite criado. O link foi copiado: envia-o à pessoa.');
-      }
-    } catch (error) {
-      if (error instanceof ApiClientError && error.problem.errors) setErrors(error.problem.errors as Record<string, string[]>);
-      else toast.error(errorMessage(error));
-    }
-  }
-
-  return (
-    <form onSubmit={submit} className="flex flex-col gap-3 border-t border-border p-4" aria-label="Convidar para a equipa" noValidate>
-      <p className="text-sm font-medium">Convidar</p>
-      <div className="flex flex-wrap gap-3">
-        <Field label="Nome" className="min-w-0 flex-[1_1_12rem]" error={errors.name?.[0]}>
-          <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ex.: Paula" />
-        </Field>
-        <Field label="Email" required className="min-w-0 flex-[1_1_14rem]" error={errors.email?.[0]}>
-          <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="nome@exemplo.pt" />
-        </Field>
-        <Field label="Papel" className="w-44">
-          <Select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as InviteRole })}>
-            <option value="prospector">Prospetor</option>
-            <option value="admin">Administrador</option>
-          </Select>
-        </Field>
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <label className="inline-flex items-center gap-2 text-sm">
-          <input type="checkbox" className="h-4 w-4" checked={form.send} onChange={(e) => setForm({ ...form, send: e.target.checked })} />
-          Enviar o convite por email (senão, o link é copiado)
-        </label>
-        <Button type="submit" loading={action.isPending}>
-          <UserPlus className="h-4 w-4" aria-hidden /> Convidar
-        </Button>
-      </div>
-    </form>
-  );
+export function GenerationLimitCard() {
+  const { data: settings } = useSettings();
+  return settings ? <GenerationLimitForm settings={settings} /> : null;
 }
 
-function GenerationLimitCard({ settings }: { settings: SettingsWithMail }) {
+function GenerationLimitForm({ settings }: { settings: SettingsWithMail }) {
   const qc = useQueryClient();
   const [value, setValue] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);

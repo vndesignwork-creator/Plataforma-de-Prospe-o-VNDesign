@@ -1,8 +1,6 @@
-import type { Metadata } from 'next';
-import { TeamSettings } from '@/components/settings/team-settings';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = { title: 'Definições · Equipa' };
-
+/** A equipa passou das Definições para o menu (Equipa). */
 export default function Page() {
-  return <TeamSettings />;
+  redirect('/equipa');
 }

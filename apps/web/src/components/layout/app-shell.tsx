@@ -25,7 +25,8 @@ const NAV = [
   { href: '/gerar-leads', label: 'Gerar leads', icon: Sparkles, match: (p: string) => p.startsWith('/gerar-leads') },
   { href: '/kanban', label: 'Kanban', icon: Columns3, match: (p: string) => p.startsWith('/kanban') },
   { href: '/projetos', label: 'Projetos', icon: BriefcaseBusiness, match: (p: string) => p.startsWith('/projetos'), feature: 'projects' as const },
-  { href: '/colaboradores', label: 'Colaboradores', icon: Handshake, match: (p: string) => p.startsWith('/colaboradores'), feature: ['projects', 'collaborators'] as const },
+  // Equipa de prospeção e colaboradores dos projetos, numa só página (separadores).
+  { href: '/equipa', label: 'Equipa', icon: Handshake, match: (p: string) => p === '/equipa' || p.startsWith('/colaboradores') },
   { href: '/estatisticas', label: 'Estatísticas', icon: BarChart3, match: (p: string) => p.startsWith('/estatisticas') },
   { href: '/scripts', label: 'Scripts', icon: MessageSquareText, match: (p: string) => p.startsWith('/scripts') },
   { href: '/definicoes', label: 'Definições', icon: Settings, match: (p: string) => p.startsWith('/definicoes') },

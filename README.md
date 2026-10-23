@@ -431,7 +431,7 @@ Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**
 - Nunca vê os leads, os contactos do cliente, as notas, os valores nem os pagamentos, e não entra no resto da plataforma.
 - Recebes uma notificação quando aceita o convite, conclui uma tarefa ou junta uma entrega. As horas dele aparecem em *Horas* com o nome.
 - **Remover** tira-lhe logo o acesso ao projeto.
-- Menu **Colaboradores**: todas as pessoas convidadas (ativas ou com o convite por aceitar), as horas de cada uma (total e últimos 30 dias, por projeto) e a última atividade. Daqui convidas alguém novo ou a mesma pessoa para **outro projeto**, copias o link de um convite por aceitar ou removes de um projeto. Sai do menu se desligares Projetos ou Colaboradores.
+- Menu **Equipa → Projetos**: todas as pessoas convidadas (ativas ou com o convite por aceitar), as horas de cada uma (total e últimos 30 dias, por projeto) e a última atividade. Daqui convidas alguém novo ou a mesma pessoa para **outro projeto**, copias o link de um convite por aceitar ou removes de um projeto. O separador desaparece se desligares Projetos ou Colaboradores.
 
 **Pomodoro**
 - No cartão de cada projeto (em **Projetos** e na ficha), bloco **Pomodoro** com um mostrador circular: as marcas que já passaram apagam-se e o ponteiro (laranja a trabalhar, verde na pausa) mostra onde vai a fase. Escolhe a tarefa (opcional) e carrega em **Começar 25 min**.
@@ -502,8 +502,11 @@ Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**
 
 Pessoas que te ajudam a procurar, gerar, organizar e contactar leads, cada uma com a sua conta.
 
-**Convidar** (Definições → Equipa)
-- Nome, email e papel: **Prospetor** (só a parte comercial) ou **Administrador** (vê tudo, como tu).
+**Página Equipa** (menu) — dois separadores:
+- **Prospeção**: quem tem conta na tua plataforma (prospetores e administradores).
+- **Projetos**: os colaboradores externos, cada um só no(s) projeto(s) para onde foi convidado (aparece com *Projetos* e *Colaboradores* ligados em Definições → Funcionalidades).
+- Um só botão **Convidar**, que pergunta primeiro *Para quê?*: **Ajudar com leads** (papel **Prospetor**, só a parte comercial, ou **Administrador**, vê tudo como tu) ou **Trabalhar num projeto** (escolhe-se o projeto).
+- Os endereços antigos (`/colaboradores` e Definições → Equipa) levam à página nova.
 - O convite segue pela tua conta de *Email de envio*; sem ela (ou com a caixa desligada), o link `/equipa/<código>` é copiado para o enviares tu. A pessoa cria a conta (ou entra com a que já tem) e fica na tua equipa.
 - Na mesma página: mudar o papel, remover (perde logo o acesso; os leads dela ficam sem responsável) e anular convites.
 
@@ -517,7 +520,7 @@ Pessoas que te ajudam a procurar, gerar, organizar e contactar leads, cada uma c
 - Os leads que o prospetor cria ficam dele. A **Prospeção** dele mostra só os leads de que é responsável.
 
 **Gerador de leads**
-- A pesquisa com IA é paga pela tua conta: cada prospetor junta no máximo **50 leads por semana** (últimos 7 dias). Muda-se em Definições → Equipa (0 = sem gerador). As pesquisas automáticas são só tuas.
+- A pesquisa com IA é paga pela tua conta: cada prospetor junta no máximo **50 leads por semana** (últimos 7 dias). Muda-se em Equipa → Prospeção (0 = sem gerador). As pesquisas automáticas são só tuas.
 
 **Estatísticas → Equipa** — por pessoa, nos últimos 30 dias: contactos (e hoje), responderam, reuniões, clientes, leads criados, leads em aberto e o gerador da semana. Aparece quando a equipa tem mais de uma pessoa.
 

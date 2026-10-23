@@ -53,7 +53,7 @@ describe('prospetor: páginas', () => {
     }
   });
   it('não abre projetos, horas, propostas, juntar nem as outras definições', () => {
-    for (const p of ['/projetos', '/horas', '/colaboradores', `/leads/${id}/propostas/nova`, `/leads/${id}/juntar`, '/definicoes/equipa', '/importar']) {
+    for (const p of ['/projetos', '/horas', '/colaboradores', `/leads/${id}/propostas/nova`, `/leads/${id}/juntar`, '/definicoes/equipa', '/equipa', '/importar']) {
       expect(prospectorPageAllowed(p), p).toBe(false);
     }
   });

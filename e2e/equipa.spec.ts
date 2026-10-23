@@ -32,13 +32,19 @@ test('equipa: convidar um prospetor, o que vê, responsável, limite do gerador 
   const name = `Paula ${run}`;
   const lead = await createLead(page.request, { company_name: `Equipa Valor ${run}`, status: 'identificado', estimated_value: 7777 });
 
-  // Dono: Definições → Equipa → convidar (link copiado, sem email).
-  await page.goto('/definicoes/equipa');
-  const form = page.getByRole('form', { name: 'Convidar para a equipa' });
-  await form.getByRole('textbox', { name: 'Nome' }).fill(name);
-  await form.getByRole('textbox', { name: 'Email' }).fill(email);
-  await form.getByLabel('Enviar o convite por email').uncheck();
-  await form.getByRole('button', { name: 'Convidar' }).click();
+  // Dono: menu Equipa → Convidar → "Ajudar com leads" (link copiado, sem email).
+  await page.goto('/dashboard');
+  await page.getByRole('navigation', { name: 'Principal' }).first().getByRole('link', { name: 'Equipa' }).click();
+  await expect(page).toHaveURL(/\/equipa$/);
+  await expect(page.getByRole('tab', { name: /Prospeção/ })).toHaveAttribute('aria-selected', 'true');
+  await page.getByRole('button', { name: 'Convidar' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Convidar' });
+  await expect(dialog.getByRole('radio', { name: /Ajudar com leads/ })).toBeChecked();
+  await expect(dialog.getByRole('combobox', { name: /^Papel/ })).toHaveValue('prospector');
+  await dialog.getByRole('textbox', { name: /^Nome/ }).fill(name);
+  await dialog.getByRole('textbox', { name: /^Email/ }).fill(email);
+  await dialog.getByLabel('Enviar o convite por email').uncheck();
+  await dialog.getByRole('button', { name: 'Convidar' }).click();
   await expect(page.getByText(/Convite criado/)).toBeVisible();
   await expect(page.getByText(`${email} · convite por aceitar · Prospetor`)).toBeVisible();
   const team = (await (await page.request.get('/api/v1/team')).json()).data as { invites: { email: string; token: string }[] };
@@ -121,7 +127,9 @@ test('equipa: convidar um prospetor, o que vê, responsável, limite do gerador 
     await expect(rows.first()).toContainText(name);
 
     // Limite semanal do gerador (0 = sem gerador para os prospetores).
+    // (o endereço antigo, Definições → Equipa, leva à página nova)
     await page.goto('/definicoes/equipa');
+    await expect(page).toHaveURL(/\/equipa$/);
     await page.getByLabel('Leads por semana, por prospetor').fill('0');
     await page.getByRole('button', { name: 'Guardar limite' }).click();
     await expect(page.getByText('Limite guardado.')).toBeVisible();

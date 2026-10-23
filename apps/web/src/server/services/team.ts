@@ -212,7 +212,7 @@ async function join(row: InviteRow, userId: string, name: string, email: string)
   else await admin.from('signatures').insert({ workspace_id: row.workspace_id, user_id: userId, ...signature });
   await admin.from('workspace_invites').update({ accepted_at: new Date().toISOString(), accepted_by: userId }).eq('id', row.id);
   if (row.invited_by) {
-    await sendUserPush(row.workspace_id, row.invited_by, { title: '👥 Equipa', body: `${name} aceitou o convite para a equipa.`, url: '/definicoes/equipa', tag: `team-${row.id}` }).catch(
+    await sendUserPush(row.workspace_id, row.invited_by, { title: '👥 Equipa', body: `${name} aceitou o convite para a equipa.`, url: '/equipa', tag: `team-${row.id}` }).catch(
       () => undefined,
     );
   }

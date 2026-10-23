@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Colaboradores (menu): todas as pessoas convidadas para os projetos, com o
+ * Equipa → Projetos: todas as pessoas convidadas para os projetos, com o
  * estado do convite, as horas que registaram e atalhos para convidar para
  * outro projeto, copiar o link do convite ou remover.
  */
@@ -12,17 +12,14 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, EmptyState, Skeleton } from '@/components/ui/card';
-import { Dialog } from '@/components/ui/dialog';
-import { Field } from '@/components/ui/field';
-import { Input, Select } from '@/components/ui/input';
-import { ApiClientError, errorMessage } from '@/lib/api-client';
-import { useAllCollaborators, useCollaboratorsAdmin, useProjects } from '@/lib/queries';
+import { errorMessage } from '@/lib/api-client';
+import { useAllCollaborators, useCollaboratorsAdmin } from '@/lib/queries';
 
-const inviteUrl = (token: string) => `${typeof window === 'undefined' ? '' : window.location.origin}/convite/${token}`;
+export const collabInviteUrl = (token: string) => `${typeof window === 'undefined' ? '' : window.location.origin}/convite/${token}`;
 
 async function copyInvite(token: string) {
   try {
-    await navigator.clipboard.writeText(inviteUrl(token));
+    await navigator.clipboard.writeText(collabInviteUrl(token));
     toast.success('Link do convite copiado.');
   } catch {
     toast.error('Não foi possível copiar o link.');
@@ -37,42 +34,32 @@ const initials = (p: CollaboratorPerson) =>
     .map((w) => w[0]!.toUpperCase())
     .join('');
 
-export function CollaboratorsView() {
+export function CollaboratorsList({ onInvite }: { onInvite: (person: CollaboratorPerson) => void }) {
   const { data, isLoading } = useAllCollaborators();
-  const [inviting, setInviting] = useState<{ name: string; email: string; exclude: string[] } | null>(null);
-
+  if (isLoading) return <Skeleton className="h-40" />;
+  if (!data?.length) {
+    return (
+      <Card>
+        <EmptyState title="Ainda sem colaboradores">
+          <p className="max-w-md text-sm text-muted">
+            Convida um programador, fotógrafo ou copywriter para um projeto: só vê as tarefas, os ficheiros, o briefing e as horas desse projeto.
+          </p>
+        </EmptyState>
+      </Card>
+    );
+  }
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted">
-          {data?.length ? `${data.length} pessoa${data.length === 1 ? '' : 's'} · ${data.filter((p) => p.active).length} com conta ativa` : null}
-        </p>
-        <Button onClick={() => setInviting({ name: '', email: '', exclude: [] })}>
-          <UserPlus className="h-4 w-4" aria-hidden /> Convidar
-        </Button>
-      </div>
-
-      {isLoading ? (
-        <Skeleton className="h-40" />
-      ) : !data?.length ? (
-        <Card>
-          <EmptyState title="Ainda sem colaboradores">
-            <p className="max-w-md text-sm text-muted">
-              Convida um programador, fotógrafo ou copywriter para um projeto: só vê as tarefas, os ficheiros, o briefing e as horas desse projeto.
-            </p>
-          </EmptyState>
-        </Card>
-      ) : (
-        <ul className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2" aria-label="Colaboradores">
-          {data.map((p) => (
-            <li key={p.email} className="min-w-0">
-              <PersonCard person={p} onInvite={() => setInviting({ name: p.name ?? '', email: p.email, exclude: p.projects.map((x) => x.lead.id) })} />
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {inviting ? <InviteDialog initial={inviting} onClose={() => setInviting(null)} /> : null}
+    <div className="flex flex-col gap-3">
+      <p className="text-sm text-muted">
+        {data.length} pessoa{data.length === 1 ? '' : 's'} · {data.filter((p) => p.active).length} com conta ativa
+      </p>
+      <ul className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2" aria-label="Colaboradores">
+        {data.map((p) => (
+          <li key={p.email} className="min-w-0">
+            <PersonCard person={p} onInvite={() => onInvite(p)} />
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -157,78 +144,5 @@ function PersonCard({ person, onInvite }: { person: CollaboratorPerson; onInvite
         </Button>
       </div>
     </Card>
-  );
-}
-
-function InviteDialog({ initial, onClose }: { initial: { name: string; email: string; exclude: string[] }; onClose: () => void }) {
-  const { data: projects, isLoading } = useProjects('active');
-  const admin = useCollaboratorsAdmin();
-  const [form, setForm] = useState({ name: initial.name, email: initial.email, lead: '', send: true });
-  const [errors, setErrors] = useState<Record<string, string[]>>({});
-  const options = (projects ?? []).filter((p) => !initial.exclude.includes(p.lead.id));
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setErrors({});
-    if (!form.lead) {
-      setErrors({ lead: ['Escolhe o projeto.'] });
-      return;
-    }
-    try {
-      const result = await admin.mutateAsync({ invite: { lead_id: form.lead, email: form.email, name: form.name || undefined, send_email: form.send } });
-      if (!result) return;
-      if (result.emailed) toast.success(`Convite enviado para ${result.collaborator.email}.`);
-      else if (result.collaborator.token) {
-        await navigator.clipboard.writeText(inviteUrl(result.collaborator.token)).catch(() => undefined);
-        toast.success('Convite criado. O link foi copiado: envia-o ao colaborador.');
-      } else toast.success('Adicionado ao projeto (já tem conta).');
-      onClose();
-    } catch (error) {
-      if (error instanceof ApiClientError && error.problem.errors) setErrors(error.problem.errors as Record<string, string[]>);
-      else toast.error(errorMessage(error));
-    }
-  }
-
-  return (
-    <Dialog
-      open
-      onOpenChange={(o) => (!o ? onClose() : undefined)}
-      title={initial.email ? `Convidar ${initial.name || initial.email}` : 'Convidar colaborador'}
-      description="Só vê as tarefas, os ficheiros, o briefing e as horas do projeto escolhido; nunca os valores nem os contactos do cliente."
-      className="max-w-lg"
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" form="collab-invite" loading={admin.isPending}>
-            <UserPlus className="h-4 w-4" aria-hidden /> Convidar
-          </Button>
-        </>
-      }
-    >
-      <form id="collab-invite" onSubmit={submit} className="flex flex-col gap-3" noValidate>
-        <Field label="Projeto" required error={errors.lead?.[0]}>
-          <Select value={form.lead} onChange={(e) => setForm({ ...form, lead: e.target.value })} disabled={isLoading}>
-            <option value="">{isLoading ? 'A carregar…' : options.length ? 'Escolhe o projeto' : 'Sem projetos em curso'}</option>
-            {options.map((p) => (
-              <option key={p.lead.id} value={p.lead.id}>
-                #{p.lead.number} {projectLabel(p.lead)}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Nome" error={errors.name?.[0]}>
-          <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ex.: Rui Programador" />
-        </Field>
-        <Field label="Email do colaborador" required error={errors.email?.[0]}>
-          <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="nome@exemplo.pt" />
-        </Field>
-        <label className="inline-flex items-center gap-2 text-sm">
-          <input type="checkbox" className="h-4 w-4" checked={form.send} onChange={(e) => setForm({ ...form, send: e.target.checked })} />
-          Enviar o convite por email (senão, o link é copiado)
-        </label>
-      </form>
-    </Dialog>
   );
 }

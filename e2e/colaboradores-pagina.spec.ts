@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
 
-/* Página Colaboradores (menu): todos por pessoa, convidar para outro projeto e remover. */
+/* Equipa → Projetos (antiga página Colaboradores): todos por pessoa, convidar para outro projeto e remover. */
 const run = Date.now().toString(36);
 
 async function createClient(request: APIRequestContext, name: string) {
@@ -17,9 +17,16 @@ test('colaboradores: lista por pessoa, convidar para outro projeto, remover e it
   const invited = await page.request.post(`/api/v1/leads/${a.id}/collaborators`, { data: { name: 'Marta Fotógrafa', email, send_email: false } });
   expect(invited.status(), await invited.text()).toBe(201);
 
+  // O endereço antigo leva ao separador Projetos da Equipa.
+  await page.goto('/colaboradores');
+  await expect(page).toHaveURL(/\/equipa\?ver=projetos$/);
+  await expect(page.getByRole('tab', { name: /Projetos/ })).toHaveAttribute('aria-selected', 'true');
+  // No menu: Equipa → separador Projetos.
   await page.goto('/dashboard');
-  await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Colaboradores' }).click();
-  await expect(page).toHaveURL(/\/colaboradores$/);
+  await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Equipa' }).click();
+  await expect(page).toHaveURL(/\/equipa$/);
+  await page.getByRole('tab', { name: /Projetos/ }).click();
+  await expect(page).toHaveURL(/\/equipa\?ver=projetos$/);
   const card = page.getByRole('list', { name: 'Colaboradores' }).getByRole('listitem').filter({ hasText: email });
   await expect(card).toContainText('Marta Fotógrafa');
   await expect(card).toContainText('Convite por aceitar');
@@ -29,11 +36,13 @@ test('colaboradores: lista por pessoa, convidar para outro projeto, remover e it
   // Convidar para outro projeto (o nome e o email já vêm preenchidos).
   await card.getByRole('button', { name: 'Convidar para outro projeto' }).click();
   const dialog = page.getByRole('dialog', { name: 'Convidar Marta Fotógrafa' });
-  await expect(dialog.getByLabel('Email do colaborador')).toHaveValue(email);
+  await expect(dialog.getByRole('radio', { name: /Trabalhar num projeto/ })).toBeChecked();
+  await expect(dialog.getByRole('textbox', { name: /^Email/ })).toHaveValue(email);
   // O projeto onde já está não aparece na lista.
-  await expect(dialog.getByLabel('Projeto').locator('option', { hasText: `Obra A ${run}` })).toHaveCount(0);
-  const value = await dialog.getByLabel('Projeto').locator('option', { hasText: `Obra B ${run}` }).getAttribute('value');
-  await dialog.getByLabel('Projeto').selectOption(value!);
+  const project = dialog.getByRole('combobox', { name: /^Projeto/ });
+  await expect(project.locator('option', { hasText: `Obra A ${run}` })).toHaveCount(0);
+  const value = await project.locator('option', { hasText: `Obra B ${run}` }).getAttribute('value');
+  await project.selectOption(value!);
   await dialog.getByLabel(/Enviar o convite por email/).uncheck();
   await dialog.getByRole('button', { name: 'Convidar' }).click();
   await expect(page.getByText(/Convite criado/)).toBeVisible();
@@ -45,9 +54,12 @@ test('colaboradores: lista por pessoa, convidar para outro projeto, remover e it
   await expect(page.getByText('Removido do projeto: já não tem acesso.')).toBeVisible();
   await expect(projects.getByRole('link', { name: `Obra B ${run}` })).toHaveCount(0);
 
-  // Com "Colaboradores" desligado, sai do menu.
+  // Com "Colaboradores" desligado, o separador Projetos desaparece (e o Convidar é só para os leads).
   await page.request.patch('/api/v1/settings', { data: { features: { collaborators: false } } });
   await page.reload();
-  await expect(page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Colaboradores' })).toHaveCount(0);
+  await expect(page.getByRole('tab', { name: /Prospeção/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: /Projetos/ })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Convidar' }).click();
+  await expect(page.getByRole('dialog', { name: 'Convidar' }).getByRole('radio')).toHaveCount(0);
   await page.request.patch('/api/v1/settings', { data: { features: { collaborators: true } } });
 });
