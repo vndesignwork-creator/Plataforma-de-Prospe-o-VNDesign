@@ -1,7 +1,7 @@
 'use client';
 
 import * as RadixDialog from '@radix-ui/react-dialog';
-import { BarChart3, BriefcaseBusiness, Columns3, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Settings, Sparkles, Sun, Target, Users, X } from 'lucide-react';
+import { BarChart3, BriefcaseBusiness, Columns3, Handshake, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Settings, Sparkles, Sun, Target, Users, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
@@ -24,6 +24,7 @@ const NAV = [
   { href: '/gerar-leads', label: 'Gerar leads', icon: Sparkles, match: (p: string) => p.startsWith('/gerar-leads') },
   { href: '/kanban', label: 'Kanban', icon: Columns3, match: (p: string) => p.startsWith('/kanban') },
   { href: '/projetos', label: 'Projetos', icon: BriefcaseBusiness, match: (p: string) => p.startsWith('/projetos'), feature: 'projects' as const },
+  { href: '/colaboradores', label: 'Colaboradores', icon: Handshake, match: (p: string) => p.startsWith('/colaboradores'), feature: ['projects', 'collaborators'] as const },
   { href: '/estatisticas', label: 'Estatísticas', icon: BarChart3, match: (p: string) => p.startsWith('/estatisticas') },
   { href: '/scripts', label: 'Scripts', icon: MessageSquareText, match: (p: string) => p.startsWith('/scripts') },
   { href: '/definicoes', label: 'Definições', icon: Settings, match: (p: string) => p.startsWith('/definicoes') },
@@ -33,7 +34,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { data: settings } = useSettings();
   // Funcionalidades desligadas (Definições → Funcionalidades) saem do menu.
-  const items = NAV.filter((item) => !('feature' in item) || !item.feature || settings?.features[item.feature] !== false);
+  const items = NAV.filter((item) => !('feature' in item) || [item.feature].flat().every((f) => !f || settings?.features[f] !== false));
   return (
     <ul className="flex flex-col gap-1">
       {items.map(({ href, label, icon: Icon, match }) => {

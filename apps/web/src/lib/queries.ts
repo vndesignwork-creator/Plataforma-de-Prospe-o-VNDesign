@@ -79,6 +79,7 @@ import type {
   LeadGenerationScheduleUpdate,
   LeadGenerationScheduleUpsertInput,
   MailAccount,
+  CollaboratorPerson,
   Pomodoro,
   PomodoroAction,
   PomodoroStats,
@@ -969,6 +970,30 @@ export function useCollaborators(leadId: string, enabled = true) {
   });
 }
 
+/** Página Colaboradores: todos, por pessoa. */
+export function useAllCollaborators(enabled = true) {
+  return useQuery({
+    queryKey: ['collaborators', 'all'],
+    queryFn: () => api<{ data: CollaboratorPerson[] }>('/collaborators').then((r) => r.data),
+    enabled,
+  });
+}
+
+/** Convidar para um projeto (qualquer) ou remover um convite — a partir da página Colaboradores. */
+export function useCollaboratorsAdmin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { invite: { lead_id: string; email: string; name?: string; send_email: boolean } } | { remove: string }) =>
+      'invite' in input
+        ? api<{ data: { collaborator: ProjectCollaborator; emailed: boolean } }>(`/leads/${input.invite.lead_id}/collaborators`, {
+            method: 'POST',
+            body: { email: input.invite.email, name: input.invite.name, send_email: input.invite.send_email },
+          }).then((r) => r.data)
+        : api(`/collaborators/${input.remove}`, { method: 'DELETE' }).then(() => null),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['collaborators'] }),
+  });
+}
+
 /** Convidar (invite) ou remover (remove) um colaborador. */
 export function useCollaboratorAction(leadId: string) {
   const qc = useQueryClient();
@@ -979,7 +1004,7 @@ export function useCollaboratorAction(leadId: string) {
             (r) => r.data,
           )
         : api(`/collaborators/${input.remove}`, { method: 'DELETE' }).then(() => null),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['collaborators', leadId] }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['collaborators'] }),
   });
 }
 

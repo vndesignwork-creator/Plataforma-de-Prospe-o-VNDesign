@@ -93,3 +93,35 @@ export type CollabProject = z.infer<typeof CollabProjectSchema>;
 export const CollabTimeActionSchema = z
   .object({ action: z.enum(['start', 'stop']), notes: z.string().trim().max(300).optional().transform((v) => v || null) })
   .meta({ id: 'CollabTimeAction' });
+
+/** Página Colaboradores: cada pessoa (pelo email) com os projetos para que foi convidada. */
+export const CollaboratorPersonSchema = z
+  .object({
+    email: z.string(),
+    name: z.string().nullable(),
+    /** Aceitou pelo menos um convite. */
+    active: z.boolean(),
+    minutes_total: z.int().meta({ description: 'Horas registadas por esta pessoa (minutos), em todos os projetos' }),
+    minutes_30d: z.int().meta({ description: 'Últimos 30 dias (minutos)' }),
+    last_activity_at: z.string().nullable().meta({ description: 'Último registo de horas' }),
+    projects: z.array(
+      z.object({
+        collaborator_id: z.uuid(),
+        lead: z.object({
+          id: z.uuid(),
+          number: z.int(),
+          company_name: z.string(),
+          project_title: z.string().nullable(),
+          completed_at: z.string().nullable(),
+        }),
+        status: z.enum(COLLABORATOR_STATUSES),
+        invited_at: z.string(),
+        accepted_at: z.string().nullable(),
+        /** Só enquanto o convite não for aceite (para copiar o link). */
+        token: z.string().nullable(),
+        minutes: z.int(),
+      }),
+    ),
+  })
+  .meta({ id: 'CollaboratorPerson' });
+export type CollaboratorPerson = z.infer<typeof CollaboratorPersonSchema>;

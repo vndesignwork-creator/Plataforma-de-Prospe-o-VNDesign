@@ -89,6 +89,7 @@ import {
   PushSubscriptionDeleteSchema,
   SiteAuditRequestSchema,
   SCREENSHOT_DEVICES,
+  CollaboratorPersonSchema,
   ContactFindingsSchema,
   PomodoroActionSchema,
   PomodoroSchema,
@@ -1122,6 +1123,13 @@ export function getOpenApiDocument() {
             '409': problem('Este email já foi convidado'),
             ...withNotFound,
           },
+        }),
+      },
+      '/collaborators': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Todos os colaboradores, por pessoa: projetos, estado do convite e horas registadas',
+          responses: { '200': ok(data(z.array(CollaboratorPersonSchema))), ...common },
         }),
       },
       '/collaborators/{id}': {

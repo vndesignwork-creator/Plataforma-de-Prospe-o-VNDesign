@@ -15,6 +15,7 @@ import {
   plainTextToHtml,
   type CollabProject,
   type CollabProjectSummary,
+  type CollaboratorPerson,
   type CollaboratorAccept,
   type CollaboratorInvite,
   type LeadTask,
@@ -69,6 +70,76 @@ export async function listCollaborators(ctx: ApiContext, leadId: string): Promis
     .order('invited_at');
   if (error) throw fromPostgrest(error);
   return ((data ?? []) as Row[]).map(toCollaborator);
+}
+
+/**
+ * Página Colaboradores: todos os convites do workspace, agrupados por pessoa
+ * (email), com as horas que cada uma registou em cada projeto.
+ */
+export async function listAllCollaborators(ctx: ApiContext): Promise<CollaboratorPerson[]> {
+  const { data, error } = await ctx.supabase
+    .from('project_collaborators')
+    .select(`${SELECT}, lead:leads!inner(id, number, company_name, project_title, project_completed_at)`)
+    .eq('workspace_id', ctx.workspaceId)
+    .order('invited_at');
+  if (error) throw fromPostgrest(error);
+  type Joined = Row & { lead: { id: string; number: number; company_name: string; project_title: string | null; project_completed_at: string | null } };
+  const rows = (data ?? []) as unknown as Joined[];
+  const userIds = [...new Set(rows.map((r) => r.user_id).filter((u): u is string => !!u))];
+
+  // Horas de cada colaborador, por projeto.
+  const minutes = new Map<string, number>(); // `${user}:${lead}`
+  const recent = new Map<string, number>(); // user → últimos 30 dias
+  const last = new Map<string, string>(); // user → último registo
+  if (userIds.length) {
+    const { data: entries, error: tError } = await ctx.supabase
+      .from('project_time_entries')
+      .select('user_id, lead_id, started_at, ended_at')
+      .eq('workspace_id', ctx.workspaceId)
+      .in('user_id', userIds)
+      .not('ended_at', 'is', null);
+    if (tError) throw fromPostgrest(tError);
+    const since = Date.now() - 30 * 86_400_000;
+    for (const e of (entries ?? []) as { user_id: string; lead_id: string; started_at: string; ended_at: string }[]) {
+      const m = Math.max(0, (Date.parse(e.ended_at) - Date.parse(e.started_at)) / 60_000);
+      const key = `${e.user_id}:${e.lead_id}`;
+      minutes.set(key, (minutes.get(key) ?? 0) + m);
+      if (Date.parse(e.started_at) >= since) recent.set(e.user_id, (recent.get(e.user_id) ?? 0) + m);
+      if (!last.has(e.user_id) || e.ended_at > last.get(e.user_id)!) last.set(e.user_id, e.ended_at);
+    }
+  }
+
+  const people = new Map<string, CollaboratorPerson & { users: Set<string> }>();
+  for (const r of rows) {
+    const key = r.email.toLowerCase();
+    const person = people.get(key) ?? { email: r.email, name: null, active: false, minutes_total: 0, minutes_30d: 0, last_activity_at: null, projects: [], users: new Set<string>() };
+    person.name ??= r.name;
+    if (r.status === 'ativo') person.active = true;
+    if (r.user_id) person.users.add(r.user_id);
+    const projectMinutes = r.user_id ? Math.round(minutes.get(`${r.user_id}:${r.lead_id}`) ?? 0) : 0;
+    person.projects.push({
+      collaborator_id: r.id,
+      lead: { id: r.lead.id, number: r.lead.number, company_name: r.lead.company_name, project_title: r.lead.project_title, completed_at: r.lead.project_completed_at },
+      status: r.status,
+      invited_at: r.invited_at,
+      accepted_at: r.accepted_at,
+      token: r.status === 'convidado' ? r.token : null,
+      minutes: projectMinutes,
+    });
+    people.set(key, person);
+  }
+  return [...people.values()]
+    .map(({ users, ...p }) => {
+      const ids = [...users];
+      const lastAt = ids.map((u) => last.get(u)).filter((v): v is string => !!v).sort().at(-1) ?? null;
+      return {
+        ...p,
+        minutes_total: p.projects.reduce((s, x) => s + x.minutes, 0),
+        minutes_30d: Math.round(ids.reduce((s, u) => s + (recent.get(u) ?? 0), 0)),
+        last_activity_at: lastAt,
+      };
+    })
+    .sort((a, b) => Number(b.active) - Number(a.active) || (a.name ?? a.email).localeCompare(b.name ?? b.email, 'pt'));
 }
 
 /** Nomes dos colaboradores de vários projetos (para mostrar quem registou horas). */

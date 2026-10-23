@@ -431,6 +431,7 @@ Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**
 - Nunca vê os leads, os contactos do cliente, as notas, os valores nem os pagamentos, e não entra no resto da plataforma.
 - Recebes uma notificação quando aceita o convite, conclui uma tarefa ou junta uma entrega. As horas dele aparecem em *Horas* com o nome.
 - **Remover** tira-lhe logo o acesso ao projeto.
+- Menu **Colaboradores**: todas as pessoas convidadas (ativas ou com o convite por aceitar), as horas de cada uma (total e últimos 30 dias, por projeto) e a última atividade. Daqui convidas alguém novo ou a mesma pessoa para **outro projeto**, copias o link de um convite por aceitar ou removes de um projeto. Sai do menu se desligares Projetos ou Colaboradores.
 
 **Pomodoro**
 - No cartão de cada projeto (em **Projetos** e na ficha), bloco **Pomodoro** com um mostrador circular: as marcas que já passaram apagam-se e o ponteiro (laranja a trabalhar, verde na pausa) mostra onde vai a fase. Escolhe a tarefa (opcional) e carrega em **Começar 25 min**.
