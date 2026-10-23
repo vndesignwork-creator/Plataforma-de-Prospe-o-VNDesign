@@ -89,6 +89,13 @@ import {
   PushSubscriptionDeleteSchema,
   SiteAuditRequestSchema,
   SCREENSHOT_DEVICES,
+  MEMBER_ROLES,
+  TeamAcceptSchema,
+  TeamInviteCreateSchema,
+  TeamInviteSchema,
+  TeamMemberUpdateSchema,
+  TeamSchema,
+  TeamStatsSchema,
   CollaboratorPersonSchema,
   ContactFindingsSchema,
   PomodoroActionSchema,
@@ -245,6 +252,7 @@ export function getOpenApiDocument() {
       { name: 'Fornecedores de IA' },
       { name: 'Email' },
       { name: 'Projetos', description: 'Pagamentos dos clientes e projetos em curso' },
+      { name: 'Equipa', description: 'Equipa de prospeção: convites, papéis, responsável pelos leads e estatísticas' },
       { name: 'Reuniões' },
       { name: 'Contratos', description: 'Contratos gerados a partir da proposta e aceites online' },
       { name: 'Colaboradores', description: 'Pessoas convidadas para um projeto e o portal delas' },
@@ -1124,6 +1132,57 @@ export function getOpenApiDocument() {
             ...withNotFound,
           },
         }),
+      },
+      '/team': {
+        get: op({ tags: ['Equipa'], summary: 'Membros da equipa e convites por aceitar (dono ou administrador)', responses: { '200': ok(data(TeamSchema)), ...common } }),
+      },
+      '/team/names': {
+        get: op({
+          tags: ['Equipa'],
+          summary: 'Nomes e papéis dos membros (para o responsável de um lead)',
+          responses: { '200': ok(data(z.array(z.object({ user_id: z.uuid(), name: z.string(), role: z.enum(MEMBER_ROLES) })))), ...common },
+        }),
+      },
+      '/team/invites': {
+        post: op({
+          tags: ['Equipa'],
+          summary: 'Convidar para a equipa (prospetor: só a parte comercial; administrador: tudo)',
+          requestBody: body(TeamInviteCreateSchema),
+          responses: { '201': ok(data(z.object({ invite: TeamInviteSchema, emailed: z.boolean() })), 'Criado'), '409': problem('Já há um convite por aceitar'), ...common },
+        }),
+      },
+      '/team/invites/{id}': {
+        delete: op({ tags: ['Equipa'], summary: 'Anular um convite por aceitar', requestParams: { path: idParam }, responses: { '204': { description: 'Anulado' }, ...withNotFound } }),
+      },
+      '/team/members/{userId}': {
+        patch: op({
+          tags: ['Equipa'],
+          summary: 'Mudar o papel de um membro',
+          requestParams: { path: z.object({ userId: z.uuid() }) },
+          requestBody: body(TeamMemberUpdateSchema),
+          responses: { '204': { description: 'Alterado' }, ...withNotFound },
+        }),
+        delete: op({
+          tags: ['Equipa'],
+          summary: 'Remover da equipa (perde logo o acesso; os leads dele ficam sem responsável)',
+          requestParams: { path: z.object({ userId: z.uuid() }) },
+          responses: { '204': { description: 'Removido' }, ...withNotFound },
+        }),
+      },
+      '/team-invites/{token}/claim': {
+        post: op({ tags: ['Equipa'], summary: 'Aceitar o convite da equipa com a conta já aberta (mesmo email)', requestParams: { path: z.object({ token: z.string() }) }, responses: { '204': { description: 'Aceite' }, ...withNotFound } }),
+      },
+      '/public/team-invites/{token}/accept': {
+        post: op({
+          tags: ['Equipa'],
+          summary: 'Aceitar o convite da equipa criando a conta (sem sessão)',
+          requestParams: { path: z.object({ token: z.string() }) },
+          requestBody: body(TeamAcceptSchema),
+          responses: { '200': ok(data(z.object({ email: z.string() }))), '409': problem('Já existe conta com este email'), '404': problem('Convite não encontrado') },
+        }),
+      },
+      '/stats/team': {
+        get: op({ tags: ['Equipa'], summary: 'Trabalho de cada pessoa nos últimos 30 dias (o prospetor só vê o seu)', responses: { '200': ok(data(TeamStatsSchema)), ...common } }),
       },
       '/collaborators': {
         get: op({

@@ -20,6 +20,7 @@ import { AiSettingsSchema, AiSettingsUpdateSchema, SERVER_AI_PROVIDER } from './
 import { ServiceCategoryKeySchema, ServiceKeyListSchema, ServiceKeySchema } from './services';
 import { TodayOpenedEmailSchema } from './mail';
 import { DEFAULT_POMODORO_SETTINGS, PomodoroSettingsSchema } from './pomodoro';
+import { DEFAULT_TEAM_SETTINGS, MEMBER_ROLES, TeamSettingsSchema } from './team';
 import { DEFAULT_QUOTE_SETTINGS, QuoteSettingsSchema } from './quote';
 import { TodayMeetingSchema } from './projects';
 import { TodayTasksSchema } from './tasks';
@@ -122,6 +123,8 @@ const leadFields = {
   services: ServiceKeyListSchema,
   /** Nome do projeto (ex.: "Loja online"), sobretudo quando o cliente tem vários. */
   project_title: nullableText(120),
+  /** Responsável pelo lead (membro da equipa; null = sem responsável). */
+  assigned_to: z.uuid({ error: 'Responsável inválido.' }).nullable(),
 };
 
 export const EDITABLE_LEAD_FIELDS = Object.keys(leadFields) as (keyof typeof leadFields)[];
@@ -200,6 +203,8 @@ export const LeadSchema = z
     /** Projeto novo de um cliente que volta: o registo principal do cliente. */
     client_of: z.uuid().nullable().optional(),
     project_title: z.string().nullable().optional(),
+    /** Responsável pelo lead (equipa de prospeção). */
+    assigned_to: z.uuid().nullable().optional(),
     created_by: z.uuid().nullable(),
     created_at: z.string(),
     updated_at: z.string(),
@@ -252,6 +257,10 @@ export const LeadListQuerySchema = z
       .optional()
       .meta({ description: 'Serviços de interesse separados por vírgula ("none" = sem serviço); basta um coincidir' }),
     city: z.string().trim().max(120).optional(),
+    assigned: z
+      .union([z.uuid(), z.enum(['me', 'none'])])
+      .optional()
+      .meta({ description: 'Responsável: id do membro, "me" (os meus) ou "none" (sem responsável)' }),
     suggested_from: z.iso.date().optional(),
     suggested_to: z.iso.date().optional(),
     due: z
@@ -274,13 +283,15 @@ export type LeadListQuery = z.output<typeof LeadListQuerySchema>;
 // -----------------------------------------------------------------------------
 // Ações em vários leads de uma vez (lista) — também usadas na ficha com um só id
 // -----------------------------------------------------------------------------
-export const LEAD_BULK_ACTIONS = ['archive', 'restore', 'delete'] as const;
+export const LEAD_BULK_ACTIONS = ['archive', 'restore', 'delete', 'assign'] as const;
 export type LeadBulkAction = (typeof LEAD_BULK_ACTIONS)[number];
 
 export const LeadBulkActionSchema = z
   .object({
-    action: z.enum(LEAD_BULK_ACTIONS).meta({ description: 'archive = arquivar, restore = repor do arquivo, delete = apagar' }),
+    action: z.enum(LEAD_BULK_ACTIONS).meta({ description: 'archive = arquivar, restore = repor do arquivo, delete = apagar, assign = mudar o responsável' }),
     ids: z.array(z.uuid()).min(1, { error: 'Escolhe pelo menos um lead.' }).max(200, { error: 'No máximo 200 leads de cada vez.' }),
+    /** Com action "assign": o novo responsável (null = sem responsável). */
+    assigned_to: z.uuid().nullable().optional(),
   })
   .meta({ id: 'LeadBulkAction' });
 export type LeadBulkActionInput = z.input<typeof LeadBulkActionSchema>;
@@ -619,6 +630,7 @@ export const WorkspaceSettingsSchema = z
     /** Calculadora de orçamento: objetivo por hora e os extras. */
     quote: QuoteSettingsSchema.default(DEFAULT_QUOTE_SETTINGS),
     pomodoro: PomodoroSettingsSchema.default(DEFAULT_POMODORO_SETTINGS),
+    team: TeamSettingsSchema.default(DEFAULT_TEAM_SETTINGS),
     /** Fornecedor e modelo de IA de cada função (Definições → Inteligência artificial). */
     ai: AiSettingsSchema.default({
       email: { provider: SERVER_AI_PROVIDER, model: null },
@@ -669,6 +681,7 @@ export const WorkspaceSettingsUpdateSchema = z
     }),
     quote: QuoteSettingsSchema,
     pomodoro: PomodoroSettingsSchema,
+    team: TeamSettingsSchema,
   })
   .partial()
   .meta({ id: 'WorkspaceSettingsUpdate' });
@@ -677,7 +690,7 @@ export const MeSchema = z
   .object({
     user: z.object({ id: z.uuid(), email: z.string().nullable() }),
     workspace: z.object({ id: z.uuid(), name: z.string(), settings: WorkspaceSettingsSchema }),
-    role: z.enum(['owner', 'admin', 'member']),
+    role: z.enum(MEMBER_ROLES),
   })
   .meta({ id: 'Me' });
 export type Me = z.infer<typeof MeSchema>;

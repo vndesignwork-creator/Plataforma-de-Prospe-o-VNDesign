@@ -16,14 +16,23 @@ import { ChannelIcon, SectorIconView, StatusIcon } from '@/components/icons/lead
 import { ServiceIcon, useServiceCatalog } from '@/components/services/services';
 import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
 import { errorMessage } from '@/lib/api-client';
-import { useDashboard, useSectors } from '@/lib/queries';
+import { useDashboard, useRole, useSectors, useTeamNames } from '@/lib/queries';
 import { PomodoroStatsSection } from './pomodoro-stats';
 import { ProfitabilitySection } from './profitability-section';
+import { TeamStatsSection } from './team-stats';
 
 const euros = (v: number) => formatCurrency(v, { decimals: false });
 
 /** Página Estatísticas: todos os números da prospeção (o Dashboard mostra só o essencial). */
 export function StatsView() {
+  const role = useRole();
+  if (role === null) return <Skeleton className="h-24" />;
+  // O prospetor vê só o seu trabalho (sem valores nem faturação).
+  return role === 'prospector' ? <TeamStatsSection /> : <OwnerStats />;
+}
+
+function OwnerStats() {
+  const { data: team } = useTeamNames();
   const catalog = useServiceCatalog();
   const { data, isLoading, error } = useDashboard();
   const { data: sectors } = useSectors();
@@ -197,6 +206,7 @@ export function StatsView() {
         </Card>
       </div>
 
+      {team && team.length > 1 ? <TeamStatsSection /> : null}
       <ProfitabilitySection />
       <PomodoroStatsSection />
     </div>

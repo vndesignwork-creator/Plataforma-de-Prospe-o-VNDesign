@@ -35,6 +35,7 @@ import {
   Search,
   SlidersHorizontal,
   Trash2,
+  UserCheck,
   X,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -57,7 +58,7 @@ import { Input } from '@/components/ui/input';
 import { DateInput } from '@/components/ui/date-input';
 import { errorMessage, toQueryString } from '@/lib/api-client';
 import { useDebouncedValue } from '@/lib/hooks';
-import { bulkResultMessage, useBulkLeadAction, usePreference, useLeads, useSectors, useSetPreference } from '@/lib/queries';
+import { bulkResultMessage, useBulkLeadAction, usePreference, useLeads, useRole, useSectors, useSetPreference, useTeamNames } from '@/lib/queries';
 import { cn, displayHost } from '@/lib/utils';
 import { ChannelLabel, MobileLabel, PageSpeedScore, StatusBadge } from './badges';
 import { LeadScoreBadge } from './lead-score';
@@ -309,6 +310,7 @@ export function LeadsTable() {
     suggested_from: get('de') || undefined,
     suggested_to: get('ate') || undefined,
     archived: (get('arquivo') || undefined) as LeadArchiveFilter | undefined,
+    assigned: get('resp') || undefined,
     sort,
     order,
     page,
@@ -320,7 +322,12 @@ export function LeadsTable() {
   const saveTablePref = useSetPreference<{ hidden: string[] }>('leads.table');
   const hidden = tablePref?.hidden ?? DEFAULT_HIDDEN;
 
-  const columns = useMemo(() => buildColumns(today), [today]);
+  // Equipa: o prospetor não vê valores, nem importa/exporta/apaga; o dono atribui leads.
+  const prospector = useRole() === 'prospector';
+  const { data: team } = useTeamNames();
+  const hasTeam = (team?.length ?? 0) > 1;
+  const columns = useMemo(() => buildColumns(today).filter((c) => !(prospector && c.id === 'estimated_value')), [today, prospector]);
+  const mobileSorts = prospector ? MOBILE_SORTS.filter((o) => !o.value.startsWith('estimated_value')) : MOBILE_SORTS;
   const columnVisibility: VisibilityState = Object.fromEntries(hidden.map((id) => [id, false]));
 
   // A tabela é recalculada a cada render (não usamos o React Compiler aqui).
@@ -337,7 +344,7 @@ export function LeadsTable() {
 
   const activeFilters =
     query.sector.length + query.status.length + query.channel.length + query.service.length +
-    [query.q, query.city, query.due, query.suggested_from, query.suggested_to, query.archived].filter(Boolean).length;
+    [query.q, query.city, query.due, query.suggested_from, query.suggested_to, query.archived, query.assigned].filter(Boolean).length;
   const [showFilters, setShowFilters] = useState(false);
 
   // Seleção para ações em conjunto. Fica presa aos filtros/página atuais:
@@ -360,10 +367,10 @@ export function LeadsTable() {
 
   const bulk = useBulkLeadAction();
   const [confirmDelete, setConfirmDelete] = useState(false);
-  async function runBulk(action: LeadBulkAction) {
+  async function runBulk(action: LeadBulkAction, assignedTo?: string | null) {
     const ids = [...selected];
     try {
-      const result = await bulk.mutateAsync({ action, ids });
+      const result = await bulk.mutateAsync({ action, ids, ...(action === 'assign' ? { assigned_to: assignedTo ?? null } : {}) });
       clearSelection();
       setConfirmDelete(false);
       const undo = action === 'archive' ? 'restore' : action === 'restore' ? 'archive' : null;
@@ -446,9 +453,9 @@ export function LeadsTable() {
             setParams({ sort: field === 'number' && dir === 'desc' ? null : field!, order: dir === 'desc' ? null : dir! });
           }}
           options={
-            MOBILE_SORTS.some((o) => o.value === `${sort}:${order}`)
-              ? MOBILE_SORTS
-              : [...MOBILE_SORTS, { value: `${sort}:${order}`, label: 'Ordenação da tabela' }]
+            mobileSorts.some((o) => o.value === `${sort}:${order}`)
+              ? mobileSorts
+              : [...mobileSorts, { value: `${sort}:${order}`, label: 'Ordenação da tabela' }]
           }
           className="flex-1 md:flex-none lg:hidden"
         />
@@ -484,6 +491,7 @@ export function LeadsTable() {
           <MapIcon className="h-4 w-4" aria-hidden />
           <span className="hidden sm:inline">Mapa</span>
         </Link>
+        {prospector ? null : (
         <DropdownRoot>
           {/* Importar e exportar juntos (usa-se pouco: não precisa de lugar no menu lateral). */}
           <DropdownTrigger className={buttonClasses('outline', 'md', 'max-sm:w-10 max-sm:px-0')} aria-label="Importar ou exportar leads">
@@ -508,6 +516,7 @@ export function LeadsTable() {
             </DropdownItem>
           </DropdownContent>
         </DropdownRoot>
+        )}
       </div>
 
       {/* Filtros. Telemóvel: grelha de 2 colunas (sem buracos); a partir do tablet, em linha. */}
@@ -561,6 +570,20 @@ export function LeadsTable() {
           options={DUE_OPTIONS}
           className="max-md:col-span-2"
         />
+        {hasTeam ? (
+          <SingleSelectFilter
+            label="Responsável"
+            value={query.assigned ?? ''}
+            onChange={(v) => setParams({ resp: v || null })}
+            options={[
+              { value: '', label: 'Todos os responsáveis' },
+              { value: 'me', label: 'Os meus' },
+              { value: 'none', label: 'Sem responsável' },
+              ...(prospector ? [] : (team ?? []).filter((m) => m.role !== 'owner').map((m) => ({ value: m.user_id, label: m.name }))),
+            ]}
+            className="max-md:col-span-2"
+          />
+        ) : null}
         <SingleSelectFilter
           label="Leads arquivados"
           value={query.archived ?? ''}
@@ -627,9 +650,28 @@ export function LeadsTable() {
               <ArchiveRestore className="h-3.5 w-3.5" aria-hidden /> Repor
             </Button>
           ) : null}
-          <Button size="sm" variant="outline" className="text-danger" onClick={() => setConfirmDelete(true)}>
-            <Trash2 className="h-3.5 w-3.5" aria-hidden /> Apagar
-          </Button>
+          {hasTeam && !prospector ? (
+            <DropdownRoot>
+              <DropdownTrigger className={buttonClasses('outline', 'sm')}>
+                <UserCheck className="h-3.5 w-3.5" aria-hidden /> Atribuir a…
+              </DropdownTrigger>
+              <DropdownContent>
+                <DropdownLabel>Responsável</DropdownLabel>
+                {(team ?? []).map((m) => (
+                  <DropdownItem key={m.user_id} onSelect={() => void runBulk('assign', m.user_id)}>
+                    {m.name}
+                  </DropdownItem>
+                ))}
+                <DropdownSeparator />
+                <DropdownItem onSelect={() => void runBulk('assign', null)}>Sem responsável</DropdownItem>
+              </DropdownContent>
+            </DropdownRoot>
+          ) : null}
+          {prospector ? null : (
+            <Button size="sm" variant="outline" className="text-danger" onClick={() => setConfirmDelete(true)}>
+              <Trash2 className="h-3.5 w-3.5" aria-hidden /> Apagar
+            </Button>
+          )}
           <Button size="sm" variant="ghost" onClick={clearSelection}>
             <X className="h-3.5 w-3.5" aria-hidden /> Limpar seleção
           </Button>
@@ -798,7 +840,7 @@ export function LeadsTable() {
                         </span>
                       ) : null}
                       {lead.city ? <span>{lead.city}</span> : null}
-                      {lead.estimated_value !== null ? <span className="tabular">{formatCurrency(lead.estimated_value)}</span> : null}
+                      {lead.estimated_value != null ? <span className="tabular">{formatCurrency(lead.estimated_value)}</span> : null}
                     </span>
                     <ServiceIcons services={lead.services} labeled />
                     <TaskProgress progress={lead.task_progress} />

@@ -15,7 +15,7 @@ import { createSupabaseBearerClient, createSupabaseServerClient } from './supaba
 import { createSupabaseAdminClient } from './supabase-admin';
 import { hashApiToken, looksLikeApiToken } from './tokens';
 
-export type MemberRole = 'owner' | 'admin' | 'member';
+export type MemberRole = 'owner' | 'admin' | 'member' | 'prospector';
 
 export interface ApiContext {
   supabase: SupabaseClient;

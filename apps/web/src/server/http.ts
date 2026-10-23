@@ -6,6 +6,7 @@ import type { PostgrestError } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import type { ApiTokenScope } from '@vndesign/core';
 import { z } from 'zod';
+import { prospectorAllowed, scrubForProspector } from './prospector-access';
 import { getApiContext, type ApiContext } from './context';
 
 export class ApiError extends Error {
@@ -150,7 +151,16 @@ export function apiRoute<P extends RouteParams = RouteParams>(handler: Handler<P
       const ctx = await getApiContext(req);
       assertTokenScope(ctx, options.token);
       const params = await segment.params;
-      return await handler(req, ctx, params);
+      if (ctx.role !== 'prospector') return await handler(req, ctx, params);
+      // Equipa de prospeção: só a parte comercial, e sem valores.
+      const path = new URL(req.url).pathname.replace(/^\/api\/v1/, '');
+      if (!prospectorAllowed(req.method, path)) {
+        throw new ApiError(403, 'Sem acesso', 'Esta parte da plataforma não está disponível para a equipa de prospeção.');
+      }
+      const res = await handler(req, ctx, params);
+      if (!res.headers.get('content-type')?.includes('application/json')) return res;
+      const body = scrubForProspector(await res.json());
+      return NextResponse.json(body, { status: res.status, headers: res.headers });
     } catch (error) {
       return handleError(error);
     }

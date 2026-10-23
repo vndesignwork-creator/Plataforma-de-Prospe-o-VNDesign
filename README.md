@@ -498,6 +498,29 @@ Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**
 - Lista os aparelhos com a conta aberta (browser e sistema, IP, última atividade, se entrou com o código).
 - **Terminar** fecha uma sessão; **Terminar as outras** fecha todas menos esta. O aparelho deixa de entrar em, no máximo, 1 hora.
 
+## Equipa de prospeção
+
+Pessoas que te ajudam a procurar, gerar, organizar e contactar leads, cada uma com a sua conta.
+
+**Convidar** (Definições → Equipa)
+- Nome, email e papel: **Prospetor** (só a parte comercial) ou **Administrador** (vê tudo, como tu).
+- O convite segue pela tua conta de *Email de envio*; sem ela (ou com a caixa desligada), o link `/equipa/<código>` é copiado para o enviares tu. A pessoa cria a conta (ou entra com a que já tem) e fica na tua equipa.
+- Na mesma página: mudar o papel, remover (perde logo o acesso; os leads dela ficam sem responsável) e anular convites.
+
+**O que o prospetor vê**
+- Dashboard dele (contactos de hoje, respostas, leads em aberto, gerador), Leads, Prospeção, Gerar leads, Kanban, Mapa, Scripts e Estatísticas → Equipa (só os números dele). Nas Definições, só a Assinatura e a Conta.
+- Não vê valores, propostas, pagamentos, contratos, projetos, horas, colaboradores, kit da marca nem as estatísticas financeiras; não importa, não exporta, não apaga leads nem muda o responsável. O bloqueio está no servidor (`apiRoute` responde 403 fora da lista em `server/prospector-access.ts` e tira o `estimated_value` das respostas) e na base de dados (as tabelas sensíveis só abrem a `is_workspace_staff`).
+- Os emails saem pela tua conta de envio, com a assinatura dele (Definições → Assinatura). O limite diário de envios conta para a equipa toda.
+
+**Responsável**
+- Cada lead tem um **Responsável**: escolhe-se na ficha (cartão Pipeline) ou em conjunto na lista de leads (seleciona → **Atribuir a…**). A lista tem o filtro *Responsável* (os meus, sem responsável, cada pessoa).
+- Os leads que o prospetor cria ficam dele. A **Prospeção** dele mostra só os leads de que é responsável.
+
+**Gerador de leads**
+- A pesquisa com IA é paga pela tua conta: cada prospetor junta no máximo **50 leads por semana** (últimos 7 dias). Muda-se em Definições → Equipa (0 = sem gerador). As pesquisas automáticas são só tuas.
+
+**Estatísticas → Equipa** — por pessoa, nos últimos 30 dias: contactos (e hoje), responderam, reuniões, clientes, leads criados, leads em aberto e o gerador da semana. Aparece quando a equipa tem mais de uma pessoa.
+
 ---
 
 ## Fornecedores de IA (Claude, ChatGPT, OpenRouter…)

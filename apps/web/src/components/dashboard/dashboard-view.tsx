@@ -29,7 +29,8 @@ import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
 import { api, errorMessage } from '@/lib/api-client';
 import { DueChip, ReminderChip } from '@/components/tasks/tasks-card';
 import { Linkified } from '@/lib/linkify';
-import { useBilling, useDashboard, useProjects, useSettings, useToday } from '@/lib/queries';
+import { useBilling, useDashboard, useProjects, useRole, useSettings, useToday } from '@/lib/queries';
+import { MyTeamTiles } from './team-stats';
 import { cn } from '@/lib/utils';
 import { DueBadge, ProgressBar, StageLabel } from '@/components/projects/project-bits';
 import { meetingLabel } from '@/components/meetings/meetings-card';
@@ -393,6 +394,25 @@ function PipelineCard({ byStatus, className }: { byStatus: { status: LeadStatus;
 
 /** Dashboard: o que há para fazer hoje e quatro números essenciais (o resto em Estatísticas). */
 export function DashboardView() {
+  const role = useRole();
+  if (role === null) return <Skeleton className="h-24" />;
+  return role === 'prospector' ? <ProspectorDashboard /> : <OwnerDashboard />;
+}
+
+/** Equipa de prospeção: os números dele, o "Hoje" e os leads mais quentes (só os seus). */
+function ProspectorDashboard() {
+  return (
+    <div className="flex flex-col gap-5">
+      <MyTeamTiles />
+      <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+        <TodayCard />
+        <HotLeadsCard />
+      </div>
+    </div>
+  );
+}
+
+function OwnerDashboard() {
   const { data, isLoading, error } = useDashboard();
   const { data: settings } = useSettings();
   const projectsOn = settings?.features.projects ?? false;

@@ -33,7 +33,7 @@ import { Input, Select, Textarea } from '@/components/ui/input';
 import { DateInput } from '@/components/ui/date-input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useDebouncedValue } from '@/lib/hooks';
-import { checkDuplicates, useInvalidateLead, useSectors } from '@/lib/queries';
+import { checkDuplicates, useInvalidateLead, useRole, useSectors } from '@/lib/queries';
 import { DuplicatePanel } from './duplicate-panel';
 import { MERGE_DRAFT_KEY } from './merge-view';
 import { ServicePicker } from '@/components/services/services';
@@ -109,6 +109,7 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
   const isEdit = Boolean(lead);
   const invalidate = useInvalidateLead();
   const { data: sectors } = useSectors();
+  const prospector = useRole() === 'prospector';
   const [conflicts, setConflicts] = useState<DuplicateMatch[] | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -280,9 +281,11 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
             ))}
           </Select>
         </Field>
-        <Field label="Valor estimado (€)" error={e('estimated_value')}>
-          <Input inputMode="decimal" placeholder="0,00" {...register('estimated_value', { setValueAs: toNumber })} />
-        </Field>
+        {prospector ? null : (
+          <Field label="Valor estimado (€)" error={e('estimated_value')}>
+            <Input inputMode="decimal" placeholder="0,00" {...register('estimated_value', { setValueAs: toNumber })} />
+          </Field>
+        )}
         <Field label="Próxima ação" error={e('next_action_text')}>
           <Input placeholder="Ex.: Ligar a perguntar pelo email" {...register('next_action_text')} />
         </Field>

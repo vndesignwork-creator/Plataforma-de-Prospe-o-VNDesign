@@ -7,7 +7,7 @@
 import { buildGeocodeQueries, parseNominatimResponse, type GeocodeBatchResult, type MapData, type MapLead } from '@vndesign/core';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
-import { getLead, type LeadFilters, applyLeadFiltersTo } from './leads';
+import { getLead, resolveAssigned, type LeadFilters, applyLeadFiltersTo } from './leads';
 
 const GEOCODER_URL = () => process.env.GEOCODER_URL || 'https://nominatim.openstreetmap.org/search';
 const USER_AGENT = 'VNDesignLeads/1.0 (+https://vndesign.pt)';
@@ -116,7 +116,7 @@ const MAP_SELECT =
 export async function getMapData(ctx: ApiContext, filters: LeadFilters): Promise<MapData> {
   const located = applyLeadFiltersTo(
     ctx.supabase.from('leads').select(MAP_SELECT).eq('workspace_id', ctx.workspaceId),
-    filters,
+    resolveAssigned(ctx, filters),
   )
     .not('latitude', 'is', null)
     .not('longitude', 'is', null)

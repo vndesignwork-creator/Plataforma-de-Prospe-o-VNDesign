@@ -3,15 +3,16 @@
 import * as RadixDialog from '@radix-ui/react-dialog';
 import { BarChart3, BriefcaseBusiness, Columns3, Handshake, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Settings, Sparkles, Sun, Target, Users, X } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState, type ReactNode } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState, type ReactNode } from 'react';
 import { FollowUpNotifier } from '@/components/follow-up/follow-up-notifier';
 import { PomodoroWatcher } from '@/components/projects/pomodoro';
 import { RunningTimer } from '@/components/projects/running-timer';
 import { ReminderWatcher } from '@/components/tasks/reminder-watcher';
 import { NavigationTracker } from './back-link';
 import { UpdateWatcher } from './update-watcher';
-import { useSettings } from '@/lib/queries';
+import { useRole, useSettings } from '@/lib/queries';
+import { prospectorPageAllowed } from '@/lib/role-access';
 import { cn } from '@/lib/utils';
 import { Logo } from './logo';
 import { useTheme } from './theme';
@@ -34,7 +35,13 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { data: settings } = useSettings();
   // Funcionalidades desligadas (Definições → Funcionalidades) saem do menu.
-  const items = NAV.filter((item) => !('feature' in item) || [item.feature].flat().every((f) => !f || settings?.features[f] !== false));
+  const role = useRole();
+  const items = NAV.filter(
+    (item) =>
+      (!('feature' in item) || [item.feature].flat().every((f) => !f || settings?.features[f] !== false)) &&
+      // Equipa de prospeção: só a parte comercial.
+      (role !== 'prospector' || prospectorPageAllowed(item.href)),
+  );
   return (
     <ul className="flex flex-col gap-1">
       {items.map(({ href, label, icon: Icon, match }) => {
@@ -88,6 +95,13 @@ function SidebarFooter({ email }: { email: string | null }) {
 
 export function AppShell({ email, children }: { email: string | null; children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const role = useRole();
+  const pathname = usePathname();
+  const router = useRouter();
+  const blocked = role === 'prospector' && !prospectorPageAllowed(pathname);
+  useEffect(() => {
+    if (blocked) router.replace('/prospecao');
+  }, [blocked, router]);
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[15rem_1fr]">
       <a
@@ -105,8 +119,13 @@ export function AppShell({ email, children }: { email: string | null; children: 
         <nav aria-label="Principal" className="flex-1">
           <NavLinks />
         </nav>
-        <RunningTimer />
-        <PomodoroWatcher />
+        {/* Horas e Pomodoro são dos projetos: o prospetor não os usa. */}
+        {role === 'prospector' ? null : (
+          <>
+            <RunningTimer />
+            <PomodoroWatcher />
+          </>
+        )}
         <SidebarFooter email={email} />
       </aside>
 
@@ -115,7 +134,7 @@ export function AppShell({ email, children }: { email: string | null; children: 
         <Link href="/dashboard">
           <Logo />
         </Link>
-        <RunningTimer compact className="ml-auto mr-2 py-0.5" />
+        {role === 'prospector' ? null : <RunningTimer compact className="ml-auto mr-2 py-0.5" />}
         <RadixDialog.Root open={open} onOpenChange={setOpen}>
           <RadixDialog.Trigger className="rounded-lg p-2 text-fg hover:bg-surface-2" aria-label="Abrir menu">
             <Menu className="h-5 w-5" aria-hidden />
@@ -140,7 +159,7 @@ export function AppShell({ email, children }: { email: string | null; children: 
       </header>
 
       <main id="conteudo" className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
-        {children}
+        {blocked ? null : children}
       </main>
       <FollowUpNotifier />
       <ReminderWatcher />

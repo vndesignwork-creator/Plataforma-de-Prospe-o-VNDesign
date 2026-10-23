@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useRole } from '@/lib/queries';
+import { PROSPECTOR_SETTINGS } from '@/lib/role-access';
 import { cn } from '@/lib/utils';
 
 /** Secções das Definições: cada uma é uma página (/definicoes/<slug>). */
@@ -17,15 +19,21 @@ export const SETTINGS_SECTIONS = [
   { slug: 'setores', label: 'Setores' },
   { slug: 'nao-contactar', label: 'Não contactar' },
   { slug: 'api', label: 'Acesso externo (API)' },
+  { slug: 'equipa', label: 'Equipa' },
   { slug: 'conta', label: 'Conta' },
 ] as const;
 
 export function SettingsNav() {
   const pathname = usePathname();
+  const role = useRole();
+  // Prospetor: só a assinatura e a conta. A Equipa é do dono e dos administradores.
+  const sections = SETTINGS_SECTIONS.filter((s) =>
+    role === 'prospector' ? PROSPECTOR_SETTINGS.has(s.slug) : s.slug !== 'equipa' || role === 'owner' || role === 'admin',
+  );
   return (
     <nav aria-label="Secções das definições" className="-mx-4 border-b border-border px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
       <ul className="-mb-px flex gap-1 overflow-x-auto text-sm whitespace-nowrap [scrollbar-width:none] lg:flex-wrap lg:gap-x-0 [&::-webkit-scrollbar]:hidden">
-        {SETTINGS_SECTIONS.map(({ slug, label }) => {
+        {sections.map(({ slug, label }) => {
           const href = `/definicoes/${slug}`;
           const active = pathname === href;
           return (

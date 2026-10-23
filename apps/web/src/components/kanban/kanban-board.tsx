@@ -122,7 +122,7 @@ function LeadCard({
               {overdue ? ' (em atraso)' : ''}
             </p>
           ) : null}
-          {lead.estimated_value !== null ? (
+          {lead.estimated_value != null ? (
             <p className="mt-1.5 text-xs font-medium tabular">{formatCurrency(lead.estimated_value)}</p>
           ) : null}
         </div>

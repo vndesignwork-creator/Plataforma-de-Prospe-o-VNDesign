@@ -80,6 +80,11 @@ import type {
   LeadGenerationScheduleUpsertInput,
   MailAccount,
   CollaboratorPerson,
+  InviteRole,
+  MemberRole,
+  Team,
+  TeamInvite,
+  TeamStats,
   Pomodoro,
   PomodoroAction,
   PomodoroStats,
@@ -227,7 +232,7 @@ export function useBulkLeadAction() {
 /** Mensagem curta para o resultado de uma ação em leads ("3 leads arquivados."). */
 export function bulkResultMessage({ action, affected }: LeadBulkResult): string {
   const leads = affected === 1 ? '1 lead' : `${affected} leads`;
-  const verb = { archive: 'arquivado', restore: 'reposto', delete: 'apagado' }[action];
+  const verb = { archive: 'arquivado', restore: 'reposto', delete: 'apagado', assign: 'atribuído' }[action];
   return `${leads} ${affected === 1 ? verb : `${verb}s`}.`;
 }
 
@@ -290,8 +295,8 @@ export function useBoard(query: Record<string, string | string[] | undefined>) {
   });
 }
 
-export function useDashboard() {
-  return useQuery({ queryKey: ['dashboard'], queryFn: () => api<{ data: Dashboard }>('/dashboard').then((r) => r.data) });
+export function useDashboard(enabled = true) {
+  return useQuery({ queryKey: ['dashboard'], queryFn: () => api<{ data: Dashboard }>('/dashboard').then((r) => r.data), enabled });
 }
 
 export function useToday() {
@@ -545,6 +550,7 @@ export function useAddGeneratedLeads(runId: string) {
       void qc.invalidateQueries({ queryKey: ['lead-generation'] });
       void qc.invalidateQueries({ queryKey: ['leads'] });
       void qc.invalidateQueries({ queryKey: ['board'] });
+      void qc.invalidateQueries({ queryKey: ['team-stats'] });
     },
   });
 }
@@ -1198,4 +1204,53 @@ export function usePomodoroStats(enabled = true) {
     queryFn: () => api<{ data: PomodoroStats }>('/stats/pomodoros').then((r) => r.data),
     enabled,
   });
+}
+
+// -----------------------------------------------------------------------------
+// Equipa de prospeção
+// -----------------------------------------------------------------------------
+export function useTeam(enabled = true) {
+  return useQuery({ queryKey: ['team'], queryFn: () => api<{ data: Team }>('/team').then((r) => r.data), enabled });
+}
+
+/** Nomes dos membros (para o Responsável). */
+export function useTeamNames(enabled = true) {
+  return useQuery({
+    queryKey: ['team', 'names'],
+    queryFn: () => api<{ data: { user_id: string; name: string; role: MemberRole }[] }>('/team/names').then((r) => r.data),
+    enabled,
+    staleTime: 300_000,
+  });
+}
+
+export function useTeamAction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (
+      input:
+        | { invite: { email: string; name?: string; role: InviteRole; send_email: boolean } }
+        | { revoke: string }
+        | { role: { user_id: string; role: InviteRole } }
+        | { remove: string },
+    ) => {
+      if ('invite' in input) return api<{ data: { invite: TeamInvite; emailed: boolean } }>('/team/invites', { method: 'POST', body: input.invite }).then((r) => r.data);
+      if ('revoke' in input) return api(`/team/invites/${input.revoke}`, { method: 'DELETE' }).then(() => null);
+      if ('role' in input) return api(`/team/members/${input.role.user_id}`, { method: 'PATCH', body: { role: input.role.role } }).then(() => null);
+      return api(`/team/members/${input.remove}`, { method: 'DELETE' }).then(() => null);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['team'] });
+      void qc.invalidateQueries({ queryKey: ['team-stats'] });
+    },
+  });
+}
+
+export function useTeamStats(enabled = true) {
+  return useQuery({ queryKey: ['team-stats'], queryFn: () => api<{ data: TeamStats }>('/stats/team').then((r) => r.data), enabled });
+}
+
+/** O papel de quem está a usar a app (prospetor vê só a parte comercial). */
+export function useRole(): MemberRole | null {
+  const { data } = useMe();
+  return data?.role ?? null;
 }

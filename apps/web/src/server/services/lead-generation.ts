@@ -35,6 +35,7 @@ import { createSupabaseBearerClient } from '../supabase';
 import { applyAudit, runLeadAudit } from './audits';
 import { lookupConflicts } from './imports';
 import { createLead } from './leads';
+import { assertGenerationRoom, generationAllowance } from './team';
 import { listSectors } from './sectors';
 import { getSettings } from './workspace';
 import { loadServiceCatalog } from './service-catalog';
@@ -110,6 +111,12 @@ export async function startLeadGeneration(
   request: LeadGenerationRequest,
   scheduled?: ScheduledRunOptions,
 ): Promise<LeadGenerationRun> {
+  // Equipa de prospeção: limite semanal de leads pelo gerador (a IA é paga pelo dono).
+  const allowance = await generationAllowance(ctx);
+  if (allowance.limit !== null) {
+    assertGenerationRoom(allowance, 1);
+    request = { ...request, max_results: Math.min(request.max_results, allowance.limit - allowance.used) };
+  }
   const settings = await getSettings(ctx);
   const { provider, model } = await resolveAiFeature(ctx, settings.ai.lead_generation, { anthropicModel: leadGenerationModel() });
   if (!AI_PROVIDER_META[provider.kind].webSearch) {
@@ -357,6 +364,12 @@ export async function addLeadGenerationCandidates(
   const candidates = [...run.candidates];
   const result: LeadGenerationAddResult = { created: [], skipped: [], audits: 0 };
   const toAudit: string[] = [];
+  // Equipa de prospeção: não passa do limite semanal.
+  const allowance = await generationAllowance(ctx);
+  if (allowance.limit !== null) {
+    const pending = [...new Set(input.indexes)].filter((i) => candidates[i] && !candidates[i]!.added_lead_id).length;
+    assertGenerationRoom(allowance, pending);
+  }
 
   for (const index of [...new Set(input.indexes)].sort((a, b) => a - b)) {
     const c = candidates[index];

@@ -56,6 +56,7 @@ import {
   useLogActivity,
   useMe,
   useSettings,
+  useTeamNames,
   useUpdateLead,
 } from '@/lib/queries';
 import { cn, displayHost, telUrl, whatsappUrl } from '@/lib/utils';
@@ -154,6 +155,39 @@ function QuickContact({ lead, whatsappMessages }: { lead: Lead; whatsappMessages
   );
 }
 
+/** Quem trata do lead: o dono/administrador escolhe; o prospetor só vê. */
+function AssignedField({ lead, staff, myId }: { lead: Lead; staff: boolean; myId?: string }) {
+  const { data: team } = useTeamNames();
+  const update = useUpdateLead(lead.id);
+  const current = lead.assigned_to ?? null;
+  const name = (id: string) => (id === myId ? 'Tu' : team?.find((m) => m.user_id === id)?.name ?? 'Membro da equipa');
+  if (!staff || !team || team.length < 2) return current ? <span>{name(current)}</span> : dash;
+  return (
+    <Select
+      aria-label="Responsável"
+      value={current ?? ''}
+      disabled={update.isPending || Boolean(lead.anonymized_at)}
+      className="h-8 w-full max-w-60 text-sm"
+      onChange={async (e) => {
+        const value = e.target.value || null;
+        try {
+          await update.mutateAsync({ assigned_to: value });
+          toast.success(value ? `Responsável: ${name(value)}.` : 'Sem responsável.');
+        } catch (err) {
+          toast.error(errorMessage(err));
+        }
+      }}
+    >
+      <option value="">Sem responsável</option>
+      {team.map((m) => (
+        <option key={m.user_id} value={m.user_id}>
+          {m.user_id === myId ? `${m.name} (tu)` : m.name}
+        </option>
+      ))}
+    </Select>
+  );
+}
+
 export function LeadDetail({ id }: { id: string }) {
   const router = useRouter();
   const { data: lead, isLoading, error } = useLead(id);
@@ -167,6 +201,8 @@ export function LeadDetail({ id }: { id: string }) {
   const log = useLogActivity(id);
   const invalidate = useInvalidateLead();
   const [dialog, setDialog] = useState<null | 'delete' | 'anonymize' | 'merge'>(null);
+  // Prospetor: só a parte comercial (sem valores, propostas, pagamentos, projetos nem apagar).
+  const staff = me ? me.role !== 'prospector' : false;
 
   if (isLoading) {
     return (
@@ -342,16 +378,20 @@ export function LeadDetail({ id }: { id: string }) {
                     {lead.archived_at ? <ArchiveRestore className="h-4 w-4" aria-hidden /> : <Archive className="h-4 w-4" aria-hidden />}
                     {lead.archived_at ? 'Repor' : 'Arquivar'}
                   </DropdownItem>
-                  <DropdownItem onSelect={() => setDialog('merge')} disabled={Boolean(lead.anonymized_at)}>
-                    <GitMerge className="h-4 w-4" aria-hidden /> Juntar com outro lead…
-                  </DropdownItem>
-                  <DropdownSeparator />
-                  <DropdownItem onSelect={() => setDialog('anonymize')} disabled={Boolean(lead.anonymized_at)}>
-                    <ShieldOff className="h-4 w-4" aria-hidden /> Anonimizar (RGPD)…
-                  </DropdownItem>
-                  <DropdownItem onSelect={() => setDialog('delete')} danger>
-                    <Trash2 className="h-4 w-4" aria-hidden /> Apagar lead…
-                  </DropdownItem>
+                  {staff ? (
+                    <>
+                      <DropdownItem onSelect={() => setDialog('merge')} disabled={Boolean(lead.anonymized_at)}>
+                        <GitMerge className="h-4 w-4" aria-hidden /> Juntar com outro lead…
+                      </DropdownItem>
+                      <DropdownSeparator />
+                      <DropdownItem onSelect={() => setDialog('anonymize')} disabled={Boolean(lead.anonymized_at)}>
+                        <ShieldOff className="h-4 w-4" aria-hidden /> Anonimizar (RGPD)…
+                      </DropdownItem>
+                      <DropdownItem onSelect={() => setDialog('delete')} danger>
+                        <Trash2 className="h-4 w-4" aria-hidden /> Apagar lead…
+                      </DropdownItem>
+                    </>
+                  ) : null}
                 </DropdownContent>
               </DropdownRoot>
             </div>
@@ -406,7 +446,7 @@ export function LeadDetail({ id }: { id: string }) {
               title="Pipeline"
               actions={
                 <>
-                  {lead.status === 'cliente' && settings?.features.projects && !lead.anonymized_at ? <ProjectToggle lead={lead} /> : null}
+                  {staff && lead.status === 'cliente' && settings?.features.projects && !lead.anonymized_at ? <ProjectToggle lead={lead} /> : null}
                   {(lead.next_action_on || lead.next_action_text) && !lead.anonymized_at ? (
                     <>
                       <FollowUpEmailButton lead={lead} />
@@ -442,7 +482,10 @@ export function LeadDetail({ id }: { id: string }) {
                   dash
                 )}
               </Row>
-              <Row label="Valor estimado">{formatCurrency(lead.estimated_value) || dash}</Row>
+              <Row label="Responsável">
+                <AssignedField lead={lead} staff={staff} myId={me?.user.id} />
+              </Row>
+              {staff ? <Row label="Valor estimado">{formatCurrency(lead.estimated_value) || dash}</Row> : null}
               <Row label="Canal">
                 <ChannelLabel channel={lead.channel} />
               </Row>
@@ -581,14 +624,14 @@ export function LeadDetail({ id }: { id: string }) {
         {/* Coluna lateral (computador): o que se consulta durante uma chamada — notas, propostas e atividade. */}
         <aside aria-label="Tarefas, notas, propostas e atividade" className="flex flex-col gap-5">
           {!lead.anonymized_at ? <TasksCard lead={lead} /> : null}
-          {lead.status === 'cliente' && settings?.features.projects && !lead.anonymized_at ? <ProjectCard lead={lead} /> : null}
-          {settings?.features.projects ? <ClientProjectsCard lead={lead} /> : null}
-          {settings?.features.brand_kit && (lead.status === 'cliente' || lead.client_of) && !lead.anonymized_at ? <BrandKitCard lead={lead} /> : null}
+          {staff && lead.status === 'cliente' && settings?.features.projects && !lead.anonymized_at ? <ProjectCard lead={lead} /> : null}
+          {staff && settings?.features.projects ? <ClientProjectsCard lead={lead} /> : null}
+          {staff && settings?.features.brand_kit && (lead.status === 'cliente' || lead.client_of) && !lead.anonymized_at ? <BrandKitCard lead={lead} /> : null}
           {settings?.features.meetings ? <MeetingsCard lead={lead} /> : null}
-          {settings?.features.payments ? <PaymentsCard lead={lead} /> : null}
+          {staff && settings?.features.payments ? <PaymentsCard lead={lead} /> : null}
           <NotesCard lead={lead} />
-          <ProposalsCard lead={lead} />
-          {settings?.features.contracts ? <ContractsCard lead={lead} /> : null}
+          {staff ? <ProposalsCard lead={lead} /> : null}
+          {staff && settings?.features.contracts ? <ContractsCard lead={lead} /> : null}
           <div id="atividade" className="scroll-mt-20">
             <ActivityTimeline leadId={lead.id} currentUserId={me?.user.id} fitTo={mainColumn} />
           </div>

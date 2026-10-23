@@ -196,6 +196,7 @@ export const LEAD_FIELD_LABELS = {
   number: '#',
   company_name: 'Empresa',
   project_title: 'Projeto',
+  assigned_to: 'Responsável',
   sector_id: 'Setor',
   website: 'Website',
   city: 'Cidade',

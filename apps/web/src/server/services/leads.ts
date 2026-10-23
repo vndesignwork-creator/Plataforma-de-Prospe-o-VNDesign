@@ -30,7 +30,7 @@ export const LEAD_SELECT = [
   'email', 'phone', 'contact_name', 'status', 'channel', 'first_contact_on', 'last_follow_up_on',
   'next_action_text', 'next_action_on', 'estimated_value', 'notes', 'approach_angle', 'source_url',
   'suggested_on', 'email_subject', 'email_body', 'services', 'kanban_position', 'status_changed_at',
-  'anonymized_at', 'archived_at', 'score', 'score_reasons', 'follow_up_count', 'project_completed_at', 'client_of', 'project_title', 'created_by', 'created_at', 'updated_at',
+  'anonymized_at', 'archived_at', 'score', 'score_reasons', 'follow_up_count', 'project_completed_at', 'client_of', 'project_title', 'assigned_to', 'created_by', 'created_at', 'updated_at',
 ].join(', ');
 
 const NOT_FOUND = 'Lead não encontrado';
@@ -55,7 +55,10 @@ export type LeadFilters = Partial<
     LeadListQuery,
     'q' | 'sector' | 'status' | 'channel' | 'city' | 'suggested_from' | 'suggested_to' | 'due' | 'include_anonymized' | 'archived' | 'service'
   >
->;
+> & {
+  /** Responsável já resolvido ("me" → o id de quem pede). */
+  assigned?: string;
+};
 
 function applyLeadFilters(q: LeadQueryBuilder, query: LeadFilters): LeadQueryBuilder {
   if (query.include_anonymized !== 'true') q = q.is('anonymized_at', null);
@@ -94,6 +97,8 @@ function applyLeadFilters(q: LeadQueryBuilder, query: LeadFilters): LeadQueryBui
     q = q.or(parts.join(','));
   }
   if (query.city) q = q.ilike('city', `%${likeEscape(query.city)}%`);
+  if (query.assigned === 'none') q = q.is('assigned_to', null);
+  else if (query.assigned) q = q.eq('assigned_to', query.assigned);
   if (query.suggested_from) q = q.gte('suggested_on', query.suggested_from);
   if (query.suggested_to) q = q.lte('suggested_on', query.suggested_to);
   if (query.due) {
@@ -109,8 +114,21 @@ function applyLeadFilters(q: LeadQueryBuilder, query: LeadFilters): LeadQueryBui
 /** Os mesmos filtros aplicados a uma consulta com outras colunas (ex.: mapa). */
 export const applyLeadFiltersTo = applyLeadFilters as unknown as <Q>(q: Q, query: LeadFilters) => Q;
 
+/** "me" no filtro do responsável → o id de quem pede. */
+export function resolveAssigned<T extends { assigned?: string }>(ctx: ApiContext, query: T): T {
+  return query.assigned === 'me' ? { ...query, assigned: ctx.user.id } : query;
+}
+
+/** O responsável tem de ser membro do workspace. */
+export async function assertTeamMember(ctx: ApiContext, userId: string | null | undefined): Promise<void> {
+  if (!userId) return;
+  const { data, error } = await ctx.supabase.from('workspace_members').select('user_id').eq('workspace_id', ctx.workspaceId).eq('user_id', userId).maybeSingle();
+  if (error) throw fromPostgrest(error);
+  if (!data) throw new ApiError(422, 'Responsável inválido', 'Escolhe alguém da equipa.', { errors: { assigned_to: ['Escolhe alguém da equipa.'] } });
+}
+
 export async function listLeads(ctx: ApiContext, query: LeadListQuery) {
-  let q = applyLeadFilters(baseLeadQuery(ctx), query);
+  let q = applyLeadFilters(baseLeadQuery(ctx), resolveAssigned(ctx, query));
 
   const ascending = query.order === 'asc';
   q = q.order(query.sort, { ascending, nullsFirst: false });
@@ -199,6 +217,9 @@ export async function createLead(
     );
   }
 
+  // O prospetor fica responsável pelos leads que cria (e não lhes põe valor).
+  if (ctx.role === 'prospector') input = { ...input, assigned_to: ctx.user.id, estimated_value: null };
+  else await assertTeamMember(ctx, input.assigned_to);
   const result = await ctx.supabase
     .from('leads')
     .insert({ ...input, workspace_id: ctx.workspaceId, created_by: ctx.user.id })
@@ -208,6 +229,10 @@ export async function createLead(
 }
 
 export async function updateLead(ctx: ApiContext, id: string, patch: LeadUpdate): Promise<Lead> {
+  if (ctx.role === 'prospector') {
+    // O prospetor não muda o responsável nem o valor.
+    patch = Object.fromEntries(Object.entries(patch).filter(([k]) => k !== 'assigned_to' && k !== 'estimated_value')) as LeadUpdate;
+  } else if (patch.assigned_to !== undefined) await assertTeamMember(ctx, patch.assigned_to);
   if (Object.keys(patch).length === 0) return getLead(ctx, id);
   if (isDirectoryUrl(patch.website)) {
     const current = await getLead(ctx, id);
@@ -289,11 +314,17 @@ export async function mergeLeads(
  * Arquivar, repor ou apagar vários leads de uma vez. Só conta os que mudaram
  * (um lead já arquivado não volta a ser arquivado nem regista atividade).
  */
-export async function bulkLeadAction(ctx: ApiContext, action: LeadBulkAction, ids: string[]): Promise<LeadBulkResult> {
+export async function bulkLeadAction(ctx: ApiContext, action: LeadBulkAction, ids: string[], assignedTo: string | null = null): Promise<LeadBulkResult> {
   const unique = [...new Set(ids)];
   const base = () => ctx.supabase.from('leads');
+  if (ctx.role === 'prospector' && (action === 'delete' || action === 'assign')) {
+    throw new ApiError(403, 'Sem acesso', 'Só o dono ou um administrador pode apagar leads ou mudar o responsável.');
+  }
   let result;
-  if (action === 'delete') {
+  if (action === 'assign') {
+    await assertTeamMember(ctx, assignedTo);
+    result = await base().update({ assigned_to: assignedTo }).eq('workspace_id', ctx.workspaceId).in('id', unique).select('id');
+  } else if (action === 'delete') {
     result = await base().delete().eq('workspace_id', ctx.workspaceId).in('id', unique).select('id');
   } else if (action === 'archive') {
     result = await base()
@@ -330,7 +361,7 @@ export async function listAllLeads(
   const all: Lead[] = [];
   const pageSize = 1000;
   for (let from = 0; from < 50_000; from += pageSize) {
-    const { data, error } = await applyLeadFilters(baseLeadQuery(ctx), filters)
+    const { data, error } = await applyLeadFilters(baseLeadQuery(ctx), resolveAssigned(ctx, filters))
       .order(order.sort, { ascending: order.ascending, nullsFirst: false })
       .order('id')
       .range(from, from + pageSize - 1);

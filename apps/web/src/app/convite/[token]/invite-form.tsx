@@ -16,13 +16,20 @@ export function InviteForm({
   name: initialName,
   accepted,
   sessionEmail,
+  kind = 'collab',
 }: {
   token: string;
   email: string;
   name: string | null;
   accepted: boolean;
   sessionEmail: string | null;
+  /** collab = colaborador de projeto; team = equipa de prospeção (/equipa/<código>). */
+  kind?: 'collab' | 'team';
 }) {
+  const urls =
+    kind === 'team'
+      ? { claim: `/api/v1/team-invites/${token}/claim`, accept: `/api/v1/public/team-invites/${token}/accept`, next: '/dashboard' }
+      : { claim: `/api/v1/collab/invites/${token}/claim`, accept: `/api/v1/public/invites/${token}/accept`, next: '/colaborador' };
   const router = useRouter();
   const [mode, setMode] = useState<Mode>(accepted ? 'login' : 'create');
   const [name, setName] = useState(initialName ?? '');
@@ -32,12 +39,12 @@ export function InviteForm({
   const sameAccount = sessionEmail?.toLowerCase() === email;
 
   async function claim() {
-    const res = await fetch(`/api/v1/collab/invites/${token}/claim`, { method: 'POST' });
+    const res = await fetch(urls.claim, { method: 'POST' });
     if (!res.ok) {
       const problem = (await res.json().catch(() => null)) as { detail?: string; title?: string } | null;
       throw new Error(problem?.detail ?? problem?.title ?? 'Não foi possível aceitar o convite.');
     }
-    router.replace('/colaborador');
+    router.replace(urls.next);
     router.refresh();
   }
 
@@ -56,7 +63,7 @@ export function InviteForm({
         return;
       }
       if (mode === 'create') {
-        const res = await fetch(`/api/v1/public/invites/${token}/accept`, {
+        const res = await fetch(urls.accept, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ name, password }),
@@ -70,7 +77,7 @@ export function InviteForm({
           throw new Error(problem?.detail ?? problem?.title ?? 'Não foi possível aceitar o convite.');
         }
         await signIn();
-        router.replace('/colaborador');
+        router.replace(urls.next);
         router.refresh();
         return;
       }

@@ -7,6 +7,7 @@ import { MAIL_PROVIDER_PRESETS, type MailAccount, type MailAccountUpsert } from 
 import { openSecret, sealSecret } from '../ai/secret-box';
 import { isPrivateAddress } from '../audit/safe-request';
 import type { ApiContext } from '../context';
+import { createSupabaseAdminClient } from '../supabase-admin';
 import { ApiError, fromPostgrest } from '../http';
 import { sendWithAccount, type SmtpAccount } from '../mailer';
 
@@ -44,9 +45,18 @@ const LEGACY_DEFAULTS = {
   imap_last_uid: null,
 };
 
+/** O prospetor envia pela conta do dono do workspace (os clientes veem o email da empresa). */
+async function accountOwner(ctx: ApiContext): Promise<string | null> {
+  if (ctx.role !== 'prospector') return null;
+  const { data } = await createSupabaseAdminClient().from('workspace_members').select('user_id').eq('workspace_id', ctx.workspaceId).eq('role', 'owner').limit(1).maybeSingle();
+  return (data as { user_id: string } | null)?.user_id ?? null;
+}
+
 async function getRow(ctx: ApiContext): Promise<Row | null> {
+  const owner = await accountOwner(ctx);
+  const client = owner ? createSupabaseAdminClient() : ctx.supabase;
   const query = (select: string) =>
-    ctx.supabase.from('mail_accounts').select(select).eq('workspace_id', ctx.workspaceId).eq('user_id', ctx.user.id).maybeSingle();
+    client.from('mail_accounts').select(select).eq('workspace_id', ctx.workspaceId).eq('user_id', owner ?? ctx.user.id).maybeSingle();
   let { data, error } = await query(SELECT);
   let legacy = false;
   if (error?.code === '42703') {
@@ -62,11 +72,14 @@ async function getRow(ctx: ApiContext): Promise<Row | null> {
 
 /** Emails enviados pela plataforma nas últimas 24 horas (limite diário). */
 export async function sentLast24h(ctx: ApiContext): Promise<number> {
-  const { count, error } = await ctx.supabase
+  // Com a conta do dono partilhada pela equipa, o limite diário conta os emails de todos.
+  const shared = ctx.role === 'prospector';
+  let query = ctx.supabase
     .from('lead_activities')
     .select('id', { count: 'exact', head: true })
-    .eq('workspace_id', ctx.workspaceId)
-    .eq('actor_user_id', ctx.user.id)
+    .eq('workspace_id', ctx.workspaceId);
+  if (!shared) query = query.eq('actor_user_id', ctx.user.id);
+  const { count, error } = await query
     .eq('type', 'email_sent')
     .eq('payload->>via', 'platform')
     .gte('created_at', new Date(Date.now() - 24 * 3600_000).toISOString());

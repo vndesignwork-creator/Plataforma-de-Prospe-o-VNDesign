@@ -47,13 +47,17 @@ async function doneToday(ctx: ApiContext): Promise<number> {
 
 export async function getProspectingQueue(ctx: ApiContext, filter: ProspectingFilter = 'all'): Promise<ProspectingQueue> {
   const today = todayIso();
-  const base = () =>
-    ctx.supabase
+  // A equipa de prospeção trabalha só os leads de que é responsável.
+  const mine = ctx.role === 'prospector';
+  const base = () => {
+    const q = ctx.supabase
       .from('leads')
       .select(LEAD_SELECT)
       .eq('workspace_id', ctx.workspaceId)
       .is('archived_at', null)
       .is('anonymized_at', null);
+    return mine ? q.eq('assigned_to', ctx.user.id) : q;
+  };
   const want = (k: ProspectingItem['kind']) => filter === 'all' || filter === k;
 
   const [opened, followUps, fresh, done] = await Promise.all([

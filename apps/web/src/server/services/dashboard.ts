@@ -86,5 +86,23 @@ export async function getToday(ctx: ApiContext): Promise<Today> {
     fetchTodayMeetings(ctx.supabase, ctx.workspaceId),
     fetchRecentlyOpened(ctx.supabase, ctx.workspaceId),
   ]);
-  return { ...today, hot, meetings, opened };
+  if (ctx.role !== 'prospector') return { ...today, hot, meetings, opened };
+  // Equipa de prospeção: só os leads de que é responsável.
+  const { data: own, error } = await ctx.supabase.from('leads').select('id').eq('workspace_id', ctx.workspaceId).eq('assigned_to', ctx.user.id).limit(10_000);
+  if (error) throw fromPostgrest(error);
+  const mine = new Set(((own ?? []) as { id: string }[]).map((l) => l.id));
+  const byLead = <T extends { id: string }>(list: T[]) => list.filter((l) => mine.has(l.id));
+  const byRef = <T extends { lead: { id: string } }>(list: T[]) => list.filter((x) => mine.has(x.lead.id));
+  return {
+    ...today,
+    overdue: byLead(today.overdue),
+    due_today: byLead(today.due_today),
+    upcoming: byLead(today.upcoming),
+    tasks: today.tasks
+      ? { ...today.tasks, overdue: byRef(today.tasks.overdue), due_today: byRef(today.tasks.due_today), upcoming: byRef(today.tasks.upcoming) }
+      : today.tasks,
+    hot: byLead(hot),
+    meetings: byRef(meetings),
+    opened: byRef(opened),
+  };
 }

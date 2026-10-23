@@ -9,7 +9,7 @@ import { authCookieOptions } from '@/lib/env';
 import { needsMfaCode } from '@/lib/mfa';
 import { publicUrl } from '@/lib/public-url';
 
-const PUBLIC_PATHS = ['/login', '/auth/', '/api/', '/docs/', '/offline', '/a-atualizar', '/p/', '/c/', '/b/', '/convite/'];
+const PUBLIC_PATHS = ['/login', '/auth/', '/api/', '/docs/', '/offline', '/a-atualizar', '/p/', '/c/', '/b/', '/convite/', '/equipa/'];
 /** Páginas dos clientes e convites: abrem mesmo com a sessão a meio da verificação. */
 const NO_MFA_PATHS = ['/auth/', '/api/', '/docs/', '/offline', '/a-atualizar', '/p/', '/c/', '/b/', '/convite/', '/verificar'];
 

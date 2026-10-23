@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { ServiceChips } from '@/components/services/services';
 import { errorMessage } from '@/lib/api-client';
-import { useAddGeneratedLeads, useLeadGenerationRun, useLeadGenerationRuns, useStartLeadGeneration } from '@/lib/queries';
+import { useAddGeneratedLeads, useLeadGenerationRun, useLeadGenerationRuns, useRole, useStartLeadGeneration, useTeamStats } from '@/lib/queries';
 import { cn, displayHost } from '@/lib/utils';
 import { ScheduleDialog, SchedulesCard } from './schedules';
 import { EMPTY_DRAFT, SearchFields, draftToRequest, type SearchDraft } from './search-fields';
@@ -26,7 +26,7 @@ const usd = (value: number | null) =>
 const dateTime = (iso: string) =>
   new Date(iso).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
-function SearchForm({ onStarted, busy }: { onStarted: (run: LeadGenerationRun) => void; busy: boolean }) {
+function SearchForm({ onStarted, busy, prospector }: { onStarted: (run: LeadGenerationRun) => void; busy: boolean; prospector: boolean }) {
   const start = useStartLeadGeneration();
   const [draft, setDraft] = useState<SearchDraft>(EMPTY_DRAFT);
   const [error, setError] = useState<string | undefined>();
@@ -63,10 +63,13 @@ function SearchForm({ onStarted, busy }: { onStarted: (run: LeadGenerationRun) =
           Usa créditos do fornecedor de IA: cerca de 0,20 $ a 1,50 $ por pesquisa (o custo real aparece no fim).
         </p>
         <div className="flex flex-wrap items-center justify-end gap-3 md:col-span-2">
-          <Button type="button" variant="outline" onClick={() => valid() && setScheduling(true)}>
-            <Repeat className="h-4 w-4" aria-hidden />
-            Repetir todas as semanas
-          </Button>
+          {/* As pesquisas automáticas são do dono (o prospetor tem um limite semanal). */}
+          {prospector ? null : (
+            <Button type="button" variant="outline" onClick={() => valid() && setScheduling(true)}>
+              <Repeat className="h-4 w-4" aria-hidden />
+              Repetir todas as semanas
+            </Button>
+          )}
           <Button type="submit" loading={start.isPending} disabled={busy}>
             <Sparkles className="h-4 w-4" aria-hidden />
             Procurar com IA
@@ -287,6 +290,21 @@ function RunCard({ id, label, defaultOpen }: { id: string; label: string; defaul
   );
 }
 
+/** Prospetor: quantos leads ainda pode juntar pelo gerador esta semana. */
+function Allowance() {
+  const { data } = useTeamStats();
+  const me = data?.members[0];
+  if (!me || me.generation_limit === null) return null;
+  const room = Math.max(0, me.generation_limit - me.generation_used);
+  return (
+    <p role="status" className={cn('rounded-lg px-3 py-2 text-sm', room ? 'bg-surface-2' : 'bg-danger-soft text-danger')}>
+      {room
+        ? `Esta semana podes juntar mais ${room} lead${room === 1 ? '' : 's'} pelo gerador (${me.generation_used} de ${me.generation_limit}).`
+        : `Chegaste ao limite desta semana (${me.generation_limit} leads). O limite renova-se ao longo dos próximos dias.`}
+    </p>
+  );
+}
+
 export function LeadGenerator({ initialRunId }: { initialRunId?: string | null }) {
   const { data: runs, isLoading } = useLeadGenerationRuns();
   // ?pesquisa=… (link da notificação/email da pesquisa automática) abre essa pesquisa.
@@ -300,17 +318,21 @@ export function LeadGenerator({ initialRunId }: { initialRunId?: string | null }
     setOpenCount((n) => n + 1);
   };
   const running = runs?.some((r) => r.status === 'running');
+  const prospector = useRole() === 'prospector';
 
   return (
     <div className="flex flex-col gap-5">
-      <SearchForm onStarted={(run) => openRun(run.id)} busy={!!running} />
-      <SchedulesCard
-        onOpenRun={(id) => {
-          openRun(id);
-          // O resultado fica logo abaixo deste cartão.
-          requestAnimationFrame(() => document.getElementById('pesquisa-atual')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-        }}
-      />
+      {prospector ? <Allowance /> : null}
+      <SearchForm onStarted={(run) => openRun(run.id)} busy={!!running} prospector={prospector} />
+      {prospector ? null : (
+        <SchedulesCard
+          onOpenRun={(id) => {
+            openRun(id);
+            // O resultado fica logo abaixo deste cartão.
+            requestAnimationFrame(() => document.getElementById('pesquisa-atual')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+          }}
+        />
+      )}
       <div id="pesquisa-atual" className="scroll-mt-20">
         {isLoading ? (
           <Skeleton className="h-40" />
