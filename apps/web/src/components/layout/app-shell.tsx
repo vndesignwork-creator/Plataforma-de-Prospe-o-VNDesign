@@ -196,7 +196,7 @@ export function AppShell({ email, children }: { email: string | null; children: 
       <main id="conteudo" className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
         {blocked ? null : children}
       </main>
-      <QuickSearch open={searching} onOpenChange={setSearching} pages={pages} tasks={role !== 'prospector'} />
+      <QuickSearch open={searching} onOpenChange={setSearching} pages={pages} tasks={role !== 'prospector'} prospector={role === 'prospector'} />
       <FollowUpNotifier />
       <ReminderWatcher />
       <UpdateWatcher />

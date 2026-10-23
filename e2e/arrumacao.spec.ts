@@ -139,4 +139,25 @@ test('pesquisa rápida (Ctrl+K): leads, tarefas e páginas', async ({ page }) =>
   await expect(page.getByRole('option', { name: 'Estatísticas' })).toHaveAttribute('aria-selected', 'true');
   await box.press('Enter');
   await expect(page).toHaveURL(/\/estatisticas$/);
+
+  // Secções das Definições (também por outras palavras).
+  await page.keyboard.press('Control+k');
+  await box.fill('Setores');
+  await page.getByRole('option', { name: 'Definições → Setores' }).click();
+  await expect(page).toHaveURL(/\/definicoes\/setores$/);
+  await page.keyboard.press('Control+k');
+  await box.fill('palavra-passe');
+  await expect(page.getByRole('option', { name: 'Definições → Conta' })).toBeVisible();
+
+  // Estado, setor e serviço: a lista de leads filtrada.
+  await box.fill('Respondeu');
+  await page.getByRole('option', { name: 'Leads em “Respondeu”' }).click();
+  await expect(page).toHaveURL(/\/leads\?status=respondeu$/);
+  const sector = ((await (await page.request.get('/api/v1/sectors')).json()).data as { id: string; name: string }[])[0];
+  if (sector) {
+    await page.keyboard.press('Control+k');
+    await box.fill(sector.name);
+    await page.getByRole('option', { name: `Leads do setor “${sector.name}”` }).click();
+    await expect(page).toHaveURL(new RegExp(`/leads\\?sector=${sector.id}$`));
+  }
 });

@@ -96,7 +96,7 @@ npm run dev        # http://localhost:3000
 
 ## Pesquisa rápida (Ctrl+K)
 
-Em qualquer página, **Ctrl+K** (⌘K no Mac), o botão **Pesquisar…** na barra lateral ou a lupa 🔍 no telemóvel abrem uma caixa para escrever o nome de um **lead ou projeto**, uma **tarefa** ou uma **página** (Leads, Projetos, Definições…). Setas ↑↓ e **Enter** (ou tocar) para saltar: os clientes abrem no Projeto, as tarefas na lista de tarefas da ficha. API: `GET /api/v1/tasks?q=` (pelo menos 2 letras).
+Em qualquer página, **Ctrl+K** (⌘K no Mac), o botão **Pesquisar…** na barra lateral ou a lupa 🔍 no telemóvel abrem uma caixa para escrever o nome de um **lead ou projeto**, uma **tarefa**, uma **página** (incluindo as secções das Definições, ex.: "Setores", e outras palavras como "palavra-passe" → Conta) ou um **estado, setor ou serviço** ("Respondeu", "Restauração", "Loja online" → a lista de leads já filtrada). Setas ↑↓ e **Enter** (ou tocar) para saltar: os clientes abrem no Projeto, as tarefas na lista de tarefas da ficha. API: `GET /api/v1/tasks?q=` (pelo menos 2 letras).
 
 ## Importar a folha atual
 

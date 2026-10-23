@@ -2,20 +2,51 @@
 
 /**
  * Pesquisa rápida (Ctrl+K ou ⌘K, ou a lupa no menu): escrever o nome de um
- * lead, projeto, tarefa ou página e saltar logo para lá (setas + Enter).
+ * lead, projeto, tarefa, página (também as secções das Definições) ou de um
+ * estado, setor ou serviço (abre a lista de leads já filtrada) e saltar logo
+ * para lá (setas + Enter).
  */
 import * as RadixDialog from '@radix-ui/react-dialog';
 import { useQuery } from '@tanstack/react-query';
-import { LEAD_STATUS_META, leadPath, type Lead, type TaskSearchResult } from '@vndesign/core';
-import { BriefcaseBusiness, CheckSquare, CornerDownLeft, Loader2, Search, Square, User, type LucideIcon } from 'lucide-react';
+import { LEAD_STATUSES, LEAD_STATUS_META, leadPath, type Lead, type TaskSearchResult } from '@vndesign/core';
+import { BriefcaseBusiness, CheckSquare, CircleDot, CornerDownLeft, Filter, Layers, Loader2, Map as MapIcon, Search, Settings, Square, Upload, User, type LucideIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useState } from 'react';
+import { SETTINGS_SECTIONS } from '@/components/settings/settings-nav';
+import { useServiceCatalog } from '@/components/services/services';
 import { api } from '@/lib/api-client';
+import { useSectors } from '@/lib/queries';
+import { PROSPECTOR_SETTINGS } from '@/lib/role-access';
 import { cn } from '@/lib/utils';
 
 export type QuickPage = { href: string; label: string; icon: LucideIcon };
 
-type Item = { key: string; group: 'Páginas' | 'Leads e projetos' | 'Tarefas'; label: string; hint?: string; href: string; icon: LucideIcon; done?: boolean };
+type Group = 'Páginas' | 'Filtrar leads' | 'Leads e projetos' | 'Tarefas';
+type Item = { key: string; group: Group; label: string; hint?: string; href: string; icon: LucideIcon; done?: boolean };
+
+/** Outras palavras com que se procura cada secção das Definições. */
+const SETTINGS_KEYWORDS: Partial<Record<(typeof SETTINGS_SECTIONS)[number]['slug'], string>> = {
+  assinatura: 'nome email telefone rodapé',
+  email: 'smtp gmail enviar conta de email imap respostas',
+  lembretes: 'follow-up notificações resumo diário sequência multicanal',
+  funcionalidades: 'ligar desligar módulos pomodoro pagamentos',
+  servicos: 'serviços categorias componentes catálogo pacotes',
+  propostas: 'pacotes preços pdf orçamento',
+  ia: 'ia claude chatgpt openai openrouter chave api',
+  'listas-tarefas': 'modelos tarefas checklist',
+  setores: 'sectores oportunidades argumentos',
+  'nao-contactar': 'rgpd bloquear lista negra opt-out',
+  formulario: 'site bricks webhook contacto',
+  api: 'token integração acesso externo',
+  conta: 'palavra-passe password 2fa sessões segurança apagar',
+};
+
+/** Páginas que não estão no menu principal. */
+const EXTRA_PAGES: { href: string; label: string; icon: LucideIcon; keywords: string }[] = [
+  { href: '/mapa', label: 'Mapa dos leads', icon: MapIcon, keywords: 'mapa localização' },
+  { href: '/importar', label: 'Importar leads (Excel/CSV)', icon: Upload, keywords: 'importar excel csv folha' },
+  { href: '/equipa?ver=atividade', label: 'Equipa → Atividade', icon: Layers, keywords: 'quem fez o quê histórico atividade' },
+];
 
 const normalize = (s: string) =>
   s
@@ -43,7 +74,19 @@ export function shortcutLabel(): string {
   return /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? '⌘K' : 'Ctrl K';
 }
 
-export function QuickSearch({ open, onOpenChange, pages, tasks }: { open: boolean; onOpenChange: (open: boolean) => void; pages: QuickPage[]; tasks: boolean }) {
+export function QuickSearch({
+  open,
+  onOpenChange,
+  pages,
+  tasks,
+  prospector,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  pages: QuickPage[];
+  tasks: boolean;
+  prospector: boolean;
+}) {
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
@@ -54,14 +97,14 @@ export function QuickSearch({ open, onOpenChange, pages, tasks }: { open: boolea
         >
           <RadixDialog.Title className="sr-only">Pesquisa rápida</RadixDialog.Title>
           {/* Montado só aberto: cada vez que abre começa vazio. */}
-          <SearchBody pages={pages} tasks={tasks} onClose={() => onOpenChange(false)} />
+          <SearchBody pages={pages} tasks={tasks} prospector={prospector} onClose={() => onOpenChange(false)} />
         </RadixDialog.Content>
       </RadixDialog.Portal>
     </RadixDialog.Root>
   );
 }
 
-function SearchBody({ pages, tasks, onClose }: { pages: QuickPage[]; tasks: boolean; onClose: () => void }) {
+function SearchBody({ pages, tasks, prospector, onClose }: { pages: QuickPage[]; tasks: boolean; prospector: boolean; onClose: () => void }) {
   const router = useRouter();
   const listId = useId();
   const [text, setText] = useState('');
@@ -88,12 +131,50 @@ function SearchBody({ pages, tasks, onClose }: { pages: QuickPage[]; tasks: bool
     staleTime: 30_000,
   });
 
+  const { data: sectors } = useSectors();
+  const catalog = useServiceCatalog();
+
   const q = normalize(text.trim());
+  const matches = (...texts: (string | undefined)[]) => texts.some((t) => t && normalize(t).includes(q));
+  // Secções das Definições e outras páginas (só ao escrever).
+  const morePages: Item[] = q
+    ? [
+        ...SETTINGS_SECTIONS.filter((sec) => !prospector || PROSPECTOR_SETTINGS.has(sec.slug))
+          .filter((sec) => matches(sec.label, SETTINGS_KEYWORDS[sec.slug]))
+          .map((sec) => ({ key: `s:${sec.slug}`, group: 'Páginas' as const, label: `Definições → ${sec.label}`, href: `/definicoes/${sec.slug}`, icon: Settings })),
+        ...(prospector ? [] : EXTRA_PAGES)
+          .filter((p) => matches(p.label, p.keywords))
+          .map((p) => ({ key: `x:${p.href}`, group: 'Páginas' as const, label: p.label, href: p.href, icon: p.icon })),
+      ]
+    : [];
+  // Estado, setor ou serviço: a lista de leads já filtrada.
+  const filters: Item[] = q.length >= 2
+    ? [
+        ...LEAD_STATUSES.filter((st) => matches(LEAD_STATUS_META[st].label)).map((st) => ({
+          key: `fs:${st}`,
+          group: 'Filtrar leads' as const,
+          label: `Leads em “${LEAD_STATUS_META[st].label}”`,
+          hint: 'Estado',
+          href: `/leads?status=${st}`,
+          icon: CircleDot,
+        })),
+        ...(sectors ?? [])
+          .filter((sec) => matches(sec.name))
+          .slice(0, 4)
+          .map((sec) => ({ key: `fc:${sec.id}`, group: 'Filtrar leads' as const, label: `Leads do setor “${sec.name}”`, hint: 'Setor', href: `/leads?sector=${sec.id}`, icon: Filter })),
+        ...catalog.active
+          .filter((sv) => matches(sv.label))
+          .slice(0, 4)
+          .map((sv) => ({ key: `fv:${sv.key}`, group: 'Filtrar leads' as const, label: `Leads interessados em “${sv.label}”`, hint: 'Serviço', href: `/leads?servico=${sv.key}`, icon: Filter })),
+      ]
+    : [];
   const items: Item[] = [
     ...pages
       .filter((p) => !q || normalize(p.label).includes(q))
       .slice(0, q ? 4 : pages.length)
       .map((p) => ({ key: `p:${p.href}`, group: 'Páginas' as const, label: p.label, href: p.href, icon: p.icon })),
+    ...morePages.slice(0, 5),
+    ...filters,
     ...(searching
       ? (leads.data ?? []).map((l) => ({
           key: `l:${l.id}`,
