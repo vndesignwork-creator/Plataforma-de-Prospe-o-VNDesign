@@ -486,7 +486,7 @@ Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**
 - Enquanto decorre, aparece no menu (a fase e o tempo que falta, também no telemóvel).
 - No fim de cada fase, com a app aberta: **som de aviso** (um só toque; 6 à escolha em Definições: Sino, Taça tibetana, Madeira, Digital, Gota, Marimba — toca ao escolher), vibração, notificação e mensagem. O browser só deixa tocar som depois de um clique na app (basta um clique qualquer). Em Definições há **Testar som**. Com a app fechada, o pomodoro continua no servidor e o cron dos lembretes (de 5 em 5 minutos) avança a fase, fecha as horas e envia a notificação push.
 - **Começar a pausa automaticamente** (ligado por omissão): desligado, quando o trabalho acaba a pausa fica à espera ("Pausa por começar") até carregares em **Começar pausa** (ou **Saltar pausa**).
-- **Modo foco** (botão "Foco" no bloco): o mostrador em ecrã inteiro, só com a fase, o tempo e a tarefa; o ecrã fica ligado (não se apaga) enquanto estiver aberto; Esc para sair.
+- **Modo foco** (botão "Foco" no bloco): o mostrador em ecrã inteiro, só com a fase, o tempo e a tarefa; o ecrã fica ligado (não se apaga) enquanto estiver aberto; se o telemóvel bloquear, o modo foco continua aberto (botão "Ecrã inteiro" para voltar ao ecrã inteiro); Esc para sair.
 - Os tempos, o som e a pausa automática mudam-se em Definições → Funcionalidades → *Pomodoro*. Em **Estatísticas → Pomodoro**: hoje, últimos 7 dias, por dia e por projeto.
 
 **Vários projetos por cliente**

@@ -301,9 +301,14 @@ export function PomodoroBox({ lead, className }: { lead: Lead; className?: strin
   );
 }
 
+function enterFullscreen(onFail?: () => void) {
+  if (!document.fullscreenElement) void document.documentElement.requestFullscreen?.().catch(() => onFail?.());
+}
+
 /**
  * Modo foco: o mostrador em ecrã inteiro, só com a fase, o tempo e a tarefa.
  * Pede ao browser o ecrã inteiro e que o ecrã não se apague (se deixar); Esc ou "Sair" voltam ao normal.
+ * Se o telemóvel bloquear, o browser sai do ecrã inteiro: o modo foco fica aberto, com "Ecrã inteiro" para voltar.
  */
 export function FocusMode({ onClose }: { onClose: () => void }) {
   const settings = usePomodoroSettings();
@@ -317,15 +322,25 @@ export function FocusMode({ onClose }: { onClose: () => void }) {
     close.current = onClose;
   }, [onClose]);
 
+  // Começa como pedido (sem mostrar "Ecrã inteiro" por um instante); o browser confirma.
+  const [fullscreen, setFullscreen] = useState(true);
+
   useEffect(() => {
-    const el = document.documentElement;
-    if (!document.fullscreenElement) void el.requestFullscreen?.().catch(() => undefined);
+    const html = document.documentElement;
+    enterFullscreen(() => setFullscreen(false));
+    // Sem a barra de deslocamento da página que fica por baixo.
+    const overflow = html.style.overflow;
+    html.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close.current();
     };
-    // Sair do ecrã inteiro (Esc do browser) também fecha o modo foco.
+    // Sair do ecrã inteiro (Esc do browser) também fecha o modo foco; mas não quando
+    // é o telemóvel a sair sozinho (ecrã bloqueado/apagado ou outra app): aí fica aberto.
+    let away = false;
+    let backTimer: ReturnType<typeof setTimeout> | undefined;
     const onFull = () => {
-      if (!document.fullscreenElement) close.current();
+      setFullscreen(!!document.fullscreenElement);
+      if (!document.fullscreenElement && !away && document.visibilityState === 'visible') close.current();
     };
     // Ecrã sempre ligado enquanto o modo foco estiver aberto (o browser larga-o ao mudar de separador).
     let lock: WakeLockSentinel | null = null;
@@ -339,15 +354,24 @@ export function FocusMode({ onClose }: { onClose: () => void }) {
         // Sem autorização (ex.: poupança de bateria): o modo foco continua, sem segurar o ecrã.
       }
     };
+    const onVisibility = () => {
+      clearTimeout(backTimer);
+      if (document.visibilityState === 'hidden') away = true;
+      // O aviso de "saiu do ecrã inteiro" pode chegar logo a seguir a voltar.
+      else backTimer = setTimeout(() => (away = false), 1500);
+      void keepAwake();
+    };
     void keepAwake();
     window.addEventListener('keydown', onKey);
     document.addEventListener('fullscreenchange', onFull);
-    document.addEventListener('visibilitychange', keepAwake);
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
       closed = true;
+      clearTimeout(backTimer);
+      html.style.overflow = overflow;
       window.removeEventListener('keydown', onKey);
       document.removeEventListener('fullscreenchange', onFull);
-      document.removeEventListener('visibilitychange', keepAwake);
+      document.removeEventListener('visibilitychange', onVisibility);
       void lock?.release().catch(() => undefined);
       if (document.fullscreenElement) void document.exitFullscreen?.().catch(() => undefined);
     };
@@ -367,13 +391,24 @@ export function FocusMode({ onClose }: { onClose: () => void }) {
 
   return (
     <div role="dialog" aria-modal="true" aria-label="Modo foco" className="fixed inset-0 z-[70] flex flex-col items-center justify-center gap-8 bg-bg p-6">
-      <button
-        type="button"
-        onClick={onClose}
-        className="absolute top-4 right-4 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted hover:bg-surface-2 hover:text-fg"
-      >
-        <X className="h-4 w-4" aria-hidden /> Sair <span className="text-xs">(Esc)</span>
-      </button>
+      <div className="absolute top-4 right-4 flex items-center gap-1">
+        {!fullscreen && typeof document !== 'undefined' && document.fullscreenEnabled ? (
+          <button
+            type="button"
+            onClick={() => enterFullscreen()}
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted hover:bg-surface-2 hover:text-fg"
+          >
+            <Maximize2 className="h-4 w-4" aria-hidden /> Ecrã inteiro
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted hover:bg-surface-2 hover:text-fg"
+        >
+          <X className="h-4 w-4" aria-hidden /> Sair <span className="text-xs">(Esc)</span>
+        </button>
+      </div>
       <Dial
         fraction={1 - left / total}
         tone={paused || pomodoro.phase === 'ready' ? 'muted' : onBreak ? 'success' : 'accent'}

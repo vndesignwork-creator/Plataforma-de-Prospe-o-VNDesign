@@ -126,6 +126,21 @@ test('pomodoro: modo foco em ecrã inteiro e Esc para sair', async ({ page }) =>
   await page.waitForTimeout(3_500);
   await expect(focus).toBeVisible();
   await expect(focus.getByRole('timer')).not.toHaveText(first!);
+  // Sem a barra de deslocamento da página por baixo.
+  expect(await page.evaluate(() => document.documentElement.style.overflow)).toBe('hidden');
+
+  // Telemóvel bloqueado: o browser sai do ecrã inteiro, mas o modo foco fica aberto.
+  await page.evaluate(async () => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+    document.dispatchEvent(new Event('visibilitychange'));
+    if (document.fullscreenElement) await document.exitFullscreen();
+    await new Promise((r) => setTimeout(r, 300));
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.waitForTimeout(500);
+  await expect(focus).toBeVisible();
+  if (await page.evaluate(() => document.fullscreenEnabled)) await expect(focus.getByRole('button', { name: 'Ecrã inteiro' })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(focus).toHaveCount(0);
   await box.getByRole('button', { name: 'Parar' }).click();
