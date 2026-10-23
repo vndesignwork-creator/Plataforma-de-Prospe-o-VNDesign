@@ -60,6 +60,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, Skeleton } from '@/components/ui/card';
+import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { Select, Textarea } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
 import { useActivities, useEmailTracking, useLogActivity, useTeamNames } from '@/lib/queries';
@@ -316,7 +317,9 @@ export function ActivityTimeline({
   const [expanded, setExpanded] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const listRef = useRef<HTMLOListElement>(null);
-  const fitHeight = useFitHeight(fitTo, listRef, data);
+  const [collapsed, setCollapsed] = useCollapsed('linha-do-tempo');
+  // Ao expandir volta a medir (a lista só existe com o cartão aberto).
+  const fitHeight = useFitHeight(fitTo, listRef, collapsed ? null : data);
   const clipped = !expanded && fitHeight !== null;
   const log = useLogActivity(leadId);
   const qc = useQueryClient();
@@ -358,6 +361,12 @@ export function ActivityTimeline({
       <CardHeader
         title="Linha do tempo"
         as="h2"
+        description={
+          collapsed && all?.length
+            ? `${all.length} registo${all.length === 1 ? '' : 's'} · último: ${ACTIVITY_TYPE_LABELS[all[0]!.type] ?? 'registo'}, ${formatDateTime(all[0]!.created_at)}`
+            : undefined
+        }
+        className={collapsed && !open ? 'border-b-0' : undefined}
         actions={
           open ? null : (
             <>
@@ -371,10 +380,18 @@ export function ActivityTimeline({
                   ))}
                 </Select>
               ) : null}
-              <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setCollapsed(false);
+                  setOpen(true);
+                }}
+              >
                 <Plus className="h-3.5 w-3.5" aria-hidden />
                 Registar
               </Button>
+              <CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label="Linha do tempo" />
             </>
           )
         }
@@ -420,7 +437,7 @@ export function ActivityTimeline({
           </div>
         </form>
       ) : null}
-      {isLoading ? (
+      {collapsed ? null : isLoading ? (
         <div className="flex flex-col gap-3 p-4">
           <Skeleton className="h-10" />
           <Skeleton className="h-10" />

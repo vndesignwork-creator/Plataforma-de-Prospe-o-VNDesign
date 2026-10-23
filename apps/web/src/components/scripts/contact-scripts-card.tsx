@@ -17,13 +17,14 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
+import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { Input, Select, Textarea } from '@/components/ui/input';
 import { useServiceCatalog } from '@/components/services/services';
 import { SendEmailButton } from '@/components/email/send-email-dialog';
 import { errorMessage } from '@/lib/api-client';
 import { useLogActivity, useTemplates, useUpdateLead } from '@/lib/queries';
 import { EMAIL_KINDS, useTemplateContext } from '@/lib/template-context';
-import { whatsappUrl } from '@/lib/utils';
+import { cn, whatsappUrl } from '@/lib/utils';
 
 const VAR_LABEL = Object.fromEntries(TEMPLATE_VARIABLES.map((v) => [v.key, v.label]));
 
@@ -65,6 +66,7 @@ export function ContactScriptsCard({ lead }: { lead: Lead }) {
   const category = leadServiceCategory(lead.services, catalog.all);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ subject: string; body: string } | null>(null);
+  const [collapsed, setCollapsed] = useCollapsed('scripts-de-contacto');
 
   const template = useMemo(() => {
     if (!templates?.length) return undefined;
@@ -154,14 +156,18 @@ export function ContactScriptsCard({ lead }: { lead: Lead }) {
     <Card>
       <CardHeader
         title="Scripts de contacto"
-        description="Modelo preenchido com os dados deste lead — edita à vontade antes de copiar ou enviar."
+        description={collapsed ? `Modelo: ${template.name}` : 'Modelo preenchido com os dados deste lead — edita à vontade antes de copiar ou enviar.'}
         actions={
-          <Link href="/scripts" className="text-sm text-accent-text hover:underline">
-            Gerir modelos
-          </Link>
+          <>
+            <Link href="/scripts" className="text-sm text-accent-text hover:underline">
+              Gerir modelos
+            </Link>
+            <CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label="Scripts de contacto" />
+          </>
         }
+        className={collapsed ? 'border-b-0' : undefined}
       />
-      <div className="flex flex-col gap-3 p-4">
+      <div className={cn('flex flex-col gap-3 p-4', collapsed && 'hidden')}>
         <div className="flex flex-wrap items-center gap-2">
           <label htmlFor="script-template" className="text-sm font-medium">
             Modelo

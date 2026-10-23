@@ -21,6 +21,7 @@ import { useServiceCatalog, useServiceFilterOptions } from '@/components/service
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
+import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { Field } from '@/components/ui/field';
 import { Input, Select, Textarea } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api-client';
@@ -49,6 +50,7 @@ export function AiEmailCard({ lead }: { lead: Lead }) {
   // Serviços a propor: por omissão, os de interesse do lead (vazio = um site).
   const [services, setServices] = useState<string[]>(() => [...(lead.services ?? [])]);
   const [draft, setDraft] = useState<{ subject: string; body: string } | null>(null);
+  const [collapsed, setCollapsed] = useCollapsed('escrever-com-ia');
 
   if (lead.anonymized_at) return null;
 
@@ -109,8 +111,10 @@ export function AiEmailCard({ lead }: { lead: Lead }) {
           </span>
         }
         description="O Claude escreve um email com os dados deste lead, a análise do site e os argumentos do setor."
+        actions={<CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label="Escrever com IA" />}
+        className={collapsed ? 'border-b-0' : undefined}
       />
-      {!configured ? (
+      {collapsed ? null : !configured ? (
         <p className="p-4 text-sm text-muted">
           O gerador com IA ainda não está ativo: falta a variável <code>ANTHROPIC_API_KEY</code> no servidor (ver README).
         </p>

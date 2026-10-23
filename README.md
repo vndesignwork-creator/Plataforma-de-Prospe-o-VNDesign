@@ -268,7 +268,7 @@ O que se entrega ao cliente para o site aparecer nas IAs, tudo pronto a copiar (
 - **Perguntas frequentes**: a IA (fornecedor do "Email com IA") escreve 8 a 10 perguntas e respostas do setor, editáveis; sai o HTML (acordeão) e o JSON-LD FAQPage.
 - **llms.txt**: resumo do negócio para as IAs, para pôr na raiz do site (descarregar ou copiar).
 
-**Recolher cartões**: **Diagnóstico do site**, **Aparece nas IAs?** e **Kit GEO** têm o botão ⌄ no canto para recolher/expandir. A escolha fica lembrada neste browser, para todos os leads; recolhido, o diagnóstico mostra o resumo (PageSpeed, telemóvel, problemas) e o "Aparece nas IAs?" o último resultado.
+**Recolher cartões**: **Diagnóstico do site**, **Aparece nas IAs?**, **Kit GEO**, **Scripts de contacto**, **Escrever com IA** e **Linha do tempo** têm o botão ⌄ no canto para recolher/expandir. A escolha fica lembrada neste browser, para todos os leads; recolhido, o diagnóstico mostra o resumo (PageSpeed, telemóvel, problemas) e o "Aparece nas IAs?" o último resultado.
 
 **GEO como serviço**: o catálogo tem o serviço **Otimização para IAs (GEO)** (Web Design), os pacotes *GEO — Preparar para as IAs* e *GEO — Acompanhamento mensal* (preços para ajustar em Definições → Propostas) e 4 scripts GEO (email, follow-up, mensagem curta e guião de chamada) com a variável **{{visibilidade_ia}}** (a frase do último "Aparece nas IAs?"). No diagnóstico, quando há pontos GEO a melhorar, o botão **Juntar o serviço ao lead** acrescenta-o.
 
