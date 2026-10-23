@@ -11,7 +11,7 @@ import {
   type AuditFacts,
   type SiteAudit,
 } from '@vndesign/core';
-import { isPageSpeedEnabled, runPageSpeed, type PageSpeedOutcome, type PageSpeedShot } from './pagespeed';
+import { PAGESPEED_SSL_BLOCKED, isPageSpeedEnabled, runPageSpeed, type PageSpeedOutcome, type PageSpeedShot } from './pagespeed';
 import { AuditRequestError, safeGet, type SafeResponse } from './safe-request';
 
 export type AuditRecord = Omit<SiteAudit, 'id' | 'lead_id' | 'created_at' | 'screenshots'>;
@@ -79,7 +79,10 @@ export async function collectAudit(rawUrl: string): Promise<AuditCollected> {
   }
 
   // Sem resposta do site não vale a pena esperar pelo PageSpeed.
-  const pagespeed = page ? await pagespeedPromise : null;
+  const speed = page ? await pagespeedPromise : null;
+  // Certificado inválido: o Google não abre o site; diz-se porquê em vez do erro técnico.
+  const pagespeed: PageSpeedOutcome | null =
+    speed && !speed.ok && page?.certificate?.valid === false ? { ok: false, error: PAGESPEED_SSL_BLOCKED } : speed;
 
   const isHtml = page ? /html|xml/i.test(String(page.headers['content-type'] ?? 'text/html')) : false;
   const html = page && isHtml && page.status < 400 ? analyzeHtml(page.body, now) : null;

@@ -4,7 +4,7 @@
  * tiradas pelo PageSpeed e guardadas no bucket privado "site-screenshots").
  */
 import { ensureUrlProtocol, type AuditApply, type Lead, type LeadUpdate, type ScreenshotDevice, type SiteAudit } from '@vndesign/core';
-import { isPageSpeedEnabled, runPageSpeed, type PageSpeedOutcome, type PageSpeedShot } from '../audit/pagespeed';
+import { PAGESPEED_SSL_BLOCKED, isPageSpeedEnabled, runPageSpeed, type PageSpeedOutcome, type PageSpeedShot } from '../audit/pagespeed';
 import { collectAudit } from '../audit/run-audit';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest, unwrap } from '../http';
@@ -161,6 +161,8 @@ export async function captureScreenshots(ctx: ApiContext, leadId: string): Promi
   const shot = (o: PageSpeedOutcome) => (o.ok ? o.screenshot : null);
   const updated = await storeShots(ctx, leadId, audit.id, { mobile: shot(mobile), desktop: shot(desktop) });
   if (!updated) {
+    // Certificado inválido: o Google não abre o site (não é uma falha da plataforma).
+    if (audit.ssl_valid === false) throw new ApiError(422, 'Sem imagens', PAGESPEED_SSL_BLOCKED);
     const reason = !mobile.ok ? mobile.error : !desktop.ok ? desktop.error : 'O PageSpeed não devolveu imagens deste site.';
     throw new ApiError(502, 'Sem imagens', reason);
   }

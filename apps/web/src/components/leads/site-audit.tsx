@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { errorMessage } from '@/lib/api-client';
+import { ApiClientError, errorMessage } from '@/lib/api-client';
 import { useApplyAudit, useAudits, useCaptureScreenshots, useRunAudit, useSettings } from '@/lib/queries';
 import { displayHost } from '@/lib/utils';
 import { PageSpeedScore } from './badges';
@@ -54,7 +54,9 @@ function AuditScreenshots({ audit, lead, latest }: { audit: SiteAudit; lead: Lea
       await capture.mutateAsync();
       toast.success('Imagens do site guardadas.');
     } catch (error) {
-      toast.error(errorMessage(error));
+      // 422: o site não deixa (ex.: certificado expirado) — é um aviso, não uma falha da plataforma.
+      if (error instanceof ApiClientError && error.status === 422) toast.warning(errorMessage(error), { duration: 10_000 });
+      else toast.error(errorMessage(error));
     }
   }
 
