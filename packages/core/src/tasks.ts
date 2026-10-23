@@ -31,6 +31,7 @@ export const LeadTaskSchema = z
     remind_at: z.string().nullable().optional().meta({ description: 'Lembrete (data e hora): envia uma notificação' }),
     reminded_at: z.string().nullable().optional().meta({ description: 'Quando o lembrete foi enviado' }),
     position: z.number().meta({ description: 'Ordem na lista (menor = mais acima)' }),
+    time_seconds: z.int().optional().meta({ description: 'Tempo registado nesta tarefa (Pomodoro ou registos à mão)' }),
     created_at: z.string(),
     updated_at: z.string(),
   })
@@ -147,3 +148,19 @@ export function splitTasks<T extends Pick<LeadTask, 'done_at' | 'position'>>(tas
   const done = tasks.filter((t) => t.done_at).sort((a, b) => (b.done_at! > a.done_at! ? 1 : b.done_at! < a.done_at! ? -1 : 0));
   return { pending, done };
 }
+
+// -----------------------------------------------------------------------------
+// Pesquisa rápida (Ctrl+K): tarefas de todos os leads
+// -----------------------------------------------------------------------------
+export const TaskSearchQuerySchema = z
+  .object({
+    q: z.string().trim().min(2, { error: 'Escreve pelo menos 2 letras.' }).max(100).meta({ description: 'Texto a procurar no título das tarefas' }),
+    limit: z.coerce.number().int().min(1).max(20).default(8),
+  })
+  .meta({ id: 'TaskSearchQuery' });
+export type TaskSearchQuery = z.output<typeof TaskSearchQuerySchema>;
+
+export const TaskSearchResultSchema = LeadTaskSchema.extend({
+  lead: z.object({ id: z.uuid(), number: z.int(), company_name: z.string(), project_title: z.string().nullable() }),
+}).meta({ id: 'TaskSearchResult' });
+export type TaskSearchResult = z.infer<typeof TaskSearchResultSchema>;

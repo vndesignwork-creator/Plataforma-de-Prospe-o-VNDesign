@@ -4,11 +4,14 @@
  */
 import {
   addDays,
+  entrySeconds,
   todayIso,
   type Lead,
   type LeadTask,
   type LeadTaskCreate,
   type LeadTaskUpdate,
+  type TaskSearchQuery,
+  type TaskSearchResult,
   type TaskTemplate,
   type TaskTemplateCreate,
   type TaskTemplateUpdate,
@@ -19,7 +22,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest, unwrap } from '../http';
 import { createActivity } from './activities';
-import { getLead } from './leads';
+import { getLead, likeEscape } from './leads';
 
 const TASK_SELECT = 'id, lead_id, title, due_on, done_at, remind_at, reminded_at, position, created_at, updated_at';
 const TEMPLATE_SELECT = 'id, name, service, items, sort_order';
@@ -35,7 +38,39 @@ export async function listTasks(ctx: ApiContext, leadId: string): Promise<LeadTa
     .order('position')
     .order('created_at');
   if (error) throw fromPostgrest(error);
-  return (data ?? []) as LeadTask[];
+  // Tempo registado em cada tarefa (Pomodoro ou registos à mão com a tarefa).
+  const { data: time } = await ctx.supabase
+    .from('project_time_entries')
+    .select('task_id, started_at, ended_at')
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('lead_id', leadId)
+    .not('task_id', 'is', null)
+    .not('ended_at', 'is', null);
+  const seconds = new Map<string, number>();
+  for (const e of (time ?? []) as { task_id: string; started_at: string; ended_at: string }[]) {
+    seconds.set(e.task_id, (seconds.get(e.task_id) ?? 0) + entrySeconds(e));
+  }
+  return ((data ?? []) as LeadTask[]).map((t) => (seconds.get(t.id) ? { ...t, time_seconds: seconds.get(t.id) } : t));
+}
+
+/** Pesquisa rápida: tarefas de todos os leads (as por fazer primeiro; sem arquivados nem anonimizados). */
+export async function searchTasks(ctx: ApiContext, query: TaskSearchQuery): Promise<TaskSearchResult[]> {
+  const { data, error } = await ctx.supabase
+    .from('lead_tasks')
+    .select(`${TASK_SELECT}, lead:leads!inner(id, number, company_name, project_title, archived_at, anonymized_at)`)
+    .eq('workspace_id', ctx.workspaceId)
+    .ilike('title', `%${likeEscape(query.q)}%`)
+    .is('lead.archived_at', null)
+    .is('lead.anonymized_at', null)
+    .order('done_at', { ascending: false, nullsFirst: true })
+    .order('due_on', { ascending: true, nullsFirst: false })
+    .limit(query.limit);
+  if (error) throw fromPostgrest(error);
+  type Row = LeadTask & { lead: TaskSearchResult['lead'] };
+  return ((data ?? []) as unknown as Row[]).map(({ lead, ...task }) => ({
+    ...task,
+    lead: { id: lead.id, number: lead.number, company_name: lead.company_name, project_title: lead.project_title },
+  }));
 }
 
 /** Posição a seguir à última tarefa do lead (as novas ficam no fim da lista). */

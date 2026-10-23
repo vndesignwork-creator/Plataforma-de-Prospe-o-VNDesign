@@ -10,7 +10,7 @@ import { Bot, CheckCircle2, ChevronDown, Copy, ExternalLink, Loader2, Plus, Tras
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
+import { CollapseButton, useProspectingCollapsed } from '@/components/ui/collapse';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api-client';
@@ -23,7 +23,7 @@ export function AiVisibilityCard({ lead }: { lead: Lead }) {
   const { data: checks, isLoading } = useAiVisibility(lead.id, !lead.anonymized_at);
   const start = useStartAiVisibility(lead.id);
   const [editing, setEditing] = useState<string[] | null>(null);
-  const [collapsed, setCollapsed] = useCollapsed('aparece-nas-ias');
+  const [collapsed, setCollapsed] = useProspectingCollapsed('aparece-nas-ias', lead.status);
   if (lead.anonymized_at) return null;
   const latest = checks?.[0] ?? null;
   const running = latest?.status === 'running';

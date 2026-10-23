@@ -5,7 +5,7 @@
  * (o relógio mostra o total do projeto, não só a sessão), registos à mão,
  * corrigir ou apagar registos e o valor ganho por hora.
  */
-import { formatClock, formatCurrency, formatDate, formatDuration, todayIso, type Lead, type TimeEntry } from '@vndesign/core';
+import { formatClock, formatCurrency, formatDate, formatDuration, todayIso, type Lead, type LeadTask, type ProjectTime, type TimeEntry } from '@vndesign/core';
 import { Check, Clock, Pause, Pencil, Play, Plus, RotateCcw, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -14,9 +14,9 @@ import { Skeleton } from '@/components/ui/card';
 import { DateInput } from '@/components/ui/date-input';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
+import { Input, Select } from '@/components/ui/input';
 import { ApiClientError, errorMessage } from '@/lib/api-client';
-import { useAddTime, useClearTime, useCollaborators, useDeleteTime, useProjectTime, useTimer, useUpdateTime } from '@/lib/queries';
+import { useAddTime, useClearTime, useCollaborators, useDeleteTime, useLeadTasks, useProjectTime, useTimer, useUpdateTime } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 import { SectionHeader } from './section-header';
 
@@ -104,9 +104,52 @@ export function TimerButton({
   );
 }
 
-function TimeDialog({ lead, onClose }: { lead: Lead; onClose: () => void }) {
+/** Escolher a tarefa (as por fazer primeiro; também as já concluídas). */
+function TaskSelect({
+  tasks,
+  value,
+  onChange,
+  className,
+  label,
+  ...aria
+}: {
+  tasks: LeadTask[];
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+  label?: string;
+  /** id e atributos ARIA (vêm do Field). */
+  id?: string;
+  'aria-invalid'?: boolean;
+  'aria-describedby'?: string;
+}) {
+  const open = tasks.filter((t) => !t.done_at);
+  const done = tasks.filter((t) => t.done_at);
+  const short = (t: LeadTask) => (t.title.length > 60 ? `${t.title.slice(0, 60)}…` : t.title);
+  return (
+    <Select {...aria} aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} className={className}>
+      <option value="">Sem tarefa</option>
+      {open.map((t) => (
+        <option key={t.id} value={t.id}>
+          {short(t)}
+        </option>
+      ))}
+      {done.length ? (
+        <optgroup label="Concluídas">
+          {done.map((t) => (
+            <option key={t.id} value={t.id}>
+              {short(t)}
+            </option>
+          ))}
+        </optgroup>
+      ) : null}
+    </Select>
+  );
+}
+
+function TimeDialog({ lead, tasks, onClose }: { lead: Lead; tasks: LeadTask[]; onClose: () => void }) {
   const add = useAddTime(lead.id);
-  const [form, setForm] = useState({ date: todayIso(), hours: '1', minutes: '0', notes: '' });
+  const [form, setForm] = useState({ date: todayIso(), hours: '1', minutes: '0', notes: '', task: '' });
   const [errors, setErrors] = useState<Record<string, string[]>>({});
 
   async function submit(e: React.FormEvent) {
@@ -114,7 +157,7 @@ function TimeDialog({ lead, onClose }: { lead: Lead; onClose: () => void }) {
     setErrors({});
     const minutes = Number(form.hours || 0) * 60 + Number(form.minutes || 0);
     try {
-      await add.mutateAsync({ date: form.date, minutes: Math.round(minutes), notes: form.notes });
+      await add.mutateAsync({ date: form.date, minutes: Math.round(minutes), notes: form.notes, task_id: form.task || null });
       toast.success(`${formatDuration(minutes * 60)} registados.`);
       onClose();
     } catch (error) {
@@ -150,6 +193,11 @@ function TimeDialog({ lead, onClose }: { lead: Lead; onClose: () => void }) {
         <Field label="Minutos">
           <Input type="number" inputMode="numeric" min={0} max={59} step={5} value={form.minutes} onChange={(e) => setForm({ ...form, minutes: e.target.value })} />
         </Field>
+        {tasks.length ? (
+          <Field label="Tarefa (opcional)" error={errors.task_id?.[0]} className="sm:col-span-3">
+            <TaskSelect tasks={tasks} value={form.task} onChange={(v) => setForm({ ...form, task: v })} />
+          </Field>
+        ) : null}
         <Field label="O que fizeste (opcional)" className="sm:col-span-3">
           <Input maxLength={300} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Ex.: maquete da página inicial" />
         </Field>
@@ -160,10 +208,11 @@ function TimeDialog({ lead, onClose }: { lead: Lead; onClose: () => void }) {
 }
 
 /** Um registo: dia, duração e notas; o lápis corrige a duração e as notas. */
-function EntryRow({ lead, entry, person }: { lead: Lead; entry: TimeEntry; person?: string }) {
+function EntryRow({ lead, entry, person, tasks }: { lead: Lead; entry: TimeEntry; person?: string; tasks: LeadTask[] }) {
   const update = useUpdateTime(lead.id);
   const remove = useDeleteTime(lead.id);
-  const [edit, setEdit] = useState<{ hours: string; minutes: string; notes: string } | null>(null);
+  const [edit, setEdit] = useState<{ hours: string; minutes: string; notes: string; task: string } | null>(null);
+  const task = entry.task_id ? tasks.find((t) => t.id === entry.task_id) : undefined;
   const day = formatDate(entry.started_at).slice(0, 5);
 
   async function save(e: React.FormEvent) {
@@ -171,7 +220,7 @@ function EntryRow({ lead, entry, person }: { lead: Lead; entry: TimeEntry; perso
     if (!edit) return;
     const minutes = Number(edit.hours || 0) * 60 + Number(edit.minutes || 0);
     try {
-      await update.mutateAsync({ id: entry.id, body: { minutes: Math.round(minutes), notes: edit.notes } });
+      await update.mutateAsync({ id: entry.id, body: { minutes: Math.round(minutes), notes: edit.notes, task_id: edit.task || null } });
       setEdit(null);
       toast.success('Registo corrigido.');
     } catch (error) {
@@ -189,6 +238,7 @@ function EntryRow({ lead, entry, person }: { lead: Lead; entry: TimeEntry; perso
           <Input aria-label="Minutos" type="number" inputMode="numeric" min={0} max={59} className="h-8 w-16" value={edit.minutes} onChange={(e) => setEdit({ ...edit, minutes: e.target.value })} />
           <span className="text-xs text-muted">min</span>
           <Input aria-label="Notas" className="h-8 min-w-0 flex-[1_1_8rem]" maxLength={300} value={edit.notes} onChange={(e) => setEdit({ ...edit, notes: e.target.value })} placeholder="O que fizeste" />
+          {tasks.length ? <TaskSelect tasks={tasks} value={edit.task} onChange={(v) => setEdit({ ...edit, task: v })} label="Tarefa" className="h-8 min-w-0 flex-[1_1_10rem] text-sm" /> : null}
           <Button type="submit" size="icon" className="h-8 w-8" loading={update.isPending} aria-label="Guardar a correção">
             <Check className="h-4 w-4" aria-hidden />
           </Button>
@@ -206,13 +256,14 @@ function EntryRow({ lead, entry, person }: { lead: Lead; entry: TimeEntry; perso
       <span className="w-24 shrink-0 font-medium tabular">{formatDuration(entry.seconds)}</span>
       <span className="min-w-0 flex-1 truncate text-muted">
         {person ? <span className="mr-1.5 rounded bg-surface-2 px-1.5 py-0.5 text-xs text-fg">{person}</span> : null}
+        {task ? <span className="mr-1.5 rounded bg-accent-soft px-1.5 py-0.5 text-xs text-accent-text">{task.title}</span> : null}
         {entry.notes ?? ''}
       </span>
       <Button
         size="icon"
         variant="ghost"
         className="-my-1 h-7 w-7"
-        onClick={() => setEdit({ hours: String(Math.floor(entry.minutes / 60)), minutes: String(entry.minutes % 60), notes: entry.notes ?? '' })}
+        onClick={() => setEdit({ hours: String(Math.floor(entry.minutes / 60)), minutes: String(entry.minutes % 60), notes: entry.notes ?? '', task: entry.task_id ?? '' })}
         aria-label={`Corrigir o registo de ${formatDuration(entry.seconds)} (${formatDate(entry.started_at)})`}
       >
         <Pencil className="h-3.5 w-3.5" aria-hidden />
@@ -232,6 +283,7 @@ function EntryRow({ lead, entry, person }: { lead: Lead; entry: TimeEntry; perso
 
 export function TimeSection({ lead, className }: { lead: Lead; className?: string }) {
   const { data: time, isLoading } = useProjectTime(lead.id);
+  const { data: tasks } = useLeadTasks(lead.id);
   const [adding, setAdding] = useState(false);
   const [all, setAll] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -279,12 +331,13 @@ export function TimeSection({ lead, className }: { lead: Lead; className?: strin
       {time && !time.value && total >= 15 * 60 ? (
         <p className="mt-1 text-xs text-muted">Para ver quanto ganhas por hora, indica o valor (proposta aceite, pagamentos ou valor estimado).</p>
       ) : null}
+      {time ? <TimeByTask byTask={time.by_task} /> : null}
       {isLoading ? (
         <Skeleton className="mt-2 h-8" />
       ) : shown.length ? (
         <ul className="mt-2 flex flex-col gap-1" aria-label="Horas registadas">
           {shown.map((e) => (
-            <EntryRow key={e.id} lead={lead} entry={e} person={people.get(e.user_id)} />
+            <EntryRow key={e.id} lead={lead} entry={e} person={people.get(e.user_id)} tasks={tasks ?? []} />
           ))}
         </ul>
       ) : !running ? (
@@ -295,7 +348,7 @@ export function TimeSection({ lead, className }: { lead: Lead; className?: strin
           {all ? 'Mostrar menos' : `Ver todos (${entries.length})`}
         </Button>
       ) : null}
-      {adding ? <TimeDialog lead={lead} onClose={() => setAdding(false)} /> : null}
+      {adding ? <TimeDialog lead={lead} tasks={tasks ?? []} onClose={() => setAdding(false)} /> : null}
       {resetting ? (
         <Dialog
           open
@@ -330,5 +383,24 @@ export function TimeSection({ lead, className }: { lead: Lead; className?: strin
         </Dialog>
       ) : null}
     </section>
+  );
+}
+
+/** Em que é que o tempo foi gasto: uma barra por tarefa (só quando há tempo com tarefa). */
+function TimeByTask({ byTask }: { byTask: ProjectTime['by_task'] }) {
+  if (!byTask.some((t) => t.task_id)) return null;
+  const max = Math.max(...byTask.map((t) => t.seconds));
+  return (
+    <ul className="mt-3 flex flex-col gap-1.5" aria-label="Tempo por tarefa">
+      {byTask.map((t) => (
+        <li key={t.task_id ?? 'sem'} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 text-sm">
+          <span className={cn('truncate', !t.task_id && 'text-muted')}>{t.title}</span>
+          <span className="text-xs font-medium tabular">{formatDuration(t.seconds)}</span>
+          <span className="col-span-2 h-1.5 overflow-hidden rounded-full bg-surface-3" aria-hidden>
+            <span className={cn('block h-full rounded-full', t.task_id ? 'bg-accent' : 'bg-fg/30')} style={{ width: `${Math.max(4, Math.round((t.seconds / max) * 100))}%` }} />
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }

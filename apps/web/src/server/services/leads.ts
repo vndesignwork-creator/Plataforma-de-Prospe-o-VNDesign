@@ -37,7 +37,7 @@ const NOT_FOUND = 'Lead não encontrado';
 const CLOSED_STATUSES = '(cliente,sem_interesse)';
 
 /** Escapa os caracteres especiais do LIKE. */
-function likeEscape(value: string): string {
+export function likeEscape(value: string): string {
   return value.replace(/[\\%_]/g, (c) => `\\${c}`);
 }
 

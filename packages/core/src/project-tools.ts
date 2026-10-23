@@ -131,6 +131,7 @@ export const TimeEntrySchema = z
     minutes: z.int().meta({ description: 'Duração em minutos (a contar: até agora)' }),
     seconds: z.int().meta({ description: 'Duração em segundos (a contar: até agora)' }),
     notes: z.string().nullable(),
+    task_id: z.uuid().nullable().meta({ description: 'Tarefa em que se trabalhou (Pomodoro ou escolhida à mão)' }),
     created_at: z.string(),
   })
   .meta({ id: 'TimeEntry' });
@@ -144,6 +145,7 @@ export const TimeEntryCreateSchema = z
       .min(1, { error: 'Mínimo 1 minuto.' })
       .max(24 * 60, { error: 'Máximo 24 horas.' }),
     notes: z.string().trim().max(300).optional().transform((v) => v || null),
+    task_id: z.uuid({ error: 'Tarefa inválida.' }).nullish().transform((v) => v ?? null),
   })
   .meta({ id: 'TimeEntryCreate' });
 export type TimeEntryCreate = z.output<typeof TimeEntryCreateSchema>;
@@ -156,6 +158,7 @@ export const TimeEntryUpdateSchema = z
       .min(1, { error: 'Mínimo 1 minuto.' })
       .max(24 * 60, { error: 'Máximo 24 horas.' }),
     notes: z.string().trim().max(300).transform((v) => v || null),
+    task_id: z.uuid({ error: 'Tarefa inválida.' }).nullable(),
   })
   .partial()
   .meta({ id: 'TimeEntryUpdate' });
@@ -177,6 +180,9 @@ export const ProjectTimeSchema = z
     expenses: z.number().meta({ description: 'Total das despesas do projeto' }),
     profit: z.number().nullable().meta({ description: 'Valor − despesas' }),
     net_rate: z.number().nullable().meta({ description: 'Lucro ÷ horas (€/hora líquido)' }),
+    by_task: z
+      .array(z.object({ task_id: z.uuid().nullable(), title: z.string(), seconds: z.int() }))
+      .meta({ description: 'Tempo registado por tarefa (mais tempo primeiro; task_id null = sem tarefa)' }),
   })
   .meta({ id: 'ProjectTime' });
 export type ProjectTime = z.infer<typeof ProjectTimeSchema>;
@@ -190,6 +196,24 @@ export const RunningTimerSchema = z
   .nullable()
   .meta({ id: 'RunningTimer' });
 export type RunningTimer = z.infer<typeof RunningTimerSchema>;
+
+/** Tempo por tarefa (mais tempo primeiro; "Sem tarefa" no fim). Só registos fechados. */
+export function timeByTask(
+  entries: readonly { task_id: string | null; started_at: string; ended_at: string | null }[],
+  titles: ReadonlyMap<string, string>,
+): { task_id: string | null; title: string; seconds: number }[] {
+  const sums = new Map<string | null, number>();
+  for (const e of entries) {
+    if (!e.ended_at) continue;
+    // Tarefa apagada: conta como "sem tarefa".
+    const key = e.task_id && titles.has(e.task_id) ? e.task_id : null;
+    sums.set(key, (sums.get(key) ?? 0) + entrySeconds(e));
+  }
+  return [...sums]
+    .filter(([, seconds]) => seconds > 0)
+    .map(([task_id, seconds]) => ({ task_id, title: task_id ? titles.get(task_id)! : 'Sem tarefa', seconds }))
+    .sort((a, b) => (a.task_id === null ? 1 : 0) - (b.task_id === null ? 1 : 0) || b.seconds - a.seconds);
+}
 
 /** Segundos de um registo (a contar: até `now`). */
 export function entrySeconds(entry: { started_at: string; ended_at: string | null }, now: number = Date.now()): number {
@@ -570,3 +594,37 @@ export type ProjectBriefing = z.infer<typeof ProjectBriefingSchema>;
 /** Limites dos ficheiros do briefing. */
 export const BRIEFING_MAX_FILES = 10;
 export const BRIEFING_MAX_FILE_BYTES = 15 * 1024 * 1024;
+
+// Filtros e ordem da lista de Projetos.
+export const PROJECT_FILTERS = ['todos', 'atrasados', 'pagamentos', 'semana'] as const;
+export type ProjectFilter = (typeof PROJECT_FILTERS)[number];
+export const PROJECT_FILTER_LABELS: Record<ProjectFilter, string> = {
+  todos: 'Todos',
+  atrasados: 'Atrasados',
+  pagamentos: 'Pagamentos em atraso',
+  semana: 'Entregam esta semana',
+};
+
+export const PROJECT_SORTS = ['prazo', 'valor', 'fase'] as const;
+export type ProjectSort = (typeof PROJECT_SORTS)[number];
+export const PROJECT_SORT_LABELS: Record<ProjectSort, string> = { prazo: 'Prazo', valor: 'Valor', fase: 'Fase' };
+
+type Filterable = Pick<Project, 'info' | 'payments' | 'value' | 'lead'>;
+
+/** O projeto entra neste filtro? ("semana": entrega de hoje a 6 dias.) */
+export function projectMatches<P extends Filterable>(p: P, filter: ProjectFilter, today: string): boolean {
+  const due = p.info.due_on;
+  if (filter === 'atrasados') return !!due && due < today;
+  if (filter === 'pagamentos') return p.payments.overdue > 0;
+  if (filter === 'semana') return !!due && due >= today && due <= addDays(today, 6);
+  return true;
+}
+
+/** Ordena: prazo (sem prazo no fim), valor (maior primeiro) ou fase (Entrega primeiro, depois prazo). */
+export function sortProjects<P extends Filterable>(projects: readonly P[], sort: ProjectSort): P[] {
+  const byDue = (a: P, b: P) => (a.info.due_on ?? '9999-12-31').localeCompare(b.info.due_on ?? '9999-12-31');
+  const list = [...projects];
+  if (sort === 'valor') return list.sort((a, b) => (b.value ?? -1) - (a.value ?? -1) || byDue(a, b));
+  if (sort === 'fase') return list.sort((a, b) => PROJECT_STAGES.indexOf(b.info.stage) - PROJECT_STAGES.indexOf(a.info.stage) || byDue(a, b));
+  return list.sort(byDue);
+}

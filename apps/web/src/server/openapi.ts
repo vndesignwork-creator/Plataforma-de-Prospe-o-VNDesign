@@ -129,6 +129,8 @@ import {
   SiteFormToggleSchema,
   LeadGeoSchema,
   LeadGeoUpdateSchema,
+  TaskSearchQuerySchema,
+  TaskSearchResultSchema,
   TeamActivityQuerySchema,
   TeamActivitySchema,
   AiVisibilityRequestSchema,
@@ -944,6 +946,14 @@ export function getOpenApiDocument() {
           requestParams: { path: leadId },
           requestBody: body(ApplyTaskTemplateSchema),
           responses: { '200': ok(data(z.array(LeadTaskSchema))), ...withNotFound },
+        }),
+      },
+      '/tasks': {
+        get: op({
+          tags: ['Tarefas'],
+          summary: 'Pesquisa rápida nas tarefas de todos os leads (Ctrl+K)',
+          requestParams: { query: TaskSearchQuerySchema },
+          responses: { '200': ok(data(z.array(TaskSearchResultSchema))), ...common },
         }),
       },
       '/tasks/{id}': {

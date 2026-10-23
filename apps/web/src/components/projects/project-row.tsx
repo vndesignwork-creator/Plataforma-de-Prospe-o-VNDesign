@@ -19,6 +19,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { PlanForm } from './payments-card';
 import { DueBadge, ProgressBar, StageMenu, SummaryStat } from './project-bits';
+import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { PomodoroBox } from './pomodoro';
 import { ProjectToggle } from './project-toggle';
 import { TimeSection, TimerButton } from './time-section';
@@ -88,6 +89,9 @@ function TasksBlock({ project }: { project: Project }) {
   );
 }
 
+/** Chave do "recolhido" de cada projeto (ver setCollapsedKeys). */
+export const projectCollapseKey = (leadId: string) => `projeto:${leadId}`;
+
 export function ProjectRow({
   project,
   today,
@@ -105,6 +109,8 @@ export function ProjectRow({
   const completed = !!lead.project_completed_at;
   const rate = hourlyRate(value, time.minutes);
   const pomodoro = !completed && features.time_tracking && features.pomodoro;
+  // Recolhido: só a linha do título (fica lembrado neste browser, por projeto).
+  const [collapsed, setCollapsed] = useCollapsed(projectCollapseKey(lead.id));
 
   const timeColumn = !completed && features.time_tracking;
 
@@ -112,10 +118,18 @@ export function ProjectRow({
     <li className="flex flex-col gap-3 px-4 py-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start">
         <div className="flex min-w-0 flex-col gap-1.5 sm:flex-[1_1_16rem]">
-          <Link href={leadPath(lead)} className="font-semibold hover:text-accent-text hover:underline">
-            <span className="mr-1.5 text-muted tabular">#{lead.number}</span>
-            {lead.company_name} {lead.project_title ? <span className="font-normal text-muted">· {lead.project_title}</span> : null}
-          </Link>
+          <div className="flex items-start gap-1">
+            <CollapseButton
+              collapsed={collapsed}
+              onToggle={() => setCollapsed(!collapsed)}
+              label={`${lead.company_name}${lead.project_title ? ` · ${lead.project_title}` : ''}`}
+              className="-my-1 -ml-2 shrink-0"
+            />
+            <Link href={leadPath(lead)} className="min-w-0 font-semibold hover:text-accent-text hover:underline">
+              <span className="mr-1.5 text-muted tabular">#{lead.number}</span>
+              {lead.company_name} {lead.project_title ? <span className="font-normal text-muted">· {lead.project_title}</span> : null}
+            </Link>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             {completed ? (
               <Badge tone="success">Concluído a {formatDate(lead.project_completed_at!.slice(0, 10))}</Badge>
@@ -127,6 +141,18 @@ export function ProjectRow({
             )}
             {lead.services?.length ? <ServiceChips services={lead.services} /> : null}
           </div>
+          {collapsed ? (
+            <p className="text-xs text-muted tabular">
+              {[
+                tasks.total ? `Tarefas ${tasks.done} de ${tasks.total}` : null,
+                features.payments && project.payments.total ? `${euros(project.payments.paid)} de ${euros(project.payments.total)}` : null,
+                features.payments && project.payments.overdue ? `${euros(project.payments.overdue)} em atraso` : null,
+                features.time_tracking && time.logged_seconds > 0 ? formatDuration(time.logged_seconds) : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </p>
+          ) : null}
         </div>
         {/* Telemóvel: botões em duas colunas, a toda a largura (o último ocupa a linha se sobrar). Computador: à direita. */}
         <div className="grid grid-cols-2 gap-2 sm:ml-auto sm:flex sm:flex-wrap sm:items-center sm:justify-end [&>*:last-child:nth-child(odd)]:col-span-2">
@@ -140,84 +166,88 @@ export function ProjectRow({
         </div>
       </div>
 
-      {/* Resumo: pagamentos, tarefas, revisões e horas (2 por linha no telemóvel). */}
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))]" role="group" aria-label={`Resumo de ${lead.company_name}`}>
-        {features.payments ? <PaymentsStat project={project} /> : null}
-        <SummaryStat icon={ListChecks} title="Tarefas" value={tasks.total ? `${tasks.done} de ${tasks.total}` : <span className="font-normal text-muted">Sem tarefas</span>}>
-          {tasks.total ? <ProgressBar value={tasks.done} total={tasks.total} label={`Tarefas de ${lead.company_name}: ${tasks.done} de ${tasks.total}`} /> : null}
-        </SummaryStat>
-        {features.revisions ? (
-          <SummaryStat icon={RefreshCcw} title="Revisões" value={`${revisions.used} de ${info.revisions_included}`} tone={revisions.used > info.revisions_included ? 'warning' : undefined}>
-            {revisions.used > info.revisions_included ? <span className="text-xs text-warning">{revisions.used - info.revisions_included} a cobrar à parte</span> : null}
-          </SummaryStat>
-        ) : null}
-        {features.time_tracking ? (
-          <SummaryStat
-            icon={Clock}
-            title="Horas"
-            value={
-              time.logged_seconds > 0 ? (
-                <>
-                  {formatDuration(time.logged_seconds)}
-                  {rate ? <span className="font-normal text-muted"> · {euros(rate)}/hora</span> : null}
-                </>
-              ) : (
-                <span className="font-normal text-muted">Sem registos</span>
-              )
-            }
-          >
-            {time.minutes > 0 || time.logged_seconds > 0 ? (
-              <button type="button" onClick={() => setHoursOpen(true)} className="self-start text-xs font-medium text-accent-text hover:underline">
-                Ver registos
-              </button>
+      {collapsed ? null : (
+        <>
+          {/* Resumo: pagamentos, tarefas, revisões e horas (2 por linha no telemóvel). */}
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))]" role="group" aria-label={`Resumo de ${lead.company_name}`}>
+            {features.payments ? <PaymentsStat project={project} /> : null}
+            <SummaryStat icon={ListChecks} title="Tarefas" value={tasks.total ? `${tasks.done} de ${tasks.total}` : <span className="font-normal text-muted">Sem tarefas</span>}>
+              {tasks.total ? <ProgressBar value={tasks.done} total={tasks.total} label={`Tarefas de ${lead.company_name}: ${tasks.done} de ${tasks.total}`} /> : null}
+            </SummaryStat>
+            {features.revisions ? (
+              <SummaryStat icon={RefreshCcw} title="Revisões" value={`${revisions.used} de ${info.revisions_included}`} tone={revisions.used > info.revisions_included ? 'warning' : undefined}>
+                {revisions.used > info.revisions_included ? <span className="text-xs text-warning">{revisions.used - info.revisions_included} a cobrar à parte</span> : null}
+              </SummaryStat>
             ) : null}
-          </SummaryStat>
-        ) : null}
-      </div>
-
-      {/* Tarefas (mais largo) e o tempo: Pomodoro e cronómetro juntos. */}
-      <div className={cn('grid gap-x-6 gap-y-3', timeColumn && (pomodoro ? 'md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]' : 'md:grid-cols-[minmax(0,1fr)_auto]'))}>
-        <TasksBlock project={project} />
-        {timeColumn ? (
-          <div className="flex min-w-0 flex-col gap-1.5" role="group" aria-label="Tempo">
-            <span className="text-xs font-medium text-muted">Tempo</span>
-            {pomodoro ? <PomodoroBox lead={lead} compact /> : null}
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2">
-              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted">
-                <Clock className="h-3.5 w-3.5" aria-hidden /> Cronómetro
-              </span>
-              <TimerButton leadId={lead.id} runningSince={time.running_since} loggedSeconds={time.logged_seconds} />
-            </div>
+            {features.time_tracking ? (
+              <SummaryStat
+                icon={Clock}
+                title="Horas"
+                value={
+                  time.logged_seconds > 0 ? (
+                    <>
+                      {formatDuration(time.logged_seconds)}
+                      {rate ? <span className="font-normal text-muted"> · {euros(rate)}/hora</span> : null}
+                    </>
+                  ) : (
+                    <span className="font-normal text-muted">Sem registos</span>
+                  )
+                }
+              >
+                {time.minutes > 0 || time.logged_seconds > 0 ? (
+                  <button type="button" onClick={() => setHoursOpen(true)} className="self-start text-xs font-medium text-accent-text hover:underline">
+                    Ver registos
+                  </button>
+                ) : null}
+              </SummaryStat>
+            ) : null}
           </div>
-        ) : null}
-      </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted">
-        {meeting && features.meetings ? (
-          <span className="inline-flex items-center gap-1.5">
-            <CalendarClock className="h-3.5 w-3.5" aria-hidden /> Reunião: {meetingLabel(meeting.starts_at)}
-          </span>
-        ) : null}
-        {features.expenses && project.expenses > 0 ? (
-          <span className="inline-flex items-center gap-1.5">
-            <Receipt className="h-3.5 w-3.5" aria-hidden /> Despesas {euros(project.expenses)}
-            {value ? (
-              <>
-                {' · lucro '}
-                <span className={value - project.expenses < 0 ? 'font-medium text-danger' : 'font-medium text-success'}>{euros(value - project.expenses)}</span>
-              </>
+          {/* Tarefas (mais largo) e o tempo: Pomodoro e cronómetro juntos. */}
+          <div className={cn('grid gap-x-6 gap-y-3', timeColumn && (pomodoro ? 'md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]' : 'md:grid-cols-[minmax(0,1fr)_auto]'))}>
+            <TasksBlock project={project} />
+            {timeColumn ? (
+              <div className="flex min-w-0 flex-col gap-1.5" role="group" aria-label="Tempo">
+                <span className="text-xs font-medium text-muted">Tempo</span>
+                {pomodoro ? <PomodoroBox lead={lead} compact /> : null}
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted">
+                    <Clock className="h-3.5 w-3.5" aria-hidden /> Cronómetro
+                  </span>
+                  <TimerButton leadId={lead.id} runningSince={time.running_since} loggedSeconds={time.logged_seconds} />
+                </div>
+              </div>
             ) : null}
-          </span>
-        ) : null}
-        {features.deliverables && deliverables.total > 0 ? (
-          <span className="inline-flex items-center gap-1.5">
-            <FolderOpen className="h-3.5 w-3.5" aria-hidden /> Entregas {deliverables.approved} de {deliverables.total} aprovadas
-          </span>
-        ) : null}
-        <Link href={`${leadPath(lead)}#projeto`} className="ml-auto inline-flex items-center gap-1 font-medium text-accent-text hover:underline">
-          Detalhes do projeto <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-        </Link>
-      </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted">
+            {meeting && features.meetings ? (
+              <span className="inline-flex items-center gap-1.5">
+                <CalendarClock className="h-3.5 w-3.5" aria-hidden /> Reunião: {meetingLabel(meeting.starts_at)}
+              </span>
+            ) : null}
+            {features.expenses && project.expenses > 0 ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Receipt className="h-3.5 w-3.5" aria-hidden /> Despesas {euros(project.expenses)}
+                {value ? (
+                  <>
+                    {' · lucro '}
+                    <span className={value - project.expenses < 0 ? 'font-medium text-danger' : 'font-medium text-success'}>{euros(value - project.expenses)}</span>
+                  </>
+                ) : null}
+              </span>
+            ) : null}
+            {features.deliverables && deliverables.total > 0 ? (
+              <span className="inline-flex items-center gap-1.5">
+                <FolderOpen className="h-3.5 w-3.5" aria-hidden /> Entregas {deliverables.approved} de {deliverables.total} aprovadas
+              </span>
+            ) : null}
+            <Link href={`${leadPath(lead)}#projeto`} className="ml-auto inline-flex items-center gap-1 font-medium text-accent-text hover:underline">
+              Detalhes do projeto <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+            </Link>
+          </div>
+        </>
+      )}
       {meetingOpen ? <MeetingDialog lead={lead} onClose={() => setMeetingOpen(false)} /> : null}
       {hoursOpen ? (
         <Dialog open onOpenChange={(o) => (!o ? setHoursOpen(false) : undefined)} title="Horas" description={lead.company_name} className="max-w-xl">

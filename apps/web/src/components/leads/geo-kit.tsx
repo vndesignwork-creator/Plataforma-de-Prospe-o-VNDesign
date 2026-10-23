@@ -26,7 +26,7 @@ import { Code2, Copy, Download, ExternalLink, FileText, MapPin, MessageCircleQue
 import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
+import { CollapseButton, useProspectingCollapsed } from '@/components/ui/collapse';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
 import { Input, Select, Textarea } from '@/components/ui/input';
@@ -73,7 +73,7 @@ function CodeBox({ code, label, children }: { code: string; label: string; child
 export function GeoKitCard({ lead }: { lead: Lead }) {
   const { data: geo, isLoading } = useLeadGeo(lead.id, !lead.anonymized_at);
   const [tab, setTab] = useState<Tab>('google');
-  const [collapsed, setCollapsed] = useCollapsed('kit-geo');
+  const [collapsed, setCollapsed] = useProspectingCollapsed('kit-geo', lead.status);
   if (lead.anonymized_at) return null;
   return (
     <Card role="region" aria-label="Kit GEO">

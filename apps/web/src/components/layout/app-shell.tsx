@@ -1,10 +1,10 @@
 'use client';
 
 import * as RadixDialog from '@radix-ui/react-dialog';
-import { BarChart3, BriefcaseBusiness, Columns3, Handshake, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Settings, Sparkles, Sun, Target, Users, X } from 'lucide-react';
+import { BarChart3, BriefcaseBusiness, Columns3, Handshake, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Search, Settings, Sparkles, Sun, Target, Users, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { FollowUpNotifier } from '@/components/follow-up/follow-up-notifier';
 import { PomodoroWatcher } from '@/components/projects/pomodoro';
 import { RunningTimer } from '@/components/projects/running-timer';
@@ -15,6 +15,7 @@ import { useRole, useSettings } from '@/lib/queries';
 import { prospectorPageAllowed } from '@/lib/role-access';
 import { cn } from '@/lib/utils';
 import { Logo } from './logo';
+import { QuickSearch, shortcutLabel, useQuickSearchShortcut } from './quick-search';
 import { useTheme } from './theme';
 
 const NAV = [
@@ -32,17 +33,42 @@ const NAV = [
   { href: '/definicoes', label: 'Definições', icon: Settings, match: (p: string) => p.startsWith('/definicoes') },
 ];
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
-  const pathname = usePathname();
+/** As páginas do menu que esta pessoa vê. */
+function useNavItems() {
   const { data: settings } = useSettings();
   // Funcionalidades desligadas (Definições → Funcionalidades) saem do menu.
   const role = useRole();
-  const items = NAV.filter(
+  return NAV.filter(
     (item) =>
       (!('feature' in item) || [item.feature].flat().every((f) => !f || settings?.features[f] !== false)) &&
       // Equipa de prospeção: só a parte comercial.
       (role !== 'prospector' || prospectorPageAllowed(item.href)),
   );
+}
+
+/** Botão "Pesquisar… Ctrl K" (barra lateral). */
+function SearchButton({ onClick }: { onClick: () => void }) {
+  const [label, setLabel] = useState('Ctrl K');
+  useEffect(() => {
+    /* eslint-disable-next-line react-hooks/set-state-in-effect -- o sistema só se sabe no browser */
+    setLabel(shortcutLabel());
+  }, []);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-muted hover:bg-surface-2 hover:text-fg"
+    >
+      <Search className="h-4 w-4" aria-hidden />
+      <span className="flex-1 text-left">Pesquisar…</span>
+      <kbd className="rounded border border-border px-1.5 text-[11px]">{label}</kbd>
+    </button>
+  );
+}
+
+function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+  const pathname = usePathname();
+  const items = useNavItems();
   return (
     <ul className="flex flex-col gap-1">
       {items.map(({ href, label, icon: Icon, match }) => {
@@ -103,6 +129,10 @@ export function AppShell({ email, children }: { email: string | null; children: 
   useEffect(() => {
     if (blocked) router.replace('/prospecao');
   }, [blocked, router]);
+  const [searching, setSearching] = useState(false);
+  const openSearch = useCallback(() => setSearching(true), []);
+  useQuickSearchShortcut(openSearch);
+  const pages = useNavItems().map(({ href, label, icon }) => ({ href, label, icon }));
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[15rem_1fr]">
       <a
@@ -117,7 +147,8 @@ export function AppShell({ email, children }: { email: string | null; children: 
         <Link href="/dashboard" className="px-3">
           <Logo />
         </Link>
-        <nav aria-label="Principal" className="flex-1">
+        <nav aria-label="Principal" className="flex flex-1 flex-col gap-3">
+          <SearchButton onClick={openSearch} />
           <NavLinks />
         </nav>
         {/* Horas e Pomodoro são dos projetos: o prospetor não os usa. */}
@@ -135,7 +166,10 @@ export function AppShell({ email, children }: { email: string | null; children: 
         <Link href="/dashboard">
           <Logo />
         </Link>
-        {role === 'prospector' ? null : <RunningTimer compact className="ml-auto mr-2 py-0.5" />}
+        {role === 'prospector' ? null : <RunningTimer compact className="ml-auto mr-1 py-0.5" />}
+        <button type="button" onClick={openSearch} className={cn('rounded-lg p-2 text-fg hover:bg-surface-2', role === 'prospector' && 'ml-auto')} aria-label="Pesquisar">
+          <Search className="h-5 w-5" aria-hidden />
+        </button>
         <RadixDialog.Root open={open} onOpenChange={setOpen}>
           <RadixDialog.Trigger className="rounded-lg p-2 text-fg hover:bg-surface-2" aria-label="Abrir menu">
             <Menu className="h-5 w-5" aria-hidden />
@@ -162,6 +196,7 @@ export function AppShell({ email, children }: { email: string | null; children: 
       <main id="conteudo" className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
         {blocked ? null : children}
       </main>
+      <QuickSearch open={searching} onOpenChange={setSearching} pages={pages} tasks={role !== 'prospector'} />
       <FollowUpNotifier />
       <ReminderWatcher />
       <UpdateWatcher />

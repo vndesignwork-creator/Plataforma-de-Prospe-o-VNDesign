@@ -17,7 +17,7 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
-import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
+import { CollapseButton, useProspectingCollapsed } from '@/components/ui/collapse';
 import { Input, Select, Textarea } from '@/components/ui/input';
 import { useServiceCatalog } from '@/components/services/services';
 import { SendEmailButton } from '@/components/email/send-email-dialog';
@@ -66,7 +66,7 @@ export function ContactScriptsCard({ lead }: { lead: Lead }) {
   const category = leadServiceCategory(lead.services, catalog.all);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ subject: string; body: string } | null>(null);
-  const [collapsed, setCollapsed] = useCollapsed('scripts-de-contacto');
+  const [collapsed, setCollapsed] = useProspectingCollapsed('scripts-de-contacto', lead.status);
 
   const template = useMemo(() => {
     if (!templates?.length) return undefined;

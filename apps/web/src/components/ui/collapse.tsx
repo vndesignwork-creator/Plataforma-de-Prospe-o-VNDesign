@@ -48,6 +48,26 @@ export function useCollapsed(key: string, defaultCollapsed = false): [boolean, (
   return [collapsed, set];
 }
 
+/** Recolhe ou abre vários de uma vez (ex.: "Recolher todos" na página Projetos). */
+export function setCollapsedKeys(keys: readonly string[], collapsed: boolean) {
+  try {
+    for (const key of keys) localStorage.setItem(PREFIX + key, collapsed ? '1' : '0');
+  } catch {
+    // Sem localStorage: a escolha não fica guardada.
+  }
+  listeners.forEach((l) => l());
+}
+
+/**
+ * Cartões de prospeção da ficha (diagnóstico, IAs, scripts, email…): num cliente
+ * começam recolhidos (o que interessa é o projeto); num lead por contactar, abertos.
+ * A escolha fica lembrada à parte para fichas de clientes e de leads.
+ */
+export function useProspectingCollapsed(key: string, status: string): [boolean, (collapsed: boolean) => void] {
+  const client = status === 'cliente';
+  return useCollapsed(client ? `${key}:cliente` : key, client);
+}
+
 /** Botão ⌄ no cabeçalho do cartão (recolher / expandir). */
 export function CollapseButton({ collapsed, onToggle, label, className }: { collapsed: boolean; onToggle: () => void; label: string; className?: string }) {
   return (

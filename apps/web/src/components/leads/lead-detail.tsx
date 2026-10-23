@@ -39,7 +39,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
-import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
+import { CollapseButton, useProspectingCollapsed } from '@/components/ui/collapse';
 import { Dialog } from '@/components/ui/dialog';
 import { DropdownContent, DropdownItem, DropdownRoot, DropdownSeparator, DropdownTrigger } from '@/components/ui/dropdown';
 import { Input, Select } from '@/components/ui/input';
@@ -203,7 +203,7 @@ export function LeadDetail({ id }: { id: string }) {
   const log = useLogActivity(id);
   const invalidate = useInvalidateLead();
   const [dialog, setDialog] = useState<null | 'delete' | 'anonymize' | 'merge'>(null);
-  const [emailCollapsed, setEmailCollapsed] = useCollapsed('email-de-prospecao');
+  const [emailCollapsed, setEmailCollapsed] = useProspectingCollapsed('email-de-prospecao', lead?.status ?? '');
   // Prospetor: só a parte comercial (sem valores, propostas, pagamentos, projetos nem apagar).
   const staff = me ? me.role !== 'prospector' : false;
 
@@ -868,7 +868,7 @@ function SiteDiagnosisCard({ lead }: { lead: Lead }) {
   const services = lead.services ?? [];
   const relevant = !services.length || services.some((s) => catalog.get(s)?.category === 'web');
   // Recolher fica lembrado (para todos os leads); sem serviços de site começa recolhido, só nesta ficha.
-  const [stored, setStored] = useCollapsed('diagnostico');
+  const [stored, setStored] = useProspectingCollapsed('diagnostico', lead.status);
   const [shown, setShown] = useState(false);
   const collapsed = relevant ? stored : !shown;
   const open = !collapsed;

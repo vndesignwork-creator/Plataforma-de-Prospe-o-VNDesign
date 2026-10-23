@@ -21,7 +21,7 @@ import { useServiceCatalog, useServiceFilterOptions } from '@/components/service
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
-import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
+import { CollapseButton, useProspectingCollapsed } from '@/components/ui/collapse';
 import { Field } from '@/components/ui/field';
 import { Input, Select, Textarea } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api-client';
@@ -50,7 +50,7 @@ export function AiEmailCard({ lead }: { lead: Lead }) {
   // Serviços a propor: por omissão, os de interesse do lead (vazio = um site).
   const [services, setServices] = useState<string[]>(() => [...(lead.services ?? [])]);
   const [draft, setDraft] = useState<{ subject: string; body: string } | null>(null);
-  const [collapsed, setCollapsed] = useCollapsed('escrever-com-ia');
+  const [collapsed, setCollapsed] = useProspectingCollapsed('escrever-com-ia', lead.status);
 
   if (lead.anonymized_at) return null;
 

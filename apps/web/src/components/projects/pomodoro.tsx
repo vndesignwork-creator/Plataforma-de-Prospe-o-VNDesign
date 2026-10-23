@@ -547,6 +547,7 @@ export function PomodoroWatcher() {
     if (settings?.sound) playChime(settings.sound_name);
     void qc.invalidateQueries({ queryKey: ['pomodoro'] });
     void qc.invalidateQueries({ queryKey: ['time'] });
+    void qc.invalidateQueries({ queryKey: ['tasks'] });
     void qc.invalidateQueries({ queryKey: ['projects'] });
   }, [due, key, qc, settings?.sound, settings?.sound_name]);
 

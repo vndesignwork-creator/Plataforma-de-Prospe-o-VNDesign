@@ -94,6 +94,10 @@ npm run dev        # http://localhost:3000
 
 ---
 
+## Pesquisa rápida (Ctrl+K)
+
+Em qualquer página, **Ctrl+K** (⌘K no Mac), o botão **Pesquisar…** na barra lateral ou a lupa 🔍 no telemóvel abrem uma caixa para escrever o nome de um **lead ou projeto**, uma **tarefa** ou uma **página** (Leads, Projetos, Definições…). Setas ↑↓ e **Enter** (ou tocar) para saltar: os clientes abrem no Projeto, as tarefas na lista de tarefas da ficha. API: `GET /api/v1/tasks?q=` (pelo menos 2 letras).
+
 ## Importar a folha atual
 
 1. No Google Sheets (“Leads_Prospeccao_VNDesign”): **Ficheiro → Transferir → Microsoft Excel (.xlsx)**.
@@ -268,6 +272,8 @@ O que se entrega ao cliente para o site aparecer nas IAs, tudo pronto a copiar (
 - **Perguntas frequentes**: a IA (fornecedor do "Email com IA") escreve 8 a 10 perguntas e respostas do setor, editáveis; sai o HTML (acordeão) e o JSON-LD FAQPage.
 - **llms.txt**: resumo do negócio para as IAs, para pôr na raiz do site (descarregar ou copiar).
 
+**Ficha de cliente**: num lead que já é **Cliente**, os cartões de prospeção (Diagnóstico, Aparece nas IAs?, Kit GEO, Scripts, Escrever com IA, Email de prospeção) começam recolhidos — fica à vista o Projeto, as Tarefas e os Pagamentos. Num lead por contactar começam abertos. O que abres ou recolhes fica lembrado à parte para fichas de clientes e de leads.
+
 **Recolher cartões**: **Diagnóstico do site**, **Aparece nas IAs?**, **Kit GEO**, **Scripts de contacto**, **Escrever com IA**, **Email de prospeção** e **Linha do tempo** têm o botão ⌄ no canto para recolher/expandir. A escolha fica lembrada neste browser, para todos os leads; recolhido, o diagnóstico mostra o resumo (PageSpeed, telemóvel, problemas) e o "Aparece nas IAs?" o último resultado.
 
 **GEO como serviço**: o catálogo tem o serviço **Otimização para IAs (GEO)** (Web Design), os pacotes *GEO — Preparar para as IAs* e *GEO — Acompanhamento mensal* (preços para ajustar em Definições → Propostas) e 4 scripts GEO (email, follow-up, mensagem curta e guião de chamada) com a variável **{{visibilidade_ia}}** (a frase do último "Aparece nas IAs?"). No diagnóstico, quando há pontos GEO a melhorar, o botão **Juntar o serviço ao lead** acrescenta-o.
@@ -434,12 +440,14 @@ Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**
     - o **resumo** em caixinhas: **Pagamentos** (recebido de total, em atraso, ou **Criar plano**), **Tarefas** (feitas de total), **Revisões** e **Horas** (com €/hora e **Ver registos**);
     - **todas as tarefas** (a mesma lista da ficha: marcar como feitas, arrastar pela pega ⠿ para mudar a ordem, editar, apagar e acrescentar; **Esconder tarefas** recolhe a lista) e, ao lado, o bloco **Tempo** com o Pomodoro e o ▶ cronómetro (no telemóvel fica por baixo das tarefas);
     - em baixo, a próxima reunião, despesas, entregas e **Detalhes do projeto**.
+  - Por cima da lista: filtros **Atrasados**, **Pagamentos em atraso** e **Entregam esta semana** (com o número de projetos), **Ordenar por** prazo, valor ou fase (fica lembrado), e **Recolher todos / Abrir todos**. O ⌄ ao lado do nome recolhe cada projeto à linha do título, com um resumo curto (tarefas, pagamentos, horas).
   - "Concluídos" mostra os terminados.
   - **Fases**: colunas Briefing → Em produção → Revisões → Entrega. Arrasta o cartão (no telemóvel, mantém o dedo) ou usa o botão da fase.
   - **Calendário**: o mês com as entregas, reuniões, pagamentos previstos e tarefas (no telemóvel, a lista dos dias com alguma coisa).
 - Na ficha de um cliente, cartão **Projeto** (na coluna larga, logo a seguir ao Pipeline): prazo de entrega, fase, o mesmo **resumo** em caixinhas (Pagamentos, Tarefas, Revisões, Horas) e as secções abaixo; à direita, o bloco **Tempo** com o Pomodoro e as horas (no telemóvel, no fim do cartão). Na coluna da direita, **Pagamentos** fica logo a seguir às Tarefas.
 - **Rondas de revisão**: indicas quantas estão incluídas no preço (2 por omissão) e registas cada pedido do cliente. A partir da primeira além das incluídas, aparece o aviso e a revisão fica "A cobrar".
 - **Registo de horas**: ▶ **Começar** → ⏸ **Pausar** → ▶ **Continuar** quantas vezes quiseres: o relógio mostra sempre o total do projeto (o já registado mais a sessão atual). Só há um temporizador a contar de cada vez; enquanto conta aparece no menu (também no telemóvel). **À mão** regista horas sem temporizador; sessões de menos de 5 segundos (começar e pausar logo) não ficam guardadas; **Pôr a zero** apaga todas as horas do projeto (com confirmação); cada registo pode ser corrigido (✎ horas, minutos, notas) ou apagado — na ficha ou em **ver registos** na lista de projetos. Mostra o total e quanto ganhas por hora (valor da proposta aceite; sem ela, o total dos pagamentos; por fim, o valor estimado).
+- **Horas por tarefa**: o Pomodoro guarda a tarefa escolhida e o registo **À mão** (ou o ✎ de um registo) também deixa escolher a tarefa. Cada tarefa mostra o tempo gasto (⏱ 3 h 20 min) e as **Horas** mostram o **Tempo por tarefa** (barras, com "Sem tarefa" no fim).
 - **Ficheiros e entregas**: links do Google Drive, Figma, Canva… com o estado *Por enviar → Enviada → Aprovada pelo cliente* (fica na linha do tempo).
 - **Página para o cliente**: **Criar link** gera uma página só de leitura (sem login, endereço `/p/<código>`) com a fase, o progresso das tarefas, a entrega prevista, a próxima reunião, as entregas enviadas, os pagamentos (total, pago, em falta) e as revisões. Não mostra notas, horas nem valores internos. **Enviar por WhatsApp**, **Novo link** (o antigo deixa de abrir) ou **Desligar**.
 - **Concluir projeto** abre os passos finais: criar a tarefa *Juntar o projeto ao portefólio* (daqui a 7 dias), lembrar de *propor um novo serviço* daqui a 3, 6 ou 12 meses (tarefas que aparecem em "Hoje" no dia) e, no fim, **pedir uma avaliação no Google** por WhatsApp ou email (modelos *pedido de avaliação* em Scripts, com `{{avaliacao}}`). O link de avaliação guarda-se em Definições → Funcionalidades → *Avaliações no Google*. **Reabrir projeto** volta a pô-lo em curso.

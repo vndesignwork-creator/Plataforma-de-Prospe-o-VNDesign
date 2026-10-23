@@ -862,10 +862,12 @@ export function useTimer() {
 export function useAddTime(leadId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { date: string; minutes: number; notes?: string }) =>
+    mutationFn: (body: { date: string; minutes: number; notes?: string; task_id?: string | null }) =>
       api<{ data: TimeEntry }>(`/leads/${leadId}/time`, { method: 'POST', body }).then((r) => r.data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['time', leadId] });
+      // O tempo de cada tarefa aparece na lista de tarefas.
+      void qc.invalidateQueries({ queryKey: ['tasks', leadId] });
       void qc.invalidateQueries({ queryKey: ['projects'] });
     },
   });
@@ -874,10 +876,12 @@ export function useAddTime(leadId: string) {
 export function useUpdateTime(leadId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: { date?: string; minutes?: number; notes?: string } }) =>
+    mutationFn: ({ id, body }: { id: string; body: { date?: string; minutes?: number; notes?: string; task_id?: string | null } }) =>
       api<{ data: TimeEntry }>(`/time-entries/${id}`, { method: 'PATCH', body }).then((r) => r.data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['time', leadId] });
+      // O tempo de cada tarefa aparece na lista de tarefas.
+      void qc.invalidateQueries({ queryKey: ['tasks', leadId] });
       void qc.invalidateQueries({ queryKey: ['projects'] });
     },
   });
@@ -889,6 +893,8 @@ export function useDeleteTime(leadId: string) {
     mutationFn: (id: string) => api(`/time-entries/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['time', leadId] });
+      // O tempo de cada tarefa aparece na lista de tarefas.
+      void qc.invalidateQueries({ queryKey: ['tasks', leadId] });
       void qc.invalidateQueries({ queryKey: ['time', 'running'] });
       void qc.invalidateQueries({ queryKey: ['projects'] });
     },
@@ -1237,6 +1243,7 @@ export function usePomodoroAction() {
     onSuccess: (pomodoro) => {
       qc.setQueryData(['pomodoro'], pomodoro);
       void qc.invalidateQueries({ queryKey: ['time'] });
+      void qc.invalidateQueries({ queryKey: ['tasks'] });
       void qc.invalidateQueries({ queryKey: ['projects'] });
       void qc.invalidateQueries({ queryKey: ['pomodoro-stats'] });
     },

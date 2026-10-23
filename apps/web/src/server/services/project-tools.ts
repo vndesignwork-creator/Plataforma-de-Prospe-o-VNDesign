@@ -12,6 +12,7 @@ import {
   entrySeconds,
   hourlyRate,
   summarizePayments,
+  timeByTask,
   todayIso,
   type CalendarEvent,
   type ProjectDeliverable,
@@ -164,7 +165,7 @@ export async function deleteRevision(ctx: ApiContext, id: string): Promise<void>
 // Registo de horas
 // -----------------------------------------------------------------------------
 
-const TIME_SELECT = 'id, lead_id, user_id, started_at, ended_at, notes, created_at';
+const TIME_SELECT = 'id, lead_id, user_id, started_at, ended_at, notes, task_id, created_at';
 type TimeRow = Omit<TimeEntry, 'minutes' | 'seconds'>;
 const toEntry = (row: TimeRow, now = Date.now()): TimeEntry => {
   const seconds = entrySeconds(row, now);
@@ -209,7 +210,7 @@ export async function getProjectTime(ctx: ApiContext, leadId: string): Promise<P
   const now = Date.now();
   const entries = ((data ?? []) as TimeRow[]).map((r) => toEntry(r, now));
   const total = Math.floor(entries.reduce((sum, e) => sum + e.seconds, 0) / 60);
-  const [values, expenses] = await Promise.all([projectValues(ctx, [lead]), expenseTotals(ctx, [leadId])]);
+  const [values, expenses, taskTitles] = await Promise.all([projectValues(ctx, [lead]), expenseTotals(ctx, [leadId]), leadTaskTitles(ctx, leadId)]);
   const value = values.get(leadId) ?? null;
   const spent = expenses.get(leadId) ?? 0;
   const { profit, net_rate } = projectProfit(value, spent, total);
@@ -223,7 +224,22 @@ export async function getProjectTime(ctx: ApiContext, leadId: string): Promise<P
     running: entries.find((e) => !e.ended_at && e.user_id === ctx.user.id) ?? null,
     value,
     hourly_rate: hourlyRate(value, total),
+    by_task: timeByTask(entries, taskTitles),
   };
+}
+
+/** Títulos das tarefas do lead (para o tempo por tarefa). */
+async function leadTaskTitles(ctx: ApiContext, leadId: string): Promise<Map<string, string>> {
+  const { data, error } = await ctx.supabase.from('lead_tasks').select('id, title').eq('workspace_id', ctx.workspaceId).eq('lead_id', leadId);
+  if (error) throw fromPostgrest(error);
+  return new Map(((data ?? []) as { id: string; title: string }[]).map((t) => [t.id, t.title]));
+}
+
+/** A tarefa tem de ser deste lead. */
+async function checkTask(ctx: ApiContext, leadId: string, taskId: string | null | undefined) {
+  if (!taskId) return;
+  const titles = await leadTaskTitles(ctx, leadId);
+  if (!titles.has(taskId)) throw new ApiError(422, 'Tarefa inválida', 'Essa tarefa não é deste projeto.', { errors: { task_id: ['Escolhe uma tarefa deste projeto.'] } });
 }
 
 /** Registos mais curtos do que isto (começar e pausar logo a seguir) não ficam guardados. */
@@ -288,6 +304,7 @@ export async function getRunningTimer(ctx: ApiContext): Promise<RunningTimer> {
 
 export async function addTimeEntry(ctx: ApiContext, leadId: string, input: TimeEntryCreate): Promise<TimeEntry> {
   await getLead(ctx, leadId);
+  await checkTask(ctx, leadId, input.task_id);
   // Registo à mão: no próprio dia, a começar às 09:00 (UTC).
   const started = new Date(`${input.date}T09:00:00Z`);
   const { data, error } = await ctx.supabase
@@ -299,6 +316,7 @@ export async function addTimeEntry(ctx: ApiContext, leadId: string, input: TimeE
       started_at: started.toISOString(),
       ended_at: new Date(started.getTime() + input.minutes * 60_000).toISOString(),
       notes: input.notes,
+      task_id: input.task_id ?? null,
     })
     .select(TIME_SELECT)
     .single();
@@ -320,6 +338,10 @@ export async function updateTimeEntry(ctx: ApiContext, id: string, patch: TimeEn
   if (!row.ended_at) throw new ApiError(422, 'Ainda a contar', 'Pausa o temporizador antes de corrigir este registo.');
   const update: Record<string, unknown> = {};
   if (patch.notes !== undefined) update.notes = patch.notes;
+  if (patch.task_id !== undefined) {
+    await checkTask(ctx, row.lead_id, patch.task_id);
+    update.task_id = patch.task_id;
+  }
   if (patch.date !== undefined || patch.minutes !== undefined) {
     // Mantém a hora de início; muda o dia e/ou a duração.
     const started = new Date(row.started_at);

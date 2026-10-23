@@ -17,6 +17,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   addDays,
   formatDate,
+  formatDuration,
   splitTasks,
   suggestTaskTemplates,
   todayIso,
@@ -24,7 +25,7 @@ import {
   type LeadTask,
   type TaskTemplate,
 } from '@vndesign/core';
-import { Bell, CalendarDays, Check, ChevronRight, GripVertical, ListPlus, Pencil, Plus, X } from 'lucide-react';
+import { Bell, CalendarDays, Check, ChevronRight, Clock, GripVertical, ListPlus, Pencil, Plus, X } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -326,6 +327,16 @@ function TaskRow({
           <>
             {' '}
             <ReminderChip task={task} />
+          </>
+        ) : null}
+        {task.time_seconds && task.time_seconds >= 60 ? (
+          <>
+            {' '}
+            <span className="inline-flex items-center gap-1 text-xs whitespace-nowrap text-muted tabular" title="Tempo registado nesta tarefa">
+              <Clock className="h-3 w-3" aria-hidden />
+              <span className="sr-only">Tempo registado: </span>
+              {formatDuration(task.time_seconds)}
+            </span>
           </>
         ) : null}
       </span>
