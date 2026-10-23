@@ -73,6 +73,7 @@ export function exportColumns(services?: readonly ServiceInfo[]): ExportColumn[]
       width: 30,
       value: (l) => (l.services?.length ? l.services.map((s) => serviceLabel(s, services)).join('; ') : null),
     },
+    { header: 'Etiquetas', kind: 'text', width: 24, value: (l) => (l.tags?.length ? l.tags.join('; ') : null) },
   ];
 }
 

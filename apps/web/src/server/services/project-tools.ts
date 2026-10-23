@@ -508,10 +508,13 @@ type LeadRef = { id: string; number: number; company_name: string; archived_at?:
 const leadRef = (l: LeadRef) => ({ id: l.id, number: l.number, company_name: l.company_name });
 const LEAD_EMBED = 'lead:leads!inner(id, number, company_name, status, archived_at, anonymized_at, project_completed_at)';
 
-/** Prazos de entrega (projetos em curso), reuniões, pagamentos previstos e tarefas com prazo. */
-export async function projectCalendar(ctx: ApiContext, from: string, to: string): Promise<CalendarEvent[]> {
+/**
+ * Prazos de entrega (projetos em curso), reuniões, pagamentos previstos e tarefas
+ * com prazo; com `followups`, também as próximas ações dos leads (a Agenda).
+ */
+export async function projectCalendar(ctx: ApiContext, from: string, to: string, options: { followups?: boolean } = {}): Promise<CalendarEvent[]> {
   const ws = ctx.workspaceId;
-  const [dues, meetings, payments, tasks] = await Promise.all([
+  const [dues, meetings, payments, tasks, followups] = await Promise.all([
     ctx.supabase
       .from('lead_projects')
       .select(`lead_id, due_on, ${LEAD_EMBED}`)
@@ -544,8 +547,21 @@ export async function projectCalendar(ctx: ApiContext, from: string, to: string)
       .gte('due_on', from)
       .lte('due_on', to)
       .is('lead.archived_at', null),
+    // Os mesmos follow-ups do "Hoje" (sem clientes nem "sem interesse").
+    options.followups
+      ? ctx.supabase
+          .from('leads')
+          .select('id, number, company_name, next_action_text, next_action_on')
+          .eq('workspace_id', ws)
+          .is('anonymized_at', null)
+          .is('archived_at', null)
+          .not('status', 'in', '(cliente,sem_interesse)')
+          .gte('next_action_on', from)
+          .lte('next_action_on', to)
+          .limit(1000)
+      : Promise.resolve({ data: [], error: null }),
   ]);
-  for (const r of [dues, meetings, payments, tasks]) if (r.error) throw fromPostgrest(r.error);
+  for (const r of [dues, meetings, payments, tasks, followups]) if (r.error) throw fromPostgrest(r.error);
   const events: CalendarEvent[] = [];
   for (const d of (dues.data ?? []) as unknown as { lead_id: string; due_on: string; lead: LeadRef }[]) {
     events.push({ id: `due-${d.lead_id}`, date: d.due_on, type: 'due', title: 'Entrega do projeto', starts_at: null, amount: null, done: false, lead: leadRef(d.lead) });
@@ -561,7 +577,10 @@ export async function projectCalendar(ctx: ApiContext, from: string, to: string)
   for (const t of (tasks.data ?? []) as unknown as { id: string; title: string; due_on: string; done_at: string | null; lead: LeadRef }[]) {
     events.push({ id: `task-${t.id}`, date: t.due_on, type: 'task', title: t.title, starts_at: null, amount: null, done: !!t.done_at, lead: leadRef(t.lead) });
   }
-  const order = { due: 0, meeting: 1, payment: 2, task: 3 } as const;
+  for (const l of (followups.data ?? []) as { id: string; number: number; company_name: string; next_action_text: string | null; next_action_on: string }[]) {
+    events.push({ id: `followup-${l.id}`, date: l.next_action_on, type: 'followup', title: l.next_action_text ?? 'Próxima ação', starts_at: null, amount: null, done: false, lead: leadRef(l) });
+  }
+  const order = { due: 0, meeting: 1, followup: 2, payment: 3, task: 4 } as const;
   return events.sort((a, b) => a.date.localeCompare(b.date) || order[a.type] - order[b.type] || (a.starts_at ?? '').localeCompare(b.starts_at ?? ''));
 }
 

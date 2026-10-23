@@ -357,13 +357,15 @@ export const ProjectsQuerySchema = z.object({
 // Calendário (prazos, reuniões, pagamentos e tarefas)
 // -----------------------------------------------------------------------------
 
-export const CALENDAR_EVENT_TYPES = ['due', 'meeting', 'payment', 'task'] as const;
+/** followup = próxima ação de um lead (só na Agenda, com followups=true). */
+export const CALENDAR_EVENT_TYPES = ['due', 'meeting', 'payment', 'task', 'followup'] as const;
 export type CalendarEventType = (typeof CALENDAR_EVENT_TYPES)[number];
 export const CALENDAR_EVENT_LABELS: Record<CalendarEventType, string> = {
   due: 'Entrega',
   meeting: 'Reunião',
   payment: 'Pagamento',
   task: 'Tarefa',
+  followup: 'Follow-up',
 };
 
 export const CalendarEventSchema = z
@@ -384,8 +386,15 @@ export const CalendarQuerySchema = z
   .object({
     from: z.iso.date({ error: 'Data inválida.' }),
     to: z.iso.date({ error: 'Data inválida.' }),
+    followups: z.enum(['true', 'false']).optional().meta({ description: 'true = também as próximas ações dos leads (Agenda)' }),
   })
   .refine((q) => q.from <= q.to && daysBetween(q.from, q.to) <= 62, { error: 'Intervalo inválido (máximo 62 dias).' });
+
+/** Segunda-feira da semana de um dia (AAAA-MM-DD). */
+export function weekStart(isoDate: string): string {
+  const weekday = (new Date(`${isoDate}T00:00:00Z`).getUTCDay() + 6) % 7; // 0 = segunda
+  return addDays(isoDate, -weekday);
+}
 
 /** Dias (AAAA-MM-DD) a mostrar na grelha de um mês: de segunda a domingo, semanas completas. */
 export function monthGrid(month: string): string[] {

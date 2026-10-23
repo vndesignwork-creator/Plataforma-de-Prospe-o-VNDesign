@@ -30,6 +30,21 @@ import { TodayTasksSchema } from './tasks';
 // Mensagens genéricas de validação em português (as específicas estão em cada campo).
 z.config(z.locales.pt());
 
+/** Etiquetas sem repetidas (maiúsculas/acentos contam como iguais; fica a primeira escrita). */
+export function normalizeTags(list: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of list) {
+    // Sem vírgulas (separam as etiquetas nos filtros).
+    const tag = raw.replace(/,/g, ' ').trim().replace(/\s+/g, ' ').slice(0, 30);
+    const key = tag.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if (!tag || seen.has(key)) continue;
+    seen.add(key);
+    out.push(tag);
+  }
+  return out.slice(0, 10);
+}
+
 // -----------------------------------------------------------------------------
 // Blocos reutilizáveis (strings vazias passam a null)
 // -----------------------------------------------------------------------------
@@ -127,6 +142,11 @@ const leadFields = {
   project_title: nullableText(120),
   /** Responsável pelo lead (membro da equipa; null = sem responsável). */
   assigned_to: z.uuid({ error: 'Responsável inválido.' }).nullable(),
+  /** Etiquetas livres ("feira de março", "urgente"…). */
+  tags: z
+    .array(z.string().trim().min(1, { error: 'Etiqueta vazia.' }).max(30, { error: 'Cada etiqueta tem no máximo 30 caracteres.' }))
+    .max(10, { error: 'No máximo 10 etiquetas.' })
+    .transform((list) => normalizeTags(list)),
 };
 
 export const EDITABLE_LEAD_FIELDS = Object.keys(leadFields) as (keyof typeof leadFields)[];
@@ -207,6 +227,7 @@ export const LeadSchema = z
     project_title: z.string().nullable().optional(),
     /** Responsável pelo lead (equipa de prospeção). */
     assigned_to: z.uuid().nullable().optional(),
+    tags: z.array(z.string()).optional().meta({ description: 'Etiquetas livres' }),
     created_by: z.uuid().nullable(),
     created_at: z.string(),
     updated_at: z.string(),
@@ -259,6 +280,7 @@ export const LeadListQuerySchema = z
       .optional()
       .meta({ description: 'Serviços de interesse separados por vírgula ("none" = sem serviço); basta um coincidir' }),
     city: z.string().trim().max(120).optional(),
+    tag: csvList(z.string().trim().min(1).max(30)).optional().meta({ description: 'Etiquetas separadas por vírgula; basta uma coincidir' }),
     assigned: z
       .union([z.uuid(), z.enum(['me', 'none'])])
       .optional()
@@ -883,3 +905,6 @@ export const FollowUpSchema = z
   })
   .meta({ id: 'FollowUp' });
 export type FollowUpInput = z.infer<typeof FollowUpSchema>;
+
+export const LeadTagCountSchema = z.object({ tag: z.string(), count: z.int() }).meta({ id: 'LeadTagCount' });
+export type LeadTagCount = z.infer<typeof LeadTagCountSchema>;

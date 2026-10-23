@@ -6,7 +6,12 @@ import { expect, test, type APIRequestContext } from '@playwright/test';
  * concluir (portefólio, novo serviço, pedido de avaliação).
  */
 const run = Date.now().toString(36);
-const iso = (days: number) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Lisbon' }).format(new Date(Date.now() + days * 86_400_000));
+// Dias de calendário em Lisboa (somar 24 h falha na mudança de hora).
+const iso = (days: number) => {
+  const d = new Date(`${new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Lisbon' }).format(new Date())}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+};
 
 async function createClient(request: APIRequestContext, data: Record<string, unknown>) {
   const res = await request.post('/api/v1/leads?force=true', { data: { status: 'cliente', ...data } });

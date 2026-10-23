@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/page-header';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
@@ -73,6 +73,9 @@ import { ProposalsCard } from '@/components/proposals/proposals-card';
 import { ContactFinder } from './contact-finder';
 import { TasksCard } from '@/components/tasks/tasks-card';
 import { NotesCard } from './notes-card';
+import { rememberLead } from '@/lib/recent-leads';
+import { MeetingNotesButton } from './meeting-notes';
+import { TagChips, TagEditor } from './tags';
 import { SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 import { ServiceChips, useServiceCatalog } from '@/components/services/services';
 import { FollowUpEmailButton, SendEmailButton } from '@/components/email/send-email-dialog';
@@ -204,6 +207,10 @@ export function LeadDetail({ id }: { id: string }) {
   const invalidate = useInvalidateLead();
   const [dialog, setDialog] = useState<null | 'delete' | 'anonymize' | 'merge'>(null);
   const [emailCollapsed, setEmailCollapsed] = useProspectingCollapsed('email-de-prospecao', lead?.status ?? '');
+  // Pesquisa rápida: os leads abertos há pouco aparecem sem escrever nada.
+  useEffect(() => {
+    if (lead && !lead.anonymized_at) rememberLead(lead);
+  }, [lead]);
   // Prospetor: só a parte comercial (sem valores, propostas, pagamentos, projetos nem apagar).
   const staff = me ? me.role !== 'prospector' : false;
 
@@ -471,6 +478,9 @@ export function LeadDetail({ id }: { id: string }) {
                   dash
                 )}
               </Row>
+              <Row label="Etiquetas" className="md:col-span-2">
+                {!lead.anonymized_at ? <TagEditor lead={lead} /> : lead.tags?.length ? <TagChips tags={lead.tags} /> : dash}
+              </Row>
               <Row label="Ângulo de abordagem" className="md:col-span-2">
                 {lead.approach_angle ? <span className="whitespace-pre-line">{lead.approach_angle}</span> : dash}
               </Row>
@@ -650,7 +660,7 @@ export function LeadDetail({ id }: { id: string }) {
           {staff ? <ProposalsCard lead={lead} /> : null}
           {staff && settings?.features.contracts ? <ContractsCard lead={lead} /> : null}
           <div id="atividade" className="scroll-mt-20">
-            <ActivityTimeline leadId={lead.id} currentUserId={me?.user.id} fitTo={mainColumn} />
+            <ActivityTimeline leadId={lead.id} currentUserId={me?.user.id} fitTo={mainColumn} actions={<MeetingNotesButton lead={lead} />} />
           </div>
         </aside>
       </div>

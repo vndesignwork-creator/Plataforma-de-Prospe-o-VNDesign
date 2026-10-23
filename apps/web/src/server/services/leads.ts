@@ -17,6 +17,7 @@ import {
   type LeadBulkResult,
   type LeadCreate,
   type LeadListQuery,
+  type LeadTagCount,
   type LeadUpdate,
 } from '@vndesign/core';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -30,7 +31,7 @@ export const LEAD_SELECT = [
   'email', 'phone', 'contact_name', 'status', 'channel', 'first_contact_on', 'last_follow_up_on',
   'next_action_text', 'next_action_on', 'estimated_value', 'notes', 'approach_angle', 'source_url',
   'suggested_on', 'email_subject', 'email_body', 'services', 'kanban_position', 'status_changed_at',
-  'anonymized_at', 'archived_at', 'score', 'score_reasons', 'follow_up_count', 'project_completed_at', 'client_of', 'project_title', 'assigned_to', 'created_by', 'created_at', 'updated_at',
+  'anonymized_at', 'archived_at', 'score', 'score_reasons', 'follow_up_count', 'project_completed_at', 'client_of', 'project_title', 'assigned_to', 'tags', 'created_by', 'created_at', 'updated_at',
 ].join(', ');
 
 const NOT_FOUND = 'Lead não encontrado';
@@ -53,7 +54,7 @@ type LeadQueryBuilder = ReturnType<typeof baseLeadQuery>;
 export type LeadFilters = Partial<
   Pick<
     LeadListQuery,
-    'q' | 'sector' | 'status' | 'channel' | 'city' | 'suggested_from' | 'suggested_to' | 'due' | 'include_anonymized' | 'archived' | 'service'
+    'q' | 'sector' | 'status' | 'channel' | 'city' | 'suggested_from' | 'suggested_to' | 'due' | 'include_anonymized' | 'archived' | 'service' | 'tag'
   >
 > & {
   /** Responsável já resolvido ("me" → o id de quem pede). */
@@ -97,6 +98,8 @@ function applyLeadFilters(q: LeadQueryBuilder, query: LeadFilters): LeadQueryBui
     q = q.or(parts.join(','));
   }
   if (query.city) q = q.ilike('city', `%${likeEscape(query.city)}%`);
+  // Etiquetas: basta uma coincidir.
+  if (query.tag?.length) q = q.overlaps('tags', query.tag);
   if (query.assigned === 'none') q = q.is('assigned_to', null);
   else if (query.assigned) q = q.eq('assigned_to', query.assigned);
   if (query.suggested_from) q = q.gte('suggested_on', query.suggested_from);
@@ -386,4 +389,11 @@ export async function moveLead(
     .select(LEAD_SELECT)
     .maybeSingle();
   return unwrap(result, NOT_FOUND) as unknown as Lead;
+}
+
+/** Etiquetas usadas no workspace, com o número de leads (mais usadas primeiro). */
+export async function leadTagCounts(ctx: ApiContext): Promise<LeadTagCount[]> {
+  const { data, error } = await ctx.supabase.rpc('lead_tag_counts', { p_workspace_id: ctx.workspaceId });
+  if (error) throw fromPostgrest(error);
+  return ((data ?? []) as { tag: string; count: number | string }[]).map((r) => ({ tag: r.tag, count: Number(r.count) }));
 }

@@ -4,7 +4,8 @@
  * evita páginas vazias ou com erros.
  */
 const PROSPECTOR_PAGES = ['/dashboard', '/leads', '/prospecao', '/gerar-leads', '/kanban', '/mapa', '/scripts', '/partilhar', '/estatisticas', '/definicoes/assinatura', '/definicoes/conta'];
-const BLOCKED_LEAD_PAGES = /^\/leads\/[^/]+\/(propostas|juntar)(\/|$)/;
+// Propostas, juntar e a limpeza de duplicados (apagam leads) são só do dono ou administrador.
+const BLOCKED_LEAD_PAGES = /^\/leads\/(duplicados(\/|$)|[^/]+\/(propostas|juntar)(\/|$))/;
 
 export function prospectorPageAllowed(pathname: string): boolean {
   if (pathname === '/definicoes') return true;

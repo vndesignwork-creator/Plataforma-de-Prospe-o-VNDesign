@@ -36,6 +36,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { MultiSelectFilter } from '@/components/leads/multi-select';
+import { TagChips, useTagFilterOptions } from '@/components/leads/tags';
 import { Skeleton } from '@/components/ui/card';
 import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownTrigger } from '@/components/ui/dropdown';
 import { Input } from '@/components/ui/input';
@@ -104,6 +105,7 @@ function LeadCard({
           >
             <span className="text-muted tabular">#{lead.number}</span> {lead.company_name} {lead.project_title ? <span className="font-normal text-muted">· {lead.project_title}</span> : null}
           </Link>
+          <TagChips tags={lead.tags} link={false} className="mt-1" />
           <p className="mt-1 flex flex-wrap gap-x-2 text-xs text-muted">
             {lead.sector ? (
               <span className="inline-flex items-center gap-1">
@@ -323,8 +325,10 @@ export function KanbanBoard() {
   const [sector, setSector] = useState<string[]>([]);
   const [channel, setChannel] = useState<string[]>([]);
   const [service, setService] = useState<string[]>([]);
+  const [tag, setTag] = useState<string[]>([]);
+  const tagOptions = useTagFilterOptions();
   const q = useDebouncedValue(search.trim());
-  const query = { q: q || undefined, sector, channel, service };
+  const query = { q: q || undefined, sector, channel, service, tag };
   const { data: board, isLoading } = useBoard(query);
   const { data: sectors } = useSectors();
 
@@ -510,7 +514,8 @@ export function KanbanBoard() {
             className="pl-9"
           />
         </div>
-        <div className="flex flex-[1_1_auto] gap-2 *:flex-1 *:justify-between">
+        {/* Telemóvel: 3 por linha; com a Etiqueta, passa para baixo (nada sai do ecrã). */}
+        <div className="flex flex-[1_1_auto] flex-wrap gap-2 *:min-w-[28%] *:flex-1 *:justify-between">
           <MultiSelectFilter
             label="Setor"
             value={sector}
@@ -524,6 +529,7 @@ export function KanbanBoard() {
             onChange={setChannel}
             options={[...LEAD_CHANNELS.map((c) => ({ value: c, label: LEAD_CHANNEL_META[c].label, icon: <ChannelIcon channel={c} className="text-muted" /> })), { value: 'none', label: 'Sem canal' }]}
           />
+          {tagOptions.length ? <MultiSelectFilter label="Etiqueta" value={tag} onChange={setTag} options={tagOptions} /> : null}
         </div>
       </div>
       <p className="hidden text-sm text-muted pointer-fine:block">

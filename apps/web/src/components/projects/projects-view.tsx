@@ -97,6 +97,12 @@ export function ProjectsView() {
       const saved = localStorage.getItem(VIEW_KEY) as View | null;
       /* eslint-disable-next-line react-hooks/set-state-in-effect -- só depois de montar (localStorage não existe no servidor) */
       if (saved && VIEWS.some((v) => v.value === saved)) setView(saved);
+      // Vindo do Dashboard ("2 com a entrega atrasada"): lista com esse filtro.
+      const fromUrl = new URLSearchParams(window.location.search).get('filtro') as ProjectFilter | null;
+      if (fromUrl && PROJECT_FILTERS.includes(fromUrl)) {
+        setView('list');
+        setFilter(fromUrl);
+      }
       const savedSort = localStorage.getItem(SORT_KEY) as ProjectSort | null;
       if (savedSort && PROJECT_SORTS.includes(savedSort)) setSort(savedSort);
     } catch {

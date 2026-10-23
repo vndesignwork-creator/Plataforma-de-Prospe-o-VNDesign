@@ -1,7 +1,7 @@
 'use client';
 
 import * as RadixDialog from '@radix-ui/react-dialog';
-import { BarChart3, BriefcaseBusiness, Columns3, Handshake, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Search, Settings, Sparkles, Sun, Target, Users, X } from 'lucide-react';
+import { BarChart3, BriefcaseBusiness, CalendarDays, Columns3, Handshake, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Search, Settings, Sparkles, Sun, Target, Users, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
@@ -20,6 +20,7 @@ import { useTheme } from './theme';
 
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, match: (p: string) => p.startsWith('/dashboard') },
+  { href: '/agenda', label: 'Agenda', icon: CalendarDays, match: (p: string) => p.startsWith('/agenda') },
   // O mapa abre-se a partir dos Leads ("Ver no mapa"), por isso conta como Leads.
   { href: '/leads', label: 'Leads', icon: Users, match: (p: string) => p === '/leads' || p.startsWith('/leads/') || p.startsWith('/mapa') || p.startsWith('/importar') },
   { href: '/prospecao', label: 'Prospeção', icon: Target, match: (p: string) => p.startsWith('/prospecao'), feature: 'prospecting_session' as const },
@@ -162,11 +163,11 @@ export function AppShell({ email, children }: { email: string | null; children: 
       </aside>
 
       {/* Barra superior (telemóvel/tablet) */}
-      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-surface/95 px-4 backdrop-blur lg:hidden">
-        <Link href="/dashboard">
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-1 border-b border-border bg-surface/95 px-4 backdrop-blur lg:hidden">
+        <Link href="/dashboard" className="shrink-0 whitespace-nowrap">
           <Logo />
         </Link>
-        {role === 'prospector' ? null : <RunningTimer compact className="ml-auto mr-1 py-0.5" />}
+        {role === 'prospector' ? null : <RunningTimer compact className="ml-auto min-w-0 py-0.5" />}
         <button type="button" onClick={openSearch} className={cn('rounded-lg p-2 text-fg hover:bg-surface-2', role === 'prospector' && 'ml-auto')} aria-label="Pesquisar">
           <Search className="h-5 w-5" aria-hidden />
         </button>

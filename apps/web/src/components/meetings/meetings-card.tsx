@@ -17,6 +17,7 @@ import { Input, Select, Textarea } from '@/components/ui/input';
 import { ApiClientError, errorMessage } from '@/lib/api-client';
 import { localInputToIso } from '@/lib/local-datetime';
 import { useCancelMeeting, useCreateMeeting, useMailAccount, useMeetings } from '@/lib/queries';
+import { consumeLeadAction } from '@/lib/lead-actions';
 import { cn } from '@/lib/utils';
 
 const whenFmt = new Intl.DateTimeFormat('pt-PT', {
@@ -216,7 +217,8 @@ function MeetingRow({ lead, meeting, now }: { lead: Lead; meeting: LeadMeeting; 
 
 export function MeetingsCard({ lead }: { lead: Lead }) {
   const { data: meetings, isLoading } = useMeetings(lead.id);
-  const [open, setOpen] = useState(false);
+  // Pesquisa rápida → "Marcar reunião" abre logo o formulário.
+  const [open, setOpen] = useState(() => consumeLeadAction('reuniao'));
   // Hora fixa ao abrir a ficha (a lista volta a ser pedida quando muda).
   const [now] = useState(() => Date.now());
   if (lead.anonymized_at) return null;

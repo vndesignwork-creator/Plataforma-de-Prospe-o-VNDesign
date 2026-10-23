@@ -11,6 +11,12 @@ import { startStubs } from './stubs';
 const run = Date.now().toString(36);
 const FROM = `va+v5${run}@vndesign.pt`;
 const MAILPIT = 'http://127.0.0.1:54324/api/v1';
+// Dias de calendário em Lisboa (somar 24 h falha na mudança de hora).
+const lisbonDay = (days: number) => {
+  const d = new Date(`${new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Lisbon' }).format(new Date())}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+};
 
 let stop: () => void;
 test.beforeAll(async () => {
@@ -153,7 +159,7 @@ test('aberturas do email: imagem de 1×1, clique no link, linha do tempo, Hoje e
 
 test('sessão de prospeção pela API: não atendeu, contactado e mais tarde', async ({ request }) => {
   const lead = await createLead(request, { company_name: `Sessão ${run}`, phone: '912000111' });
-  const tomorrow = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Lisbon' }).format(new Date(Date.now() + 86_400_000));
+  const tomorrow = lisbonDay(1);
   let res = await request.post(`/api/v1/leads/${lead.id}/prospecting`, { data: { outcome: 'no_answer' } });
   expect(res.status(), await res.text()).toBe(200);
   expect((await res.json()).data.lead).toMatchObject({ status: 'identificado', next_action_on: tomorrow });
@@ -162,7 +168,7 @@ test('sessão de prospeção pela API: não atendeu, contactado e mais tarde', a
   expect(body.lead.status).toBe('contactado');
   expect(body.done_today).toBeGreaterThanOrEqual(2);
   res = await request.post(`/api/v1/leads/${lead.id}/prospecting`, { data: { outcome: 'later', days: 7 } });
-  expect((await res.json()).data.lead.next_action_on).toBe(new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Lisbon' }).format(new Date(Date.now() + 7 * 86_400_000)));
+  expect((await res.json()).data.lead.next_action_on).toBe(lisbonDay(7));
   const queue = (await (await request.get('/api/v1/prospecting?filter=new')).json()).data;
   expect(queue.items.some((i: { lead: { id: string } }) => i.lead.id === lead.id)).toBe(false);
 });

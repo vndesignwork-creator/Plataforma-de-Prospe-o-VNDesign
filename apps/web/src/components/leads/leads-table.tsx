@@ -21,23 +21,7 @@ import {
   type LeadSortField,
   leadPath,
 } from '@vndesign/core';
-import {
-  Archive,
-  ArchiveRestore,
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  Columns3,
-  ArrowDownUp,
-  Download,
-  Upload,
-  Map as MapIcon,
-  Search,
-  SlidersHorizontal,
-  Trash2,
-  UserCheck,
-  X,
-} from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowDown, ArrowDownUp, ArrowUp, ArrowUpDown, Columns3, CopyX, Download, Map as MapIcon, Search, SlidersHorizontal, Trash2, Upload, UserCheck, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -63,6 +47,7 @@ import { cn, displayHost } from '@/lib/utils';
 import { ChannelLabel, MobileLabel, PageSpeedScore, StatusBadge } from './badges';
 import { LeadScoreBadge } from './lead-score';
 import { MultiSelectFilter, SingleSelectFilter } from './multi-select';
+import { TagChips, useTagFilterOptions } from './tags';
 import { ChannelIcon, SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 import { ServiceIcons, useServiceFilterOptions } from '@/components/services/services';
 import { TaskProgress } from '@/components/tasks/task-progress';
@@ -129,6 +114,7 @@ function buildColumns(today: string): Col[] {
             {row.original.company_name} {row.original.project_title ? <span className="font-normal text-muted">· {row.original.project_title}</span> : null}
           </Link>
           {row.original.archived_at ? <ArchivedBadge /> : null}
+          <TagChips tags={row.original.tags} className="mt-1" />
           <TaskProgress progress={row.original.task_progress} className="mt-1 flex w-fit" />
         </>
       ),
@@ -305,6 +291,7 @@ export function LeadsTable() {
     status: getList('status'),
     channel: getList('channel'),
     service: getList('servico'),
+    tag: getList('etiqueta'),
     city: get('city') || undefined,
     due: get('due') || undefined,
     suggested_from: get('de') || undefined,
@@ -318,6 +305,7 @@ export function LeadsTable() {
   };
   const { data, isLoading, isFetching, error } = useLeads(query);
   const { data: sectors } = useSectors();
+  const tagOptions = useTagFilterOptions();
   const { data: tablePref } = usePreference<{ hidden: string[] }>('leads.table');
   const saveTablePref = useSetPreference<{ hidden: string[] }>('leads.table');
   const hidden = tablePref?.hidden ?? DEFAULT_HIDDEN;
@@ -343,7 +331,7 @@ export function LeadsTable() {
   });
 
   const activeFilters =
-    query.sector.length + query.status.length + query.channel.length + query.service.length +
+    query.sector.length + query.status.length + query.channel.length + query.service.length + query.tag.length +
     [query.q, query.city, query.due, query.suggested_from, query.suggested_to, query.archived, query.assigned].filter(Boolean).length;
   const [showFilters, setShowFilters] = useState(false);
 
@@ -514,6 +502,12 @@ export function LeadsTable() {
               <Download className="h-4 w-4 text-muted" aria-hidden />
               CSV (Excel em português)
             </DropdownItem>
+            <DropdownSeparator />
+            <DropdownLabel>Arrumar</DropdownLabel>
+            <DropdownItem onSelect={() => router.push('/leads/duplicados')}>
+              <CopyX className="h-4 w-4 text-muted" aria-hidden />
+              Limpar duplicados…
+            </DropdownItem>
           </DropdownContent>
         </DropdownRoot>
         )}
@@ -556,6 +550,14 @@ export function LeadsTable() {
           onChange={(v) => setParams({ servico: v })}
           options={serviceOptions}
         />
+        {tagOptions.length || query.tag.length ? (
+          <MultiSelectFilter
+            label="Etiqueta"
+            value={query.tag}
+            onChange={(v) => setParams({ etiqueta: v })}
+            options={[...tagOptions, ...query.tag.filter((t) => !tagOptions.some((o) => o.value === t)).map((t) => ({ value: t, label: t }))]}
+          />
+        ) : null}
         <Input
           value={city}
           onChange={(e) => setCity(e.target.value)}
@@ -826,6 +828,7 @@ export function LeadsTable() {
                         <span className="mr-1.5 text-muted tabular">#{lead.number}</span>
                         {lead.company_name} {lead.project_title ? <span className="font-normal text-muted">· {lead.project_title}</span> : null}
                         {lead.archived_at ? <ArchivedBadge /> : null}
+                        <TagChips tags={lead.tags} link={false} className="mt-1 font-normal" />
                       </span>
                       <span className="flex shrink-0 flex-col items-end gap-1">
                         <StatusBadge status={lead.status} />

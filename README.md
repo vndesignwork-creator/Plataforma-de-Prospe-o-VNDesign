@@ -98,6 +98,53 @@ npm run dev        # http://localhost:3000
 
 Em qualquer página, **Ctrl+K** (⌘K no Mac), o botão **Pesquisar…** na barra lateral ou a lupa 🔍 no telemóvel abrem uma caixa para escrever o nome de um **lead ou projeto**, uma **tarefa**, uma **página** (incluindo as secções das Definições, ex.: "Setores", e outras palavras como "palavra-passe" → Conta) ou um **estado, setor ou serviço** ("Respondeu", "Restauração", "Loja online" → a lista de leads já filtrada). Setas ↑↓ e **Enter** (ou tocar) para saltar: os clientes abrem no Projeto, as tarefas na lista de tarefas da ficha. API: `GET /api/v1/tasks?q=` (pelo menos 2 letras).
 
+- **Recentes**: com a caixa vazia aparecem os últimos 8 leads que abriste (guardados neste browser) e as **Ações** gerais: *Novo lead*, *Agenda da semana*, *Limpar duplicados*.
+- **Ações num lead**: num lead da lista, **→**, **Tab** ou o botão **Ações ›** mostra o que fazer sem abrir a ficha: *Nova tarefa…*, *Registar chamada…* e *Registar nota…* (escreves logo ali e carregas Enter), *Notas com IA*, *Marcar reunião*, *Começar Pomodoro* (clientes) ou *Abrir a ficha*. **Backspace** com a caixa vazia volta atrás.
+- **Etiquetas**: escrever o nome de uma etiqueta abre a lista de leads filtrada por ela.
+
+## Etiquetas
+
+Marcas livres para agrupar leads (“feira de março”, “indicação do João”, “urgente”…), até 10 por lead e 30 letras cada.
+
+- Na ficha, linha **Etiquetas**: escreve e carrega **Enter** (ou vírgula); as já usadas aparecem como sugestão. O **×** tira.
+- Aparecem na lista, no Kanban e na pesquisa rápida; tocar numa leva à lista filtrada.
+- Filtro **Etiqueta** na lista de leads e no Kanban (com o número de leads de cada uma); entra na exportação (coluna *Etiquetas*).
+- API: `GET /api/v1/leads/tags` e `GET /api/v1/leads?tag=a,b`.
+
+## Limpar duplicados
+
+**Leads → Importar/Exportar → Limpar duplicados…** (ou "duplicados" na pesquisa rápida) mostra os grupos de leads com o mesmo **email**, **site** ou **nome**:
+
+- Em cada grupo fica escolhido o **principal** (o mais avançado no pipeline: cliente → proposta → … ; os arquivados por último). Podes escolher outro.
+- **Juntar em #N** passa tudo dos outros para o principal: tarefas, pagamentos, reuniões, horas, despesas, entregas, revisões, contratos, propostas, etiquetas, aberturas de email e a linha do tempo; depois apaga-os. Os campos do principal ficam como estão.
+- **Comparar** abre a junção campo a campo (para escolher o telefone, a morada… de cada um).
+- **Não são duplicados** esconde o grupo de vez.
+- **Juntar todos nos principais** faz o mesmo em todos os grupos de uma vez (pede confirmação; não dá para desfazer).
+- Juntar leads (aqui ou no aviso de duplicado da ficha) **já não perde dados**: antes, pagamentos, reuniões, horas e o projeto do duplicado eram apagados com ele.
+
+## Agenda da semana
+
+Menu **Agenda** (ou *Agenda da semana* no cartão Hoje do Dashboard): de segunda a domingo, os **follow-ups** (próxima ação dos leads), as **tarefas**, as **reuniões**, as **entregas** e os **pagamentos previstos**.
+
+- Mudar de dia: **arrasta** o cartão (computador) ou usa o botão 🗓 **Mudar o dia** (telemóvel e teclado), também para a *Próxima semana*. Muda a data da tarefa, a próxima ação do lead ou o prazo do projeto. Reuniões e pagamentos mudam-se na ficha.
+- Marca as tarefas como feitas na própria agenda; **‹ ›** muda de semana e **Esta semana** volta.
+- O cartão **Hoje** continua a ser a lista do que é urgente; a Agenda serve para planear a semana.
+
+## Notas de reunião com IA
+
+Na ficha, linha do tempo → **Notas com IA** (ou *Notas com IA* nas ações da pesquisa rápida): cola ou escreve os apontamentos de uma chamada ou reunião, carrega em **Resumir** e revê:
+
+- o **resumo** (fica na linha do tempo como nota “📝 Resumo da reunião/chamada”);
+- as **tarefas** com prazo (até 6; desmarca as que não queres);
+- o **próximo passo** com data (passa a ser a próxima ação do lead).
+
+Tudo é editável antes de **Guardar**. Usa o fornecedor de IA escolhido para os emails (Definições → Inteligência artificial).
+
+## Projetos a precisar de atenção e Ponto de situação
+
+- **Dashboard → Projetos**: por cima da lista, “**N com a entrega atrasada**” e “**N com pagamentos em atraso**” levam aos **Projetos** já filtrados; os projetos com problemas aparecem primeiro.
+- **Ponto de situação** (cartão **Projeto** na ficha do cliente): prepara um email ao cliente com o que foi **concluído** desde o último ponto de situação, as **entregas**, os **próximos passos** (com datas), a **próxima reunião**, o **próximo pagamento** e o link da página do cliente. Revês e envias pela plataforma; sem email do cliente (ou sem a conta de envio ligada) copia o texto para colares no WhatsApp ou no teu email.
+
 ## Importar a folha atual
 
 1. No Google Sheets (“Leads_Prospeccao_VNDesign”): **Ficheiro → Transferir → Microsoft Excel (.xlsx)**.

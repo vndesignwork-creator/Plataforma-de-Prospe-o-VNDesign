@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  projectMatches,
   LEAD_STATUS_META,
   formatCurrency,
   formatDate,
@@ -109,7 +110,11 @@ function ProjectsCard({ className }: { className?: string }) {
   const { data: billing } = useBilling(enabled && !!settings?.features.payments);
   const [today] = useState(() => todayIso());
   if (!enabled) return null;
-  const list = projects ?? [];
+  // Os que precisam de atenção (entrega atrasada ou pagamento em atraso) primeiro.
+  const late = (projects ?? []).filter((p) => projectMatches(p, 'atrasados', today));
+  const owing = (projects ?? []).filter((p) => projectMatches(p, 'pagamentos', today));
+  const attention = new Set([...late, ...owing].map((p) => p.lead.id));
+  const list = [...(projects ?? [])].sort((a, b) => Number(attention.has(b.lead.id)) - Number(attention.has(a.lead.id)));
   // Uma só linha (alinhada com o cabeçalho do Pipeline): o atraso, se houver; senão, o que falta receber.
   const money = billing?.overdue ? (
     <span className="text-danger"> · {euros(billing.overdue)} em atraso</span>
@@ -135,6 +140,21 @@ function ProjectsCard({ className }: { className?: string }) {
           </Link>
         }
       />
+      {late.length || owing.length ? (
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-4 py-2 text-xs font-medium" role="status" aria-label="Projetos a precisar de atenção">
+          <AlertCircle className="h-3.5 w-3.5 text-danger" aria-hidden />
+          {late.length ? (
+            <Link href="/projetos?filtro=atrasados" className="text-danger hover:underline">
+              {late.length} com a entrega atrasada
+            </Link>
+          ) : null}
+          {owing.length && settings?.features.payments ? (
+            <Link href="/projetos?filtro=pagamentos" className="text-danger hover:underline">
+              {owing.length} com pagamentos em atraso
+            </Link>
+          ) : null}
+        </p>
+      ) : null}
       {isLoading ? (
         <div className="p-4">
           <Skeleton className="h-24" />
@@ -274,6 +294,7 @@ function TodayOpened({ items }: { items: TodayOpenedEmail[] }) {
 
 function TodayCard({ className }: { className?: string }) {
   const { data, isLoading } = useToday();
+  const role = useRole();
   // Tarefas em atraso e de hoje logo a seguir aos follow-ups de hoje; as da semana no fim.
   const urgentTasks = data?.tasks ? [...data.tasks.overdue, ...data.tasks.due_today] : [];
   const weekTasks = data?.tasks?.upcoming ?? [];
@@ -288,7 +309,17 @@ function TodayCard({ className }: { className?: string }) {
     !data.opened?.length;
   return (
     <Card className={cn('flex flex-col', className)}>
-      <CardHeader title="Hoje" description={data ? `Follow-ups, próximas ações e tarefas · ${formatDate(data.today)}` : undefined} />
+      <CardHeader
+        title="Hoje"
+        description={data ? `Follow-ups, próximas ações e tarefas · ${formatDate(data.today)}` : undefined}
+        actions={
+          role === 'prospector' ? null : (
+            <Link href="/agenda" className="text-sm text-accent-text hover:underline">
+              Agenda da semana
+            </Link>
+          )
+        }
+      />
       <div className="flex max-h-[26rem] flex-col gap-4 overflow-y-auto p-3">
         {isLoading ? <Skeleton className="h-40" /> : null}
         {empty ? <p className="px-2 py-6 text-center text-sm text-muted">Nada agendado para os próximos 7 dias. 🎉</p> : null}

@@ -56,7 +56,7 @@ import {
   ChevronDown,
   type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, Skeleton } from '@/components/ui/card';
@@ -297,9 +297,12 @@ export function ActivityTimeline({
   leadId,
   currentUserId,
   fitTo,
+  actions,
 }: {
   leadId: string;
   currentUserId?: string;
+  /** Botões extra no cabeçalho (ex.: "Notas com IA"). */
+  actions?: ReactNode;
   /** Coluna principal da ficha: no computador, a linha do tempo recolhe-se ao chegar ao fim dela. */
   fitTo?: RefObject<HTMLElement | null>;
 }) {
@@ -380,6 +383,7 @@ export function ActivityTimeline({
                   ))}
                 </Select>
               ) : null}
+              {actions}
               <Button
                 size="sm"
                 variant="outline"

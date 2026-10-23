@@ -129,6 +129,8 @@ import {
   SiteFormToggleSchema,
   LeadGeoSchema,
   LeadGeoUpdateSchema,
+  MeetingNotesInputSchema,
+  MeetingNotesResultSchema,
   TaskSearchQuerySchema,
   TaskSearchResultSchema,
   TeamActivityQuerySchema,
@@ -161,6 +163,9 @@ import {
   LeadBulkActionSchema,
   LeadBulkResultSchema,
   DuplicateCheckSchema,
+  DuplicateGroupSchema,
+  DuplicateIgnoreSchema,
+  LeadTagCountSchema,
   LeadAnonymizeSchema,
   LeadCreateSchema,
   LeadListQuerySchema,
@@ -311,6 +316,28 @@ export function getOpenApiDocument() {
           summary: 'Verificar duplicados e lista "não contactar" sem gravar',
           requestBody: body(DuplicateCheckSchema),
           responses: { '200': ok(data(DuplicateCheckResultSchema)), ...common },
+        }),
+      },
+      '/leads/tags': {
+        get: op({
+          tags: ['Leads'],
+          summary: 'Etiquetas usadas, com o número de leads (mais usadas primeiro)',
+          responses: { '200': ok(data(z.array(LeadTagCountSchema))), ...common },
+        }),
+      },
+      '/leads/duplicates': {
+        get: op({
+          tags: ['Leads'],
+          summary: 'Grupos de leads com o mesmo email, site ou nome, com o principal sugerido (limpeza de duplicados)',
+          responses: { '200': ok(data(z.array(DuplicateGroupSchema))), ...common },
+        }),
+      },
+      '/leads/duplicates/ignore': {
+        post: op({
+          tags: ['Leads'],
+          summary: '"Não são duplicados": o grupo deixa de aparecer na limpeza',
+          requestBody: body(DuplicateIgnoreSchema),
+          responses: { '204': { description: 'Guardado' }, ...common },
         }),
       },
       '/leads/bulk': {
@@ -946,6 +973,15 @@ export function getOpenApiDocument() {
           requestParams: { path: leadId },
           requestBody: body(ApplyTaskTemplateSchema),
           responses: { '200': ok(data(z.array(LeadTaskSchema))), ...withNotFound },
+        }),
+      },
+      '/leads/{id}/meeting-notes': {
+        post: op({
+          tags: ['Leads'],
+          summary: 'Notas de reunião com IA: resumo, tarefas e próximo passo a partir dos apontamentos (não grava nada)',
+          requestParams: { path: leadId },
+          requestBody: body(MeetingNotesInputSchema),
+          responses: { '200': ok(data(MeetingNotesResultSchema)), ...withNotFound },
         }),
       },
       '/tasks': {
@@ -1619,7 +1655,7 @@ export function getOpenApiDocument() {
       '/projects/calendar': {
         get: op({
           tags: ['Projetos'],
-          summary: 'Calendário: prazos de entrega, reuniões, pagamentos previstos e tarefas (máx. 62 dias)',
+          summary: 'Calendário: prazos de entrega, reuniões, pagamentos previstos e tarefas (máx. 62 dias); followups=true junta as próximas ações dos leads (Agenda)',
           requestParams: { query: CalendarQuerySchema },
           responses: { '200': ok(data(z.array(CalendarEventSchema))), ...common },
         }),

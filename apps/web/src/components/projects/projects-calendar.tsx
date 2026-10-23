@@ -6,7 +6,7 @@
  * dos dias com alguma coisa.
  */
 import { CALENDAR_EVENT_LABELS, CALENDAR_EVENT_TYPES, formatCurrency, leadPath, monthGrid, type CalendarEvent, type CalendarEventType } from '@vndesign/core';
-import { CalendarClock, ChevronLeft, ChevronRight, ListChecks, PackageCheck, Wallet, type LucideIcon } from 'lucide-react';
+import { BellRing, CalendarClock, ChevronLeft, ChevronRight, ListChecks, PackageCheck, Wallet, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -14,11 +14,12 @@ import { Card, Skeleton } from '@/components/ui/card';
 import { useProjectCalendar } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
-const TYPE_STYLE: Record<CalendarEventType, { icon: LucideIcon; className: string }> = {
+export const TYPE_STYLE: Record<CalendarEventType, { icon: LucideIcon; className: string }> = {
   due: { icon: PackageCheck, className: 'bg-warning-soft text-warning font-medium' },
   meeting: { icon: CalendarClock, className: 'bg-accent-soft text-accent-text' },
   payment: { icon: Wallet, className: 'bg-success-soft text-success' },
   task: { icon: ListChecks, className: 'bg-surface-3 text-fg' },
+  followup: { icon: BellRing, className: 'bg-danger-soft text-danger' },
 };
 
 const WEEKDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
@@ -86,7 +87,7 @@ export function ProjectsCalendar({ today }: { today: string }) {
         </Button>
       </div>
       <ul className="flex flex-wrap gap-x-4 gap-y-1 px-4 pt-3 text-xs text-muted" aria-label="Legenda">
-        {CALENDAR_EVENT_TYPES.map((t) => {
+        {CALENDAR_EVENT_TYPES.filter((t) => t !== 'followup').map((t) => {
           const { icon: Icon, className } = TYPE_STYLE[t];
           return (
             <li key={t} className="inline-flex items-center gap-1.5">

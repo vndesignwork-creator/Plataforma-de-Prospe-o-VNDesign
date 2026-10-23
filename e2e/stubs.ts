@@ -234,6 +234,23 @@ export async function startStubs() {
         });
         return;
       }
+      // Notas de reunião com IA: resumo, tarefas e próximo passo.
+      if (JSON.stringify(body.system ?? '').includes('apontamentos de uma reunião')) {
+        const notas = {
+          resumo: 'Querem uma loja online até ao Natal, com orçamento até 2000 €.',
+          tarefas: [
+            { titulo: 'Enviar proposta da loja online', prazo_dias: 3 },
+            { titulo: 'Pedir as fotografias dos produtos', prazo_dias: null },
+          ],
+          proximo_passo: { texto: 'Ligar para saber a decisão', dias: 7 },
+        };
+        sendJson(res, 200, {
+          id: 'msg_stub_notas', type: 'message', role: 'assistant', model: body.model ?? 'claude-opus-5-5',
+          content: [{ type: 'text', text: JSON.stringify(notas) }],
+          stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 800, output_tokens: 200 },
+        });
+        return;
+      }
       // Kit GEO: perguntas frequentes (texto estruturado, como o email com IA).
       if (JSON.stringify(body.system ?? '').includes('perguntas frequentes')) {
         const perguntas = [
