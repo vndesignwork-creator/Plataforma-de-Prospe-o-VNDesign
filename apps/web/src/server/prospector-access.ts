@@ -25,7 +25,7 @@ const RULES: Rule[] = [
   ['GET POST', /^\/leads$/],
   ['POST', /^\/leads\/(check-duplicates|bulk)$/],
   ['GET PATCH', new RegExp(`^/leads/${ID}$`)],
-  ['GET POST', new RegExp(`^/leads/${ID}/(activities|audits|meetings|tasks)$`)],
+  ['GET POST', new RegExp(`^/leads/${ID}/(activities|ai-visibility|audits|meetings|tasks)$`)],
   ['DELETE', new RegExp(`^/leads/${ID}/activities/${ID}$`)],
   ['POST', new RegExp(`^/leads/${ID}/audits/${ID}/apply$`)],
   ['GET', new RegExp(`^/leads/${ID}/audits/${ID}/screenshots/${ID}$`)],

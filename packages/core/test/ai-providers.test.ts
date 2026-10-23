@@ -22,6 +22,7 @@ describe('fornecedores de IA', () => {
     expect(WorkspaceSettingsSchema.parse({}).ai).toEqual({
       email: { provider: 'server', model: null },
       lead_generation: { provider: 'server', model: null },
+      visibility: { provider: 'server', model: null },
     });
   });
 });

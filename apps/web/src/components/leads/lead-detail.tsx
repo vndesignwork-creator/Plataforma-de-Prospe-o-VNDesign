@@ -65,6 +65,7 @@ import { ContactScriptsCard } from '@/components/scripts/contact-scripts-card';
 import { ActivityTimeline } from './activity-timeline';
 import { ChannelLabel, MobileLabel, PageSpeedScore } from './badges';
 import { SiteAuditPanel } from './site-audit';
+import { AiVisibilityCard } from './ai-visibility';
 import { AiEmailCard } from './ai-email-card';
 import { LeadLocation } from './lead-location';
 import { ProposalsCard } from '@/components/proposals/proposals-card';
@@ -539,6 +540,8 @@ export function LeadDetail({ id }: { id: string }) {
           </Card>
 
           <SiteDiagnosisCard lead={lead} />
+
+          <AiVisibilityCard lead={lead} />
 
           {!lead.anonymized_at ? <ContactScriptsCard lead={lead} /> : null}
 

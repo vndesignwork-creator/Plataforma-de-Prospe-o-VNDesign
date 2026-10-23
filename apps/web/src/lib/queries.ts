@@ -26,6 +26,7 @@ import type {
   ApiTokenCreated,
   AuditApply,
   SiteAudit,
+  AiVisibilityCheck,
   EmailTracking,
   BrandKit,
   LeadAccess,
@@ -344,6 +345,25 @@ export function useAudits(leadId: string) {
   return useQuery({
     queryKey: ['audits', leadId],
     queryFn: () => api<{ data: SiteAudit[] }>(`/leads/${leadId}/audits`).then((r) => r.data),
+  });
+}
+
+/** GEO: os testes "Aparece nas IAs?" do lead (consulta de novo enquanto um corre). */
+export function useAiVisibility(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['ai-visibility', leadId],
+    queryFn: () => api<{ data: AiVisibilityCheck[] }>(`/leads/${leadId}/ai-visibility`).then((r) => r.data),
+    enabled,
+    refetchInterval: (query) => (query.state.data?.[0]?.status === 'running' ? 4_000 : false),
+  });
+}
+
+export function useStartAiVisibility(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (questions: string[]) =>
+      api<{ data: AiVisibilityCheck }>(`/leads/${leadId}/ai-visibility`, { method: 'POST', body: { questions } }).then((r) => r.data),
+    onSuccess: (check) => qc.setQueryData<AiVisibilityCheck[]>(['ai-visibility', leadId], (old) => [check, ...(old ?? [])].slice(0, 5)),
   });
 }
 

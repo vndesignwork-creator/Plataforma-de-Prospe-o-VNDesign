@@ -6,6 +6,7 @@ import { slugify } from '@vndesign/core';
 import type { ApiContext } from '../context';
 import { ApiError } from '../http';
 import { renderDiagnosisPdf } from '../proposals/diagnosis-pdf';
+import { listVisibilityChecks } from './ai-visibility';
 import { latestScreenshots, listAudits } from './audits';
 import { getLead } from './leads';
 import { loadServiceCatalog } from './service-catalog';
@@ -28,8 +29,20 @@ export async function diagnosisPdf(ctx: ApiContext, leadId: string): Promise<{ c
   }
   // As imagens do site entram se existirem (uma falha no Storage não impede o relatório).
   const shots = settings.features.site_screenshots ? await latestScreenshots(ctx, leadId).catch(() => []) : [];
+  // O último teste "Aparece nas IAs?" concluído (opcional).
+  const check = (await listVisibilityChecks(ctx, leadId).catch(() => [])).find((c) => c.status === 'done' && c.summary);
   const content = await renderDiagnosisPdf({
     screenshots: shots,
+    visibility: check
+      ? {
+          summary: check.summary!,
+          assistant: check.assistant,
+          mentioned: check.mentioned_count,
+          total: check.results.length,
+          competitors: check.competitors.slice(0, 3).map((c) => c.name),
+          date: check.created_at.slice(0, 10),
+        }
+      : null,
     audit,
     lead: {
       company_name: lead.company_name,

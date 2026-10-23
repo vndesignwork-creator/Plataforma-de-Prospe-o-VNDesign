@@ -113,12 +113,15 @@ export type AiFeatureSetting = z.infer<typeof AiFeatureSettingSchema>;
 export const AiSettingsSchema = z.object({
   email: AiFeatureSettingSchema.default({ provider: SERVER_AI_PROVIDER, model: null }),
   lead_generation: AiFeatureSettingSchema.default({ provider: SERVER_AI_PROVIDER, model: null }),
+  /** "Aparece nas IAs?" (GEO): precisa de pesquisa na internet. */
+  visibility: AiFeatureSettingSchema.default({ provider: SERVER_AI_PROVIDER, model: null }),
 });
 export type AiSettings = z.infer<typeof AiSettingsSchema>;
 
 export const AiSettingsUpdateSchema = z.object({
   email: z.object({ provider: z.string().min(1).max(60), model: z.string().trim().max(120).nullable() }).optional(),
   lead_generation: z.object({ provider: z.string().min(1).max(60), model: z.string().trim().max(120).nullable() }).optional(),
+  visibility: z.object({ provider: z.string().min(1).max(60), model: z.string().trim().max(120).nullable() }).optional(),
 });
 
 /**

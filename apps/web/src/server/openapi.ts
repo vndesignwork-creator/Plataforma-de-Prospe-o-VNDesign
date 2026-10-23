@@ -125,6 +125,8 @@ import {
   ProspectingResultSchema,
   EmailTrackingSchema,
   SiteAuditSchema,
+  AiVisibilityCheckSchema,
+  AiVisibilityRequestSchema,
   ActivityCreateSchema,
   ContactTemplateCreateSchema,
   ContactTemplateSchema,
@@ -719,6 +721,29 @@ export function getOpenApiDocument() {
           responses: {
             '201': ok(data(SiteAuditSchema), 'Análise concluída'),
             '422': problem('Sem website, ou endereço interno/inválido'),
+            ...withNotFound,
+          },
+        }),
+      },
+      '/leads/{id}/ai-visibility': {
+        get: op({
+          tags: ['Auditor de sites'],
+          summary: 'Testes "Aparece nas IAs?" do lead (GEO)',
+          description: 'Os últimos 5, o mais recente primeiro. Enquanto status = running, consultar de novo.',
+          requestParams: { path: leadId },
+          responses: { '200': ok(data(z.array(AiVisibilityCheckSchema))), ...withNotFound },
+        }),
+        post: op({
+          tags: ['Auditor de sites'],
+          summary: 'Perguntar a uma IA com pesquisa se o lead aparece nas respostas (GEO)',
+          description:
+            'Faz as perguntas (1 a 5) a Claude, ChatGPT ou OpenRouter, conforme Definições → Inteligência artificial (ai.visibility), sem dizer qual é o lead. Corre em segundo plano (1 a 3 minutos).',
+          requestParams: { path: leadId },
+          requestBody: body(AiVisibilityRequestSchema),
+          responses: {
+            '202': ok(data(AiVisibilityCheckSchema), 'Teste começado (status running)'),
+            '409': problem('Já há um teste a correr para este lead'),
+            '422': problem('Fornecedor sem pesquisa na internet ou sem modelo escolhido'),
             ...withNotFound,
           },
         }),

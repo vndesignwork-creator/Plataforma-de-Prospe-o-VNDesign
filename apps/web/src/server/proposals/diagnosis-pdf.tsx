@@ -72,6 +72,8 @@ export interface DiagnosisPdfData {
   lead: { company_name: string; contact_name: string | null; city: string | null; approach_angle: string | null; services: string[] };
   services: readonly ServiceInfo[];
   signature: Signature;
+  /** Último teste "Aparece nas IAs?" (GEO), se houver. */
+  visibility?: { summary: string; assistant: string | null; mentioned: number; total: number; competitors: string[]; date: string } | null;
   /** Imagens do site (PageSpeed): no computador e no telemóvel. */
   screenshots?: { device: 'mobile' | 'desktop'; buffer: Buffer; contentType: string; width: number | null; height: number | null }[];
 }
@@ -119,7 +121,7 @@ function tiles(audit: SiteAudit) {
   ];
 }
 
-function DiagnosisDocument({ audit, lead, services, signature, screenshots = [] }: DiagnosisPdfData) {
+function DiagnosisDocument({ audit, lead, services, signature, screenshots = [], visibility = null }: DiagnosisPdfData) {
   const company = signature.company || 'VNDesign';
   const contactLine = [signature.full_name, signature.phone, signature.email, bareHost(signature.website)].filter(Boolean).join(' · ');
   const analysed = audit.created_at.slice(0, 10);
@@ -223,6 +225,23 @@ function DiagnosisDocument({ audit, lead, services, signature, screenshots = [] 
               Encontrei mais {audit.issues.length - issues.length} ponto{audit.issues.length - issues.length === 1 ? '' : 's'} a melhorar, que posso
               mostrar numa conversa.
             </Text>
+          ) : null}
+
+          {visibility ? (
+            <View wrap={false}>
+              <Text style={s.h2}>Aparece nas respostas das IAs?</Text>
+              <View style={[s.issue, { borderLeftColor: visibility.mentioned === 0 ? BAD : visibility.mentioned === visibility.total ? GOOD : WARN }]}>
+                <Text style={s.issueTitle}>{visibility.summary}</Text>
+                <Text style={s.issueWhy}>
+                  Cada vez mais pessoas pedem recomendações ao ChatGPT, ao Claude ou ao Google em vez de pesquisar. Quem não aparece nessas
+                  respostas perde clientes para quem aparece.
+                </Text>
+              </View>
+              <Text style={{ color: MUTED, fontSize: 8 }}>
+                Teste feito a {formatDate(visibility.date)}{visibility.assistant ? ` no ${visibility.assistant}` : ''}, com pesquisa na internet. As
+                respostas das IAs variam de pessoa para pessoa e de dia para dia.
+              </Text>
+            </View>
           ) : null}
 
           <Text style={s.h2}>O que proponho</Text>

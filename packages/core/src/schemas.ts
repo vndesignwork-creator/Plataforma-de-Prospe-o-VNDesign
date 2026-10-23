@@ -635,6 +635,7 @@ export const WorkspaceSettingsSchema = z
     ai: AiSettingsSchema.default({
       email: { provider: SERVER_AI_PROVIDER, model: null },
       lead_generation: { provider: SERVER_AI_PROVIDER, model: null },
+      visibility: { provider: SERVER_AI_PROVIDER, model: null },
     }),
   })
   .meta({ id: 'WorkspaceSettings' });

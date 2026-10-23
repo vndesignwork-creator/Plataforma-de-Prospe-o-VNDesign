@@ -4,11 +4,14 @@
  * resultados está em @vndesign/core (analyzeHtml / buildAuditFindings).
  */
 import {
+  aiBotsBlockedByRobots,
+  analyzeGeoHtml,
   analyzeHtml,
   buildAuditFindings,
   ensureUrlProtocol,
   isSocialOrDirectoryUrl,
   type AuditFacts,
+  type GeoFacts,
   type SiteAudit,
 } from '@vndesign/core';
 import { PAGESPEED_SSL_BLOCKED, isPageSpeedEnabled, runPageSpeed, type PageSpeedOutcome, type PageSpeedShot } from './pagespeed';
@@ -53,6 +56,20 @@ async function fetchSite(url: string): Promise<SafeResponse> {
   }
 }
 
+/** Robôs das IAs bloqueados no robots.txt (sem robots.txt = nada bloqueado; null = não deu para ler). */
+async function readAiBotsBlocked(siteUrl: string): Promise<string[] | null> {
+  try {
+    const res = await safeGet(new URL('/robots.txt', siteUrl).toString(), { timeoutMs: 6_000, maxBytes: 300_000 });
+    if (res.status === 404 || res.status === 410) return [];
+    if (res.status >= 400) return null;
+    // Alguns sites devolvem a página inicial em vez de um robots.txt: não é um robots.txt.
+    if (/html/i.test(String(res.headers['content-type'] ?? ''))) return [];
+    return aiBotsBlockedByRobots(res.body);
+  } catch {
+    return null;
+  }
+}
+
 export async function collectAudit(rawUrl: string): Promise<AuditCollected> {
   const url = ensureUrlProtocol(rawUrl.trim());
   const now = new Date();
@@ -78,6 +95,8 @@ export async function collectAudit(rawUrl: string): Promise<AuditCollected> {
     return { record: { ...EMPTY, url, status: 'error', error: networkError.message }, mobileShot: null };
   }
 
+  // O robots.txt lê-se enquanto se espera pelo PageSpeed.
+  const robotsPromise = page ? readAiBotsBlocked(page.url) : Promise.resolve(null);
   // Sem resposta do site não vale a pena esperar pelo PageSpeed.
   const speed = page ? await pagespeedPromise : null;
   // Certificado inválido: o Google não abre o site; diz-se porquê em vez do erro técnico.
@@ -87,6 +106,8 @@ export async function collectAudit(rawUrl: string): Promise<AuditCollected> {
   const isHtml = page ? /html|xml/i.test(String(page.headers['content-type'] ?? 'text/html')) : false;
   const html = page && isHtml && page.status < 400 ? analyzeHtml(page.body, now) : null;
   const https = page ? page.url.startsWith('https://') : null;
+  // GEO: o que a página mostra às IAs e se o robots.txt as deixa entrar.
+  const geo: GeoFacts | null = page && html ? { ...analyzeGeoHtml(page.body), ai_bots_blocked: await robotsPromise } : null;
 
   const facts: AuditFacts = {
     own_site: true,
@@ -98,6 +119,7 @@ export async function collectAudit(rawUrl: string): Promise<AuditCollected> {
     ssl_expires_at: page?.certificate?.expires_at ?? null,
     html,
     pagespeed: pagespeed?.ok ? pagespeed.result : null,
+    geo,
   };
   const findings = buildAuditFindings(facts, now);
 
@@ -120,6 +142,7 @@ export async function collectAudit(rawUrl: string): Promise<AuditCollected> {
       ...(pagespeed?.ok ? pagespeed.result.metrics : {}),
       ...(pagespeed && !pagespeed.ok ? { pagespeed_error: pagespeed.error } : {}),
       ...(pagespeed === null && page ? { pagespeed_skipped: true } : {}),
+      ...(geo ? { geo } : {}),
     },
     title: html?.title ?? null,
     meta_description: html?.meta_description ?? null,

@@ -57,6 +57,36 @@ function leadSearch(body: { model?: string; messages?: unknown[] }, res: http.Se
   );
 }
 
+/**
+ * "Aparece nas IAs?": responde a cada pergunta com 2 concorrentes fixos; se a
+ * pergunta tiver um nome entre «…», essa empresa aparece em 2.º lugar.
+ */
+function visibilityAnswers(body: { model?: string; messages?: { content?: unknown }[] }, res: http.ServerResponse) {
+  const prompt = String(body.messages?.[0]?.content ?? '');
+  const questions = [...prompt.matchAll(/^\d+\. (.+)$/gm)].map((m) => m[1]!);
+  const respostas = questions.map((pergunta) => {
+    const named = /«([^»]+)»/.exec(pergunta)?.[1];
+    const empresas = [
+      { nome: 'Forno Concorrente', site: 'https://forno-concorrente.pt' },
+      ...(named ? [{ nome: named, site: null }] : []),
+      { nome: 'Pão Quente Lda', site: null },
+    ];
+    return { pergunta, resposta: `Recomendo ${empresas.map((e) => e.nome).join(', ')}.`, empresas };
+  });
+  setTimeout(() => {
+    sendJson(res, 200, {
+      id: 'msg_stub_visibility',
+      type: 'message',
+      role: 'assistant',
+      model: body.model ?? 'claude-sonnet-5-5',
+      content: [{ type: 'tool_use', id: 'toolu_stub_visibility', name: 'entregar_respostas', input: { respostas } }],
+      stop_reason: 'tool_use',
+      stop_sequence: null,
+      usage: { input_tokens: 8_000, output_tokens: 600, server_tool_use: { web_search_requests: 3 } },
+    });
+  }, 800);
+}
+
 /** As empresas que o "fornecedor" devolve (3 válidas e 1 sem fonte, que é descartada). */
 export function stubCompanies(token: string) {
   const company = (o: Record<string, unknown>) => ({
@@ -182,6 +212,10 @@ export async function startStubs() {
         leadSearch(body, res);
         return;
       }
+      if ((body.tools ?? []).some((t: { name?: string }) => t.name === 'entregar_respostas')) {
+        visibilityAnswers(body, res);
+        return;
+      }
       const prompt = JSON.stringify(body.messages ?? '');
       const company = /<dados_do_lead>\\nEmpresa: ([^\\]+?)\\n/.exec(prompt)?.[1] ?? 'empresa';
       const draft = {
@@ -227,6 +261,12 @@ export async function startStubs() {
   });
 
   const business = http.createServer((req, res) => {
+    // GEO: o robots.txt bloqueia o robô do ChatGPT.
+    if (req.url === '/robots.txt') {
+      res.writeHead(200, { 'content-type': 'text/plain' });
+      res.end('User-agent: *\nDisallow: /privado/\n\nUser-agent: GPTBot\nDisallow: /\n');
+      return;
+    }
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
     if (req.url?.startsWith('/contactos')) {
       res.end(

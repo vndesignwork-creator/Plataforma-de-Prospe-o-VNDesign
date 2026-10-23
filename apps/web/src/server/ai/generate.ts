@@ -1,7 +1,8 @@
 /**
  * Pedidos de IA independentes do fornecedor:
  *  - generateJson: um texto estruturado (email com IA);
- *  - searchCompanies: pesquisa na internet com uma lista de empresas no fim (gerador de leads).
+ *  - searchStructured: pesquisa na internet com um resultado estruturado no fim
+ *    (searchCompanies no gerador de leads; "Aparece nas IAs?").
  * Anthropic usa o SDK oficial; OpenAI, OpenRouter e compatíveis usam a API REST
  * no formato da OpenAI. Se um fornecedor/modelo recusar uma opção (ex.: saída
  * estruturada), tenta-se a variante seguinte, mais simples.
@@ -9,7 +10,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import type { BetaMessageParam, BetaToolUnion } from '@anthropic-ai/sdk/resources/beta/messages/messages';
-import { LEAD_GENERATION_LIMITS, LEAD_GENERATION_TOOL, LEAD_GENERATION_TOOL_NAME, extractJson } from '@vndesign/core';
+import { LEAD_GENERATION_LIMITS, LEAD_GENERATION_TOOL, extractJson } from '@vndesign/core';
 import { z } from 'zod';
 import { ApiError } from '../http';
 import { anthropicClientFor, anthropicErrorMessage } from './claude';
@@ -223,13 +224,51 @@ export async function generateJson<T>(
 }
 
 // -----------------------------------------------------------------------------
-// Pesquisa de empresas (gerador de leads)
+// Pesquisa na internet com resposta estruturada
+// (gerador de leads e "Aparece nas IAs?")
 // -----------------------------------------------------------------------------
 
-export interface CompanySearchInput {
-  /** Instruções para o Claude (entrega pela ferramenta guardar_empresas). */
+/** Ferramenta com que o Claude entrega o resultado no fim da pesquisa. */
+export interface DeliveryTool {
+  name: string;
+  description: string;
+  strict: boolean;
+  input_schema: Record<string, unknown> | object;
+}
+
+export interface StructuredSearchInput {
+  /** Instruções para o Claude (entrega pela ferramenta). */
   system: string;
   /** Instruções para os outros fornecedores (entrega em JSON). */
+  jsonSystem: string;
+  prompt: string;
+  city: string | null;
+  tool: DeliveryTool;
+  /** Nome do esquema JSON (OpenAI / OpenRouter). */
+  schemaName: string;
+  limits: { webSearches: number; webFetches: number };
+  /** Mensagens de erro próprias desta função. */
+  labels: { feature: string; missing: string; retry: string };
+}
+
+export async function searchStructured(
+  provider: ResolvedProvider,
+  model: string,
+  input: StructuredSearchInput,
+  usage: AiUsage,
+): Promise<{ data: unknown; model: string }> {
+  if (provider.kind === 'anthropic') return searchWithClaude(provider, model, input, usage);
+  if (provider.kind === 'openai') return searchWithOpenAi(provider, model, input, usage);
+  if (provider.kind === 'openrouter') return searchWithOpenRouter(provider, model, input, usage);
+  throw new ApiError(
+    422,
+    'Este fornecedor não pesquisa na internet',
+    `“${provider.label}” não tem pesquisa na internet. Escolhe Claude, OpenAI ou OpenRouter para ${input.labels.feature} em Definições → Inteligência artificial.`,
+  );
+}
+
+export interface CompanySearchInput {
+  system: string;
   jsonSystem: string;
   prompt: string;
   city: string | null;
@@ -240,32 +279,42 @@ const companiesFrom = (value: unknown): unknown[] => {
   return Array.isArray(list) ? list : [];
 };
 
+/** Gerador de leads: pesquisa empresas e devolve a lista. */
 export async function searchCompanies(
   provider: ResolvedProvider,
   model: string,
   input: CompanySearchInput,
   usage: AiUsage,
 ): Promise<{ companies: unknown[]; model: string }> {
-  if (provider.kind === 'anthropic') return searchWithClaude(provider, model, input, usage);
-  if (provider.kind === 'openai') return searchWithOpenAi(provider, model, input, usage);
-  if (provider.kind === 'openrouter') return searchWithOpenRouter(provider, model, input, usage);
-  throw new ApiError(
-    422,
-    'Este fornecedor não pesquisa na internet',
-    `“${provider.label}” não tem pesquisa na internet. Escolhe Claude, OpenAI ou OpenRouter para o gerador de leads em Definições → Inteligência artificial.`,
+  const { data, model: used } = await searchStructured(
+    provider,
+    model,
+    {
+      ...input,
+      tool: LEAD_GENERATION_TOOL,
+      schemaName: 'empresas',
+      limits: { webSearches: LEAD_GENERATION_LIMITS.webSearches, webFetches: LEAD_GENERATION_LIMITS.webFetches },
+      labels: {
+        feature: 'o gerador de leads',
+        missing: 'A IA não entregou a lista',
+        retry: 'Tenta outra vez, com um pedido mais concreto.',
+      },
+    },
+    usage,
   );
+  return { companies: companiesFrom(data), model: used };
 }
 
-async function searchWithClaude(provider: ResolvedProvider, model: string, input: CompanySearchInput, usage: AiUsage) {
+async function searchWithClaude(provider: ResolvedProvider, model: string, input: StructuredSearchInput, usage: AiUsage) {
   const tools = [
     {
       type: 'web_search_20260209',
       name: 'web_search',
-      max_uses: LEAD_GENERATION_LIMITS.webSearches,
+      max_uses: input.limits.webSearches,
       user_location: { type: 'approximate', country: 'PT', city: input.city ?? 'Amadora', timezone: 'Europe/Lisbon' },
     },
-    { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: LEAD_GENERATION_LIMITS.webFetches },
-    LEAD_GENERATION_TOOL,
+    ...(input.limits.webFetches > 0 ? [{ type: 'web_fetch_20260209', name: 'web_fetch', max_uses: input.limits.webFetches }] : []),
+    input.tool,
   ] as unknown as BetaToolUnion[];
   const messages: BetaMessageParam[] = [{ role: 'user', content: input.prompt }];
   let asked = false;
@@ -293,31 +342,29 @@ async function searchWithClaude(provider: ResolvedProvider, model: string, input
     usage.searches += response.usage.server_tool_use?.web_search_requests ?? 0;
 
     if (response.stop_reason === 'refusal') throw new ApiError(422, 'Pedido recusado pela IA', 'Reformula o pedido e tenta outra vez.');
-    const call = response.content.find((b) => b.type === 'tool_use' && b.name === LEAD_GENERATION_TOOL_NAME);
-    if (call && call.type === 'tool_use') return { companies: companiesFrom(call.input), model: response.model };
-    if (response.stop_reason === 'max_tokens') throw new ApiError(502, 'Resposta incompleta da IA', 'Pede menos empresas e tenta outra vez.');
+    const call = response.content.find((b) => b.type === 'tool_use' && b.name === input.tool.name);
+    if (call && call.type === 'tool_use') return { data: call.input, model: response.model };
+    if (response.stop_reason === 'max_tokens') throw new ApiError(502, 'Resposta incompleta da IA', 'Pede menos e tenta outra vez.');
 
     messages.push({ role: 'assistant', content: response.content });
     if (response.stop_reason !== 'pause_turn') {
-      // Terminou sem entregar a lista: pede-a uma vez.
+      // Terminou sem entregar o resultado: pede-o uma vez.
       if (asked) break;
       asked = true;
       messages.push({
         role: 'user',
-        content: `Chama agora a ferramenta ${LEAD_GENERATION_TOOL_NAME} com as empresas que encontraste (mesmo que sejam poucas ou nenhuma).`,
+        content: `Chama agora a ferramenta ${input.tool.name} com o que encontraste (mesmo que seja pouco ou nada).`,
       });
     }
   }
-  throw new ApiError(502, 'A IA não entregou a lista', 'Tenta outra vez, com um pedido mais concreto.');
+  throw new ApiError(502, input.labels.missing, input.labels.retry);
 }
 
-const COMPANIES_SCHEMA = LEAD_GENERATION_TOOL.input_schema as unknown as Record<string, unknown>;
-
 /** OpenAI: Responses API com a ferramenta de pesquisa na internet. */
-async function searchWithOpenAi(provider: ResolvedProvider, model: string, input: CompanySearchInput, usage: AiUsage) {
+async function searchWithOpenAi(provider: ResolvedProvider, model: string, input: StructuredSearchInput, usage: AiUsage) {
   const location = { type: 'approximate', country: 'PT', city: input.city ?? 'Amadora', timezone: 'Europe/Lisbon' };
   const base = { model, instructions: input.jsonSystem, input: input.prompt };
-  const format = { format: { type: 'json_schema', name: 'empresas', strict: true, schema: COMPANIES_SCHEMA } };
+  const format = { format: { type: 'json_schema', name: input.schemaName, strict: true, schema: input.tool.input_schema } };
   let body: Record<string, unknown>;
   try {
     body = await firstAccepted([
@@ -344,12 +391,12 @@ async function searchWithOpenAi(provider: ResolvedProvider, model: string, input
           .map((c) => c.text ?? '')
           .join('');
   const parsed = extractJson(text);
-  if (!parsed) throw new ApiError(502, 'A IA não entregou a lista', 'O modelo não devolveu a lista no formato pedido. Tenta outra vez ou escolhe outro modelo.');
-  return { companies: companiesFrom(parsed), model: typeof body.model === 'string' ? body.model : model };
+  if (!parsed) throw new ApiError(502, input.labels.missing, 'O modelo não devolveu o resultado no formato pedido. Tenta outra vez ou escolhe outro modelo.');
+  return { data: parsed, model: typeof body.model === 'string' ? body.model : model };
 }
 
 /** OpenRouter: Chat Completions com o plugin de pesquisa na internet. */
-async function searchWithOpenRouter(provider: ResolvedProvider, model: string, input: CompanySearchInput, usage: AiUsage) {
+async function searchWithOpenRouter(provider: ResolvedProvider, model: string, input: StructuredSearchInput, usage: AiUsage) {
   const messages = [
     { role: 'system', content: input.jsonSystem },
     { role: 'user', content: input.prompt },
@@ -362,7 +409,12 @@ async function searchWithOpenRouter(provider: ResolvedProvider, model: string, i
         postJson(
           provider,
           '/chat/completions',
-          { model, messages, plugins, response_format: { type: 'json_schema', json_schema: { name: 'empresas', strict: true, schema: COMPANIES_SCHEMA } } },
+          {
+            model,
+            messages,
+            plugins,
+            response_format: { type: 'json_schema', json_schema: { name: input.schemaName, strict: true, schema: input.tool.input_schema } },
+          },
           5 * 60_000,
         ),
       () => postJson(provider, '/chat/completions', { model, messages, plugins, response_format: { type: 'json_object' } }, 5 * 60_000),
@@ -376,6 +428,6 @@ async function searchWithOpenRouter(provider: ResolvedProvider, model: string, i
   usage.output_tokens += u.output_tokens;
   usage.searches += 1;
   const parsed = extractJson(chatText(body));
-  if (!parsed) throw new ApiError(502, 'A IA não entregou a lista', 'O modelo não devolveu a lista no formato pedido. Tenta outra vez ou escolhe outro modelo.');
-  return { companies: companiesFrom(parsed), model: typeof body.model === 'string' ? body.model : model };
+  if (!parsed) throw new ApiError(502, input.labels.missing, 'O modelo não devolveu o resultado no formato pedido. Tenta outra vez ou escolhe outro modelo.');
+  return { data: parsed, model: typeof body.model === 'string' ? body.model : model };
 }

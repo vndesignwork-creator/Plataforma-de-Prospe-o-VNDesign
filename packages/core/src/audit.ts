@@ -139,6 +139,147 @@ export function analyzeHtml(html: string, now: Date = new Date()): HtmlFacts {
 }
 
 // -----------------------------------------------------------------------------
+// GEO: o site está preparado para as IAs (ChatGPT, Claude, Perplexity, Gemini)?
+// -----------------------------------------------------------------------------
+/** Robôs das IAs que importam para aparecer nas respostas (nome no robots.txt → nome a mostrar). */
+export const AI_CRAWLERS: { agent: string; label: string; search: boolean }[] = [
+  { agent: 'GPTBot', label: 'GPTBot (ChatGPT)', search: true },
+  { agent: 'OAI-SearchBot', label: 'OAI-SearchBot (ChatGPT)', search: true },
+  { agent: 'ChatGPT-User', label: 'ChatGPT-User', search: true },
+  { agent: 'ClaudeBot', label: 'ClaudeBot (Claude)', search: true },
+  { agent: 'Claude-SearchBot', label: 'Claude-SearchBot', search: true },
+  { agent: 'Claude-User', label: 'Claude-User', search: true },
+  { agent: 'PerplexityBot', label: 'PerplexityBot', search: true },
+  // Só treino do Gemini: bloquear é uma escolha comum, não conta como problema.
+  { agent: 'Google-Extended', label: 'Google-Extended (Gemini)', search: false },
+];
+
+export interface GeoFacts {
+  /** Tipos schema.org encontrados (JSON-LD e microdata). */
+  structured_types: string[];
+  /** Dados estruturados do negócio (LocalBusiness, Organization ou parecido). */
+  business_schema: boolean;
+  faq: boolean;
+  word_count: number;
+  phone: boolean;
+  address: boolean;
+  maps_link: boolean;
+  /** Robôs das IAs bloqueados no robots.txt (null = não foi possível ler o robots.txt). */
+  ai_bots_blocked: string[] | null;
+}
+
+const BUSINESS_TYPE =
+  /business|organi[sz]ation|corporation|service|store|shop|restaurant|cafe|bakery|bar\b|hotel|lodging|clinic|dentist|physician|medical|attorney|legal|accounting|agency|contractor|plumber|electrician|roofing|realestate|autorepair|autodealer|gym|spa|salon|beauty|school|educational/i;
+
+/** Tipos @type de um bloco JSON-LD (inclui @graph e objetos aninhados). */
+function jsonLdTypes(node: unknown, out: Set<string>, depth = 0): void {
+  if (depth > 6 || node === null || typeof node !== 'object') return;
+  if (Array.isArray(node)) {
+    for (const item of node) jsonLdTypes(item, out, depth + 1);
+    return;
+  }
+  const obj = node as Record<string, unknown>;
+  const type = obj['@type'];
+  for (const t of Array.isArray(type) ? type : [type]) if (typeof t === 'string' && t.trim()) out.add(t.trim().replace(/^https?:\/\/schema\.org\//i, ''));
+  for (const value of Object.values(obj)) if (value && typeof value === 'object') jsonLdTypes(value, out, depth + 1);
+}
+
+/** Texto visível aproximado de uma página (sem scripts, estilos nem etiquetas). */
+function visibleText(html: string): string {
+  return decodeHtmlEntities(
+    html
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
+      .replace(/<[^>]+>/g, ' '),
+  ).replace(/\s+/g, ' ');
+}
+
+/** O que a página mostra às IAs: dados estruturados, conteúdo, contactos, FAQ e mapa. */
+export function analyzeGeoHtml(html: string): Omit<GeoFacts, 'ai_bots_blocked'> {
+  const types = new Set<string>();
+  let structuredAddress = false;
+  let structuredPhone = false;
+  for (const m of html.matchAll(/<script\b[^>]*type\s*=\s*["']?application\/ld\+json["']?[^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const data: unknown = JSON.parse(m[1]!.trim());
+      jsonLdTypes(data, types);
+      const raw = m[1]!;
+      if (/"(?:address|streetAddress)"/i.test(raw)) structuredAddress = true;
+      if (/"telephone"/i.test(raw)) structuredPhone = true;
+    } catch {
+      // JSON-LD inválido: ignora-se (as IAs também o ignoram).
+    }
+  }
+  for (const m of html.matchAll(/itemtype\s*=\s*["']https?:\/\/schema\.org\/([A-Za-z]+)["']/gi)) types.add(m[1]!);
+
+  const text = visibleText(html);
+  const words = text.match(/[\p{L}\p{N}]{2,}/gu)?.length ?? 0;
+  const list = [...types].slice(0, 20);
+  return {
+    structured_types: list,
+    business_schema: list.some((t) => BUSINESS_TYPE.test(t)),
+    faq: types.has('FAQPage') || /perguntas frequentes|d[úu]vidas frequentes|\bFAQs?\b/i.test(text),
+    word_count: words,
+    phone: structuredPhone || /href\s*=\s*["']tel:/i.test(html) || /(?:\+351[\s.]?)?\b(?:2\d{2}|9[1236]\d)[\s.]?\d{3}[\s.]?\d{3}\b/.test(text),
+    address: structuredAddress || /<address\b/i.test(html) || /\b\d{4}\s?-\s?\d{3}\b/.test(text),
+    maps_link: /google\.[a-z.]+\/maps|maps\.google\.|maps\.app\.goo\.gl|goo\.gl\/maps|g\.page\/|g\.co\/kgs/i.test(html),
+  };
+}
+
+/**
+ * Robôs das IAs (AI_CRAWLERS) que o robots.txt impede de ler o site inteiro.
+ * Cada robô segue o grupo com o seu nome; sem grupo próprio, segue o "*".
+ */
+export function aiBotsBlockedByRobots(robots: string): string[] {
+  type Group = { agents: string[]; disallowAll: boolean; allowAll: boolean };
+  const groups: Group[] = [];
+  let current: Group | null = null;
+  let lastWasAgent = false;
+  for (const rawLine of robots.split(/\r?\n/)) {
+    const line = rawLine.replace(/#.*$/, '').trim();
+    const m = line.match(/^([A-Za-z-]+)\s*:\s*(.*)$/);
+    if (!m) continue;
+    const key = m[1]!.toLowerCase();
+    const value = m[2]!.trim();
+    if (key === 'user-agent') {
+      if (!current || !lastWasAgent) {
+        current = { agents: [], disallowAll: false, allowAll: false };
+        groups.push(current);
+      }
+      current.agents.push(value.toLowerCase());
+      lastWasAgent = true;
+      continue;
+    }
+    lastWasAgent = false;
+    if (!current) continue;
+    if (key === 'disallow' && (value === '/' || value === '/*')) current.disallowAll = true;
+    if (key === 'allow' && (value === '/' || value === '/*')) current.allowAll = true;
+  }
+  const blocked = (g: Group) => g.disallowAll && !g.allowAll;
+  return AI_CRAWLERS.filter(({ agent }) => {
+    const own = groups.filter((g) => g.agents.includes(agent.toLowerCase()));
+    const rules = own.length ? own : groups.filter((g) => g.agents.includes('*'));
+    return rules.some(blocked);
+  }).map((c) => c.agent);
+}
+
+/** Pontos verificados para as IAs (para o resumo "x de y"). */
+export function geoChecklist(geo: GeoFacts): { key: string; ok: boolean; label: string }[] {
+  const searchBlocked = (geo.ai_bots_blocked ?? []).filter((a) => AI_CRAWLERS.find((c) => c.agent === a)?.search);
+  return [
+    ...(geo.ai_bots_blocked === null
+      ? []
+      : [{ key: 'bots', ok: !searchBlocked.length, label: searchBlocked.length ? `Bloqueia as IAs: ${searchBlocked.join(', ')}` : 'Deixa as IAs lerem o site (robots.txt)' }]),
+    { key: 'schema', ok: geo.business_schema, label: geo.business_schema ? 'Dados estruturados do negócio (schema.org)' : 'Sem dados estruturados do negócio (schema.org)' },
+    { key: 'content', ok: geo.word_count >= 300, label: `${geo.word_count.toLocaleString('pt-PT')} palavras na página inicial` },
+    { key: 'contacts', ok: geo.phone || geo.address, label: geo.phone && geo.address ? 'Telefone e morada visíveis' : geo.phone ? 'Telefone visível (sem morada)' : geo.address ? 'Morada visível (sem telefone)' : 'Sem telefone nem morada visíveis' },
+    { key: 'faq', ok: geo.faq, label: geo.faq ? 'Tem perguntas frequentes' : 'Sem perguntas frequentes' },
+    { key: 'maps', ok: geo.maps_link, label: geo.maps_link ? 'Ligação ao Google Maps' : 'Sem ligação ao Google Maps' },
+  ];
+}
+
+// -----------------------------------------------------------------------------
 // PageSpeed Insights (API v5)
 // -----------------------------------------------------------------------------
 export interface PageSpeedResult {
@@ -190,8 +331,19 @@ export const AUDIT_ISSUE_CODES = [
   'no_title',
   'no_meta_description',
   'outdated_copyright',
+  // GEO (preparado para as IAs)
+  'ai_bots_blocked',
+  'no_structured_data',
+  'thin_content',
+  'no_contact_info',
+  'no_faq',
+  'no_maps_link',
 ] as const;
 export type AuditIssueCode = (typeof AUDIT_ISSUE_CODES)[number];
+/** Problemas da parte GEO (preparado para as IAs). */
+export const GEO_ISSUE_CODES: ReadonlySet<AuditIssueCode> = new Set(['ai_bots_blocked', 'no_structured_data', 'thin_content', 'no_contact_info', 'no_faq', 'no_maps_link']);
+/** Detalhes que aparecem no diagnóstico mas não entram na coluna "Problemas" do lead. */
+const NOT_IN_PROBLEMS: ReadonlySet<AuditIssueCode> = new Set(['no_faq', 'no_maps_link']);
 
 export const AUDIT_SEVERITIES = ['high', 'medium', 'low'] as const;
 export type AuditSeverity = (typeof AUDIT_SEVERITIES)[number];
@@ -217,6 +369,7 @@ export interface AuditFacts {
   ssl_expires_at?: string | null;
   html?: HtmlFacts | null;
   pagespeed?: PageSpeedResult | null;
+  geo?: GeoFacts | null;
 }
 
 const seconds = (ms: number) => `${(ms / 1000).toLocaleString('pt-PT', { maximumFractionDigits: 1 })} s`;
@@ -285,6 +438,23 @@ export function buildAuditFindings(
     }
   }
 
+  const geo = facts.geo;
+  if (html && geo) {
+    const searchBlocked = (geo.ai_bots_blocked ?? []).filter((a) => AI_CRAWLERS.find((c) => c.agent === a)?.search);
+    if (searchBlocked.length) {
+      add('ai_bots_blocked', 'high', `O robots.txt bloqueia as IAs (${searchBlocked.join(', ')}): o ChatGPT, o Claude ou o Perplexity não leem o site.`, 'Bloqueia as IAs');
+    }
+    if (!geo.business_schema) {
+      add('no_structured_data', 'medium', 'Sem dados estruturados do negócio (schema.org): as IAs e o Google percebem pior quem são, onde ficam e o que fazem.', 'Sem dados estruturados');
+    }
+    if (geo.word_count < 300) {
+      add('thin_content', 'medium', `Pouco texto na página inicial (${geo.word_count} palavras): as IAs têm pouco para citar.`, 'Pouco conteúdo');
+    }
+    if (!geo.phone && !geo.address) add('no_contact_info', 'medium', 'Não mostra telefone nem morada na página inicial.', 'Sem contactos visíveis');
+    if (!geo.faq) add('no_faq', 'low', 'Sem perguntas frequentes — é o tipo de conteúdo que as IAs mais citam.', 'Sem FAQ');
+    if (!geo.maps_link) add('no_maps_link', 'low', 'Sem ligação ao Google Maps nem ao perfil do Google.', 'Sem ligação ao Maps');
+  }
+
   const order: Record<AuditSeverity, number> = { high: 0, medium: 1, low: 2 };
   issues.sort((a, b) => order[a.severity] - order[b.severity]);
 
@@ -295,9 +465,10 @@ export function buildAuditFindings(
     else mobile = 'sim';
   }
 
+  const forProblems = issues.filter((i) => !NOT_IN_PROBLEMS.has(i.code));
   return {
     issues,
-    suggested_problems: issues.length ? issues.map((i) => i.short).join('; ') : null,
+    suggested_problems: forProblems.length ? forProblems.map((i) => i.short).join('; ') : null,
     suggested_mobile: mobile,
   };
 }
@@ -409,6 +580,12 @@ export const AUDIT_ISSUE_IMPACT: Record<AuditIssueCode, string> = {
   no_title: 'Sem título, o Google mostra mal o site (ou nem o mostra) nas pesquisas.',
   no_meta_description: 'O Google escolhe um texto qualquer para mostrar nos resultados, o que reduz os cliques.',
   outdated_copyright: 'O ano no rodapé está desatualizado e passa a ideia de um site abandonado.',
+  ai_bots_blocked: 'O site impede o ChatGPT e outras IAs de o lerem: quando alguém lhes pede uma recomendação, a vossa empresa fica de fora.',
+  no_structured_data: 'Faltam os dados do negócio num formato que o Google e as IAs entendem (nome, morada, horário, serviços): aparecem menos nas respostas.',
+  thin_content: 'A página tem pouco texto: o Google e as IAs têm pouca informação para recomendar a vossa empresa.',
+  no_contact_info: 'Quem chega ao site não vê logo como contactar ou onde ficam: muitos desistem antes de ligar.',
+  no_faq: 'Responder às perguntas habituais dos clientes ajuda a aparecer quando alguém pergunta ao ChatGPT ou ao Google.',
+  no_maps_link: 'Sem ligação ao Google Maps, é mais difícil chegar até vocês e confirmar que o negócio é real.',
 };
 
 const SEVERITY_ORDER: Record<AuditSeverity, number> = { high: 0, medium: 1, low: 2 };

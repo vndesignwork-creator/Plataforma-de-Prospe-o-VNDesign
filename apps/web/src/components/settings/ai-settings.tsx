@@ -27,7 +27,7 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useMe, useSettings } from '@/lib/queries';
 
-const DEFAULT_MODELS = { email: 'claude-opus-5-5', lead_generation: 'claude-sonnet-5-5' } as const;
+const DEFAULT_MODELS = { email: 'claude-opus-5-5', lead_generation: 'claude-sonnet-5-5', visibility: 'claude-sonnet-5-5' } as const;
 
 function useAiProviders() {
   return useQuery({ queryKey: ['ai-providers'], queryFn: () => api<{ data: AiProvider[] }>('/ai-providers').then((r) => r.data) });
@@ -268,7 +268,7 @@ function FeatureRow({
 }: {
   title: string;
   description: string;
-  feature: 'email' | 'lead_generation';
+  feature: 'email' | 'lead_generation' | 'visibility';
   setting: AiFeatureSetting;
   providers: AiProvider[];
   models: Record<string, string[]>;
@@ -489,6 +489,17 @@ export function AiSettings() {
             description="Precisa de pesquisa na internet: Claude, OpenAI ou OpenRouter."
             feature="lead_generation"
             setting={settings.ai.lead_generation}
+            providers={providers}
+            models={models}
+            onLoadModels={(id) => test(id, true)}
+            canEdit={canEdit}
+          />
+          <FeatureRow
+            key={`visibility-${settings.ai.visibility.provider}-${settings.ai.visibility.model}`}
+            title="Aparece nas IAs? (GEO)"
+            description="Na ficha do lead: pergunta a esta IA o que um cliente perguntaria e vê se o lead aparece. Precisa de pesquisa na internet."
+            feature="visibility"
+            setting={settings.ai.visibility}
             providers={providers}
             models={models}
             onLoadModels={(id) => test(id, true)}

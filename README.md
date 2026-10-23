@@ -249,6 +249,29 @@ site*). Em sites analisados antes, **Tirar imagens**. Ficam no Supabase Storage 
 
 ---
 
+### GEO: preparado para as IAs
+
+A análise do site também verifica o que ajuda o ChatGPT, o Claude, o Perplexity e o Google a
+recomendar o negócio (bloco **Preparado para as IAs (GEO)**, "x de 6"):
+- **robots.txt**: se bloqueia os robôs das IAs (GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot…). Bloquear só o
+  Google-Extended (treino do Gemini) não conta como problema.
+- **Dados estruturados** do negócio (schema.org em JSON-LD ou microdata: LocalBusiness, Organization…).
+- **Conteúdo**: pelo menos 300 palavras na página inicial.
+- **Contactos visíveis**: telefone (`tel:` ou número português) ou morada (código postal ou `<address>`).
+- **Perguntas frequentes** e **ligação ao Google Maps** (estes dois só aparecem no diagnóstico; não entram na coluna "Problemas").
+
+### Aparece nas IAs? (GEO)
+
+Na ficha do lead, o cartão **Aparece nas IAs?** faz a uma IA com pesquisa na internet 1 a 5 perguntas de um
+cliente típico (sugeridas a partir do setor e da cidade, editáveis) **sem dizer qual é o lead**, e mostra:
+- em quantas respostas o lead aparece e em que lugar;
+- as empresas que aparecem no lugar dele;
+- uma frase pronta para o cliente (botão copiar), que também entra no **relatório PDF** do diagnóstico.
+
+Escolhe-se a IA em Definições → Inteligência artificial → Onde usar → **Aparece nas IAs? (GEO)** (Claude, OpenAI
+ou OpenRouter; por omissão o Claude Sonnet com a chave do servidor). Corre em segundo plano (1 a 3 minutos) e
+custa cerca de 5 a 20 cêntimos por teste. As respostas das IAs variam: é uma amostra do dia, não uma posição fixa.
+
 ## Email com IA
 
 Na ficha do lead, **Escrever com IA**:

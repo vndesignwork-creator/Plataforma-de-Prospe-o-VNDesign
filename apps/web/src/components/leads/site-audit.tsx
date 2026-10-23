@@ -2,14 +2,17 @@
 
 import {
   AUDIT_SEVERITY_LABELS,
+  GEO_ISSUE_CODES,
   MOBILE_STATUS_META,
   SCREENSHOT_DEVICE_LABELS,
   formatDate,
   formatDateTime,
+  geoChecklist,
+  type GeoFacts,
   type Lead,
   type SiteAudit,
 } from '@vndesign/core';
-import { AlertTriangle, Camera, CheckCircle2, Gauge, History, Info, XCircle } from 'lucide-react';
+import { AlertTriangle, Bot, Camera, CheckCircle2, Gauge, History, Info, XCircle } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/card';
@@ -38,6 +41,32 @@ function Check({ ok, children }: { ok: boolean | null; children: ReactNode }) {
     </li>
   );
 }
+
+/** GEO: o site está preparado para as IAs (ChatGPT, Claude, Perplexity)? */
+function GeoReadiness({ geo }: { geo: GeoFacts }) {
+  const checks = geoChecklist(geo);
+  const ok = checks.filter((c) => c.ok).length;
+  return (
+    <section aria-label="Preparado para as IAs (GEO)" className="flex flex-col gap-2">
+      <h4 className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold">
+        <Bot className="h-4 w-4 text-muted" aria-hidden /> Preparado para as IAs (GEO)
+        <Badge tone={ok === checks.length ? 'success' : ok >= checks.length / 2 ? 'warning' : 'danger'}>
+          {ok} de {checks.length}
+        </Badge>
+      </h4>
+      <p className="text-xs text-muted">O que ajuda o ChatGPT, o Claude, o Perplexity e o Google a recomendar este negócio.</p>
+      <ul className="grid gap-2 sm:grid-cols-2">
+        {checks.map((c) => (
+          <Check key={c.key} ok={c.ok}>
+            {c.label}
+          </Check>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+const isGeoFacts = (v: unknown): v is GeoFacts => !!v && typeof v === 'object' && 'word_count' in v && 'business_schema' in v;
 
 /**
  * Imagens do site como o Google o vê (PageSpeed): no computador e no telemóvel.
@@ -182,6 +211,8 @@ function AuditResult({ audit, lead, latest = false }: { audit: SiteAudit; lead: 
         </ul>
       ) : null}
 
+      {ownSite && reachable && isGeoFacts(m.geo) ? <GeoReadiness geo={m.geo} /> : null}
+
       <AuditScreenshots audit={audit} lead={lead} latest={latest} />
 
       {audit.issues.length ? (
@@ -193,7 +224,10 @@ function AuditResult({ audit, lead, latest = false }: { audit: SiteAudit; lead: 
                 <Badge tone={issue.severity === 'high' ? 'danger' : issue.severity === 'medium' ? 'warning' : 'neutral'} className="shrink-0">
                   {AUDIT_SEVERITY_LABELS[issue.severity]}
                 </Badge>
-                <span>{issue.message}</span>
+                <span>
+                  {issue.message}
+                  {GEO_ISSUE_CODES.has(issue.code) ? <span className="ml-1.5 text-xs text-muted">· IAs</span> : null}
+                </span>
               </li>
             ))}
           </ul>
