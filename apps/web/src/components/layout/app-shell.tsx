@@ -152,7 +152,8 @@ export function AppShell({ email, children }: { email: string | null; children: 
       </a>
 
       {/* Barra lateral (computador) */}
-      <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r border-border bg-surface px-3 py-5 lg:flex">
+      {/* Ecrãs baixos: o menu faz scroll por dentro em vez de esticar a página (Leads e Kanban cabem no ecrã). */}
+      <aside className="sticky top-0 hidden h-dvh flex-col gap-6 overflow-y-auto border-r border-border bg-surface px-3 py-5 [scrollbar-width:none] lg:flex">
         <div className="flex items-center justify-between gap-2 pl-3">
           <Link href="/dashboard">
             <Logo />

@@ -242,10 +242,11 @@ function Column({
         {value > 0 ? <span className="text-xs text-muted tabular">{formatCurrency(value, { decimals: false })}</span> : null}
       </header>
       <SortableContext id={status} items={leads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
-        {/* No telemóvel a coluna cresce e faz-se scroll à página (um só scroll vertical); a partir de md cada coluna tem o seu. */}
+        {/* No telemóvel a coluna cresce e faz-se scroll à página (um só scroll vertical); a partir de md cada coluna tem o seu.
+            "relative": os textos só para leitores de ecrã (posição absoluta) ficam dentro da coluna em vez de esticarem o quadro. */}
         <ul
           ref={setNodeRef}
-          className="flex min-h-24 flex-1 flex-col gap-2 p-2 md:overflow-y-auto md:overscroll-contain"
+          className="relative flex min-h-24 flex-1 flex-col gap-2 p-2 scroll-thin md:overflow-y-auto md:overscroll-contain"
           aria-label={`Leads em ${meta.label}`}
         >
           {leads.map((lead) => (
@@ -588,13 +589,13 @@ export function KanbanBoard() {
           }}
         >
           <ColumnNav columns={columns} active={visible} onSelect={scrollToColumn} />
-          {/* Computador (lg): o quadro ocupa a altura que sobra do ecrã (tablet: altura fixa); cada coluna tem o seu scroll e a barra horizontal fica à vista.
+          {/* Computador (lg): o quadro ocupa a altura que sobra do ecrã (tablet: altura fixa), alinhado com o resto da página (como a tabela de Leads); cada coluna tem o seu scroll e a barra horizontal fica à vista.
               Telemóvel: as colunas crescem (scroll vertical da página) e deslizam para o lado com encaixe. */}
           <div
             ref={scrollerRef}
             onScroll={onBoardScroll}
             className={cn(
-              'relative -mx-4 flex scroll-mt-28 items-start gap-3 overflow-x-auto overscroll-x-contain px-4 pb-3 scroll-px-4 sm:-mx-6 sm:scroll-px-6 sm:px-6 md:h-[calc(100dvh-18.5rem)] md:min-h-96 md:items-stretch lg:-mx-8 lg:h-auto lg:min-h-0 lg:flex-1 lg:!shrink lg:scroll-mt-16 lg:scroll-px-8 lg:px-8',
+              'relative -mx-4 flex scroll-mt-28 items-start gap-3 overflow-x-auto overscroll-x-contain px-4 pb-3 scroll-px-4 scroll-thin sm:-mx-6 sm:scroll-px-6 sm:px-6 md:h-[calc(100dvh-18.5rem)] md:min-h-96 md:items-stretch lg:mx-0 lg:h-auto lg:min-h-0 lg:flex-1 lg:!shrink lg:scroll-mt-16 lg:scroll-px-0 lg:px-0',
               activeId ? 'snap-none' : 'snap-x snap-mandatory md:snap-none',
             )}
           >

@@ -815,7 +815,7 @@ export function LeadsTable() {
           <>
             {/* Tabela (computador). "relative": os textos só para leitores de ecrã (posição absoluta)
                 ficam dentro desta caixa em vez de esticarem a página. */}
-            <div className="relative hidden min-h-0 overflow-auto lg:block">
+            <div className="relative hidden min-h-0 overflow-auto scroll-thin lg:block">
               <table className="w-full border-collapse text-sm">
                 <caption className="sr-only">Leads — clica no nome da empresa para abrir a ficha</caption>
                 <thead className="sticky top-0 z-10 bg-surface-2">
