@@ -583,7 +583,7 @@ export const FeaturesSchema = z.object({
   expenses: z.boolean().default(true).meta({ description: 'Projetos: despesas e lucro' }),
   site_screenshots: z.boolean().default(true).meta({ description: 'Imagens do site do lead (telemóvel e computador)' }),
   email_tracking: z.boolean().default(true).meta({ description: 'Saber quando o lead abre o email ou carrega num link' }),
-  prospecting_session: z.boolean().default(true).meta({ description: 'Sessão de prospeção (um lead de cada vez)' }),
+  prospecting_session: z.boolean().default(true).meta({ description: 'Sessão de prospeção (lista de chamadas do dia)' }),
   launch_checklist: z.boolean().default(true).meta({ description: 'Projetos: checklist de lançamento do site' }),
   collaborators: z.boolean().default(true).meta({ description: 'Projetos: convidar colaboradores' }),
   brand_kit: z.boolean().default(true).meta({ description: 'Kit da marca do cliente (logótipos, cores, tipos de letra, acessos)' }),

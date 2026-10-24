@@ -55,16 +55,18 @@ test('sessão de prospeção: lead sem contactos, colar o telefone e aparece Lig
   // Follow-up muito atrasado: fica em primeiro na fila.
   expect((await page.request.patch(`/api/v1/leads/${lead.id}`, { data: { next_action_on: '2000-01-01' } })).status()).toBe(200);
   await page.goto('/prospecao');
-  await page.getByRole('tab', { name: 'Follow-ups' }).click();
-  await expect(page.getByRole('heading', { level: 2 })).toContainText(`Sem Contactos ${run}`);
-  const finder = page.getByRole('region', { name: 'Procurar contacto' });
+  // Sem telefone nem email: fica no separador "Falta contacto".
+  await page.getByRole('tab', { name: 'Falta contacto' }).click();
+  const row = page.getByRole('list', { name: 'Leads sem contacto' }).getByRole('listitem', { name: new RegExp(`Sem Contactos ${run}`) });
+  await row.getByRole('button', { name: 'Procurar contacto' }).click();
+  const finder = row.getByRole('region', { name: 'Procurar contacto' });
   // Facebook não se lê automaticamente: ficam os atalhos.
   await finder.getByRole('button', { name: 'Procurar automaticamente' }).click();
   await expect(page.getByText(/Sem site para ler|Não encontrei contactos novos/)).toBeVisible();
   await finder.getByLabel('Telefone').fill('912 000 111');
   await finder.getByRole('button', { name: 'Guardar contactos' }).click();
   await expect(page.getByText('Contactos guardados.')).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'Contactar' }).getByRole('link', { name: 'Ligar' })).toBeVisible();
+  await expect(row.getByRole('navigation', { name: 'Contactar' }).getByRole('link', { name: 'Ligar' })).toBeVisible();
   // Ainda sem email: o "Procurar contacto" continua (só para o email).
   await expect(finder).toContainText('Sem email');
 });

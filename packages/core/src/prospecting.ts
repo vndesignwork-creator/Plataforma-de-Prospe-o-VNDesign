@@ -1,5 +1,5 @@
 /**
- * Sessão de prospeção: os leads a contactar agora, um de cada vez (quem abriu
+ * Sessão de prospeção: os leads a contactar agora, numa lista (quem abriu
  * um email, follow-ups em atraso ou para hoje e leads por contactar), e o
  * resultado de cada contacto registado com um toque.
  */

@@ -45,7 +45,7 @@ const getLead = async (request: APIRequestContext, id: string) => (await (await 
 const lisbonToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Lisbon' }).format(new Date());
 
 test('Prospeção: contagem de "Não atendeu" e "Contactado"; à 3.ª vez sem resposta sugere Sem interesse', async ({ page }) => {
-  const lead = await createLead(page.request, { company_name: `Tentativas ${run}`, status: 'contactado' });
+  const lead = await createLead(page.request, { company_name: `Tentativas ${run}`, status: 'contactado', phone: '912 000 333' });
   for (const outcome of ['contacted', 'no_answer', 'no_answer']) {
     const res = await page.request.post(`/api/v1/leads/${lead.id}/prospecting`, { data: { outcome } });
     expect(res.status(), await res.text()).toBe(200);
@@ -57,11 +57,11 @@ test('Prospeção: contagem de "Não atendeu" e "Contactado"; à 3.ª vez sem re
 
   await page.goto('/prospecao');
   await page.getByRole('tab', { name: 'Follow-ups' }).click();
-  await expect(page.getByRole('heading', { name: new RegExp(`Tentativas ${run}`) })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Não atendeu/ })).toContainText('2×');
-  await expect(page.getByRole('button', { name: /^Contactado/ })).toContainText('1×');
+  const row = page.getByRole('list', { name: 'Leads para contactar' }).getByRole('listitem', { name: new RegExp(`Tentativas ${run}`) });
+  await expect(row.getByRole('button', { name: /Não atendeu/ })).toContainText('2×');
+  await expect(row.getByRole('button', { name: /^Contactado/ })).toContainText('1×');
 
-  await page.getByRole('button', { name: /Não atendeu/ }).click();
+  await row.getByRole('button', { name: /Não atendeu/ }).click();
   const dialog = page.getByRole('dialog', { name: '3.ª vez sem resposta' });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Passar a Sem interesse' }).click();
@@ -69,17 +69,30 @@ test('Prospeção: contagem de "Não atendeu" e "Contactado"; à 3.ª vez sem re
   expect(await getLead(page.request, lead.id)).toMatchObject({ status: 'sem_interesse', lost_reason: 'nao_responde' });
 });
 
-test('Prospeção: o aviso diz quantas vezes já vai neste lead (e passa ao seguinte)', async ({ page }) => {
-  const lead = await createLead(page.request, { company_name: `Aviso Tentativa ${run}`, status: 'contactado' });
+test('Prospeção: o lead fica à vista em "Feito nesta sessão" e a contagem sobe a cada toque', async ({ page }) => {
+  const lead = await createLead(page.request, { company_name: `Aviso Tentativa ${run}`, status: 'contactado', phone: '912 000 444' });
   expect((await page.request.post(`/api/v1/leads/${lead.id}/prospecting`, { data: { outcome: 'no_answer' } })).status()).toBe(200);
   expect((await page.request.patch(`/api/v1/leads/${lead.id}`, { data: { next_action_on: '2019-01-01' } })).status()).toBe(200);
   await page.goto('/prospecao');
   await page.getByRole('tab', { name: 'Follow-ups' }).click();
-  await expect(page.getByRole('heading', { name: new RegExp(`Aviso Tentativa ${run}`) })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Não atendeu/ })).toContainText('1×');
-  await page.getByRole('button', { name: /Não atendeu/ }).click();
-  await expect(page.getByText(new RegExp(`#${lead.number} Aviso Tentativa ${run}: registado — Não atendeu \\(2\\.ª vez\\); volta a aparecer a \\d{2}/\\d{2}/\\d{4}\\.`))).toBeVisible();
-  await expect(page.getByRole('heading', { name: new RegExp(`Aviso Tentativa ${run}`) })).toHaveCount(0);
+  const name = new RegExp(`Aviso Tentativa ${run}`);
+  const row = page.getByRole('list', { name: 'Leads para contactar' }).getByRole('listitem', { name });
+  await expect(row.getByRole('button', { name: /Não atendeu/ })).toContainText('1×');
+  await row.getByRole('button', { name: /Não atendeu/ }).click();
+  await expect(
+    page.getByText(new RegExp(`#${lead.number} Aviso Tentativa ${run}: registado — Não atendeu \\(2\\.ª vez\\); volta a aparecer a \\d{2}/\\d{2}/\\d{4}\\.`)),
+  ).toBeVisible();
+  // Sai da lista e fica em "Feito nesta sessão", com o resultado e a contagem atualizada.
+  await expect(row).toHaveCount(0);
+  const done = page.getByRole('list', { name: 'Leads tratados nesta sessão' }).getByRole('listitem', { name });
+  await expect(done).toContainText(/Não atendeu \(2\.ª vez\) · volta a \d{2}\/\d{2}\/\d{4}/);
+  await expect(done.getByRole('button', { name: /Não atendeu/ })).toContainText('2×');
+  // Outra tentativa no mesmo lead: à 3.ª vez seguida pergunta se passa a Sem interesse.
+  await done.getByRole('button', { name: /Não atendeu/ }).click();
+  const dialog = page.getByRole('dialog', { name: '3.ª vez sem resposta' });
+  await dialog.getByRole('button', { name: 'Só registar “Não atendeu”' }).click();
+  await expect(done.getByRole('button', { name: /Não atendeu/ })).toContainText('3×');
+  await expect(page.getByText('Nesta sessão:')).toContainText('1');
 });
 
 test('"Agora não" volta sozinho à Prospeção na data escolhida', async ({ page }) => {

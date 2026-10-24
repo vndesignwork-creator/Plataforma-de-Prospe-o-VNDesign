@@ -42,7 +42,7 @@ const FEATURES: { key: keyof Features; label: string; description: string; icon:
   {
     key: 'prospecting_session',
     label: 'Sessão de prospeção',
-    description: 'Menu Prospeção: um lead de cada vez, com o resultado do contacto registado com um toque.',
+    description: 'Menu Prospeção: a lista de chamadas do dia, com o resultado do contacto registado com um toque.',
     icon: Target,
   },
   {

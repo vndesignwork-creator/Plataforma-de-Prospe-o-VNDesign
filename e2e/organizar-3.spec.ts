@@ -218,7 +218,7 @@ test('Prospeção: "Sem interesse" pergunta o motivo (e fica no lead e na linha 
 
   // Na sessão: o botão abre a pergunta; Cancelar não regista nada.
   await page.goto('/prospecao');
-  const button = page.getByRole('button', { name: 'Sem interesse', exact: true });
+  const button = page.getByRole('button', { name: 'Sem interesse', exact: true }).first();
   const hasQueue = await button.waitFor({ timeout: 15_000 }).then(
     () => true,
     () => false,

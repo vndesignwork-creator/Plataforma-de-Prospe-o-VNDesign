@@ -576,18 +576,19 @@ Como ligar: no Bricks, elemento Formulário → ações → **Webhook** (POST, J
 
 ## Sessão de prospeção
 
-Menu **Prospeção**: um lead de cada vez, com tudo à mão.
+Menu **Prospeção**: a lista de chamadas do dia — contactar e registar o resultado na própria linha, sem saltar de lead.
 
-- A lista começa por quem **abriu um email** nas últimas 48 horas, depois os **follow-ups** em atraso ou para hoje e, por fim, os leads **por contactar** (os mais quentes primeiro). Os separadores filtram cada grupo.
-- Em cada lead: o motivo ("Abriu o email há 2 h"), **Ligar**, **WhatsApp** (com as mensagens prontas), **Email** (o de prospeção), o site, o ângulo de abordagem, os problemas, as notas e **Ver scripts**.
-- O resultado regista-se com um toque (com uma nota opcional):
+- A lista começa por quem **abriu um email** nas últimas 48 horas, depois os **follow-ups** em atraso ou para hoje e, por fim, os leads **por contactar** (os mais quentes primeiro). Os separadores filtram cada grupo; **Falta contacto** junta os que não têm telefone nem email.
+- Cada linha: o motivo ("Abriu o email há 2 h"), a nota afixada, **Ligar**, **WhatsApp** (com as mensagens prontas), **Email** (o de prospeção) e os botões do resultado. **Nota** abre uma caixa para escrever (vai com o próximo resultado); **Ver mais** mostra o ângulo de abordagem, os problemas, as notas, o site e os scripts; **Ficha** abre o lead num separador novo.
+- O resultado regista-se com um toque. O lead **não salta**: passa para **Feito nesta sessão**, com o resultado ("Não atendeu (2.ª vez) · volta a 26/10/2026") e os mesmos botões, para registar outra tentativa. O número nos botões **Não atendeu** e **Contactado** é quantas vezes já o fizeste nesse lead; à 3.ª vez seguida sem atender, pergunta se passa a Sem interesse (Não responde).
+- Os resultados:
   - **Não atendeu** — volta a aparecer amanhã;
   - **Contactado** — passa a Contactado e agenda o follow-up (ou, se já estava contactado, conta como follow-up feito);
   - **Interessado** — passa a Respondeu, com "Marcar reunião ou enviar proposta" para hoje;
   - **Mais tarde** — amanhã, 3 dias, 1 semana, 2 semanas ou 1 mês;
-  - **Sem interesse**; **Saltar** passa para o fim da fila.
-- Em cima: quantos contactos fizeste nesta sessão e hoje.
-- **Procurar contacto** (leads sem telefone ou email; também na ficha, no cartão *Empresa e contacto*):
+  - **Sem interesse** (pergunta o motivo).
+- Em cima: quantos contactos fizeste nesta sessão e hoje, e quantos faltam.
+- **Procurar contacto** (botão nas linhas sem telefone ou email, sobretudo em *Falta contacto*; também na ficha, no cartão *Empresa e contacto*):
   - **Procurar automaticamente** lê o site do lead e a página de contactos (telefones em links e no texto, perto de "Telefone"/"Telemóvel"; o NIF não conta) e, com `GOOGLE_PLACES_API_KEY`, o Google Maps. Mostra o que encontrou para escolheres; nada é guardado sem carregares em **Guardar contactos**.
   - Atalhos **Google**, **Google Maps**, **Facebook** e **Instagram** já com o nome e a cidade (as páginas do Facebook/Instagram não se leem automaticamente).
   - Cola o telefone ou o email e **Guardar contactos**: aparecem logo **Ligar**, **WhatsApp** e **Email**.

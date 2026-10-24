@@ -146,10 +146,11 @@ test('aberturas do email: imagem de 1×1, clique no link, linha do tempo, Hoje e
   // Sessão de prospeção: quem abriu o email aparece primeiro.
   await page.goto('/prospecao');
   await page.getByRole('tab', { name: 'Abriram o email' }).click();
-  await expect(page.getByRole('heading', { name: new RegExp(`Abre Email ${run}`) })).toBeVisible();
-  await expect(page.getByText(/Carregou num link do email/)).toBeVisible();
-  await page.getByLabel('Nota (opcional)').fill('Pediu para ligar às 15h');
-  await page.getByRole('button', { name: 'Interessado' }).click();
+  const row = page.getByRole('list', { name: 'Leads para contactar' }).getByRole('listitem', { name: new RegExp(`Abre Email ${run}`) });
+  await expect(row.getByText(/Carregou num link do email/)).toBeVisible();
+  await row.getByRole('button', { name: 'Nota' }).click();
+  await row.getByLabel('Nota (opcional)').fill('Pediu para ligar às 15h');
+  await row.getByRole('button', { name: 'Interessado' }).click();
   await expect(page.getByText(new RegExp(`#${lead.number} Abre Email ${run}: registado`))).toBeVisible();
   const after = (await (await page.request.get(`/api/v1/leads/${lead.id}`)).json()).data;
   expect(after.status).toBe('respondeu');

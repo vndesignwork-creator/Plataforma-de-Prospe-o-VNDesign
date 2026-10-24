@@ -1,9 +1,11 @@
 'use client';
 
 /**
- * Sessão de prospeção: um lead de cada vez, com tudo à mão para o contactar
- * (ligar, WhatsApp, email, script) e o resultado registado com um toque.
- * A fila carrega-se ao abrir; cada resultado tira o lead da fila e passa ao seguinte.
+ * Sessão de prospeção: a lista de chamadas do dia. Cada linha tem os botões
+ * para contactar (ligar, WhatsApp, email) e para registar o resultado com um
+ * toque. O lead não salta: passa para "Feito nesta sessão", onde se vê a
+ * contagem subir e se pode registar outra tentativa. Os leads sem telefone nem
+ * email ficam no separador "Falta contacto" (com o "Procurar contacto").
  */
 import {
   NO_ANSWER_LIMIT,
@@ -11,22 +13,28 @@ import {
   PROSPECTING_FILTERS,
   formatDate,
   leadPath,
+  type Lead,
+  type LostReason,
+  type ProspectingAttempts,
   type ProspectingFilter,
   type ProspectingItem,
-  type LostReason,
   type ProspectingOutcome,
+  type ProspectingResult,
 } from '@vndesign/core';
 import {
   CalendarClock,
-  ChevronRight,
+  ChevronDown,
+  ExternalLink,
   Eye,
   Flame,
-  Globe,
   MessageCircle,
+  NotebookPen,
   Phone,
   PhoneOff,
+  Pin,
   RotateCcw,
-  SkipForward,
+  Route,
+  Search,
   Sparkles,
   ThumbsDown,
   ThumbsUp,
@@ -39,24 +47,23 @@ import { SendEmailButton } from '@/components/email/send-email-dialog';
 import { StatusBadge } from '@/components/leads/badges';
 import { ContactFinder } from '@/components/leads/contact-finder';
 import { LeadScoreBadge } from '@/components/leads/lead-score';
+import { LostReasonDialog } from '@/components/leads/lost-reason';
 import { WhatsAppMenu } from '@/components/leads/whatsapp-menu';
 import { ContactScriptsCard } from '@/components/scripts/contact-scripts-card';
-import { SequenceStep } from './sequence-step';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Badge, Card, EmptyState, Skeleton } from '@/components/ui/card';
+import { Dialog } from '@/components/ui/dialog';
 import { DropdownContent, DropdownItem, DropdownRoot, DropdownTrigger } from '@/components/ui/dropdown';
 import { Textarea } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api-client';
 import { useProspectingOutcome, useProspectingQueue, useSettings } from '@/lib/queries';
 import { cn, displayHost, telUrl, whatsappUrl } from '@/lib/utils';
-import { PinnedNoteBox } from '@/components/leads/pinned-note';
-import { LostReasonDialog } from '@/components/leads/lost-reason';
-import { Dialog } from '@/components/ui/dialog';
+import { SequenceStep } from './sequence-step';
 
-const KIND_META: Record<ProspectingItem['kind'], { label: string; icon: typeof Eye; tone: 'success' | 'warning' | 'neutral' }> = {
-  opened: { label: 'Abriu o email', icon: Eye, tone: 'success' },
-  follow_up: { label: 'Follow-up', icon: CalendarClock, tone: 'warning' },
-  new: { label: 'Por contactar', icon: Sparkles, tone: 'neutral' },
+const KIND_ICON: Record<ProspectingItem['kind'], typeof Eye> = {
+  opened: Eye,
+  follow_up: CalendarClock,
+  new: Sparkles,
 };
 
 const LATER = [
@@ -67,130 +74,275 @@ const LATER = [
   { days: 30, label: 'Daqui a 1 mês' },
 ];
 
+/** Separadores: os da fila do servidor e "Falta contacto" (os da lista toda sem telefone nem email). */
+type View = ProspectingFilter | 'missing';
+const VIEWS: { value: View; label: string }[] = [
+  ...PROSPECTING_FILTERS.map((f) => ({
+    value: f as View,
+    label: PROSPECTING_FILTER_LABELS[f],
+  })),
+  { value: 'missing', label: 'Falta contacto' },
+];
+
+const PAGE = 25;
+const NO_ATTEMPTS: ProspectingAttempts = {
+  no_answer: 0,
+  contacted: 0,
+  no_answer_streak: 0,
+};
+const hasContact = (lead: Lead) => !!(lead.phone || lead.email);
+
+/** O que se registou nesta sessão (fica à vista na linha). */
+type Done = {
+  outcome: ProspectingOutcome;
+  text: string;
+  tone: 'neutral' | 'success' | 'danger' | 'warning';
+};
+
+function doneLabel(outcome: ProspectingOutcome, lead: Lead, attempts: ProspectingAttempts): Done {
+  const on = lead.next_action_on ? formatDate(lead.next_action_on) : null;
+  switch (outcome) {
+    case 'no_answer':
+      return {
+        outcome,
+        tone: 'warning',
+        text: `Não atendeu (${attempts.no_answer}.ª vez)${on ? ` · volta a ${on}` : ''}`,
+      };
+    case 'contacted':
+      return {
+        outcome,
+        tone: 'neutral',
+        text: `Contactado (${attempts.contacted}.ª vez)${on ? ` · próximo a ${on}` : ''}`,
+      };
+    case 'interested':
+      return { outcome, tone: 'success', text: 'Interessado' };
+    case 'later':
+      return {
+        outcome,
+        tone: 'neutral',
+        text: `Mais tarde${on ? ` · ${on}` : ''}`,
+      };
+    case 'not_interested':
+      return { outcome, tone: 'danger', text: 'Sem interesse' };
+  }
+}
+
 export function ProspectingSession() {
-  const [filter, setFilter] = useState<ProspectingFilter>('all');
-  const { data, isLoading, refetch, isFetching } = useProspectingQueue(filter);
-  // Leads já tratados ou saltados nesta sessão (a fila do servidor não muda a meio).
-  const [handled, setHandled] = useState<Set<string>>(() => new Set());
-  const [skipped, setSkipped] = useState<string[]>([]);
-  const [session, setSession] = useState(0);
+  const [view, setView] = useState<View>('all');
+  const { data, isLoading, refetch, isFetching } = useProspectingQueue(view === 'missing' ? 'all' : view);
+  // O que mudou nesta sessão em cada lead (lead atualizado, contagens, último resultado).
+  const [local, setLocal] = useState<Record<string, { item: ProspectingItem; done?: Done }>>({});
+  // Os tratados, do mais recente para o mais antigo.
+  const [doneIds, setDoneIds] = useState<string[]>([]);
+  const [doneOpen, setDoneOpen] = useState(true);
+  const [limit, setLimit] = useState(PAGE);
   const [doneToday, setDoneToday] = useState<number | null>(null);
 
-  const pending = (data?.items ?? []).filter((i) => !handled.has(i.lead.id));
-  // Os saltados vão para o fim da fila.
-  const queue = [...pending.filter((i) => !skipped.includes(i.lead.id)), ...skipped.map((id) => pending.find((i) => i.lead.id === id)).filter((i) => !!i)];
-  const current = queue[0] ?? null;
+  const items = data?.items ?? [];
+  // Falta contacto: decide-se pelo lead como veio da fila (guardar um telefone não o faz saltar de separador).
+  const missing = items.filter((i) => !hasContact(i.lead));
+  const pending = (view === 'missing' ? missing : items.filter((i) => hasContact(i.lead)))
+    .filter((i) => !local[i.lead.id]?.done)
+    .map((i) => local[i.lead.id]?.item ?? i);
+  const done = doneIds.map((id) => local[id]).filter((d) => !!d);
+  const today = doneToday ?? data?.done_today ?? 0;
 
-  function restart(next: ProspectingFilter = filter) {
-    setHandled(new Set());
-    setSkipped([]);
-    setFilter(next);
-    if (next === filter) void refetch();
+  function changeView(next: View) {
+    setLimit(PAGE);
+    setView(next);
+    if (next === view) void refetch();
+  }
+
+  function saved(item: ProspectingItem, lead: Lead) {
+    setLocal((l) => ({
+      ...l,
+      [lead.id]: {
+        ...l[lead.id],
+        item: { ...(l[lead.id]?.item ?? item), lead },
+      },
+    }));
+  }
+
+  function recorded(item: ProspectingItem, outcome: ProspectingOutcome, result: ProspectingResult) {
+    const before = item.attempts ?? NO_ATTEMPTS;
+    const attempts: ProspectingAttempts = {
+      no_answer: before.no_answer + (outcome === 'no_answer' ? 1 : 0),
+      contacted: before.contacted + (outcome === 'contacted' ? 1 : 0),
+      no_answer_streak: outcome === 'no_answer' ? before.no_answer_streak + 1 : 0,
+    };
+    // Depois de "Contactado"/"Interessado" a sequência já avançou: o passo antigo deixa de valer.
+    const next: ProspectingItem = {
+      ...item,
+      lead: result.lead,
+      attempts,
+      sequence: outcome === 'no_answer' ? item.sequence : null,
+    };
+    setLocal((l) => ({
+      ...l,
+      [item.lead.id]: {
+        item: next,
+        done: doneLabel(outcome, result.lead, attempts),
+      },
+    }));
+    setDoneIds((ids) => [item.lead.id, ...ids.filter((id) => id !== item.lead.id)]);
+    setDoneToday(result.done_today);
   }
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div role="tablist" aria-label="Que leads" className="flex flex-wrap gap-1 rounded-lg bg-surface-2 p-1">
-          {PROSPECTING_FILTERS.map((f) => (
+          {VIEWS.map((v) => (
             <button
-              key={f}
+              key={v.value}
               type="button"
               role="tab"
-              aria-selected={filter === f}
-              onClick={() => restart(f)}
+              aria-selected={view === v.value}
+              onClick={() => changeView(v.value)}
               className={cn(
                 'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-                filter === f ? 'bg-surface text-fg shadow-sm' : 'text-muted hover:text-fg',
+                view === v.value ? 'bg-surface text-fg shadow-sm' : 'text-muted hover:text-fg',
               )}
             >
-              {PROSPECTING_FILTER_LABELS[f]}
+              {v.label}
             </button>
           ))}
         </div>
-        <p className="flex items-center gap-3 text-sm text-muted" aria-live="polite">
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted" aria-live="polite">
           <span>
-            Nesta sessão: <strong className="text-fg tabular">{session}</strong>
+            Nesta sessão: <strong className="text-fg tabular">{done.length}</strong>
           </span>
           <span>
-            Hoje: <strong className="text-fg tabular">{doneToday ?? data?.done_today ?? 0}</strong> contacto{(doneToday ?? data?.done_today) === 1 ? '' : 's'}
+            Hoje: <strong className="text-fg tabular">{today}</strong> contacto
+            {today === 1 ? '' : 's'}
           </span>
           {data ? (
             <span>
-              Faltam <strong className="text-fg tabular">{queue.length}</strong>
+              Faltam <strong className="text-fg tabular">{pending.length}</strong>
             </span>
           ) : null}
         </p>
       </div>
+      <p className="text-sm text-muted">
+        {view === 'missing'
+          ? 'Leads da lista sem telefone nem email: procura o contacto (Google, Maps, redes sociais ou automaticamente) e guarda-o; depois já os podes contactar aqui.'
+          : 'Contacta e regista o resultado na própria linha. O lead passa para “Feito nesta sessão”, onde vês a contagem (1×, 2×…) e podes registar outra tentativa.'}
+      </p>
 
       {isLoading ? <Skeleton className="h-96" /> : null}
-      {data && !current ? (
+
+      {data && !pending.length ? (
         <Card>
-          <EmptyState title={data.items.length ? 'Terminaste a lista! 🎉' : 'Não há leads para contactar agora'}>
-            <p>
-              {data.items.length
-                ? `Registaste ${session} contacto${session === 1 ? '' : 's'} nesta sessão.`
-                : 'Os follow-ups de hoje estão feitos e não há leads por contactar. Gera novos leads ou importa uma lista.'}
-            </p>
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
-              <Button variant="outline" onClick={() => restart()} loading={isFetching}>
-                <RotateCcw className="h-4 w-4" aria-hidden /> Recarregar a lista
-              </Button>
-              <Link href="/gerar-leads" className={buttonClasses('primary', 'md')}>
-                <Sparkles className="h-4 w-4" aria-hidden /> Gerar leads
-              </Link>
-            </div>
-          </EmptyState>
+          {view === 'missing' ? (
+            <EmptyState title="Nenhum lead sem contacto">
+              <p>Todos os leads da lista têm telefone ou email.</p>
+            </EmptyState>
+          ) : (
+            <EmptyState title={done.length ? 'Terminaste a lista! 🎉' : 'Não há leads para contactar agora'}>
+              <p>
+                {done.length
+                  ? `Registaste ${done.length} contacto${done.length === 1 ? '' : 's'} nesta sessão.`
+                  : 'Os follow-ups de hoje estão feitos e não há leads por contactar. Gera novos leads ou importa uma lista.'}
+              </p>
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                <Button variant="outline" onClick={() => changeView(view)} loading={isFetching}>
+                  <RotateCcw className="h-4 w-4" aria-hidden /> Recarregar a lista
+                </Button>
+                <Link href="/gerar-leads" className={buttonClasses('primary', 'md')}>
+                  <Sparkles className="h-4 w-4" aria-hidden /> Gerar leads
+                </Link>
+              </div>
+            </EmptyState>
+          )}
         </Card>
       ) : null}
-      {current ? (
-        <LeadCard
-          key={current.lead.id}
-          item={current}
-          position={(data?.items.length ?? 0) - queue.length + 1}
-          total={data?.items.length ?? 0}
-          onDone={(n) => {
-            setHandled((h) => new Set(h).add(current.lead.id));
-            setSession((v) => v + 1);
-            setDoneToday(n);
-          }}
-          onSkip={() => setSkipped((s) => [...s.filter((id) => id !== current.lead.id), current.lead.id])}
-        />
+
+      {pending.length ? (
+        <Card>
+          <ul aria-label={view === 'missing' ? 'Leads sem contacto' : 'Leads para contactar'} className="divide-y divide-border">
+            {pending.slice(0, limit).map((item) => (
+              <LeadRow
+                key={item.lead.id}
+                item={item}
+                onSaved={(lead) => saved(item, lead)}
+                onRecorded={(outcome, result) => recorded(item, outcome, result)}
+              />
+            ))}
+          </ul>
+          {pending.length > limit ? (
+            <div className="flex justify-center border-t border-border p-3">
+              <Button variant="ghost" size="sm" onClick={() => setLimit((n) => n + PAGE)}>
+                <ChevronDown className="h-4 w-4" aria-hidden /> Mostrar mais ({pending.length - limit})
+              </Button>
+            </div>
+          ) : null}
+        </Card>
+      ) : null}
+
+      {view !== 'missing' && data && missing.length ? (
+        <button type="button" onClick={() => changeView('missing')} className="self-start text-sm text-accent-text hover:underline">
+          {missing.length} lead{missing.length === 1 ? '' : 's'} desta lista sem telefone nem email → Falta contacto
+        </button>
+      ) : null}
+
+      {done.length ? (
+        <section aria-label="Feito nesta sessão" className="flex flex-col gap-2">
+          <button
+            type="button"
+            aria-expanded={doneOpen}
+            onClick={() => setDoneOpen(!doneOpen)}
+            className="inline-flex items-center gap-1.5 self-start text-sm font-semibold"
+          >
+            <ChevronDown className={cn('h-4 w-4 transition-transform', !doneOpen && '-rotate-90')} aria-hidden />
+            Feito nesta sessão ({done.length})
+          </button>
+          {doneOpen ? (
+            <Card>
+              <ul aria-label="Leads tratados nesta sessão" className="divide-y divide-border">
+                {done.map(({ item, done: result }) => (
+                  <LeadRow
+                    key={item.lead.id}
+                    item={item}
+                    done={result}
+                    onSaved={(lead) => saved(item, lead)}
+                    onRecorded={(outcome, r) => recorded(item, outcome, r)}
+                  />
+                ))}
+              </ul>
+            </Card>
+          ) : null}
+        </section>
       ) : null}
     </div>
   );
 }
 
-function LeadCard({
+function LeadRow({
   item,
-  position,
-  total,
-  onDone,
-  onSkip,
+  done,
+  onSaved,
+  onRecorded,
 }: {
   item: ProspectingItem;
-  position: number;
-  total: number;
-  onDone: (doneToday: number) => void;
-  onSkip: () => void;
+  done?: Done;
+  onSaved: (lead: Lead) => void;
+  onRecorded: (outcome: ProspectingOutcome, result: ProspectingResult) => void;
 }) {
-  // Depois de guardar contactos encontrados, o cartão passa a usar o lead atualizado.
-  const [saved, setSaved] = useState<typeof item.lead | null>(null);
-  const lead = saved ?? item.lead;
+  const lead = item.lead;
   const { data: settings } = useSettings();
   const outcome = useProspectingOutcome();
   const [note, setNote] = useState('');
-  const [scripts, setScripts] = useState(false);
-  const kind = KIND_META[item.kind];
-  const KindIcon = kind.icon;
-  const wa = whatsappUrl(lead.phone);
-
-  // "Sem interesse": pergunta primeiro o motivo (como na ficha e no Kanban).
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [more, setMore] = useState(false);
+  const [finder, setFinder] = useState(false);
   const [askLost, setAskLost] = useState(false);
-  // Tentativas: quantas vezes já se carregou em "Não atendeu" e "Contactado" neste lead.
-  const attempts = item.attempts ?? { no_answer: 0, contacted: 0, no_answer_streak: 0 };
-  const streak = attempts.no_answer_streak;
   const [askGiveUp, setAskGiveUp] = useState(false);
+  const attempts = item.attempts ?? NO_ATTEMPTS;
+  const streak = attempts.no_answer_streak;
+  const KindIcon = KIND_ICON[item.kind];
+  const wa = whatsappUrl(lead.phone);
+  const headingId = `prosp-${lead.id}`;
+  const busy = outcome.isPending;
 
   async function record(value: ProspectingOutcome, days?: number, lostReason?: LostReason | null, retryOn?: string | null) {
     setAskLost(false);
@@ -205,7 +357,6 @@ function LeadCard({
         ...(retryOn ? { retry_on: retryOn } : {}),
       });
       const next = result.lead.next_action_on ? ` Próxima ação a ${formatDate(result.lead.next_action_on)}.` : '';
-      // Cada toque passa ao lead seguinte: o aviso diz quantas vezes já vai neste lead.
       const times =
         value === 'no_answer'
           ? ` — Não atendeu (${attempts.no_answer + 1}.ª vez); volta a aparecer${result.lead.next_action_on ? ` a ${formatDate(result.lead.next_action_on)}` : ' amanhã'}.`
@@ -213,57 +364,63 @@ function LeadCard({
             ? ` — Contactado (${attempts.contacted + 1}.ª vez).${next}`
             : `.${next}`;
       toast.success(`#${lead.number} ${lead.company_name}: registado${times}`);
-      onDone(result.done_today);
+      setNote('');
+      setNoteOpen(false);
+      onRecorded(value, result);
     } catch (error) {
       toast.error(errorMessage(error));
     }
   }
 
-  return (
-    <Card className="flex flex-col">
-      <div className="flex flex-col gap-3 border-b border-border p-4 sm:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
-          <span className="tabular">
-            Lead {position} de {total}
-          </span>
-          <Badge tone={kind.tone} className="inline-flex items-center gap-1">
-            <KindIcon className="h-3.5 w-3.5" aria-hidden /> {kind.label}
-          </Badge>
-        </div>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="font-display text-xl font-bold break-words sm:text-2xl">
-              <span className="text-muted tabular">#{lead.number}</span> {lead.company_name}
-            </h2>
-            <p className="mt-1 text-sm text-muted">
-              {[lead.contact_name, lead.sector?.name, lead.city].filter(Boolean).join(' · ') || 'Sem contacto nem setor'}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <StatusBadge status={lead.status} />
-            <LeadScoreBadge lead={lead} />
-          </div>
-        </div>
-        {/* A nota afixada na ficha (ex.: "Só atende depois das 15h") à vista antes de ligar. */}
-        <PinnedNoteBox note={lead.pinned_note} />
-        <p className="flex items-start gap-2 rounded-lg bg-surface-2 px-3 py-2 text-sm">
-          <KindIcon className="mt-0.5 h-4 w-4 shrink-0 text-accent-text" aria-hidden />
-          <span>{item.reason}</span>
-        </p>
-        {item.sequence ? <SequenceStep lead={lead} step={item.sequence} /> : null}
+  const meta = [lead.contact_name, lead.sector?.name, lead.city].filter(Boolean).join(' · ');
 
-        <nav aria-label="Contactar" className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+  return (
+    <li aria-labelledby={headingId} className={cn('flex flex-col gap-3 p-3 sm:p-4', done && 'bg-surface-2/30')}>
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0 flex-1">
+          <h3 id={headingId} className="font-sans text-base font-semibold break-words">
+            <span className="text-muted tabular">#{lead.number}</span> {lead.company_name}
+          </h3>
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted">
+            <span className="inline-flex items-start gap-1.5">
+              <KindIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent-text" aria-hidden />
+              {item.reason}
+            </span>
+            {meta ? <span>{meta}</span> : null}
+            {item.sequence ? (
+              <span className="inline-flex items-center gap-1 text-accent-text">
+                <Route className="h-3.5 w-3.5" aria-hidden /> Passo {item.sequence.step} de {item.sequence.total}
+              </span>
+            ) : null}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {done ? <Badge tone={done.tone}>{done.text}</Badge> : null}
+          <StatusBadge status={lead.status} />
+          <LeadScoreBadge lead={lead} />
+        </div>
+      </div>
+
+      {/* A nota afixada (ex.: "Só atende depois das 15h") à vista antes de ligar. */}
+      {lead.pinned_note ? (
+        <p role="note" aria-label="Nota afixada" className="-mt-1 flex items-start gap-1.5 text-sm font-medium text-warning">
+          <Pin className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden /> {lead.pinned_note}
+        </p>
+      ) : null}
+
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+        <nav aria-label="Contactar" className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap [&>*]:justify-center">
           {lead.phone ? (
-            <a href={telUrl(lead.phone)} className={buttonClasses('primary', 'md', 'justify-center')}>
-              <Phone className="h-4 w-4" aria-hidden /> Ligar
+            <a href={telUrl(lead.phone)} className={buttonClasses('primary', 'sm')}>
+              <Phone className="h-3.5 w-3.5" aria-hidden /> Ligar
             </a>
           ) : null}
           {wa ? (
             settings?.features.whatsapp_templates ? (
-              <WhatsAppMenu lead={lead} className={buttonClasses('outline', 'md', 'justify-center')} />
+              <WhatsAppMenu lead={lead} className={buttonClasses('outline', 'sm')} />
             ) : (
-              <a href={wa} target="_blank" rel="noreferrer" className={buttonClasses('outline', 'md', 'justify-center')}>
-                <MessageCircle className="h-4 w-4" aria-hidden /> WhatsApp
+              <a href={wa} target="_blank" rel="noreferrer" className={buttonClasses('outline', 'sm')}>
+                <MessageCircle className="h-3.5 w-3.5" aria-hidden /> WhatsApp
               </a>
             )
           ) : null}
@@ -272,22 +429,148 @@ function LeadCard({
               lead={lead}
               label="Email"
               variant="outline"
-              size="md"
               subject={lead.email_subject ?? ''}
               body={lead.email_body ?? ''}
               template="Email de prospeção"
             />
           ) : null}
-          {lead.website ? (
-            <a href={lead.website} target="_blank" rel="noreferrer" className={buttonClasses('ghost', 'md', 'col-span-2 min-w-0 justify-center')}>
-              <Globe className="h-4 w-4 shrink-0" aria-hidden /> <span className="truncate">{displayHost(lead.website)}</span>
-            </a>
+          {!lead.phone || !lead.email ? (
+            <Button size="sm" variant="ghost" aria-expanded={finder} onClick={() => setFinder(!finder)}>
+              <Search className="h-3.5 w-3.5" aria-hidden />{' '}
+              {hasContact(lead) ? `Procurar ${lead.phone ? 'email' : 'telefone'}` : 'Procurar contacto'}
+            </Button>
           ) : null}
         </nav>
-        {!lead.phone || !lead.email ? <ContactFinder key={lead.updated_at} lead={lead} onSaved={setSaved} /> : null}
+
+        <div
+          role="group"
+          aria-label="Resultado do contacto"
+          className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap [&_button]:whitespace-nowrap [&_svg]:shrink-0 max-sm:[&>:last-child]:col-span-2"
+        >
+          <Button
+            size="sm"
+            variant="outline"
+            // À 3.ª vez seguida sem atender, pergunta se passa a "Sem interesse" (Não responde).
+            onClick={() => (streak >= NO_ANSWER_LIMIT - 1 ? setAskGiveUp(true) : void record('no_answer'))}
+            disabled={busy}
+          >
+            <PhoneOff className="h-3.5 w-3.5" aria-hidden /> Não atendeu
+            <AttemptCount n={attempts.no_answer} />
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => void record('contacted')} disabled={busy}>
+            <UserCheck className="h-3.5 w-3.5" aria-hidden /> {item.sequence ? `Contactado (passo ${item.sequence.step})` : 'Contactado'}
+            <AttemptCount n={attempts.contacted} />
+          </Button>
+          <Button size="sm" onClick={() => void record('interested')} disabled={busy}>
+            <ThumbsUp className="h-3.5 w-3.5" aria-hidden /> Interessado
+          </Button>
+          <DropdownRoot>
+            <DropdownTrigger asChild>
+              <Button size="sm" variant="outline" disabled={busy}>
+                <CalendarClock className="h-3.5 w-3.5" aria-hidden /> Mais tarde
+              </Button>
+            </DropdownTrigger>
+            <DropdownContent align="end">
+              {LATER.map((l) => (
+                <DropdownItem key={l.days} onSelect={() => void record('later', l.days)}>
+                  {l.label}
+                </DropdownItem>
+              ))}
+            </DropdownContent>
+          </DropdownRoot>
+          <Button size="sm" variant="outline" onClick={() => setAskLost(true)} disabled={busy}>
+            <ThumbsDown className="h-3.5 w-3.5" aria-hidden /> Sem interesse
+          </Button>
+        </div>
       </div>
 
-      <dl className="grid gap-x-6 gap-y-3 p-4 text-sm sm:grid-cols-2 sm:p-5">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+        <button
+          type="button"
+          aria-expanded={noteOpen}
+          onClick={() => setNoteOpen(!noteOpen)}
+          className="inline-flex items-center gap-1.5 text-muted hover:text-fg"
+        >
+          <NotebookPen className="h-3.5 w-3.5" aria-hidden /> {note.trim() ? 'Nota (por guardar)' : 'Nota'}
+        </button>
+        <button
+          type="button"
+          aria-expanded={more}
+          onClick={() => setMore(!more)}
+          className="inline-flex items-center gap-1.5 text-muted hover:text-fg"
+        >
+          <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', more && 'rotate-180')} aria-hidden />{' '}
+          {more ? 'Ver menos' : 'Ver mais'}
+        </button>
+        <Link href={leadPath(lead)} target="_blank" className="inline-flex items-center gap-1.5 text-muted hover:text-fg">
+          <ExternalLink className="h-3.5 w-3.5" aria-hidden /> Ficha
+          <span className="sr-only">(abre num novo separador)</span>
+        </Link>
+      </div>
+
+      {noteOpen ? (
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={`note-${lead.id}`} className="text-sm font-medium">
+            Nota (opcional)
+          </label>
+          <Textarea
+            id={`note-${lead.id}`}
+            rows={2}
+            maxLength={2000}
+            autoFocus
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Ex.: falei com a dona, pediu para ligar depois das 15h"
+          />
+          <p className="text-xs text-muted">Fica guardada com o próximo resultado que registares.</p>
+        </div>
+      ) : null}
+
+      {finder ? <ContactFinder key={lead.updated_at} lead={lead} onSaved={onSaved} /> : null}
+
+      {more ? <LeadDetails item={item} /> : null}
+
+      {askGiveUp ? (
+        <Dialog
+          open
+          onOpenChange={(o) => (!o ? setAskGiveUp(false) : undefined)}
+          title={`${streak + 1}.ª vez sem resposta`}
+          description={`#${lead.number} ${lead.company_name} não atendeu as últimas ${streak} vezes. Passar a “Sem interesse” (Não responde)?`}
+          className="max-w-md"
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => void record('no_answer')}>
+                Só registar “Não atendeu”
+              </Button>
+              <Button onClick={() => void record('not_interested', undefined, 'nao_responde')}>Passar a Sem interesse</Button>
+            </>
+          }
+        >
+          <p className="text-sm text-muted">
+            Fica em Estatísticas → Porque perdes leads, com o motivo “Não responde”. Podes sempre voltar a mudar o estado na ficha.
+          </p>
+        </Dialog>
+      ) : null}
+      {askLost ? (
+        <LostReasonDialog
+          open
+          subject={`#${lead.number} ${lead.company_name}`}
+          onPick={(reason, retryOn) => void record('not_interested', undefined, reason, retryOn)}
+          onCancel={() => setAskLost(false)}
+        />
+      ) : null}
+    </li>
+  );
+}
+
+/** "Ver mais": o passo da sequência, o ângulo, os problemas do site, as notas e os scripts. */
+function LeadDetails({ item }: { item: ProspectingItem }) {
+  const lead = item.lead;
+  const [scripts, setScripts] = useState(false);
+  return (
+    <div className="flex flex-col gap-3 rounded-lg bg-surface-2/50 p-3">
+      {item.sequence ? <SequenceStep lead={lead} step={item.sequence} /> : null}
+      <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
         {lead.approach_angle ? (
           <div className="sm:col-span-2">
             <dt className="text-xs font-medium tracking-wide text-muted uppercase">Ângulo de abordagem</dt>
@@ -315,99 +598,27 @@ function LeadCard({
             <dd className="mt-0.5 line-clamp-4 whitespace-pre-line">{lead.notes}</dd>
           </div>
         ) : null}
-        <div className="sm:col-span-2">
-          <Link href={leadPath(lead)} target="_blank" className="inline-flex items-center gap-1 text-sm text-accent-text hover:underline">
-            Abrir a ficha completa <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-            <span className="sr-only">(abre num novo separador)</span>
-          </Link>
-          <button type="button" onClick={() => setScripts((v) => !v)} aria-expanded={scripts} className="ml-4 text-sm text-accent-text hover:underline">
-            {scripts ? 'Esconder scripts' : 'Ver scripts'}
-          </button>
-        </div>
+        {lead.website ? (
+          <div>
+            <dt className="text-xs font-medium tracking-wide text-muted uppercase">Site</dt>
+            <dd className="mt-0.5">
+              <a href={lead.website} target="_blank" rel="noreferrer" className="text-accent-text hover:underline">
+                {displayHost(lead.website)}
+              </a>
+            </dd>
+          </div>
+        ) : null}
       </dl>
-      {scripts ? (
-        <div className="border-t border-border p-3">
-          <ContactScriptsCard lead={lead} />
-        </div>
-      ) : null}
-
-      <section aria-label="Resultado do contacto" className="flex flex-col gap-3 border-t border-border bg-surface-2/40 p-4 sm:p-5">
-        <label htmlFor={`note-${lead.id}`} className="text-sm font-medium">
-          Nota (opcional)
-        </label>
-        <Textarea id={`note-${lead.id}`} rows={2} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ex.: falei com a dona, pediu para ligar depois das 15h" />
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 2xl:grid-cols-6 [&_button]:whitespace-nowrap [&_svg]:shrink-0 max-sm:[&_button]:gap-1.5 max-sm:[&_button]:px-2">
-          <Button
-            variant="outline"
-            // À 3.ª vez seguida sem atender, pergunta se passa a "Sem interesse" (Não responde).
-            onClick={() => (streak >= NO_ANSWER_LIMIT - 1 ? setAskGiveUp(true) : void record('no_answer'))}
-            disabled={outcome.isPending}
-          >
-            <PhoneOff className="h-4 w-4" aria-hidden /> Não atendeu
-            <AttemptCount n={attempts.no_answer} />
-          </Button>
-          <Button variant="outline" onClick={() => record('contacted')} disabled={outcome.isPending}>
-            <UserCheck className="h-4 w-4" aria-hidden /> {item.sequence ? `Contactado (passo ${item.sequence.step})` : 'Contactado'}
-            <AttemptCount n={attempts.contacted} />
-          </Button>
-          <Button onClick={() => record('interested')} disabled={outcome.isPending}>
-            <ThumbsUp className="h-4 w-4" aria-hidden /> Interessado
-          </Button>
-          <DropdownRoot>
-            <DropdownTrigger asChild>
-              <Button variant="outline" disabled={outcome.isPending}>
-                <CalendarClock className="h-4 w-4" aria-hidden /> Mais tarde
-              </Button>
-            </DropdownTrigger>
-            <DropdownContent align="end">
-              {LATER.map((l) => (
-                <DropdownItem key={l.days} onSelect={() => void record('later', l.days)}>
-                  {l.label}
-                </DropdownItem>
-              ))}
-            </DropdownContent>
-          </DropdownRoot>
-          <Button variant="outline" onClick={() => setAskLost(true)} disabled={outcome.isPending}>
-            <ThumbsDown className="h-4 w-4" aria-hidden /> Sem interesse
-          </Button>
-          <Button variant="ghost" onClick={onSkip} disabled={outcome.isPending}>
-            <SkipForward className="h-4 w-4" aria-hidden /> Saltar
-          </Button>
-        </div>
-        <p className="text-xs text-muted">
-          Cada toque regista e passa ao lead seguinte. O número nos botões é quantas vezes já o fizeste neste lead (à 3.ª vez seguida sem
-          atender, a plataforma pergunta se passa a Sem interesse). “Contactado” agenda o próximo follow-up; “Não atendeu” volta a mostrar o
-          lead amanhã; “Interessado” passa-o a Respondeu, com a próxima ação para hoje.
-        </p>
-      </section>
-      {askGiveUp ? (
-        <Dialog
-          open
-          onOpenChange={(o) => (!o ? setAskGiveUp(false) : undefined)}
-          title={`${streak + 1}.ª vez sem resposta`}
-          description={`#${lead.number} ${lead.company_name} não atendeu as últimas ${streak} vezes. Passar a “Sem interesse” (Não responde)?`}
-          className="max-w-md"
-          footer={
-            <>
-              <Button variant="ghost" onClick={() => void record('no_answer')}>
-                Só registar “Não atendeu”
-              </Button>
-              <Button onClick={() => void record('not_interested', undefined, 'nao_responde')}>Passar a Sem interesse</Button>
-            </>
-          }
-        >
-          <p className="text-sm text-muted">Fica em Estatísticas → Porque perdes leads, com o motivo “Não responde”. Podes sempre voltar a mudar o estado na ficha.</p>
-        </Dialog>
-      ) : null}
-      {askLost ? (
-        <LostReasonDialog
-          open
-          subject={`#${lead.number} ${lead.company_name}`}
-          onPick={(reason, retryOn) => void record('not_interested', undefined, reason, retryOn)}
-          onCancel={() => setAskLost(false)}
-        />
-      ) : null}
-    </Card>
+      <button
+        type="button"
+        onClick={() => setScripts((v) => !v)}
+        aria-expanded={scripts}
+        className="self-start text-sm text-accent-text hover:underline"
+      >
+        {scripts ? 'Esconder scripts' : 'Ver scripts'}
+      </button>
+      {scripts ? <ContactScriptsCard lead={lead} /> : null}
+    </div>
   );
 }
 
@@ -415,7 +626,10 @@ function LeadCard({
 function AttemptCount({ n }: { n: number }) {
   return (
     <span
-      className={cn('ml-0.5 rounded-full px-2 py-0.5 text-xs font-semibold tabular', n ? 'bg-accent-soft text-accent-text' : 'bg-surface-3 text-muted')}
+      className={cn(
+        'ml-0.5 rounded-full px-1.5 py-px text-xs font-semibold tabular',
+        n ? 'bg-accent-soft text-accent-text' : 'bg-surface-3 text-muted',
+      )}
       title="Vezes que já registaste este resultado neste lead"
     >
       {n}×<span className="sr-only"> ({n === 1 ? '1 vez' : `${n} vezes`} até agora)</span>
