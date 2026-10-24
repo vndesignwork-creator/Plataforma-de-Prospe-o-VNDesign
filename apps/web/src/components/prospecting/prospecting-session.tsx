@@ -329,7 +329,7 @@ function LeadCard({
           Nota (opcional)
         </label>
         <Textarea id={`note-${lead.id}`} rows={2} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ex.: falei com a dona, pediu para ligar depois das 15h" />
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 2xl:grid-cols-6 [&_button]:whitespace-nowrap [&_svg]:shrink-0 max-sm:[&_button]:gap-1.5 max-sm:[&_button]:px-2">
           <Button
             variant="outline"
             // À 3.ª vez seguida sem atender, pergunta se passa a "Sem interesse" (Não responde).
@@ -403,11 +403,13 @@ function LeadCard({
   );
 }
 
-/** "2×" no botão: quantas vezes já se registou este resultado neste lead. */
+/** "2×" no botão: quantas vezes já se registou este resultado neste lead (sempre à vista, também o 0). */
 function AttemptCount({ n }: { n: number }) {
-  if (!n) return null;
   return (
-    <span className="rounded-full bg-surface-3 px-1.5 text-xs font-medium text-muted tabular" title="Vezes que já registaste este resultado">
+    <span
+      className={cn('ml-0.5 rounded-full px-2 py-0.5 text-xs font-semibold tabular', n ? 'bg-accent-soft text-accent-text' : 'bg-surface-3 text-muted')}
+      title="Vezes que já registaste este resultado neste lead"
+    >
       {n}×<span className="sr-only"> ({n === 1 ? '1 vez' : `${n} vezes`} até agora)</span>
     </span>
   );
