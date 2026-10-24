@@ -411,7 +411,7 @@ function LeadRow({
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
         <nav aria-label="Contactar" className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap [&>*]:justify-center">
           {lead.phone ? (
-            <a href={telUrl(lead.phone)} className={buttonClasses('primary', 'sm')}>
+            <a href={telUrl(lead.phone)} className={buttonClasses('soft', 'sm')}>
               <Phone className="h-3.5 w-3.5" aria-hidden /> Ligar
             </a>
           ) : null}
@@ -461,8 +461,8 @@ function LeadRow({
             <UserCheck className="h-3.5 w-3.5" aria-hidden /> {item.sequence ? `Contactado (passo ${item.sequence.step})` : 'Contactado'}
             <AttemptCount n={attempts.contacted} />
           </Button>
-          <Button size="sm" onClick={() => void record('interested')} disabled={busy}>
-            <ThumbsUp className="h-3.5 w-3.5" aria-hidden /> Interessado
+          <Button size="sm" variant="outline" onClick={() => void record('interested')} disabled={busy}>
+            <ThumbsUp className="h-3.5 w-3.5 text-success" aria-hidden /> Interessado
           </Button>
           <DropdownRoot>
             <DropdownTrigger asChild>

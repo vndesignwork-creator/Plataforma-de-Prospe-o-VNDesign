@@ -1,13 +1,15 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline' | 'soft';
 export type ButtonSize = 'sm' | 'md' | 'icon';
 
 const variants: Record<ButtonVariant, string> = {
   primary: 'bg-accent text-accent-fg hover:bg-accent-hover font-semibold',
   secondary: 'bg-surface-3 text-fg hover:bg-border-strong',
   outline: 'border border-border-strong bg-transparent text-fg hover:bg-surface-2',
+  // Laranja suave: para ações que se repetem em muitas linhas (o laranja cheio cansa a vista).
+  soft: 'bg-accent-soft text-accent-text hover:bg-accent-soft/70 font-medium',
   ghost: 'bg-transparent text-fg hover:bg-surface-2',
   danger: 'bg-danger text-white hover:opacity-90 font-semibold dark:text-[#0d0d0d]',
 };
