@@ -176,3 +176,27 @@ test('Tarefas: as do dono (sem responsável) aparecem, pelo prazo, e concluem-se
   await expect(page.getByText('Tarefa concluída.')).toBeVisible();
   await expect(page.getByText(`Enviar maquete ${run}`)).toHaveCount(0);
 });
+
+test('Tarefas: dar prazo a uma tarefa sem prazo daqui mesmo (com Anular)', async ({ page }) => {
+  const lead = await createLead(page.request, { company_name: `Prazo Tarefas ${run}` });
+  const res = await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title: `Rever textos ${run}` } });
+  const task = (await res.json()).data as { id: string };
+  const due = async () => ((await (await page.request.get(`/api/v1/leads/${lead.id}/tasks`)).json()).data as { id: string; due_on: string | null }[]).find((t) => t.id === task.id)!.due_on;
+  await page.goto('/tarefas?de=all');
+  await expect(page.getByRole('list', { name: 'Sem prazo' }).getByText(`Rever textos ${run}`)).toBeVisible();
+
+  await page.getByRole('button', { name: `Prazo de Rever textos ${run}` }).click();
+  await page.getByRole('menuitem', { name: /^Amanhã/ }).click();
+  await expect(page.getByText(/^Prazo: \d{2}\/\d{2}\/\d{4}\.$/)).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Próximos 7 dias' }).getByText(`Rever textos ${run}`)).toBeVisible();
+  expect(await due()).not.toBeNull();
+
+  await page.locator('[data-sonner-toast]').filter({ hasText: 'Prazo:' }).getByRole('button', { name: 'Anular' }).click();
+  await expect.poll(due).toBeNull();
+  await expect(page.getByRole('list', { name: 'Sem prazo' }).getByText(`Rever textos ${run}`)).toBeVisible();
+
+  // Escolher data… abre o calendário por baixo da tarefa.
+  await page.getByRole('button', { name: `Prazo de Rever textos ${run}` }).click();
+  await page.getByRole('menuitem', { name: 'Escolher data…' }).click();
+  await expect(page.getByLabel(`Data do prazo de Rever textos ${run}`)).toBeVisible();
+});

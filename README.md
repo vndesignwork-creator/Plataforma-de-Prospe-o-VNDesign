@@ -246,7 +246,7 @@ Abre um lead a partir da lista (com os filtros e a ordem que quiseres): no topo 
 ## Tarefas da equipa e avisos
 
 - **Responsável:** ao editar uma tarefa (✏️) escolhe **Responsável** (só aparece com equipa). A tarefa mostra o nome e essa pessoa recebe um aviso.
-- **Página Tarefas** (menu, ou **G + T**): as tarefas por fazer de todos os leads e projetos, por **Em atraso / Hoje / Próximos 7 dias / Mais tarde / Sem prazo**. Com equipa: **As minhas** (para o dono, também as sem responsável — como nos leads), **Sem responsável**, **Todas** ou **De uma pessoa…**; o botão com o nome de cada tarefa muda o responsável. Marca a caixa para concluir (com **Anular**).
+- **Página Tarefas** (menu, ou **G + T**): as tarefas por fazer de todos os leads e projetos, por **Em atraso / Hoje / Próximos 7 dias / Mais tarde / Sem prazo**. Com equipa: **As minhas** (para o dono, também as sem responsável — como nos leads), **Sem responsável**, **Todas** ou **De uma pessoa…**; o botão com o nome de cada tarefa muda o responsável. O botão 📅 de cada tarefa dá-lhe um prazo daqui mesmo (Hoje, Amanhã, Próxima semana, Escolher data… ou Sem prazo, com **Anular**): útil para as que estão em *Sem prazo*, que não aparecem no Hoje nem na Agenda. Marca a caixa para concluir (com **Anular**).
 - **Avisos (🔔):** no topo da barra lateral (no telemóvel, ao lado da pesquisa). Mostra as tarefas que te deram e quando te mencionam; tocar abre o lead no sítio certo. Se tiveres as notificações ligadas no dispositivo, chega também uma notificação.
 - API: `assigned_to` nas tarefas; `GET /api/v1/tasks?assigned=me|none|all|{id}`; `GET /api/v1/notifications`, `POST /api/v1/notifications/read`.
 

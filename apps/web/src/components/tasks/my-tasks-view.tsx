@@ -6,7 +6,7 @@
  * por omissão as minhas; dá para ver as sem responsável, as de todos ou as de
  * uma pessoa, e dar uma tarefa a alguém daqui mesmo.
  */
-import { TASK_GROUP_LABELS, addDays, leadPath, taskGroup, todayIso, type TaskGroup, type TaskListItem } from '@vndesign/core';
+import { TASK_GROUP_LABELS, addDays, formatDate, leadPath, taskGroup, todayIso, type TaskGroup, type TaskListItem } from '@vndesign/core';
 import { useQuery } from '@tanstack/react-query';
 import { ListChecks, UserRound } from 'lucide-react';
 import Link from 'next/link';
@@ -19,7 +19,8 @@ import { api, errorMessage } from '@/lib/api-client';
 import { Linkified } from '@/lib/linkify';
 import { useInvalidateTasks, useMe, useTeamNames } from '@/lib/queries';
 import { cn } from '@/lib/utils';
-import { DueChip } from './tasks-card';
+import { DateInput } from '@/components/ui/date-input';
+import { DueChip, DuePicker } from './tasks-card';
 
 const GROUPS: TaskGroup[] = ['overdue', 'today', 'week', 'later', 'none'];
 
@@ -56,6 +57,32 @@ export function MyTasksView() {
           label: 'Anular',
           onClick: () =>
             void api(`/tasks/${task.id}`, { method: 'PATCH', body: { done: false } })
+              .catch((e) => toast.error(errorMessage(e)))
+              .finally(() => invalidate(task.lead_id)),
+        },
+      });
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      invalidate(task.lead_id);
+    }
+  }
+
+  // Tarefa com "Escolher data…" aberto (calendário por baixo dela).
+  const [picking, setPicking] = useState<string | null>(null);
+
+  /** Muda o prazo daqui mesmo (com Anular: volta ao que tinha). */
+  async function setDue(task: TaskListItem, due: string) {
+    setPicking(null);
+    const next = due || null;
+    if (next === task.due_on) return;
+    try {
+      await api(`/tasks/${task.id}`, { method: 'PATCH', body: { due_on: next } });
+      toast.success(next ? `Prazo: ${formatDate(next)}.` : 'Tarefa sem prazo.', {
+        action: {
+          label: 'Anular',
+          onClick: () =>
+            void api(`/tasks/${task.id}`, { method: 'PATCH', body: { due_on: task.due_on } })
               .catch((e) => toast.error(errorMessage(e)))
               .finally(() => invalidate(task.lead_id)),
         },
@@ -149,7 +176,7 @@ export function MyTasksView() {
             </h2>
             <ul className="divide-y divide-border" aria-label={TASK_GROUP_LABELS[group]}>
               {tasks.map((t) => (
-                <li key={t.id} className="flex items-start gap-3 px-4 py-2.5">
+                <li key={t.id} className="flex items-start gap-2 px-4 py-2.5 sm:gap-3">
                   <input
                     type="checkbox"
                     onChange={() => void complete(t)}
@@ -166,7 +193,23 @@ export function MyTasksView() {
                         {t.lead.project_title ? ` · ${t.lead.project_title}` : ''}
                       </Link>
                     </p>
+                    {picking === t.id ? (
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                        <DateInput value={t.due_on ?? ''} onChange={(v) => v && void setDue(t, v)} aria-label={`Data do prazo de ${t.title}`} className="w-40" />
+                        <button type="button" onClick={() => setPicking(null)} className="rounded px-2 py-1 text-xs text-muted hover:bg-surface-2 hover:text-fg">
+                          Fechar
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
+                  <DuePicker
+                    value={t.due_on ?? ''}
+                    today={today}
+                    task={t.title}
+                    compact
+                    onChange={(v) => void setDue(t, v)}
+                    onCustom={() => setPicking(t.id)}
+                  />
                   {hasTeam ? (
                     <DropdownRoot>
                       <DropdownTrigger

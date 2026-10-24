@@ -99,7 +99,23 @@ export function nextMonday(today: string): string {
 }
 
 /** Botão "📅 Prazo" com atalhos (Hoje, Amanhã, Próxima semana) e "Escolher data…". */
-function DuePicker({ value, today, onChange, onCustom }: { value: string; today: string; onChange: (v: string) => void; onCustom: () => void }) {
+export function DuePicker({
+  value,
+  today,
+  onChange,
+  onCustom,
+  task,
+  compact,
+}: {
+  value: string;
+  today: string;
+  onChange: (v: string) => void;
+  onCustom: () => void;
+  /** Título da tarefa (para o nome do botão, quando há vários na página). */
+  task?: string;
+  /** Com prazo, só o ícone (a data já está à vista ao lado). */
+  compact?: boolean;
+}) {
   const options = [
     { label: 'Hoje', date: today },
     { label: 'Amanhã', date: addDays(today, 1) },
@@ -108,12 +124,12 @@ function DuePicker({ value, today, onChange, onCustom }: { value: string; today:
   return (
     <DropdownRoot>
       <DropdownTrigger
-        className={buttonClasses(value ? 'secondary' : 'outline', 'sm', 'min-h-9')}
-        aria-label={value ? `Prazo: ${dueLabel(value, today)} (${formatDate(value)})` : 'Prazo (opcional)'}
+        className={buttonClasses(value ? 'secondary' : 'outline', 'sm', cn('min-h-9', compact && value && 'w-9 px-0'))}
+        aria-label={`${task ? `Prazo de ${task}` : 'Prazo'}${value ? `: ${dueLabel(value, today)} (${formatDate(value)})` : task ? '' : ' (opcional)'}`}
         title="Prazo: aparece em “Hoje” e nos resumos diários"
       >
         <CalendarDays className="h-4 w-4" aria-hidden />
-        {value ? dueLabel(value, today) : 'Prazo'}
+        {compact && value ? null : value ? dueLabel(value, today) : 'Prazo'}
       </DropdownTrigger>
       <DropdownContent>
         <DropdownLabel>Prazo</DropdownLabel>
