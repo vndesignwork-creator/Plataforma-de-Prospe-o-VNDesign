@@ -234,6 +234,34 @@ export async function startStubs() {
         });
         return;
       }
+      // Resumo do lead com IA (antes de ligar).
+      if (JSON.stringify(body.system ?? '').includes('preparar-se antes de contactar')) {
+        const resumo = {
+          resumo: 'Restaurante em Lisboa sem site. Falámos por telefone e pediram uma proposta de site com reservas.',
+          combinado: 'Enviar a proposta até sexta.',
+          proximo_passo: 'Ligar para saber se receberam a proposta',
+          atencao: 'Só atende depois das 15h',
+        };
+        sendJson(res, 200, {
+          id: 'msg_stub_resumo', type: 'message', role: 'assistant', model: body.model ?? 'claude-opus-5-5',
+          content: [{ type: 'text', text: JSON.stringify(resumo) }],
+          stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 900, output_tokens: 150 },
+        });
+        return;
+      }
+      // Cartão de visita (com a imagem na mensagem).
+      if (JSON.stringify(body.system ?? '').includes('cartão de visita')) {
+        const hasImage = JSON.stringify(body.messages ?? '').includes('"type":"image"');
+        const cartao = hasImage
+          ? { empresa: 'Padaria Estrela', contacto: 'Ana Ribeiro', email: 'ANA@PadariaEstrela.pt', telefone: '+351 912 345 678', site: 'padariaestrela.pt', cidade: 'Porto', morada: 'Rua das Flores, 10', notas: 'Gerente' }
+          : { empresa: null, contacto: null, email: null, telefone: null, site: null, cidade: null, morada: null, notas: null };
+        sendJson(res, 200, {
+          id: 'msg_stub_cartao', type: 'message', role: 'assistant', model: body.model ?? 'claude-opus-5-5',
+          content: [{ type: 'text', text: JSON.stringify(cartao) }],
+          stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 1_500, output_tokens: 120 },
+        });
+        return;
+      }
       // Notas de reunião com IA: resumo, tarefas e próximo passo.
       if (JSON.stringify(body.system ?? '').includes('apontamentos de uma reunião')) {
         const notas = {

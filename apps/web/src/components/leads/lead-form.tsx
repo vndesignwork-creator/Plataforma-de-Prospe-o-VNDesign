@@ -13,6 +13,7 @@ import {
   parseEuroAmount,
   MOBILE_STATUS_META,
   MOBILE_STATUSES,
+  type CardScanResult,
   type DuplicateMatch,
   type Lead,
   type LeadCreate,
@@ -37,6 +38,7 @@ import { checkDuplicates, useInvalidateLead, useRole, useSectors } from '@/lib/q
 import { DuplicatePanel } from './duplicate-panel';
 import { MERGE_DRAFT_KEY } from './merge-view';
 import { ServicePicker } from '@/components/services/services';
+import { CardScanButton } from './card-scan';
 
 type FormInput = LeadCreateInput;
 
@@ -119,6 +121,7 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
     control,
     setError,
     getValues,
+    setValue,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<FormInput, unknown, LeadCreate>({
     resolver: zodResolver(LeadCreateSchema),
@@ -187,6 +190,27 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
   }
 
   const onSubmit = handleSubmit((values) => save(values));
+
+  /** Cartão de visita lido: preenche só os campos vazios (o que já escreveste fica). */
+  function fillFromCard(card: CardScanResult) {
+    const map: [keyof FormInput, string | null][] = [
+      ['company_name', card.company_name],
+      ['contact_name', card.contact_name],
+      ['email', card.email],
+      ['phone', card.phone],
+      ['website', card.website],
+      ['city', card.city],
+      ['address', card.address],
+    ];
+    for (const [field, value] of map) {
+      if (value && !String(getValues(field) ?? '').trim()) setValue(field, value as never, { shouldDirty: true });
+    }
+    if (card.notes) {
+      const notes = String(getValues('notes') ?? '').trim();
+      setValue('notes', (notes ? `${notes}\n${card.notes}` : card.notes) as never, { shouldDirty: true });
+    }
+    if (card.address) setMoreOpen(true);
+  }
   const e = (f: keyof FormInput) => errors[f]?.message as string | undefined;
 
   return (
@@ -196,6 +220,8 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
           {formError}
         </p>
       ) : null}
+
+      {isEdit ? null : <CardScanButton onResult={fillFromCard} />}
 
       <Section title="Empresa" description="Só dados empresariais públicos (RGPD).">
         <Field label="Empresa" error={e('company_name')} required className="md:col-span-2">

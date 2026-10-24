@@ -27,6 +27,7 @@ import {
   Mail,
   MessageCircle,
   MoreHorizontal,
+  Pin,
   Phone,
   ShieldOff,
   Trash2,
@@ -76,6 +77,10 @@ import { NotesCard } from './notes-card';
 import { rememberLead } from '@/lib/recent-leads';
 import { MeetingNotesButton } from './meeting-notes';
 import { TagChips, TagEditor } from './tags';
+import { CustomFieldsRows } from './custom-fields';
+import { LeadSummaryButton } from './lead-summary';
+import { PinnedNoteBox, PinnedNoteDialog } from './pinned-note';
+import { restoreDeletedLeads } from './trash-view';
 import { SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 import { ServiceChips, useServiceCatalog } from '@/components/services/services';
 import { FollowUpEmailButton, SendEmailButton } from '@/components/email/send-email-dialog';
@@ -136,7 +141,6 @@ function QuickContact({ lead, whatsappMessages }: { lead: Lead; whatsappMessages
     lead.email ? { key: 'email', href: `mailto:${lead.email}`, label: 'Email', icon: Mail, external: false } : null,
     lead.website ? { key: 'site', href: lead.website, label: 'Site', icon: Globe, external: true } : null,
   ].filter((l) => l !== null);
-  if (!links.length) return null;
   const classes = buttonClasses('outline', 'sm', 'w-full justify-center pointer-coarse:min-h-11');
   return (
     <nav aria-label="Contactar" className="mb-5 -mt-2">
@@ -155,6 +159,10 @@ function QuickContact({ lead, whatsappMessages }: { lead: Lead; whatsappMessages
             )}
           </li>
         ))}
+        {/* Antes de contactar: o resumo da ficha feito pela IA. */}
+        <li>
+          <LeadSummaryButton lead={lead} className={classes} />
+        </li>
       </ul>
     </nav>
   );
@@ -206,6 +214,7 @@ export function LeadDetail({ id }: { id: string }) {
   const log = useLogActivity(id);
   const invalidate = useInvalidateLead();
   const [dialog, setDialog] = useState<null | 'delete' | 'anonymize' | 'merge'>(null);
+  const [pinOpen, setPinOpen] = useState(false);
   const [emailCollapsed, setEmailCollapsed] = useProspectingCollapsed('email-de-prospecao', lead?.status ?? '');
   // Pesquisa rápida: os leads abertos há pouco aparecem sem escrever nada.
   useEffect(() => {
@@ -384,6 +393,11 @@ export function LeadDetail({ id }: { id: string }) {
                   <MoreHorizontal className="h-4 w-4" aria-hidden />
                 </DropdownTrigger>
                 <DropdownContent>
+                  {!lead.anonymized_at ? (
+                    <DropdownItem onSelect={() => setPinOpen(true)}>
+                      <Pin className="h-4 w-4" aria-hidden /> {lead.pinned_note ? 'Editar a nota afixada…' : 'Afixar uma nota…'}
+                    </DropdownItem>
+                  ) : null}
                   <DropdownItem className="lg:hidden" onSelect={() => void setArchived(!lead.archived_at)}>
                     {lead.archived_at ? <ArchiveRestore className="h-4 w-4" aria-hidden /> : <Archive className="h-4 w-4" aria-hidden />}
                     {lead.archived_at ? 'Repor' : 'Arquivar'}
@@ -425,7 +439,9 @@ export function LeadDetail({ id }: { id: string }) {
         }
       />
 
+      {!lead.anonymized_at ? <PinnedNoteBox note={lead.pinned_note} onEdit={() => setPinOpen(true)} className="mb-3 -mt-2" /> : null}
       {!lead.anonymized_at ? <QuickContact lead={lead} whatsappMessages={!!settings?.features.whatsapp_templates} /> : null}
+      {!lead.anonymized_at ? <PinnedNoteDialog lead={lead} open={pinOpen} onOpenChange={setPinOpen} /> : null}
 
       {lead.archived_at ? (
         <div
@@ -481,6 +497,7 @@ export function LeadDetail({ id }: { id: string }) {
               <Row label="Etiquetas" className="md:col-span-2">
                 {!lead.anonymized_at ? <TagEditor lead={lead} /> : lead.tags?.length ? <TagChips tags={lead.tags} /> : dash}
               </Row>
+              <CustomFieldsRows lead={lead} canEdit={!lead.anonymized_at} />
               <Row label="Ângulo de abordagem" className="md:col-span-2">
                 {lead.approach_angle ? <span className="whitespace-pre-line">{lead.approach_angle}</span> : dash}
               </Row>
@@ -698,11 +715,28 @@ function DeleteDialog({
 }) {
   const [dnc, setDnc] = useState(false);
   const [busy, setBusy] = useState(false);
+  const router = useRouter();
   async function confirm() {
     setBusy(true);
     try {
       await api(`/leads/${lead.id}`, { method: 'DELETE', query: { add_to_do_not_contact: dnc || undefined } });
-      toast.success(`Lead #${lead.number} apagado.`);
+      // Sem "não contactar" vai para a reciclagem: dá para anular (ou repor em Leads → Apagados).
+      toast.success(dnc ? `Lead #${lead.number} apagado de vez.` : `Lead #${lead.number} apagado (fica 30 dias em Apagados).`, {
+        action: dnc
+          ? undefined
+          : {
+              label: 'Anular',
+              onClick: () =>
+                void restoreDeletedLeads([lead.id]).then(
+                  () => {
+                    toast.success(`#${lead.number} reposto.`);
+                    router.push(`/leads/${lead.id}`);
+                    router.refresh();
+                  },
+                  (e: unknown) => toast.error(errorMessage(e)),
+                ),
+            },
+      });
       onOpenChange(false);
       onDone();
     } catch (error) {
@@ -716,14 +750,18 @@ function DeleteDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={`Apagar #${lead.number}?`}
-      description="O lead e toda a sua linha do tempo são apagados definitivamente. Não é possível desfazer."
+      description={
+        dnc
+          ? 'Pedido RGPD: o lead e tudo o que tem são apagados de vez. Não é possível desfazer.'
+          : 'O lead vai para Leads → Apagados, com tudo o que tem (tarefas, pagamentos, reuniões, linha do tempo). Durante 30 dias podes repô-lo; depois sai de vez.'
+      }
       footer={
         <>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
           <Button variant="danger" onClick={confirm} loading={busy}>
-            Apagar definitivamente
+            {dnc ? 'Apagar de vez' : 'Apagar'}
           </Button>
         </>
       }

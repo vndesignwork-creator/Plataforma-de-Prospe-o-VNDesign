@@ -15,6 +15,7 @@ import {
   MOBILE_STATUSES,
   SECTOR_ICON_KEYS,
   TEMPLATE_KINDS,
+  type LeadStatus,
   type SectorIcon,
 } from './enums';
 import { ensureUrlProtocol } from './normalize';
@@ -104,6 +105,13 @@ export const MobileStatusSchema = z
   .enum(MOBILE_STATUSES)
   .meta({ id: 'MobileStatus', description: '"desconhecido" corresponde ao "--" da folha' });
 
+/** Valores dos campos personalizados de um lead: { chave: texto | número | sim/não | null }. */
+export const CustomValuesSchema = z
+  .record(z.string().regex(/^f[a-z0-9]{6,12}$/, { error: 'Campo inválido.' }), z.union([z.string().max(500, { error: 'Máximo de 500 caracteres.' }), z.number(), z.boolean(), z.null()]))
+  .refine((v) => Object.keys(v).length <= 50, { error: 'Demasiados campos.' })
+  .meta({ id: 'CustomValues' });
+export type CustomValues = z.infer<typeof CustomValuesSchema>;
+
 // -----------------------------------------------------------------------------
 // Leads
 // -----------------------------------------------------------------------------
@@ -147,6 +155,10 @@ const leadFields = {
     .array(z.string().trim().min(1, { error: 'Etiqueta vazia.' }).max(30, { error: 'Cada etiqueta tem no máximo 30 caracteres.' }))
     .max(10, { error: 'No máximo 10 etiquetas.' })
     .transform((list) => normalizeTags(list)),
+  /** Uma frase sempre à vista no topo da ficha ("Só atende depois das 15h"). */
+  pinned_note: nullableText(200),
+  /** Campos personalizados ({ chave: valor }; ver /custom-fields). Substitui o objeto todo. */
+  custom: CustomValuesSchema,
 };
 
 export const EDITABLE_LEAD_FIELDS = Object.keys(leadFields) as (keyof typeof leadFields)[];
@@ -228,6 +240,8 @@ export const LeadSchema = z
     /** Responsável pelo lead (equipa de prospeção). */
     assigned_to: z.uuid().nullable().optional(),
     tags: z.array(z.string()).optional().meta({ description: 'Etiquetas livres' }),
+    pinned_note: z.string().nullable().optional().meta({ description: 'Nota afixada no topo da ficha' }),
+    custom: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional().meta({ description: 'Campos personalizados' }),
     created_by: z.uuid().nullable(),
     created_at: z.string(),
     updated_at: z.string(),
@@ -288,9 +302,12 @@ export const LeadListQuerySchema = z
     suggested_from: z.iso.date().optional(),
     suggested_to: z.iso.date().optional(),
     due: z
-      .enum(['overdue', 'today', 'week'])
+      .enum(['overdue', 'today', 'week', 'none'])
       .optional()
-      .meta({ description: 'Próxima ação em atraso, para hoje ou nos próximos 7 dias' }),
+      .meta({ description: 'Próxima ação em atraso, para hoje, nos próximos 7 dias ou "none" = em conversa sem próximo passo' }),
+    cf: csvList(z.string().regex(/^f[a-z0-9]{6,12}:.{1,100}$/))
+      .optional()
+      .meta({ description: 'Campos personalizados: "chave:valor" (vários valores do mesmo campo = qualquer um)' }),
     include_anonymized: z.enum(['true', 'false']).optional(),
     archived: z
       .enum(LEAD_ARCHIVE_FILTERS)
@@ -796,6 +813,9 @@ export const DashboardSchema = z
   .meta({ id: 'Dashboard' });
 export type Dashboard = z.infer<typeof DashboardSchema>;
 
+/** "Em conversa": os estados em que um lead tem de ter sempre um próximo passo marcado. */
+export const STALLED_STATUSES = ['contactado', 'respondeu', 'reuniao', 'proposta_enviada'] as const satisfies readonly LeadStatus[];
+
 export const TodaySchema = z
   .object({
     today: z.string(),
@@ -803,6 +823,7 @@ export const TodaySchema = z
     due_today: z.array(LeadSchema),
     upcoming: z.array(LeadSchema).meta({ description: 'Próximos 7 dias' }),
     tasks: TodayTasksSchema.optional().meta({ description: 'Tarefas com prazo (em atraso, hoje e próximos 7 dias)' }),
+    stalled: z.array(LeadSchema).optional().meta({ description: 'Em conversa sem próximo passo (sem data na próxima ação)' }),
     hot: z.array(LeadSchema).optional().meta({ description: 'Leads com maior prioridade (os mais quentes), em pipeline' }),
     meetings: z.array(TodayMeetingSchema).optional().meta({ description: 'Reuniões de hoje e dos próximos 7 dias' }),
     opened: z.array(TodayOpenedEmailSchema).optional().meta({ description: 'Leads que abriram um email nas últimas 48 horas' }),

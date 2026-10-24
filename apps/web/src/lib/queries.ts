@@ -322,7 +322,11 @@ export function useSetPreference<T>(key: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (value: T) => api(`/preferences/${key}`, { method: 'PUT', body: { value } }),
-    onMutate: (value) => qc.setQueryData(qk.pref(key), value),
+    // Cancela a leitura em curso: se chegasse depois, apagava o valor acabado de mudar.
+    onMutate: async (value) => {
+      await qc.cancelQueries({ queryKey: qk.pref(key) });
+      qc.setQueryData(qk.pref(key), value);
+    },
   });
 }
 

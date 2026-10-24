@@ -167,8 +167,16 @@ function chatUsage(body: Record<string, unknown>): Pick<AiUsage, 'input_tokens' 
 export async function generateJson<T>(
   provider: ResolvedProvider,
   model: string,
-  input: { system: string; prompt: string; schema: z.ZodType<T>; schemaName: string },
+  input: {
+    system: string;
+    prompt: string;
+    schema: z.ZodType<T>;
+    schemaName: string;
+    /** Uma imagem para a IA ler (ex.: cartão de visita), como data URL base64. */
+    image?: { mediaType: 'image/jpeg' | 'image/png' | 'image/webp'; base64: string };
+  },
 ): Promise<{ data: T; model: string }> {
+  const image = input.image;
   if (provider.kind === 'anthropic') {
     let response;
     try {
@@ -182,7 +190,17 @@ export async function generateJson<T>(
         output_config: { effort: 'medium', format: betaZodOutputFormat(input.schema as z.ZodType<T> & z.ZodObject) },
         // As instruções fixas ficam em cache entre pedidos.
         system: [{ type: 'text', text: input.system, cache_control: { type: 'ephemeral' } }],
-        messages: [{ role: 'user', content: input.prompt }],
+        messages: [
+          {
+            role: 'user',
+            content: image
+              ? [
+                  { type: 'image', source: { type: 'base64', media_type: image.mediaType, data: image.base64 } },
+                  { type: 'text', text: input.prompt },
+                ]
+              : input.prompt,
+          },
+        ],
       });
     } catch (error) {
       throw anthropicError(error, provider);
@@ -198,9 +216,15 @@ export async function generateJson<T>(
   // OpenAI, OpenRouter e compatíveis: Chat Completions.
   const schema = jsonSchemaOf(input.schema);
   const jsonHint = `\n\nResponde só com um objeto JSON com este esquema, sem texto à volta:\n${JSON.stringify(schema)}`;
+  const userContent = image
+    ? [
+        { type: 'text', text: input.prompt },
+        { type: 'image_url', image_url: { url: `data:${image.mediaType};base64,${image.base64}` } },
+      ]
+    : input.prompt;
   const messages = (hint: string) => [
     { role: 'system', content: input.system + hint },
-    { role: 'user', content: input.prompt },
+    { role: 'user', content: userContent },
   ];
   let body: Record<string, unknown>;
   try {

@@ -1,4 +1,4 @@
-import { addDays, todayIso, type Dashboard, type Lead, type Today } from '@vndesign/core';
+import { STALLED_STATUSES, addDays, todayIso, type Dashboard, type Lead, type Today } from '@vndesign/core';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ApiContext } from '../context';
 import { fromPostgrest } from '../http';
@@ -43,18 +43,30 @@ export async function fetchToday(client: SupabaseClient, workspaceId: string): P
       .not('next_action_on', 'is', null);
   const sorted = <T extends ReturnType<typeof base>>(q: T) =>
     q.order('next_action_on', { ascending: true }).order('number', { ascending: true }).limit(500);
-  const [overdue, dueToday, upcoming] = await Promise.all([
+  const [overdue, dueToday, upcoming, stalled] = await Promise.all([
     sorted(base().lt('next_action_on', today)),
     sorted(base().eq('next_action_on', today)),
     sorted(base().gt('next_action_on', today).lte('next_action_on', addDays(today, 7))),
+    // Em conversa sem próximo passo (sem data): os que estão assim há mais tempo primeiro.
+    client
+      .from('leads')
+      .select(LEAD_SELECT)
+      .eq('workspace_id', workspaceId)
+      .is('anonymized_at', null)
+      .is('archived_at', null)
+      .in('status', [...STALLED_STATUSES])
+      .is('next_action_on', null)
+      .order('status_changed_at', { ascending: true })
+      .limit(200),
   ]);
-  for (const r of [overdue, dueToday, upcoming]) if (r.error) throw fromPostgrest(r.error);
+  for (const r of [overdue, dueToday, upcoming, stalled]) if (r.error) throw fromPostgrest(r.error);
   const rows = (r: { data: unknown }) => (r.data ?? []) as unknown as Lead[];
   return {
     today,
     overdue: rows(overdue),
     due_today: rows(dueToday),
     upcoming: rows(upcoming),
+    stalled: rows(stalled),
     tasks: await fetchTodayTasks(client, workspaceId, today),
   };
 }
@@ -98,6 +110,7 @@ export async function getToday(ctx: ApiContext): Promise<Today> {
     overdue: byLead(today.overdue),
     due_today: byLead(today.due_today),
     upcoming: byLead(today.upcoming),
+    stalled: byLead(today.stalled ?? []),
     tasks: today.tasks
       ? { ...today.tasks, overdue: byRef(today.tasks.overdue), due_today: byRef(today.tasks.due_today), upcoming: byRef(today.tasks.upcoming) }
       : today.tasks,

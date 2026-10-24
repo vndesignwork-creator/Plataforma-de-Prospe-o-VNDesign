@@ -5,6 +5,7 @@
 import { LEAD_CHANNEL_META, LEAD_STATUS_META, MOBILE_STATUS_META } from './enums';
 import type { Lead } from './schemas';
 import { serviceLabel, type ServiceInfo } from './services';
+import { formatCustomValue, type CustomField } from './custom-fields';
 
 export type ExportValue = string | number | null;
 export type ExportKind = 'text' | 'number' | 'integer' | 'date' | 'currency' | 'url';
@@ -18,8 +19,8 @@ export interface ExportColumn {
 
 const withEmoji = (emoji: string, label: string) => (emoji ? `${emoji} ${label}` : label);
 
-/** Colunas da exportação; `services` dá os nomes dos serviços do workspace. */
-export function exportColumns(services?: readonly ServiceInfo[]): ExportColumn[] {
+/** Colunas da exportação; `services` dá os nomes dos serviços do workspace e `fields` os campos personalizados (no fim). */
+export function exportColumns(services?: readonly ServiceInfo[], fields: readonly CustomField[] = []): ExportColumn[] {
   return [
     { header: '#', kind: 'integer', width: 6, value: (l) => l.number },
     { header: 'Empresa', kind: 'text', width: 32, value: (l) => l.company_name },
@@ -74,6 +75,17 @@ export function exportColumns(services?: readonly ServiceInfo[]): ExportColumn[]
       value: (l) => (l.services?.length ? l.services.map((s) => serviceLabel(s, services)).join('; ') : null),
     },
     { header: 'Etiquetas', kind: 'text', width: 24, value: (l) => (l.tags?.length ? l.tags.join('; ') : null) },
+    { header: 'Nota afixada', kind: 'text', width: 30, value: (l) => l.pinned_note ?? null },
+    ...fields.map((f): ExportColumn => ({
+      header: f.label,
+      kind: f.type === 'number' ? 'number' : 'text',
+      width: 18,
+      value: (l) => {
+        const v = l.custom?.[f.key];
+        if (v === undefined || v === null || v === '') return null;
+        return f.type === 'number' && typeof v === 'number' ? v : formatCustomValue(f, v);
+      },
+    })),
   ];
 }
 
@@ -100,8 +112,8 @@ function csvCell(value: ExportValue, kind: ExportKind): string {
  * CSV para o Excel em português: separador ";", vírgula decimal,
  * datas DD/MM/AAAA e BOM UTF-8 (para os acentos e emojis aparecerem bem).
  */
-export function leadsToCsv(leads: readonly Lead[], services?: readonly ServiceInfo[]): string {
-  const columns = exportColumns(services);
+export function leadsToCsv(leads: readonly Lead[], services?: readonly ServiceInfo[], fields: readonly CustomField[] = []): string {
+  const columns = exportColumns(services, fields);
   const header = columns.map((c) => csvCell(c.header, 'text')).join(';');
   const lines = leads.map((l) => columns.map((c) => csvCell(c.value(l), c.kind)).join(';'));
   return `﻿${[header, ...lines].join('\r\n')}\r\n`;

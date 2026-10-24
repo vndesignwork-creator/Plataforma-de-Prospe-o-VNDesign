@@ -53,8 +53,8 @@ async function setSequenceStep(ctx: ApiContext, leadId: string, step: number | n
 
 const IN_SEQUENCE = new Set(['identificado', 'contactado']);
 
-/** Início do dia de hoje em Lisboa, como instante UTC. */
-function lisbonMidnight(day: string): string {
+/** Início de um dia (AAAA-MM-DD) em Lisboa, como instante UTC. */
+export function lisbonMidnight(day: string): string {
   const guess = new Date(`${day}T00:00:00Z`);
   const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Lisbon', hour: '2-digit', hourCycle: 'h23' }).format(guess));
   return new Date(guess.getTime() - hour * 3_600_000).toISOString();

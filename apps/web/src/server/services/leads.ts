@@ -7,13 +7,17 @@ import {
   addDays,
   fixDirectoryWebsite,
   isDirectoryUrl,
+  STALLED_STATUSES,
   normalizeTags,
   normalizeText,
+  sanitizeCustomValues,
   todayIso,
   type DoNotContact,
   type DuplicateCheckResult,
   type DuplicateMatch,
   type Lead,
+  type CustomField,
+  type CustomValues,
   type LeadBulkAction,
   type LeadBulkResult,
   type LeadCreate,
@@ -33,7 +37,7 @@ export const LEAD_SELECT = [
   'email', 'phone', 'contact_name', 'status', 'channel', 'first_contact_on', 'last_follow_up_on',
   'next_action_text', 'next_action_on', 'estimated_value', 'notes', 'approach_angle', 'source_url',
   'suggested_on', 'email_subject', 'email_body', 'services', 'kanban_position', 'status_changed_at',
-  'anonymized_at', 'archived_at', 'score', 'score_reasons', 'follow_up_count', 'project_completed_at', 'client_of', 'project_title', 'assigned_to', 'tags', 'created_by', 'created_at', 'updated_at',
+  'anonymized_at', 'archived_at', 'score', 'score_reasons', 'follow_up_count', 'project_completed_at', 'client_of', 'project_title', 'assigned_to', 'tags', 'pinned_note', 'custom', 'created_by', 'created_at', 'updated_at',
 ].join(', ');
 
 const NOT_FOUND = 'Lead não encontrado';
@@ -56,7 +60,7 @@ type LeadQueryBuilder = ReturnType<typeof baseLeadQuery>;
 export type LeadFilters = Partial<
   Pick<
     LeadListQuery,
-    'q' | 'sector' | 'status' | 'channel' | 'city' | 'suggested_from' | 'suggested_to' | 'due' | 'include_anonymized' | 'archived' | 'service' | 'tag'
+    'q' | 'sector' | 'status' | 'channel' | 'city' | 'suggested_from' | 'suggested_to' | 'due' | 'include_anonymized' | 'archived' | 'service' | 'tag' | 'cf'
   >
 > & {
   /** Responsável já resolvido ("me" → o id de quem pede). */
@@ -106,7 +110,19 @@ function applyLeadFilters(q: LeadQueryBuilder, query: LeadFilters): LeadQueryBui
   else if (query.assigned) q = q.eq('assigned_to', query.assigned);
   if (query.suggested_from) q = q.gte('suggested_on', query.suggested_from);
   if (query.suggested_to) q = q.lte('suggested_on', query.suggested_to);
-  if (query.due) {
+  // Campos personalizados: "chave:valor"; vários valores do mesmo campo = qualquer um.
+  if (query.cf?.length) {
+    const byKey = new Map<string, string[]>();
+    for (const pair of query.cf) {
+      const at = pair.indexOf(':');
+      byKey.set(pair.slice(0, at), [...(byKey.get(pair.slice(0, at)) ?? []), pair.slice(at + 1)]);
+    }
+    for (const [key, values] of byKey) q = q.in(`custom->>${key}`, values);
+  }
+  if (query.due === 'none') {
+    // Em conversa sem próximo passo marcado.
+    q = q.in('status', [...STALLED_STATUSES]).is('next_action_on', null);
+  } else if (query.due) {
     const today = todayIso();
     q = q.not('status', 'in', CLOSED_STATUSES).not('next_action_on', 'is', null);
     if (query.due === 'overdue') q = q.lt('next_action_on', today);
@@ -192,6 +208,13 @@ export function pickDoNotContact(d: DoNotContact): DoNotContact {
   };
 }
 
+/** Os valores dos campos personalizados, limpos pelas definições do workspace. */
+async function cleanCustom(ctx: ApiContext, values: CustomValues): Promise<Record<string, string | number | boolean>> {
+  const { data, error } = await ctx.supabase.from('custom_fields').select('key, type, options').eq('workspace_id', ctx.workspaceId);
+  if (error) throw fromPostgrest(error);
+  return sanitizeCustomValues(values, (data ?? []) as Pick<CustomField, 'key' | 'type' | 'options'>[]);
+}
+
 export async function createLead(
   ctx: ApiContext,
   input: LeadCreate,
@@ -222,6 +245,7 @@ export async function createLead(
     );
   }
 
+  if (input.custom) input = { ...input, custom: await cleanCustom(ctx, input.custom) };
   // O prospetor fica responsável pelos leads que cria (e não lhes põe valor).
   if (ctx.role === 'prospector') input = { ...input, assigned_to: ctx.user.id, estimated_value: null };
   else await assertTeamMember(ctx, input.assigned_to);
@@ -239,6 +263,7 @@ export async function updateLead(ctx: ApiContext, id: string, patch: LeadUpdate)
     patch = Object.fromEntries(Object.entries(patch).filter(([k]) => k !== 'assigned_to' && k !== 'estimated_value')) as LeadUpdate;
   } else if (patch.assigned_to !== undefined) await assertTeamMember(ctx, patch.assigned_to);
   if (Object.keys(patch).length === 0) return getLead(ctx, id);
+  if (patch.custom) patch = { ...patch, custom: await cleanCustom(ctx, patch.custom) };
   if (isDirectoryUrl(patch.website)) {
     const current = await getLead(ctx, id);
     patch = {
@@ -276,13 +301,19 @@ export async function deleteLead(
       created_by: ctx.user.id,
     });
     if (insert.error) throw fromPostgrest(insert.error);
+    // Pedido RGPD: apaga de vez (sem ir para a reciclagem).
+    const { error } = await ctx.supabase.from('leads').delete().eq('workspace_id', ctx.workspaceId).eq('id', id);
+    if (error) throw fromPostgrest(error, NOT_FOUND);
+    return;
   }
-  const { error } = await ctx.supabase
-    .from('leads')
-    .delete()
-    .eq('workspace_id', ctx.workspaceId)
-    .eq('id', id);
+  await trashLeads(ctx, [id]);
+}
+
+/** Apaga para a reciclagem (30 dias, com tudo, para poder repor). Devolve quantos. */
+export async function trashLeads(ctx: ApiContext, ids: string[]): Promise<number> {
+  const { data, error } = await ctx.supabase.rpc('trash_leads', { p_workspace_id: ctx.workspaceId, p_ids: [...new Set(ids)] });
   if (error) throw fromPostgrest(error, NOT_FOUND);
+  return Number(data ?? 0);
 }
 
 export async function anonymizeLead(
@@ -356,7 +387,8 @@ export async function bulkLeadAction(
     await assertTeamMember(ctx, assignedTo);
     result = await base().update({ assigned_to: assignedTo }).eq('workspace_id', ctx.workspaceId).in('id', unique).select('id');
   } else if (action === 'delete') {
-    result = await base().delete().eq('workspace_id', ctx.workspaceId).in('id', unique).select('id');
+    // Para a reciclagem (repõe-se em Leads → Apagados durante 30 dias).
+    return { action, affected: await trashLeads(ctx, unique) };
   } else if (action === 'archive') {
     result = await base()
       .update({ archived_at: new Date().toISOString() })

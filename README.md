@@ -148,6 +148,43 @@ Menu **Agenda** (ou *Agenda da semana* no cartão Hoje do Dashboard): de segunda
 - Mudar o dia tem **Anular** no aviso.
 - Os **follow-ups** também aparecem no **calendário subscrito** (Google Calendar / iPhone), como "🔔 próxima ação · empresa".
 
+## Filtros guardados
+
+Na lista de leads, o botão 🔖 **Guardados** → **Guardar estes filtros…** guarda os filtros e a pesquisa atuais com um nome (ex.: "Restaurantes em Lisboa sem site"). Volta a eles com um toque (o botão mostra o nome do que está ativo) ou no **Ctrl+K** (sem escrever aparecem em *Filtros guardados*). **Apagar “…”** no mesmo menu. Cada pessoa tem os seus (até 20).
+
+## Leads sem próximo passo
+
+Um lead **em conversa** (Contactado, Respondeu, Reunião, Proposta enviada) sem próxima ação marcada está a ser esquecido:
+
+- no cartão **Hoje** aparece "**N leads em conversa sem próximo passo**" (toca para ver a lista) com **Marcar follow-up** (hoje, amanhã, próxima semana ou outra data, com **Anular**) — o mesmo menu do *Pôr em dia*;
+- na lista, filtro **Próxima ação → Sem próximo passo (em conversa)** (API: `?due=none`).
+
+## Nota afixada
+
+Uma frase sempre à vista no topo da ficha (ex.: "Só atende depois das 15h", "Falar com a Marta, não com o sócio"): ficha → **⋯ → Afixar uma nota…** (até 200 caracteres); **Editar** na própria nota para mudar ou **Tirar**. Aparece também na **Prospeção**, antes de ligar. Entra na exportação (coluna *Nota afixada*) e, ao juntar leads, passa para o principal.
+
+## Resumo com IA (antes de ligar)
+
+Na ficha, ao lado de Ligar/WhatsApp/Email, **Resumo IA**: a IA lê a ficha (notas, linha do tempo, tarefas, propostas, reuniões) e diz em poucas frases quem é, em que ponto está a conversa, **o que ficou combinado**, o **próximo passo** (com *Usar como próxima ação*) e um cuidado a ter (com *Afixar na ficha*). Não grava nada sozinho. Também em Ctrl+K → um lead → *Resumo com IA*. É o contrário das *Notas com IA* (essas escrevem na ficha); usam o mesmo fornecedor de IA.
+
+## Ler cartão de visita
+
+Em **Novo lead**, **📷 Ler cartão de visita**: no telemóvel abre a câmara. A IA lê a fotografia e preenche a empresa, o contacto, o email, o telefone, o site, a cidade e a morada (só os campos ainda vazios; o cargo vai para as notas). Revês e carregas em *Criar lead* — o aviso de duplicados funciona como sempre. A foto é reduzida antes de enviar e não fica guardada. Precisa de um fornecedor de IA que leia imagens (Claude, ou um modelo da OpenAI/OpenRouter com visão).
+
+## Campos personalizados
+
+**Definições → Campos personalizados → Novo campo**: texto, número, sim/não ou escolha (lista de opções), por exemplo "Nº de lojas", "Programa de faturação", "Tem Instagram?" (até 30).
+
+- Na ficha aparecem no cartão **Pipeline**, a seguir às etiquetas; preenchem-se ali mesmo.
+- Os de **escolha** e **sim/não** têm filtro na lista de leads (e entram nos filtros guardados).
+- Entram na **exportação** (uma coluna por campo).
+- Mudar o nome não perde os valores; apagar um campo tira-o de todos os leads. Ao juntar leads, os valores dos duplicados passam para o principal (os do principal ganham).
+- API: `GET/POST /api/v1/custom-fields`, `PATCH/DELETE /api/v1/custom-fields/{id}`; nos leads, o campo `custom` (`{ chave: valor }`) e o filtro `?cf=chave:valor`.
+
+## Estatísticas: comparar com o período anterior
+
+No topo de **Estatísticas**, "**Este mês vs. o mês passado**" (ou **Semana**): leads novos, primeiros contactos, respostas, reuniões marcadas, propostas enviadas, clientes ganhos e recebido, comparados **até ao mesmo dia** (1–24 de outubro contra 1–24 de setembro), com ↑/↓ e a percentagem. Não são metas: mostra só se estás a melhorar. API: `GET /api/v1/stats/compare?period=month|week`.
+
 ## Pôr em dia os atrasados
 
 No cartão **Hoje**, quando há follow-ups ou tarefas em atraso, aparece "**Em atraso:** 4 follow-ups e 2 tarefas" com **Pôr em dia**: passa todos para hoje, amanhã, a próxima semana ou outra data, de uma vez, com **Anular**. API: `POST /api/v1/reschedule` (`{ leads: [{ id, next_action_on }], tasks: [{ id, due_on }] }`, até 200 de cada).
@@ -257,7 +294,8 @@ português) com as mesmas colunas — pode ser reimportado sem mapear nada.
   mostra os arquivados.
 - **Arquivo automático** (opcional): Definições → Follow-up e lembretes → leads em “Sem
   interesse” há mais de N dias são arquivados todas as manhãs (pelo mesmo cron do resumo diário).
-- **Apagar** é definitivo (para erros, testes e duplicados). Para pedidos RGPD usa *Anonimizar*.
+- **Apagar** (ficha ou vários na lista) leva o lead para a **reciclagem**: **Leads → Importar/Exportar → Apagados (reciclagem)** (ou "apagados" no Ctrl+K). Fica lá **30 dias com tudo** (tarefas, pagamentos, reuniões, horas, propostas, contratos, kit da marca, linha do tempo…); **Repor** volta a pô-lo como estava (o mesmo #). O aviso depois de apagar também tem **Anular**. Depois de 30 dias sai de vez sozinho (no cron diário), com os ficheiros; **Apagar de vez** e **Esvaziar** fazem-no logo. Só o dono ou um administrador vê a reciclagem.
+- **Pedidos RGPD**: *Anonimizar*, ou *Apagar* com "Acrescentar à lista não contactar" — estes apagam **de vez** (não vão para a reciclagem).
 
 ### Configurar o email (resumo diário)
 

@@ -167,6 +167,16 @@ import {
   DuplicateIgnoreSchema,
   LeadTagCountSchema,
   LeadTagRenameSchema,
+  LeadSummarySchema,
+  CardScanInputSchema,
+  CardScanResultSchema,
+  TrashItemSchema,
+  TrashIdsSchema,
+  CustomFieldSchema,
+  CustomFieldCreateSchema,
+  CustomFieldUpdateSchema,
+  PeriodCompareQuerySchema,
+  PeriodCompareSchema,
   NoteSearchQuerySchema,
   NoteSearchResultSchema,
   RescheduleResultSchema,
@@ -995,6 +1005,67 @@ export function getOpenApiDocument() {
           responses: { '200': ok(data(MeetingNotesResultSchema)), ...withNotFound },
         }),
       },
+      '/leads/{id}/summary': {
+        post: op({
+          tags: ['Leads'],
+          summary: 'Resumo do lead com IA antes de ligar: quem é, o que se falou, o combinado e o próximo passo (não grava nada)',
+          requestParams: { path: leadId },
+          responses: { '200': ok(data(LeadSummarySchema)), ...withNotFound },
+        }),
+      },
+      '/leads/card-scan': {
+        post: op({
+          tags: ['Leads'],
+          summary: 'Ler a fotografia de um cartão de visita (data URL) e devolver os dados do lead (não grava nada)',
+          requestBody: body(CardScanInputSchema),
+          responses: { '200': ok(data(CardScanResultSchema)), ...common },
+        }),
+      },
+      '/leads/trash': {
+        get: op({
+          tags: ['Leads'],
+          summary: 'Reciclagem: leads apagados nos últimos 30 dias (só o dono ou um administrador)',
+          responses: { '200': ok(data(z.array(TrashItemSchema))), ...common },
+        }),
+        delete: op({
+          tags: ['Leads'],
+          summary: 'Apagar de vez da reciclagem ({ ids }; sem corpo esvazia tudo)',
+          requestBody: body(TrashIdsSchema),
+          responses: { '200': ok(data(z.object({ deleted: z.int() }))), ...common },
+        }),
+      },
+      '/leads/trash/restore': {
+        post: op({
+          tags: ['Leads'],
+          summary: 'Repor leads apagados, tal como estavam (tarefas, pagamentos, reuniões, horas, linha do tempo…)',
+          requestBody: body(TrashIdsSchema),
+          responses: { '200': ok(data(z.object({ lead_ids: z.array(z.uuid()) }))), ...common },
+        }),
+      },
+      '/custom-fields': {
+        get: op({ tags: ['Leads'], summary: 'Campos personalizados dos leads', responses: { '200': ok(data(z.array(CustomFieldSchema))), ...common } }),
+        post: op({
+          tags: ['Leads'],
+          summary: 'Novo campo personalizado (texto, número, sim/não ou escolha); só o dono ou um administrador',
+          requestBody: body(CustomFieldCreateSchema),
+          responses: { '201': ok(data(CustomFieldSchema)), ...common },
+        }),
+      },
+      '/custom-fields/{id}': {
+        patch: op({
+          tags: ['Leads'],
+          summary: 'Mudar o nome, as opções ou a ordem de um campo personalizado',
+          requestParams: { path: idParam },
+          requestBody: body(CustomFieldUpdateSchema),
+          responses: { '200': ok(data(CustomFieldSchema)), ...withNotFound },
+        }),
+        delete: op({
+          tags: ['Leads'],
+          summary: 'Apagar um campo personalizado (e os valores dele em todos os leads)',
+          requestParams: { path: idParam },
+          responses: { '204': { description: 'Apagado' }, ...withNotFound },
+        }),
+      },
       '/reschedule': {
         post: op({
           tags: ['Tarefas'],
@@ -1347,6 +1418,14 @@ export function getOpenApiDocument() {
             '422': problem('Falta o email ou o telefone'),
             '429': problem('Demasiados pedidos'),
           },
+        }),
+      },
+      '/stats/compare': {
+        get: op({
+          tags: ['Dashboard'],
+          summary: 'Este mês (ou semana) até hoje contra o anterior até ao mesmo dia: leads novos, contactos, respostas, reuniões, propostas, clientes e recebido',
+          requestParams: { query: PeriodCompareQuerySchema },
+          responses: { '200': ok(data(PeriodCompareSchema)), ...common },
         }),
       },
       '/stats/team': {

@@ -47,6 +47,7 @@ import { Textarea } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api-client';
 import { useProspectingOutcome, useProspectingQueue, useSettings } from '@/lib/queries';
 import { cn, displayHost, telUrl, whatsappUrl } from '@/lib/utils';
+import { PinnedNoteBox } from '@/components/leads/pinned-note';
 
 const KIND_META: Record<ProspectingItem['kind'], { label: string; icon: typeof Eye; tone: 'success' | 'warning' | 'neutral' }> = {
   opened: { label: 'Abriu o email', icon: Eye, tone: 'success' },
@@ -216,6 +217,8 @@ function LeadCard({
             <LeadScoreBadge lead={lead} />
           </div>
         </div>
+        {/* A nota afixada na ficha (ex.: "Só atende depois das 15h") à vista antes de ligar. */}
+        <PinnedNoteBox note={lead.pinned_note} />
         <p className="flex items-start gap-2 rounded-lg bg-surface-2 px-3 py-2 text-sm">
           <KindIcon className="mt-0.5 h-4 w-4 shrink-0 text-accent-text" aria-hidden />
           <span>{item.reason}</span>

@@ -14,6 +14,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LEAD_STATUSES, LEAD_STATUS_META, formatDate, leadPath, noteSnippet, type Lead, type NoteSearchResult, type TaskSearchResult } from '@vndesign/core';
 import {
   ArrowLeft,
+  Bookmark,
   BriefcaseBusiness,
   CalendarDays,
   CalendarPlus,
@@ -36,6 +37,7 @@ import {
   StickyNote,
   Tag,
   Timer,
+  Trash2,
   Upload,
   User,
   UserPlus,
@@ -47,6 +49,7 @@ import { SETTINGS_SECTIONS } from '@/components/settings/settings-nav';
 import { useServiceCatalog } from '@/components/services/services';
 import { toast } from 'sonner';
 import { useLeadTags } from '@/components/leads/tags';
+import { useSavedViews } from '@/components/leads/saved-views';
 import { DictateButton, appendDictation } from '@/components/ui/dictate-button';
 import { api, errorMessage } from '@/lib/api-client';
 import { useSectors, useSettings } from '@/lib/queries';
@@ -56,7 +59,7 @@ import { cn } from '@/lib/utils';
 
 export type QuickPage = { href: string; label: string; icon: LucideIcon };
 
-type Group = 'Recentes' | 'Ações' | 'Páginas' | 'Filtrar leads' | 'Leads e projetos' | 'Tarefas' | 'Notas e chamadas';
+type Group = 'Recentes' | 'Ações' | 'Páginas' | 'Filtros guardados' | 'Filtrar leads' | 'Leads e projetos' | 'Tarefas' | 'Notas e chamadas';
 type Item = {
   key: string;
   group: Group;
@@ -85,6 +88,8 @@ const SETTINGS_KEYWORDS: Partial<Record<(typeof SETTINGS_SECTIONS)[number]['slug
   ia: 'ia claude chatgpt openai openrouter chave api',
   'listas-tarefas': 'modelos tarefas checklist',
   setores: 'sectores oportunidades argumentos',
+  etiquetas: 'tags marcas renomear juntar',
+  campos: 'campos personalizados extra nº de lojas faturação',
   'nao-contactar': 'rgpd bloquear lista negra opt-out',
   formulario: 'site bricks webhook contacto',
   api: 'token integração acesso externo',
@@ -96,6 +101,7 @@ const EXTRA_PAGES: { href: string; label: string; icon: LucideIcon; keywords: st
   { href: '/mapa', label: 'Mapa dos leads', icon: MapIcon, keywords: 'mapa localização' },
   { href: '/importar', label: 'Importar leads (Excel/CSV)', icon: Upload, keywords: 'importar excel csv folha' },
   { href: '/equipa?ver=atividade', label: 'Equipa → Atividade', icon: Layers, keywords: 'quem fez o quê histórico atividade' },
+  { href: '/leads/apagados', label: 'Leads apagados (reciclagem)', icon: Trash2, keywords: 'apagados reciclagem lixo repor recuperar' },
 ];
 
 const normalize = (s: string) =>
@@ -190,6 +196,7 @@ function SearchBody({
   const [compose, setCompose] = useState<Compose | null>(null);
   const [busy, setBusy] = useState(false);
   const [recent] = useState(() => readRecentLeads());
+  const savedViews = useSavedViews();
   const { data: settings } = useSettings();
   const features = settings?.features;
 
@@ -247,6 +254,7 @@ function SearchBody({
       { key: 'a:tarefa', group: 'Ações', label: 'Nova tarefa…', icon: ListPlus, compose: 'task' },
       { key: 'a:chamada', group: 'Ações', label: 'Registar chamada…', icon: Phone, compose: 'call' },
       { key: 'a:nota', group: 'Ações', label: 'Registar nota…', icon: StickyNote, compose: 'note' },
+      { key: 'a:resumo', group: 'Ações', label: 'Resumo com IA (antes de ligar)', href: path('?acao=resumo'), icon: Sparkles },
       { key: 'a:notas-ia', group: 'Ações', label: 'Notas com IA (resumo de reunião)', href: path('?acao=notas'), icon: Sparkles },
       ...(features?.meetings !== false ? [{ key: 'a:reuniao', group: 'Ações' as const, label: 'Marcar reunião', href: path('?acao=reuniao'), icon: CalendarPlus }] : []),
       ...(pomodoroOn ? [{ key: 'a:pomodoro', group: 'Ações' as const, label: 'Começar Pomodoro', icon: Timer, run: 'pomodoro' as const }] : []),
@@ -308,14 +316,21 @@ function SearchBody({
               })),
           ]
         : [];
+    // Filtros guardados na lista de leads (sem escrever: todos; a escrever: os que coincidem).
+    const views: Item[] = savedViews
+      .filter((v) => !q || matches(v.name))
+      .slice(0, q ? 4 : 5)
+      .map((v) => ({ key: `v:${v.id}`, group: 'Filtros guardados' as const, label: v.name, hint: 'Lista de leads', href: `/leads?${v.query}`, icon: Bookmark }));
     items = [
       ...(q ? [] : recent.slice(0, 5).map((l) => leadItem(l, 'Recentes'))),
+      ...(q ? [] : views),
       ...general,
       ...pages
         .filter((p) => !q || normalize(p.label).includes(q))
         .slice(0, q ? 4 : pages.length)
         .map((p) => ({ key: `p:${p.href}`, group: 'Páginas' as const, label: p.label, href: p.href, icon: p.icon })),
       ...morePages.slice(0, 5),
+      ...(q ? views : []),
       ...filters,
       ...(searching ? (leads.data ?? []).map((l) => leadItem({ ...l, project_title: l.project_title ?? null }, 'Leads e projetos', [LEAD_STATUS_META[l.status]?.label, l.city].filter(Boolean).join(' · '))) : []),
       ...(searching && tasks

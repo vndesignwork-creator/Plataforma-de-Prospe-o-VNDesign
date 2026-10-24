@@ -18,6 +18,7 @@ export const SETTINGS_SECTIONS = [
   { slug: 'listas-tarefas', label: 'Listas de tarefas' },
   { slug: 'setores', label: 'Setores' },
   { slug: 'etiquetas', label: 'Etiquetas' },
+  { slug: 'campos', label: 'Campos personalizados' },
   { slug: 'nao-contactar', label: 'Não contactar' },
   { slug: 'formulario', label: 'Formulário do site' },
   { slug: 'api', label: 'Acesso externo (API)' },

@@ -16,7 +16,7 @@ import {
   leadPath,
   reschedulePlan,
 } from '@vndesign/core';
-import { AlertCircle, BarChart3, BriefcaseBusiness, CalendarClock, CalendarDays, Eye, Flame, ListChecks, MapPin, Phone, Users } from 'lucide-react';
+import { AlertCircle, BarChart3, BellRing, BriefcaseBusiness, CalendarClock, CalendarDays, Eye, Flame, ListChecks, MapPin, Phone, Users } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -308,14 +308,13 @@ function TodayOpened({ items }: { items: TodayOpenedEmail[] }) {
 }
 
 /**
- * "Pôr em dia": passa todos os follow-ups e tarefas em atraso para hoje, amanhã,
- * a próxima semana ou outra data, de uma vez (com "Anular").
+ * Mudar a data de vários de uma vez, com "Anular" (volta cada um à data que
+ * tinha): "Pôr em dia" os atrasados e "Marcar follow-up" nos que estão em
+ * conversa sem próximo passo.
  */
-function TodayCatchUp({ today, leads, tasks }: { today: string; leads: Lead[]; tasks: TodayTask[] }) {
+function useBulkDate(today: string) {
   const reschedule = useReschedule();
-  const total = leads.length + tasks.length;
-  if (!total) return null;
-  async function pick(date: string | null) {
+  return async (leads: Lead[], tasks: TodayTask[], date: string | null) => {
     if (!date) return;
     const plan = reschedulePlan(leads, tasks, date);
     try {
@@ -327,6 +326,7 @@ function TodayCatchUp({ today, leads, tasks }: { today: string; leads: Lead[]; t
       toast.success(`${parts.join(' e ')} ${r.leads + r.tasks === 1 ? 'passou' : 'passaram'} para ${date === today ? 'hoje' : formatDate(date)}.`, {
         action: {
           label: 'Anular',
+          // mutateAsync: o aviso pode ficar depois de este bloco desaparecer.
           onClick: () =>
             reschedule.mutateAsync(plan.undo).then(
               () => toast.success('Datas repostas.'),
@@ -337,7 +337,13 @@ function TodayCatchUp({ today, leads, tasks }: { today: string; leads: Lead[]; t
     } catch (error) {
       toast.error(errorMessage(error));
     }
-  }
+  };
+}
+
+/** "Pôr em dia": passa os follow-ups e as tarefas em atraso para hoje, amanhã, a próxima semana ou outra data. */
+function TodayCatchUp({ today, leads, tasks }: { today: string; leads: Lead[]; tasks: TodayTask[] }) {
+  const move = useBulkDate(today);
+  if (!leads.length && !tasks.length) return null;
   const what = [
     leads.length ? `${leads.length} follow-up${leads.length === 1 ? '' : 's'}` : '',
     tasks.length ? `${tasks.length} tarefa${tasks.length === 1 ? '' : 's'}` : '',
@@ -356,7 +362,33 @@ function TodayCatchUp({ today, leads, tasks }: { today: string; leads: Lead[]; t
             <CalendarClock className="h-3.5 w-3.5" aria-hidden /> Pôr em dia
           </>
         }
-        onPick={(d) => void pick(d)}
+        onPick={(d) => void move(leads, tasks, d)}
+      />
+    </div>
+  );
+}
+
+/** Leads em conversa (contactado, respondeu, reunião, proposta) sem próximo passo marcado: estão a ser esquecidos. */
+function TodayStalled({ today, leads }: { today: string; leads: Lead[] }) {
+  const move = useBulkDate(today);
+  if (!leads.length) return null;
+  return (
+    <div role="status" aria-label="Sem próximo passo" className="flex flex-wrap items-center gap-2 rounded-lg border border-warning/50 px-3 py-2 text-sm">
+      <span className="mr-auto">
+        <Link href="/leads?due=none" className="font-medium text-warning hover:underline">
+          {leads.length === 1 ? '1 lead em conversa' : `${leads.length} leads em conversa`} sem próximo passo
+        </Link>
+      </span>
+      <DateMenu
+        today={today}
+        heading="Marcar o follow-up para"
+        triggerClassName={buttonClasses('outline', 'sm')}
+        label={
+          <>
+            <BellRing className="h-3.5 w-3.5" aria-hidden /> Marcar follow-up
+          </>
+        }
+        onPick={(d) => void move(leads, [], d)}
       />
     </div>
   );
@@ -376,7 +408,8 @@ function TodayCard({ className }: { className?: string }) {
     !urgentTasks.length &&
     !weekTasks.length &&
     !data.meetings?.length &&
-    !data.opened?.length;
+    !data.opened?.length &&
+    !data.stalled?.length;
   return (
     <Card className={cn('flex flex-col', className)}>
       <CardHeader
@@ -398,6 +431,7 @@ function TodayCard({ className }: { className?: string }) {
             <TodayMeetings meetings={data.meetings ?? []} />
             <TodayOpened items={data.opened ?? []} />
             <TodayCatchUp today={data.today} leads={data.overdue} tasks={data.tasks?.overdue ?? []} />
+            <TodayStalled today={data.today} leads={data.stalled ?? []} />
             <TodayGroup title="Em atraso" tone="danger" icon={<AlertCircle className="h-4 w-4" aria-hidden />} leads={data.overdue} />
             <TodayGroup title="Para hoje" icon={<CalendarClock className="h-4 w-4" aria-hidden />} leads={data.due_today} />
             <TodayTasks title="Tarefas para hoje" today={data.today} tasks={urgentTasks} />

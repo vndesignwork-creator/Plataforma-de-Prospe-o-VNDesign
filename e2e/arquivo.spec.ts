@@ -65,8 +65,9 @@ test('lista: selecionar vários leads, arquivar, repor e apagar', async ({ page 
   await page.getByRole('checkbox', { name: 'Selecionar todos os leads desta página' }).check();
   await page.getByRole('region', { name: 'Ações nos leads selecionados' }).getByRole('button', { name: 'Apagar' }).click();
   const dialog = page.getByRole('dialog', { name: 'Apagar 3 leads?' });
-  await dialog.getByRole('button', { name: 'Apagar definitivamente' }).click();
-  await expect(page.getByText('3 leads apagados.')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Apagar', exact: true }).click();
+  // Vão para a reciclagem (Leads → Apagados).
+  await expect(page.getByText('3 leads apagados (ficam 30 dias em Apagados).')).toBeVisible();
   await expect(page.getByText('Nenhum lead com estes filtros')).toBeVisible();
 });
 

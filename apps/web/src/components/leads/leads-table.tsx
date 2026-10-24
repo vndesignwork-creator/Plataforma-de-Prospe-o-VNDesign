@@ -24,6 +24,7 @@ import {
 import { Archive, ArchiveRestore, ArrowDown, ArrowDownUp, ArrowUp, ArrowUpDown, Columns3, CopyX, Download, Map as MapIcon, Search, SlidersHorizontal, Trash2, Upload, UserCheck, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
@@ -48,6 +49,9 @@ import { ChannelLabel, MobileLabel, PageSpeedScore, StatusBadge } from './badges
 import { LeadScoreBadge } from './lead-score';
 import { MultiSelectFilter, SingleSelectFilter } from './multi-select';
 import { BulkFollowUpMenu, BulkStatusMenu, BulkTagMenu } from './bulk-actions';
+import { customFilterOptions, useCustomFields } from './custom-fields';
+import { SavedViewsMenu } from './saved-views';
+import { restoreDeletedLeads } from './trash-view';
 import { TagChips, useTagFilterOptions } from './tags';
 import { ChannelIcon, SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 import { ServiceIcons, useServiceFilterOptions } from '@/components/services/services';
@@ -237,6 +241,7 @@ const DUE_OPTIONS = [
   { value: 'overdue', label: 'Em atraso' },
   { value: 'today', label: 'Para hoje' },
   { value: 'week', label: 'Próximos 7 dias' },
+  { value: 'none', label: 'Sem próximo passo (em conversa)' },
 ];
 
 const MOBILE_SORTS = [
@@ -293,6 +298,7 @@ export function LeadsTable() {
     channel: getList('channel'),
     service: getList('servico'),
     tag: getList('etiqueta'),
+    cf: getList('cf'),
     city: get('city') || undefined,
     due: get('due') || undefined,
     suggested_from: get('de') || undefined,
@@ -307,6 +313,7 @@ export function LeadsTable() {
   const { data, isLoading, isFetching, error } = useLeads(query);
   const { data: sectors } = useSectors();
   const tagOptions = useTagFilterOptions();
+  const { data: customFields } = useCustomFields();
   const { data: tablePref } = usePreference<{ hidden: string[] }>('leads.table');
   const saveTablePref = useSetPreference<{ hidden: string[] }>('leads.table');
   const hidden = tablePref?.hidden ?? DEFAULT_HIDDEN;
@@ -332,7 +339,7 @@ export function LeadsTable() {
   });
 
   const activeFilters =
-    query.sector.length + query.status.length + query.channel.length + query.service.length + query.tag.length +
+    query.sector.length + query.status.length + query.channel.length + query.service.length + query.tag.length + query.cf.length +
     [query.q, query.city, query.due, query.suggested_from, query.suggested_to, query.archived, query.assigned].filter(Boolean).length;
   const [showFilters, setShowFilters] = useState(false);
 
@@ -356,6 +363,10 @@ export function LeadsTable() {
   const clearSelection = () => setSelection({ key: selectionKey, ids: new Set() });
 
   const bulk = useBulkLeadAction();
+  const qc = useQueryClient();
+  const invalidateAll = () => {
+    for (const key of ['leads', 'lead', 'board', 'today', 'lead-trash']) void qc.invalidateQueries({ queryKey: [key] });
+  };
   const [confirmDelete, setConfirmDelete] = useState(false);
   async function runBulk(action: LeadBulkAction, assignedTo?: string | null) {
     const ids = [...selected];
@@ -364,6 +375,23 @@ export function LeadsTable() {
       clearSelection();
       setConfirmDelete(false);
       const undo = action === 'archive' ? 'restore' : action === 'restore' ? 'archive' : null;
+      if (action === 'delete') {
+        // Foram para a reciclagem: "Anular" repõe-nos (também em Leads → Apagados, 30 dias).
+        toast.success(`${bulkResultMessage(result).replace(/\.$/, '')} (ficam 30 dias em Apagados).`, {
+          action: {
+            label: 'Anular',
+            onClick: () =>
+              void restoreDeletedLeads(ids).then(
+                (n) => {
+                  invalidateAll();
+                  toast.success(n === 1 ? '1 lead reposto.' : `${n} leads repostos.`);
+                },
+                (e: unknown) => toast.error(errorMessage(e)),
+              ),
+          },
+        });
+        return;
+      }
       toast.success(bulkResultMessage(result), {
         action: undo
           ? {
@@ -449,6 +477,15 @@ export function LeadsTable() {
           }
           className="flex-1 md:flex-none lg:hidden"
         />
+        <SavedViewsMenu
+          params={new URLSearchParams(searchParams.toString())}
+          onApply={(qs) => {
+            const next = new URLSearchParams(qs);
+            setSearch(next.get('q') ?? '');
+            setCity(next.get('city') ?? '');
+            router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+          }}
+        />
         <DropdownRoot>
           {/* Só faz sentido com a tabela (no telemóvel a lista é em cartões). */}
           <DropdownTrigger className={buttonClasses('outline', 'md', 'max-lg:hidden')} aria-label="Escolher colunas visíveis">
@@ -510,6 +547,10 @@ export function LeadsTable() {
               <CopyX className="h-4 w-4 text-muted" aria-hidden />
               Limpar duplicados…
             </DropdownItem>
+            <DropdownItem onSelect={() => router.push('/leads/apagados')}>
+              <Trash2 className="h-4 w-4 text-muted" aria-hidden />
+              Apagados (reciclagem)…
+            </DropdownItem>
           </DropdownContent>
         </DropdownRoot>
         )}
@@ -560,6 +601,20 @@ export function LeadsTable() {
             options={[...tagOptions, ...query.tag.filter((t) => !tagOptions.some((o) => o.value === t)).map((t) => ({ value: t, label: t }))]}
           />
         ) : null}
+        {(customFields ?? [])
+          .filter((f) => f.type === 'choice' || f.type === 'yes_no')
+          .map((f) => {
+            const prefix = `${f.key}:`;
+            return (
+              <MultiSelectFilter
+                key={f.id}
+                label={f.label}
+                value={query.cf.filter((c) => c.startsWith(prefix)).map((c) => c.slice(prefix.length))}
+                onChange={(v) => setParams({ cf: [...query.cf.filter((c) => !c.startsWith(prefix)), ...v.map((x) => prefix + x)] })}
+                options={customFilterOptions(f)}
+              />
+            );
+          })}
         <Input
           value={city}
           onChange={(e) => setCity(e.target.value)}
@@ -690,14 +745,14 @@ export function LeadsTable() {
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
         title={selected.size === 1 ? 'Apagar 1 lead?' : `Apagar ${selected.size} leads?`}
-        description="Apaga os leads, a linha do tempo e as propostas. Não pode ser desfeito. Se só não os queres ver, arquiva-os; se alguém pediu para ser esquecido (RGPD), usa Anonimizar na ficha do lead."
+        description="Vão para Leads → Apagados com tudo o que têm e podes repô-los durante 30 dias; depois saem de vez. Se só não os queres ver, arquiva-os; se alguém pediu para ser esquecido (RGPD), usa Anonimizar na ficha do lead."
         footer={
           <>
             <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
               Cancelar
             </Button>
             <Button variant="danger" onClick={() => void runBulk('delete')} loading={bulk.isPending}>
-              Apagar definitivamente
+              Apagar
             </Button>
           </>
         }

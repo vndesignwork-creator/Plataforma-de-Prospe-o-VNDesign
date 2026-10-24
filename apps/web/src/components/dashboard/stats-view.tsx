@@ -17,6 +17,7 @@ import { ServiceIcon, useServiceCatalog } from '@/components/services/services';
 import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
 import { errorMessage } from '@/lib/api-client';
 import { useDashboard, useRole, useSectors, useTeamNames } from '@/lib/queries';
+import { PeriodCompareCard } from './period-compare';
 import { PomodoroStatsSection } from './pomodoro-stats';
 import { ProfitabilitySection } from './profitability-section';
 import { TeamStatsSection } from './team-stats';
@@ -77,6 +78,7 @@ function OwnerStats() {
 
   return (
     <div className="flex flex-col gap-5">
+      <PeriodCompareCard />
       {/* Resumo (equivalente ao "📈 Resumo geral" da folha) */}
       <section aria-label="Resumo" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Total de leads" value={t.total} />
