@@ -17,6 +17,7 @@ import { Input, Textarea } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
 import { consumeLeadAction } from '@/lib/lead-actions';
 import { useInvalidateLead, useInvalidateTasks } from '@/lib/queries';
+import { DictateButton, appendDictation } from '@/components/ui/dictate-button';
 
 type TaskDraft = { title: string; due_on: string; keep: boolean };
 
@@ -115,15 +116,18 @@ function MeetingNotesDialog({ lead, onClose }: { lead: Lead; onClose: () => void
       }
     >
       {!result ? (
-        <Field label="Apontamentos" hint="No telemóvel, usa o microfone do teclado para ditar. A IA não grava nada: revês tudo antes.">
-          <Textarea
-            rows={9}
-            value={notes}
-            maxLength={20_000}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Ex.: Falei com a Marta. Querem loja online até ao Natal, orçamento até 2000 €. Mandar proposta até sexta e ligar na próxima semana."
-          />
-        </Field>
+        <div className="flex flex-col gap-2">
+          <Field label="Apontamentos" hint="Escreve, cola ou carrega em Ditar e fala. A IA não grava nada: revês tudo antes.">
+            <Textarea
+              rows={9}
+              value={notes}
+              maxLength={20_000}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Ex.: Falei com a Marta. Querem loja online até ao Natal, orçamento até 2000 €. Mandar proposta até sexta e ligar na próxima semana."
+            />
+          </Field>
+          <DictateButton onText={(spoken) => setNotes((current) => appendDictation(current, spoken).slice(0, 20_000))} className="self-start" />
+        </div>
       ) : (
         <div className="flex flex-col gap-4">
           <Field label="Resumo (vai para a linha do tempo)">

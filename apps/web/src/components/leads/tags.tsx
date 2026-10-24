@@ -67,13 +67,24 @@ export function TagEditor({ lead }: { lead: Lead }) {
   const [text, setText] = useState('');
   const tags = lead.tags ?? [];
 
-  async function save(next: string[]) {
+  async function save(next: string[]): Promise<boolean> {
     try {
       await update.mutateAsync({ tags: next });
       void qc.invalidateQueries({ queryKey: ['lead-tags'] });
+      return true;
     } catch (error) {
       toast.error(errorMessage(error));
+      return false;
     }
+  }
+
+  /** Tirar, com "Anular" no aviso (volta a pôr no mesmo sítio). */
+  async function remove(tag: string) {
+    const before = tags;
+    if (!(await save(tags.filter((t) => t !== tag)))) return;
+    toast.success(`Etiqueta “${tag}” tirada.`, {
+      action: { label: 'Anular', onClick: () => void save(before) },
+    });
   }
 
   function add(value: string) {
@@ -98,7 +109,7 @@ export function TagEditor({ lead }: { lead: Lead }) {
           </Link>
           <button
             type="button"
-            onClick={() => void save(tags.filter((t) => t !== tag))}
+            onClick={() => void remove(tag)}
             className="rounded-full p-0.5 text-muted hover:bg-surface-2 hover:text-fg"
             aria-label={`Tirar a etiqueta ${tag}`}
           >

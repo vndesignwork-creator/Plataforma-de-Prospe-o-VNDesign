@@ -48,6 +48,7 @@ const RULES: Rule[] = [
   ['POST', /^\/share$/],
   ['GET PUT', /^\/signature$/],
   ['PATCH DELETE', new RegExp(`^/tasks/${ID}$`)],
+  ['POST', /^\/reschedule$/],
   ['GET', /^\/stats\/team$/],
   ['GET', /^\/team\/names$/],
 ];

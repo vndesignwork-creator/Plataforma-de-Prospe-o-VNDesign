@@ -216,7 +216,7 @@ export function CalendarFeedCard() {
     <Card>
       <CardHeader
         title="Calendário no telemóvel"
-        description="Reuniões, entregas dos projetos, pagamentos previstos e tarefas no Google Calendar ou no calendário do iPhone. Atualiza-se sozinho."
+        description="Reuniões, entregas dos projetos, pagamentos previstos, tarefas e follow-ups no Google Calendar ou no calendário do iPhone. Atualiza-se sozinho."
         actions={
           url ? null : (
             <Button size="sm" onClick={() => void toggle(true)} loading={set.isPending}>

@@ -14,6 +14,7 @@ import {
   type TodayMeeting,
   type TodayTask,
   leadPath,
+  reschedulePlan,
 } from '@vndesign/core';
 import { AlertCircle, BarChart3, BriefcaseBusiness, CalendarClock, CalendarDays, Eye, Flame, ListChecks, MapPin, Phone, Users } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -26,11 +27,12 @@ import { FollowUpActions } from '@/components/follow-up/follow-up-actions';
 import { StatusBadge } from '@/components/leads/badges';
 import { LeadScoreBadge } from '@/components/leads/lead-score';
 import { buttonClasses } from '@/components/ui/button';
+import { DateMenu } from '@/components/ui/date-menu';
 import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
 import { api, errorMessage } from '@/lib/api-client';
 import { DueChip, ReminderChip } from '@/components/tasks/tasks-card';
 import { Linkified } from '@/lib/linkify';
-import { useBilling, useDashboard, useProjects, useRole, useSettings, useToday } from '@/lib/queries';
+import { useBilling, useDashboard, useProjects, useReschedule, useRole, useSettings, useToday } from '@/lib/queries';
 import { MyTeamTiles } from './team-stats';
 import { cn } from '@/lib/utils';
 import { DueBadge, ProgressBar, StageLabel } from '@/components/projects/project-bits';
@@ -207,7 +209,20 @@ function TodayTasks({ title, today, tasks }: { title: string; today: string; tas
     setDoneIds((ids) => [...ids, task.id]);
     try {
       await api(`/tasks/${task.id}`, { method: 'PATCH', body: { done: true } });
-      toast.success(`Tarefa concluída: ${task.title}`);
+      toast.success(`Tarefa concluída: ${task.title}`, {
+        action: {
+          label: 'Anular',
+          onClick: () => {
+            setDoneIds((ids) => ids.filter((id) => id !== task.id));
+            api(`/tasks/${task.id}`, { method: 'PATCH', body: { done: false } })
+              .catch((error: unknown) => toast.error(errorMessage(error)))
+              .finally(() => {
+                void qc.invalidateQueries({ queryKey: ['today'] });
+                void qc.invalidateQueries({ queryKey: ['tasks', task.lead.id] });
+              });
+          },
+        },
+      });
     } catch (error) {
       setDoneIds((ids) => ids.filter((id) => id !== task.id));
       toast.error(errorMessage(error));
@@ -292,6 +307,61 @@ function TodayOpened({ items }: { items: TodayOpenedEmail[] }) {
   );
 }
 
+/**
+ * "Pôr em dia": passa todos os follow-ups e tarefas em atraso para hoje, amanhã,
+ * a próxima semana ou outra data, de uma vez (com "Anular").
+ */
+function TodayCatchUp({ today, leads, tasks }: { today: string; leads: Lead[]; tasks: TodayTask[] }) {
+  const reschedule = useReschedule();
+  const total = leads.length + tasks.length;
+  if (!total) return null;
+  async function pick(date: string | null) {
+    if (!date) return;
+    const plan = reschedulePlan(leads, tasks, date);
+    try {
+      const r = await reschedule.mutateAsync(plan.apply);
+      const parts = [
+        r.leads ? `${r.leads} follow-up${r.leads === 1 ? '' : 's'}` : '',
+        r.tasks ? `${r.tasks} tarefa${r.tasks === 1 ? '' : 's'}` : '',
+      ].filter(Boolean);
+      toast.success(`${parts.join(' e ')} ${r.leads + r.tasks === 1 ? 'passou' : 'passaram'} para ${date === today ? 'hoje' : formatDate(date)}.`, {
+        action: {
+          label: 'Anular',
+          onClick: () =>
+            reschedule.mutateAsync(plan.undo).then(
+              () => toast.success('Datas repostas.'),
+              (e: unknown) => toast.error(errorMessage(e)),
+            ),
+        },
+      });
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
+  const what = [
+    leads.length ? `${leads.length} follow-up${leads.length === 1 ? '' : 's'}` : '',
+    tasks.length ? `${tasks.length} tarefa${tasks.length === 1 ? '' : 's'}` : '',
+  ].filter(Boolean);
+  return (
+    <div role="status" aria-label="Atrasados" className="flex flex-wrap items-center gap-2 rounded-lg border border-danger/40 px-3 py-2 text-sm">
+      <span className="mr-auto">
+        <span className="font-medium text-danger">Em atraso:</span> {what.join(' e ')}
+      </span>
+      <DateMenu
+        today={today}
+        heading="Passar os atrasados para"
+        triggerClassName={buttonClasses('outline', 'sm')}
+        label={
+          <>
+            <CalendarClock className="h-3.5 w-3.5" aria-hidden /> Pôr em dia
+          </>
+        }
+        onPick={(d) => void pick(d)}
+      />
+    </div>
+  );
+}
+
 function TodayCard({ className }: { className?: string }) {
   const { data, isLoading } = useToday();
   const role = useRole();
@@ -327,6 +397,7 @@ function TodayCard({ className }: { className?: string }) {
           <>
             <TodayMeetings meetings={data.meetings ?? []} />
             <TodayOpened items={data.opened ?? []} />
+            <TodayCatchUp today={data.today} leads={data.overdue} tasks={data.tasks?.overdue ?? []} />
             <TodayGroup title="Em atraso" tone="danger" icon={<AlertCircle className="h-4 w-4" aria-hidden />} leads={data.overdue} />
             <TodayGroup title="Para hoje" icon={<CalendarClock className="h-4 w-4" aria-hidden />} leads={data.due_today} />
             <TodayTasks title="Tarefas para hoje" today={data.today} tasks={urgentTasks} />

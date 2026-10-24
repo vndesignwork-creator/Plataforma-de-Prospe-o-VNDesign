@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownSeparator, DropdownTrigger } from '@/components/ui/dropdown';
 import { errorMessage } from '@/lib/api-client';
-import { useFollowUp, useSettings } from '@/lib/queries';
+import { useFollowUp, useReschedule, useSettings } from '@/lib/queries';
 
 /**
  * Concluir ou adiar a próxima ação de um lead.
@@ -14,19 +14,30 @@ import { useFollowUp, useSettings } from '@/lib/queries';
  */
 export function FollowUpActions({ lead, compact }: { lead: Lead; compact?: boolean }) {
   const followUp = useFollowUp(lead.id);
+  const reschedule = useReschedule();
   const { data: settings } = useSettings();
   const days = settings?.follow_up_days ?? 3;
 
   async function run(action: 'done' | 'snooze', d: number | null) {
+    const before = lead.next_action_on;
     try {
       const updated = await followUp.mutateAsync({ action, days: d });
-      toast.success(
-        action === 'snooze'
-          ? `#${lead.number} adiado para ${formatDate(updated.next_action_on)}.`
-          : updated.next_action_on
-            ? `Feito. Próximo follow-up a ${formatDate(updated.next_action_on)}.`
-            : 'Feito. Sem próxima ação.',
-      );
+      if (action === 'snooze') {
+        // Adiar só muda a data: "Anular" volta à de antes.
+        toast.success(`#${lead.number} adiado para ${formatDate(updated.next_action_on)}.`, {
+          action: {
+            label: 'Anular',
+            // mutateAsync: o lead já pode ter saído da lista (e este botão também).
+            onClick: () =>
+              reschedule.mutateAsync({ leads: [{ id: lead.id, next_action_on: before }] }).then(
+                () => toast.success('Data reposta.'),
+                (e: unknown) => toast.error(errorMessage(e)),
+              ),
+          },
+        });
+      } else {
+        toast.success(updated.next_action_on ? `Feito. Próximo follow-up a ${formatDate(updated.next_action_on)}.` : 'Feito. Sem próxima ação.');
+      }
     } catch (e) {
       toast.error(errorMessage(e));
     }

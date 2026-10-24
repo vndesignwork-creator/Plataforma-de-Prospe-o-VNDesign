@@ -1,6 +1,7 @@
 /**
  * Calendário subscrito: um link secreto por utilizador (.ics) com as reuniões,
- * as entregas dos projetos, os pagamentos previstos e as tarefas com prazo.
+ * as entregas dos projetos, os pagamentos previstos, as tarefas com prazo e os
+ * follow-ups (a próxima ação dos leads, como na Agenda).
  * O Google Calendar / iPhone vão buscá-lo de tempos a tempos (sem sessão).
  */
 import { randomBytes } from 'node:crypto';
@@ -47,7 +48,7 @@ export async function calendarFeedIcs(token: string, appUrl: string): Promise<st
   const from = addDays(today, -30);
   const to = addDays(today, 183);
 
-  const [meetings, dues, payments, tasks] = await Promise.all([
+  const [meetings, dues, payments, tasks, followups] = await Promise.all([
     features.meetings
       ? admin
           .from('lead_meetings')
@@ -83,6 +84,17 @@ export async function calendarFeedIcs(token: string, appUrl: string): Promise<st
       .is('done_at', null)
       .gte('due_on', from)
       .lte('due_on', to),
+    // Os mesmos follow-ups do "Hoje" e da Agenda (sem clientes nem "sem interesse").
+    admin
+      .from('leads')
+      .select('id, number, company_name, next_action_text, next_action_on, archived_at, anonymized_at')
+      .eq('workspace_id', ws)
+      .is('anonymized_at', null)
+      .is('archived_at', null)
+      .not('status', 'in', '(cliente,sem_interesse)')
+      .gte('next_action_on', from)
+      .lte('next_action_on', to)
+      .limit(1000),
   ]);
   const live = (l: LeadRef) => !l.archived_at && !l.anonymized_at;
   const link = (l: LeadRef) => `${appUrl}${leadPath(l)}`;
@@ -107,6 +119,14 @@ export async function calendarFeedIcs(token: string, appUrl: string): Promise<st
   for (const t of (tasks.data ?? []) as unknown as { id: string; title: string; due_on: string; lead: LeadRef }[]) {
     if (!live(t.lead)) continue;
     events.push({ uid: `task-${t.id}@vndesign-leads`, title: `☐ ${t.title} · ${t.lead.company_name}`, date: t.due_on, url: link(t.lead) });
+  }
+  for (const l of (followups.data ?? []) as unknown as (LeadRef & { next_action_text: string | null; next_action_on: string })[]) {
+    events.push({
+      uid: `followup-${l.id}@vndesign-leads`,
+      title: `🔔 ${l.next_action_text?.trim() || 'Follow-up'} · ${l.company_name}`,
+      date: l.next_action_on,
+      url: link(l),
+    });
   }
   return buildCalendarFeed(events, { name: `VNDesign Leads${workspace?.name ? ` · ${workspace.name}` : ''}` });
 }

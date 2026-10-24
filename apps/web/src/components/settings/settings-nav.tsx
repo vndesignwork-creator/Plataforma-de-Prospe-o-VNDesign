@@ -17,6 +17,7 @@ export const SETTINGS_SECTIONS = [
   { slug: 'ia', label: 'Inteligência artificial' },
   { slug: 'listas-tarefas', label: 'Listas de tarefas' },
   { slug: 'setores', label: 'Setores' },
+  { slug: 'etiquetas', label: 'Etiquetas' },
   { slug: 'nao-contactar', label: 'Não contactar' },
   { slug: 'formulario', label: 'Formulário do site' },
   { slug: 'api', label: 'Acesso externo (API)' },

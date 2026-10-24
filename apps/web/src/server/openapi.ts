@@ -166,6 +166,11 @@ import {
   DuplicateGroupSchema,
   DuplicateIgnoreSchema,
   LeadTagCountSchema,
+  LeadTagRenameSchema,
+  NoteSearchQuerySchema,
+  NoteSearchResultSchema,
+  RescheduleResultSchema,
+  RescheduleSchema,
   LeadAnonymizeSchema,
   LeadCreateSchema,
   LeadListQuerySchema,
@@ -324,6 +329,12 @@ export function getOpenApiDocument() {
           summary: 'Etiquetas usadas, com o número de leads (mais usadas primeiro)',
           responses: { '200': ok(data(z.array(LeadTagCountSchema))), ...common },
         }),
+        patch: op({
+          tags: ['Leads'],
+          summary: 'Renomear uma etiqueta em todos os leads (para uma que já existe = juntar; to = null apaga)',
+          requestBody: body(LeadTagRenameSchema),
+          responses: { '200': ok(data(z.object({ affected: z.int() }))), ...common },
+        }),
       },
       '/leads/duplicates': {
         get: op({
@@ -343,7 +354,7 @@ export function getOpenApiDocument() {
       '/leads/bulk': {
         post: op({
           tags: ['Leads'],
-          summary: 'Arquivar, repor ou apagar vários leads de uma vez (máx. 200; só com sessão)',
+          summary: 'Arquivar, repor, apagar, mudar o responsável, pôr/tirar uma etiqueta ou mudar o estado de vários leads de uma vez (máx. 200; só com sessão)',
           requestBody: body(LeadBulkActionSchema),
           responses: { '200': ok(data(LeadBulkResultSchema)), ...common },
         }),
@@ -982,6 +993,22 @@ export function getOpenApiDocument() {
           requestParams: { path: leadId },
           requestBody: body(MeetingNotesInputSchema),
           responses: { '200': ok(data(MeetingNotesResultSchema)), ...withNotFound },
+        }),
+      },
+      '/reschedule': {
+        post: op({
+          tags: ['Tarefas'],
+          summary: 'Mudar o follow-up de vários leads e o prazo de várias tarefas de uma vez (Pôr em dia, Anular)',
+          requestBody: body(RescheduleSchema),
+          responses: { '200': ok(data(RescheduleResultSchema)), ...common },
+        }),
+      },
+      '/notes': {
+        get: op({
+          tags: ['Leads'],
+          summary: 'Pesquisa rápida no texto das notas e chamadas registadas (Ctrl+K)',
+          requestParams: { query: NoteSearchQuerySchema },
+          responses: { '200': ok(data(z.array(NoteSearchResultSchema))), ...common },
         }),
       },
       '/tasks': {

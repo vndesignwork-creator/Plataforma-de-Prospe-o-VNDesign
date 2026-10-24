@@ -47,6 +47,7 @@ import { cn, displayHost } from '@/lib/utils';
 import { ChannelLabel, MobileLabel, PageSpeedScore, StatusBadge } from './badges';
 import { LeadScoreBadge } from './lead-score';
 import { MultiSelectFilter, SingleSelectFilter } from './multi-select';
+import { BulkFollowUpMenu, BulkStatusMenu, BulkTagMenu } from './bulk-actions';
 import { TagChips, useTagFilterOptions } from './tags';
 import { ChannelIcon, SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 import { ServiceIcons, useServiceFilterOptions } from '@/components/services/services';
@@ -342,6 +343,7 @@ export function LeadsTable() {
   const selected = selection.key === selectionKey ? selection.ids : new Set<string>();
   const pageIds = (data?.data ?? []).map((l) => l.id);
   const allSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+  const selectedRows = (data?.data ?? []).filter((l) => selected.has(l.id));
   function toggle(id: string, on: boolean) {
     const next = new Set(selected);
     if (on) next.add(id);
@@ -669,13 +671,17 @@ export function LeadsTable() {
               </DropdownContent>
             </DropdownRoot>
           ) : null}
+          <BulkTagMenu rows={selectedRows} onDone={clearSelection} />
+          <BulkStatusMenu rows={selectedRows} onDone={clearSelection} />
+          <BulkFollowUpMenu rows={selectedRows} onDone={clearSelection} />
           {prospector ? null : (
             <Button size="sm" variant="outline" className="text-danger" onClick={() => setConfirmDelete(true)}>
               <Trash2 className="h-3.5 w-3.5" aria-hidden /> Apagar
             </Button>
           )}
-          <Button size="sm" variant="ghost" onClick={clearSelection}>
-            <X className="h-3.5 w-3.5" aria-hidden /> Limpar seleção
+          <Button size="sm" variant="ghost" onClick={clearSelection} aria-label="Limpar seleção" title="Limpar seleção">
+            <X className="h-3.5 w-3.5" aria-hidden />
+            <span className="max-xl:sr-only">Limpar seleção</span>
           </Button>
         </div>
       ) : null}

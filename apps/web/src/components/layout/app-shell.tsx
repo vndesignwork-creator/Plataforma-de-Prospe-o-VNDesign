@@ -16,6 +16,7 @@ import { prospectorPageAllowed } from '@/lib/role-access';
 import { cn } from '@/lib/utils';
 import { Logo } from './logo';
 import { QuickSearch, shortcutLabel, useQuickSearchShortcut } from './quick-search';
+import { ShortcutsDialog, useKeyboardShortcuts } from './keyboard-shortcuts';
 import { useTheme } from './theme';
 
 const NAV = [
@@ -134,6 +135,11 @@ export function AppShell({ email, children }: { email: string | null; children: 
   const openSearch = useCallback(() => setSearching(true), []);
   useQuickSearchShortcut(openSearch);
   const pages = useNavItems().map(({ href, label, icon }) => ({ href, label, icon }));
+  // Atalhos de teclado: só para as páginas do menu (o novo lead e o mapa vão com a lista de leads).
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const canOpen = (href: string) =>
+    pages.some((p) => p.href === href) || ((href === '/leads/novo' || href === '/mapa') && pages.some((p) => p.href === '/leads'));
+  useKeyboardShortcuts({ allowed: canOpen, onSearch: openSearch, onHelp: () => setShowShortcuts(true) });
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[15rem_1fr]">
       <a
@@ -197,7 +203,15 @@ export function AppShell({ email, children }: { email: string | null; children: 
       <main id="conteudo" className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
         {blocked ? null : children}
       </main>
-      <QuickSearch open={searching} onOpenChange={setSearching} pages={pages} tasks={role !== 'prospector'} prospector={role === 'prospector'} />
+      <QuickSearch
+        open={searching}
+        onOpenChange={setSearching}
+        pages={pages}
+        tasks={role !== 'prospector'}
+        prospector={role === 'prospector'}
+        onShortcuts={() => setShowShortcuts(true)}
+      />
+      <ShortcutsDialog open={showShortcuts} onOpenChange={setShowShortcuts} allowed={canOpen} />
       <FollowUpNotifier />
       <ReminderWatcher />
       <UpdateWatcher />

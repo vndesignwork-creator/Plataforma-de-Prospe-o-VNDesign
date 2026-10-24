@@ -72,8 +72,8 @@ export function AgendaView() {
     void qc.invalidateQueries({ queryKey: ['projects'] });
   }
 
-  /** Muda o dia (otimista: o cartão muda logo de coluna). */
-  async function move(event: CalendarEvent, date: string) {
+  /** Muda o dia (otimista: o cartão muda logo de coluna); "Anular" volta ao dia de antes. */
+  async function move(event: CalendarEvent, date: string, undo = false) {
     if (date === event.date || !MOVABLE.has(event.type)) return;
     const key = ['project-calendar', start, end, true];
     qc.setQueryData<CalendarEvent[]>(key, (old) => old?.map((e) => (e.id === event.id ? { ...e, date } : e)));
@@ -82,7 +82,12 @@ export function AgendaView() {
       if (event.type === 'task') await api(`/tasks/${id}`, { method: 'PATCH', body: { due_on: date } });
       else if (event.type === 'followup') await api(`/leads/${id}`, { method: 'PATCH', body: { next_action_on: date } });
       else await api(`/leads/${id}/project`, { method: 'PATCH', body: { due_on: date } });
-      toast.success(`${CALENDAR_EVENT_LABELS[event.type]} passou para ${dayLong.format(asDate(date))}.`);
+      if (undo) toast.success(`${CALENDAR_EVENT_LABELS[event.type]} voltou a ${dayLong.format(asDate(date))}.`);
+      else {
+        toast.success(`${CALENDAR_EVENT_LABELS[event.type]} passou para ${dayLong.format(asDate(date))}.`, {
+          action: { label: 'Anular', onClick: () => void move({ ...event, date }, event.date, true) },
+        });
+      }
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {

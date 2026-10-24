@@ -101,6 +101,16 @@ Em qualquer página, **Ctrl+K** (⌘K no Mac), o botão **Pesquisar…** na barr
 - **Recentes**: com a caixa vazia aparecem os últimos 8 leads que abriste (guardados neste browser) e as **Ações** gerais: *Novo lead*, *Agenda da semana*, *Limpar duplicados*.
 - **Ações num lead**: num lead da lista, **→**, **Tab** ou o botão **Ações ›** mostra o que fazer sem abrir a ficha: *Nova tarefa…*, *Registar chamada…* e *Registar nota…* (escreves logo ali e carregas Enter), *Notas com IA*, *Marcar reunião*, *Começar Pomodoro* (clientes) ou *Abrir a ficha*. **Backspace** com a caixa vazia volta atrás.
 - **Etiquetas**: escrever o nome de uma etiqueta abre a lista de leads filtrada por ela.
+- **Notas e chamadas**: também procura no texto das notas e chamadas registadas (sem contar acentos), com um excerto; abre a linha do tempo do lead.
+- No *Registar nota…* / *chamada…*, o 🎤 **Ditar** escreve o que dizes.
+
+## Atalhos de teclado (computador)
+
+Fora dos campos de texto: **N** novo lead, **/** pesquisar, **?** a lista de atalhos, e **G** seguido de outra tecla para ir a uma página: **G D** Dashboard, **G A** Agenda, **G L** Leads, **G K** Kanban, **G P** Projetos, **G R** Prospeção, **G M** Mapa, **G E** Estatísticas, **G S** Scripts (só as páginas a que tens acesso). A lista também está no Ctrl+K → *Atalhos de teclado*.
+
+## Ditar por voz
+
+O botão 🎤 **Ditar** (Notas com IA, Registar na linha do tempo e nas ações da pesquisa rápida) usa o reconhecimento de voz do próprio browser, em português de Portugal: falas e o texto aparece. Sem custos nem IA. Funciona no Chrome, Edge e Safari (computador, Android e iPhone); no Firefox o botão não aparece. Da primeira vez, o browser pede para usar o microfone.
 
 ## Etiquetas
 
@@ -109,7 +119,13 @@ Marcas livres para agrupar leads (“feira de março”, “indicação do João
 - Na ficha, linha **Etiquetas**: escreve e carrega **Enter** (ou vírgula); as já usadas aparecem como sugestão. O **×** tira.
 - Aparecem na lista, no Kanban e na pesquisa rápida; tocar numa leva à lista filtrada.
 - Filtro **Etiqueta** na lista de leads e no Kanban (com o número de leads de cada uma); entra na exportação (coluna *Etiquetas*).
-- API: `GET /api/v1/leads/tags` e `GET /api/v1/leads?tag=a,b`.
+- **Várias de uma vez**: na lista, seleciona leads → **Etiqueta…** para pôr uma (das já usadas ou nova) ou tirar uma dos selecionados, com **Anular** no aviso.
+- **Definições → Etiquetas**: quantos leads tem cada uma; **renomear** (muda em todos os leads; para um nome que já existe, as duas **juntam-se**, ex.: "feira março" e "Feira de março") e **apagar**.
+- API: `GET /api/v1/leads/tags`, `PATCH /api/v1/leads/tags` (`{ from, to }`, `to: null` apaga) e `GET /api/v1/leads?tag=a,b`.
+
+## Ações em massa na lista de leads
+
+Seleciona leads com as caixas à esquerda: **Arquivar**/**Repor**, **Atribuir a…**, **Etiqueta…**, **Estado…** (as regras de cada estado aplicam-se, como na ficha: *Contactado* agenda o follow-up), **Follow-up…** (Hoje, Amanhã, Próxima semana, outra data ou sem follow-up) e **Apagar**. Arquivar, etiquetas e follow-up têm **Anular** no aviso (o follow-up volta à data que cada lead tinha).
 
 ## Limpar duplicados
 
@@ -129,6 +145,16 @@ Menu **Agenda** (ou *Agenda da semana* no cartão Hoje do Dashboard): de segunda
 - Mudar de dia: **arrasta** o cartão (computador) ou usa o botão 🗓 **Mudar o dia** (telemóvel e teclado), também para a *Próxima semana*. Muda a data da tarefa, a próxima ação do lead ou o prazo do projeto. Reuniões e pagamentos mudam-se na ficha.
 - Marca as tarefas como feitas na própria agenda; **‹ ›** muda de semana e **Esta semana** volta.
 - O cartão **Hoje** continua a ser a lista do que é urgente; a Agenda serve para planear a semana.
+- Mudar o dia tem **Anular** no aviso.
+- Os **follow-ups** também aparecem no **calendário subscrito** (Google Calendar / iPhone), como "🔔 próxima ação · empresa".
+
+## Pôr em dia os atrasados
+
+No cartão **Hoje**, quando há follow-ups ou tarefas em atraso, aparece "**Em atraso:** 4 follow-ups e 2 tarefas" com **Pôr em dia**: passa todos para hoje, amanhã, a próxima semana ou outra data, de uma vez, com **Anular**. API: `POST /api/v1/reschedule` (`{ leads: [{ id, next_action_on }], tasks: [{ id, due_on }] }`, até 200 de cada).
+
+## Anular
+
+O aviso que aparece depois de uma ação traz **Anular** durante uns segundos em: arquivar (ficha e lista), etiquetas (pôr em vários, tirar na ficha), follow-up em massa, Pôr em dia, mudar o dia na Agenda, adiar um follow-up e concluir uma tarefa no cartão Hoje. Mudar o estado não tem Anular (as regras do estado já mudaram outras coisas, como o follow-up): muda-se outra vez.
 
 ## Notas de reunião com IA
 
@@ -574,7 +600,7 @@ Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**
 - Em **Estatísticas → Rentabilidade**: ganho médio por hora (e depois das despesas), horas registadas, duração média e horas por projeto concluído, ganho por hora por serviço e por cliente, e gráficos das horas e do recebido nos últimos 12 meses.
 
 **Calendário no telemóvel (subscrição)**
-- Em Definições → Funcionalidades → *Calendário no telemóvel*, **Criar link** gera um endereço privado com as reuniões, as entregas dos projetos, os pagamentos previstos e as tarefas (do último mês até 6 meses à frente). Atualiza-se sozinho.
+- Em Definições → Funcionalidades → *Calendário no telemóvel*, **Criar link** gera um endereço privado com as reuniões, as entregas dos projetos, os pagamentos previstos, as tarefas e os follow-ups (do último mês até 6 meses à frente). Atualiza-se sozinho.
 - **iPhone / Mac:** carrega em **Abrir no iPhone / Mac** e confirma "Subscrever".
 - **Google Calendar:** no computador, calendar.google.com → ⚙ → *Adicionar calendário* → *A partir do URL* → cola o link. O Google atualiza-o de algumas em algumas horas.
 - Quem tiver o link vê estes dados: **Novo link** troca-o (o antigo deixa de funcionar) e **Desligar** apaga-o.

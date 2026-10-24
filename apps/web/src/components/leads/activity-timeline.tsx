@@ -66,6 +66,7 @@ import { api, errorMessage } from '@/lib/api-client';
 import { useActivities, useEmailTracking, useLogActivity, useTeamNames } from '@/lib/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import { DictateButton, appendDictation } from '@/components/ui/dictate-button';
 
 export const ICONS: Partial<Record<Activity["type"], LucideIcon>> = {
   created: Plus,
@@ -432,6 +433,7 @@ export function ActivityTimeline({
             }
           />
           <div className="flex justify-end gap-2">
+            <DictateButton size="sm" onText={(spoken) => setBody((current) => appendDictation(current, spoken))} className="mr-auto" />
             <Button type="button" size="sm" variant="ghost" onClick={close}>
               Cancelar
             </Button>

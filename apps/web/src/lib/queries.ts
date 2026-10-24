@@ -13,6 +13,8 @@ import {
 import type {
   LeadBulkActionInput,
   LeadBulkResult,
+  RescheduleInput,
+  RescheduleResult,
   AiEmailRequestInput,
   AiEmailResult,
   MapData,
@@ -94,6 +96,7 @@ import type {
   PomodoroAction,
   PomodoroStats,
 } from '@vndesign/core';
+import { chunkReschedule } from '@vndesign/core';
 import { api } from './api-client';
 
 export const qk = {
@@ -237,8 +240,42 @@ export function useBulkLeadAction() {
 /** Mensagem curta para o resultado de uma ação em leads ("3 leads arquivados."). */
 export function bulkResultMessage({ action, affected }: LeadBulkResult): string {
   const leads = affected === 1 ? '1 lead' : `${affected} leads`;
-  const verb = { archive: 'arquivado', restore: 'reposto', delete: 'apagado', assign: 'atribuído' }[action];
+  const verb = {
+    archive: 'arquivado',
+    restore: 'reposto',
+    delete: 'apagado',
+    assign: 'atribuído',
+    tag_add: 'com a etiqueta',
+    tag_remove: 'sem a etiqueta',
+    status: 'mudado de estado',
+  }[action];
+  if (action === 'tag_add' || action === 'tag_remove') return `${leads} ${verb}.`;
+  if (action === 'status') return `${leads} ${affected === 1 ? 'mudou' : 'mudaram'} de estado.`;
   return `${leads} ${affected === 1 ? verb : `${verb}s`}.`;
+}
+
+/**
+ * Muda o follow-up de vários leads e o prazo de várias tarefas (POST /reschedule,
+ * em blocos de 200). Serve para "Pôr em dia", "Próximo follow-up" e "Anular".
+ */
+export function useReschedule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: RescheduleInput) => {
+      const total: RescheduleResult = { leads: 0, tasks: 0 };
+      for (const part of chunkReschedule(input)) {
+        const r = (await api<{ data: RescheduleResult }>('/reschedule', { method: 'POST', body: part })).data;
+        total.leads += r.leads;
+        total.tasks += r.tasks;
+      }
+      return total;
+    },
+    onSettled: () => {
+      for (const key of ['today', 'leads', 'lead', 'board', 'tasks', 'project-calendar', 'activities']) {
+        void qc.invalidateQueries({ queryKey: [key] });
+      }
+    },
+  });
 }
 
 /** Depois de mudar um setor (nome, ícone, arquivo): os leads mostram o setor embutido. */

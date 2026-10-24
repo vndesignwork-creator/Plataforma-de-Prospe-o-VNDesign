@@ -2,7 +2,8 @@
 
 /**
  * Pesquisa rápida (Ctrl+K ou ⌘K, ou a lupa no menu): escrever o nome de um
- * lead, projeto, tarefa, página (também as secções das Definições) ou de um
+ * lead, projeto, tarefa, texto de uma nota ou chamada, página (também as
+ * secções das Definições) ou de um
  * estado, setor, serviço ou etiqueta (abre a lista de leads já filtrada) e
  * saltar logo para lá (setas + Enter). Sem escrever, mostra os leads recentes.
  * Num lead, → (ou "Ações") mostra o que se pode fazer sem abrir a ficha: nova
@@ -10,7 +11,7 @@
  */
 import * as RadixDialog from '@radix-ui/react-dialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { LEAD_STATUSES, LEAD_STATUS_META, leadPath, type Lead, type TaskSearchResult } from '@vndesign/core';
+import { LEAD_STATUSES, LEAD_STATUS_META, formatDate, leadPath, noteSnippet, type Lead, type NoteSearchResult, type TaskSearchResult } from '@vndesign/core';
 import {
   ArrowLeft,
   BriefcaseBusiness,
@@ -22,6 +23,7 @@ import {
   CornerDownLeft,
   ExternalLink,
   Filter,
+  Keyboard,
   Layers,
   ListPlus,
   Loader2,
@@ -45,6 +47,7 @@ import { SETTINGS_SECTIONS } from '@/components/settings/settings-nav';
 import { useServiceCatalog } from '@/components/services/services';
 import { toast } from 'sonner';
 import { useLeadTags } from '@/components/leads/tags';
+import { DictateButton, appendDictation } from '@/components/ui/dictate-button';
 import { api, errorMessage } from '@/lib/api-client';
 import { useSectors, useSettings } from '@/lib/queries';
 import { readRecentLeads } from '@/lib/recent-leads';
@@ -53,7 +56,7 @@ import { cn } from '@/lib/utils';
 
 export type QuickPage = { href: string; label: string; icon: LucideIcon };
 
-type Group = 'Recentes' | 'Ações' | 'Páginas' | 'Filtrar leads' | 'Leads e projetos' | 'Tarefas';
+type Group = 'Recentes' | 'Ações' | 'Páginas' | 'Filtrar leads' | 'Leads e projetos' | 'Tarefas' | 'Notas e chamadas';
 type Item = {
   key: string;
   group: Group;
@@ -67,7 +70,7 @@ type Item = {
   lead?: LeadRef;
   /** Ação com texto escrito na caixa. */
   compose?: Compose['kind'];
-  run?: 'pomodoro';
+  run?: 'pomodoro' | 'shortcuts';
   keywords?: string;
 };
 
@@ -127,12 +130,14 @@ export function QuickSearch({
   pages,
   tasks,
   prospector,
+  onShortcuts,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pages: QuickPage[];
   tasks: boolean;
   prospector: boolean;
+  onShortcuts?: () => void;
 }) {
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
@@ -144,7 +149,7 @@ export function QuickSearch({
         >
           <RadixDialog.Title className="sr-only">Pesquisa rápida</RadixDialog.Title>
           {/* Montado só aberto: cada vez que abre começa vazio. */}
-          <SearchBody pages={pages} tasks={tasks} prospector={prospector} onClose={() => onOpenChange(false)} />
+          <SearchBody pages={pages} tasks={tasks} prospector={prospector} onShortcuts={onShortcuts} onClose={() => onOpenChange(false)} />
         </RadixDialog.Content>
       </RadixDialog.Portal>
     </RadixDialog.Root>
@@ -161,7 +166,19 @@ const COMPOSE_META: Record<Compose['kind'], { placeholder: string; required: boo
   call: { placeholder: 'Como correu a chamada? (opcional, Enter para registar)', required: false },
 };
 
-function SearchBody({ pages, tasks, prospector, onClose }: { pages: QuickPage[]; tasks: boolean; prospector: boolean; onClose: () => void }) {
+function SearchBody({
+  pages,
+  tasks,
+  prospector,
+  onShortcuts,
+  onClose,
+}: {
+  pages: QuickPage[];
+  tasks: boolean;
+  prospector: boolean;
+  onShortcuts?: () => void;
+  onClose: () => void;
+}) {
   const router = useRouter();
   const qc = useQueryClient();
   const listId = useId();
@@ -192,6 +209,14 @@ function SearchBody({ pages, tasks, prospector, onClose }: { pages: QuickPage[];
   const taskResults = useQuery({
     queryKey: ['quick-search', 'tasks', term],
     queryFn: ({ signal }) => api<{ data: TaskSearchResult[] }>('/tasks', { query: { q: term, limit: 6 }, signal }).then((r) => r.data),
+    enabled: searching && tasks,
+    staleTime: 30_000,
+  });
+
+  // O texto das notas e chamadas registadas (não para o prospetor, como as tarefas).
+  const noteResults = useQuery({
+    queryKey: ['quick-search', 'notes', term],
+    queryFn: ({ signal }) => api<{ data: NoteSearchResult[] }>('/notes', { query: { q: term, limit: 5 }, signal }).then((r) => r.data),
     enabled: searching && tasks,
     staleTime: 30_000,
   });
@@ -236,6 +261,7 @@ function SearchBody({ pages, tasks, prospector, onClose }: { pages: QuickPage[];
           { key: 'g:novo-lead', group: 'Ações' as const, label: 'Novo lead', href: '/leads/novo', icon: UserPlus, keywords: 'criar adicionar lead empresa' },
           ...(prospector ? [] : [{ key: 'g:agenda', group: 'Ações' as const, label: 'Agenda da semana', href: '/agenda', icon: CalendarDays, keywords: 'semana planear calendário' }]),
           ...(prospector ? [] : [{ key: 'g:duplicados', group: 'Ações' as const, label: 'Limpar duplicados', href: '/leads/duplicados', icon: CopyX, keywords: 'repetidos juntar duplicados' }]),
+          ...(onShortcuts ? [{ key: 'g:atalhos', group: 'Ações' as const, label: 'Atalhos de teclado', run: 'shortcuts' as const, icon: Keyboard, keywords: 'teclado atalhos teclas' }] : []),
         ].filter((a) => matches(a.label, a.keywords))
       : [];
     // Secções das Definições e outras páginas (só ao escrever).
@@ -303,10 +329,20 @@ function SearchBody({ pages, tasks, prospector, onClose }: { pages: QuickPage[];
             done: !!t.done_at,
           }))
         : []),
+      ...(searching && tasks
+        ? (noteResults.data ?? []).map((n) => ({
+            key: `n:${n.id}`,
+            group: 'Notas e chamadas' as const,
+            label: noteSnippet(n.body, term, 40),
+            hint: `#${n.lead.number} ${n.lead.company_name} · ${n.type === 'call_logged' ? 'Chamada' : 'Nota'} de ${formatDate(n.created_at)}`,
+            href: leadPath(n.lead, '#atividade'),
+            icon: n.type === 'call_logged' ? Phone : StickyNote,
+          }))
+        : []),
     ];
   }
   const current = Math.min(active, Math.max(0, items.length - 1));
-  const loading = busy || (searching && (leads.isFetching || (tasks && taskResults.isFetching)));
+  const loading = busy || (searching && (leads.isFetching || (tasks && (taskResults.isFetching || noteResults.isFetching))));
 
   function enterLead(lead: LeadRef) {
     setFocus(lead);
@@ -377,6 +413,11 @@ function SearchBody({ pages, tasks, prospector, onClose }: { pages: QuickPage[];
     }
     if (item.run === 'pomodoro' && focus) {
       void runPomodoro(focus);
+      return;
+    }
+    if (item.run === 'shortcuts') {
+      onClose();
+      onShortcuts?.();
       return;
     }
     if (!item.href) return;
@@ -450,6 +491,7 @@ function SearchBody({ pages, tasks, prospector, onClose }: { pages: QuickPage[];
           }}
           className="h-12 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted"
         />
+        {compose ? <DictateButton size="sm" onText={(spoken) => setText((current) => appendDictation(current, spoken).slice(0, 300))} /> : null}
         <kbd className="hidden rounded border border-border px-1.5 py-0.5 text-[11px] text-muted sm:inline">Esc</kbd>
       </div>
       {compose ? (
@@ -503,7 +545,7 @@ function SearchBody({ pages, tasks, prospector, onClose }: { pages: QuickPage[];
             );
           })}
           {searching && !loading && items.length === 0 ? <li className="px-2 py-6 text-center text-sm text-muted">Nada encontrado para “{term}”.</li> : null}
-          {!searching && !focus && text.trim().length === 1 ? <li className="px-2 py-2 text-xs text-muted">Escreve mais uma letra para procurar leads e tarefas.</li> : null}
+          {!searching && !focus && text.trim().length === 1 ? <li className="px-2 py-2 text-xs text-muted">Escreve mais uma letra para procurar leads, tarefas e notas.</li> : null}
           {!focus && items.some((it) => it.lead) ? (
             <li className="hidden px-2 pt-2 text-[11px] text-muted pointer-fine:block" role="presentation">
               → num lead: criar tarefa, registar chamada ou nota, marcar reunião…

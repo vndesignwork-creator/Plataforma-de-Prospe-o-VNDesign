@@ -307,15 +307,28 @@ export type LeadListQuery = z.output<typeof LeadListQuerySchema>;
 // -----------------------------------------------------------------------------
 // Ações em vários leads de uma vez (lista) — também usadas na ficha com um só id
 // -----------------------------------------------------------------------------
-export const LEAD_BULK_ACTIONS = ['archive', 'restore', 'delete', 'assign'] as const;
+export const LEAD_BULK_ACTIONS = ['archive', 'restore', 'delete', 'assign', 'tag_add', 'tag_remove', 'status'] as const;
 export type LeadBulkAction = (typeof LEAD_BULK_ACTIONS)[number];
 
 export const LeadBulkActionSchema = z
   .object({
-    action: z.enum(LEAD_BULK_ACTIONS).meta({ description: 'archive = arquivar, restore = repor do arquivo, delete = apagar, assign = mudar o responsável' }),
+    action: z.enum(LEAD_BULK_ACTIONS).meta({
+      description:
+        'archive = arquivar, restore = repor do arquivo, delete = apagar, assign = mudar o responsável, tag_add / tag_remove = pôr / tirar uma etiqueta, status = mudar o estado',
+    }),
     ids: z.array(z.uuid()).min(1, { error: 'Escolhe pelo menos um lead.' }).max(200, { error: 'No máximo 200 leads de cada vez.' }),
     /** Com action "assign": o novo responsável (null = sem responsável). */
     assigned_to: z.uuid().nullable().optional(),
+    /** Com tag_add / tag_remove: a etiqueta. */
+    tag: z.string().trim().max(30).optional(),
+    /** Com action "status": o novo estado (as regras de cada estado aplicam-se). */
+    status: LeadStatusSchema.optional(),
+  })
+  .superRefine((v, ctx) => {
+    if ((v.action === 'tag_add' || v.action === 'tag_remove') && !normalizeTags([v.tag ?? '']).length) {
+      ctx.addIssue({ code: 'custom', path: ['tag'], message: 'Indica a etiqueta.' });
+    }
+    if (v.action === 'status' && !v.status) ctx.addIssue({ code: 'custom', path: ['status'], message: 'Escolhe o estado.' });
   })
   .meta({ id: 'LeadBulkAction' });
 export type LeadBulkActionInput = z.input<typeof LeadBulkActionSchema>;
@@ -908,3 +921,23 @@ export type FollowUpInput = z.infer<typeof FollowUpSchema>;
 
 export const LeadTagCountSchema = z.object({ tag: z.string(), count: z.int() }).meta({ id: 'LeadTagCount' });
 export type LeadTagCount = z.infer<typeof LeadTagCountSchema>;
+
+/** Definições → Etiquetas: renomear (para uma que já existe = juntar as duas) ou apagar (to = null). */
+export const LeadTagRenameSchema = z
+  .object({
+    from: z.string().trim().min(1, { error: 'Indica a etiqueta.' }).max(30),
+    to: z
+      .string()
+      .nullable()
+      .transform((v, ctx) => {
+        if (v === null) return null;
+        const tag = normalizeTags([v])[0];
+        if (!tag) {
+          ctx.addIssue({ code: 'custom', message: 'Indica o novo nome.' });
+          return z.NEVER;
+        }
+        return tag;
+      }),
+  })
+  .meta({ id: 'LeadTagRename' });
+export type LeadTagRenameInput = z.input<typeof LeadTagRenameSchema>;

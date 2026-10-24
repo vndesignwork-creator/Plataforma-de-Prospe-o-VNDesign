@@ -7,6 +7,7 @@ import {
   addDays,
   fixDirectoryWebsite,
   isDirectoryUrl,
+  normalizeTags,
   normalizeText,
   todayIso,
   type DoNotContact,
@@ -17,6 +18,7 @@ import {
   type LeadBulkResult,
   type LeadCreate,
   type LeadListQuery,
+  type LeadStatus,
   type LeadTagCount,
   type LeadUpdate,
 } from '@vndesign/core';
@@ -317,14 +319,40 @@ export async function mergeLeads(
  * Arquivar, repor ou apagar vários leads de uma vez. Só conta os que mudaram
  * (um lead já arquivado não volta a ser arquivado nem regista atividade).
  */
-export async function bulkLeadAction(ctx: ApiContext, action: LeadBulkAction, ids: string[], assignedTo: string | null = null): Promise<LeadBulkResult> {
+export async function bulkLeadAction(
+  ctx: ApiContext,
+  action: LeadBulkAction,
+  ids: string[],
+  options: { assignedTo?: string | null; tag?: string; status?: LeadStatus } = {},
+): Promise<LeadBulkResult> {
   const unique = [...new Set(ids)];
   const base = () => ctx.supabase.from('leads');
+  const assignedTo = options.assignedTo ?? null;
   if (ctx.role === 'prospector' && (action === 'delete' || action === 'assign')) {
     throw new ApiError(403, 'Sem acesso', 'Só o dono ou um administrador pode apagar leads ou mudar o responsável.');
   }
+  if (action === 'tag_add' || action === 'tag_remove') {
+    const tag = normalizeTags([options.tag ?? ''])[0] ?? '';
+    const { data, error } = await ctx.supabase.rpc('lead_tags_bulk', {
+      p_workspace_id: ctx.workspaceId,
+      p_ids: unique,
+      p_add: action === 'tag_add' ? tag : null,
+      p_remove: action === 'tag_remove' ? tag : null,
+    });
+    if (error) throw fromPostgrest(error);
+    return { action, affected: Number(data ?? 0) };
+  }
   let result;
-  if (action === 'assign') {
+  if (action === 'status') {
+    // Um a um no SQL (as regras de cada estado aplicam-se); os que já estão nesse estado não contam.
+    result = await base()
+      .update({ status: options.status })
+      .eq('workspace_id', ctx.workspaceId)
+      .in('id', unique)
+      .neq('status', options.status!)
+      .is('anonymized_at', null)
+      .select('id');
+  } else if (action === 'assign') {
     await assertTeamMember(ctx, assignedTo);
     result = await base().update({ assigned_to: assignedTo }).eq('workspace_id', ctx.workspaceId).in('id', unique).select('id');
   } else if (action === 'delete') {
@@ -396,4 +424,11 @@ export async function leadTagCounts(ctx: ApiContext): Promise<LeadTagCount[]> {
   const { data, error } = await ctx.supabase.rpc('lead_tag_counts', { p_workspace_id: ctx.workspaceId });
   if (error) throw fromPostgrest(error);
   return ((data ?? []) as { tag: string; count: number | string }[]).map((r) => ({ tag: r.tag, count: Number(r.count) }));
+}
+
+/** Renomeia uma etiqueta em todos os leads (para uma que já existe = juntar; to = null apaga). */
+export async function renameLeadTag(ctx: ApiContext, from: string, to: string | null): Promise<{ affected: number }> {
+  const { data, error } = await ctx.supabase.rpc('lead_tags_rename', { p_workspace_id: ctx.workspaceId, p_from: from, p_to: to });
+  if (error) throw fromPostgrest(error);
+  return { affected: Number(data ?? 0) };
 }
