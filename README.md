@@ -258,6 +258,41 @@ Na linha do tempo → **Registar → Comentário para a equipa** (com equipa): c
 
 No fim da coluna lateral da ficha, **Organizar cartões**: muda a ordem (↑ ↓) de Tarefas, Pagamentos, Reuniões, Notas, Propostas, Linha do tempo… e esconde os que não usas (a Linha do tempo fica sempre). Vale para todos os leads e fica na tua conta (computador e telemóvel); **Repor original** volta ao de sempre.
 
+## Prospeção: tentativas e "Não responde"
+
+Na sessão de **Prospeção**, os botões **Não atendeu** e **Contactado** mostram quantas vezes já os usaste nesse lead (“2×”). À **3.ª vez seguida** sem atender, a plataforma pergunta se passa o lead a **Sem interesse** com o motivo *Não responde* (ou se só regista “Não atendeu”). O **Sem interesse** da Prospeção também pergunta o motivo. API: `attempts` em cada lead de `GET /api/v1/prospecting`.
+
+## "Agora não" volta sozinho
+
+Ao escolher o motivo **Agora não (talvez mais tarde)**, escolhe também **Voltar a tentar daqui a 1, 3 ou 6 meses** (ou *Não voltar*). Nesse dia, o lead volta sozinho: passa a *Contactado*, com a próxima ação para hoje (aparece na Prospeção e no Hoje), sai do arquivo se lá estiver e fica na linha do tempo “Voltou à prospeção: a … tinha dito “agora não””. Na ficha, a linha **Motivo** mostra “Volta à Prospeção a …” (com *Não voltar*) ou deixa marcar mais tarde. Os outros motivos continuam a ir para o arquivo automático. Corre no cron diário (`/api/v1/cron/daily-digest`). API: campo `retry_on` nos leads.
+
+## Novo lead: ditar, escrever ou dos contactos
+
+Em **Novo lead**, além de *Ler cartão de visita*:
+
+- **Ditar ou escrever**: diz (🎤 Ditar) ou cola o que sabes — “Restaurante O Quintal em Braga, falei com a Ana, 912 345 678, querem site com reservas” — e a IA preenche a empresa, o contacto, o telefone, o email, a cidade e as notas (só os campos vazios). Revês antes de criar. API: `POST /api/v1/leads/from-text`.
+- **Escolher dos contactos** (telemóvel Android com Chrome): puxa o nome, o telefone e o email de um contacto que já tens.
+
+## Guardar contacto no telemóvel
+
+Na ficha, botão **Guardar contacto** (ao lado de Ligar/WhatsApp/Email): descarrega o contacto (.vcf) com a pessoa, a empresa, o telefone, o email, o site e a morada. No telemóvel abre “Adicionar aos contactos” — o WhatsApp e as chamadas passam a mostrar o nome.
+
+## Organizar o Dashboard
+
+No fim do Dashboard, **Organizar cartões**: muda a ordem do Resumo, Leads mais quentes, Pipeline, Projetos e Clientes antigos e esconde os que não usas (o *Hoje* fica sempre). **Repor original** volta ao de sempre. É o mesmo que já existe na ficha.
+
+## Clientes antigos
+
+No Dashboard, cartão **Clientes antigos** (só aparece quando há): clientes com o último projeto concluído há mais de **3, 6 ou 12 meses** e nada em curso. Cada um tem **Email** (pronto: “Já passaram 9 meses desde que terminámos o projeto…”, com sugestões de manutenção, redes sociais, GEO…; revês antes de enviar ou copia) e **Já falei** (se foi por telefone). Depois de contactado sai da lista durante esse tempo. Quem já tem a tarefa *Propor um novo serviço* por fazer (a que se cria ao concluir um projeto) não aparece, para não haver dois lembretes. API: `GET /api/v1/projects/reconnect?months=6`.
+
+## Avisos por email
+
+Quem não tem as notificações push ligadas recebe, no email da conta, os avisos por ler (tarefas que lhe deram e @menções), uma vez por dia (cron diário); cada aviso vai uma vez. As notificações push ligam-se agora também em **Definições → Conta** (a equipa de prospeção só vê essa página).
+
+## Pesquisa nos comentários
+
+O **Ctrl+K** encontra também o texto dos **comentários da equipa** (aparecem em *Notas e chamadas*, como “Comentário da equipa”).
+
 ## Importar a folha atual
 
 1. No Google Sheets (“Leads_Prospeccao_VNDesign”): **Ficheiro → Transferir → Microsoft Excel (.xlsx)**.

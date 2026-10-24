@@ -162,6 +162,8 @@ const leadFields = {
   custom: CustomValuesSchema,
   /** Porque passou a "Sem interesse" (sai sozinho noutros estados). */
   lost_reason: z.enum(LOST_REASONS, { error: 'Motivo inválido.' }).nullable(),
+  /** "Sem interesse": dia em que volta sozinho à prospeção (ex.: disse "agora não"). */
+  retry_on: nullableDate,
 };
 
 export const EDITABLE_LEAD_FIELDS = Object.keys(leadFields) as (keyof typeof leadFields)[];
@@ -245,6 +247,7 @@ export const LeadSchema = z
     tags: z.array(z.string()).optional().meta({ description: 'Etiquetas livres' }),
     pinned_note: z.string().nullable().optional().meta({ description: 'Nota afixada no topo da ficha' }),
     lost_reason: z.enum(LOST_REASONS).nullable().optional().meta({ description: 'Motivo de "Sem interesse"' }),
+    retry_on: z.string().nullable().optional().meta({ description: '"Sem interesse": dia em que volta à prospeção (AAAA-MM-DD)' }),
     custom: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional().meta({ description: 'Campos personalizados' }),
     created_by: z.uuid().nullable(),
     created_at: z.string(),
@@ -356,6 +359,7 @@ export const LeadBulkActionSchema = z
     status: LeadStatusSchema.optional(),
     /** Com status "sem_interesse": o motivo. */
     lost_reason: z.enum(LOST_REASONS).nullable().optional(),
+    retry_on: nullableDate.optional(),
   })
   .superRefine((v, ctx) => {
     if ((v.action === 'tag_add' || v.action === 'tag_remove') && !normalizeTags([v.tag ?? '']).length) {

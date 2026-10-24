@@ -249,6 +249,19 @@ export async function startStubs() {
         });
         return;
       }
+      // Novo lead a partir de um texto ditado ou colado.
+      if (JSON.stringify(body.system ?? '').includes('texto ditado ou colado')) {
+        const ditado = {
+          empresa: 'Restaurante O Quintal', contacto: 'Ana Ribeiro', email: 'ana@oquintal.pt', telefone: '912 345 678',
+          site: null, cidade: 'Braga', morada: null, notas: 'Querem um site novo com reservas.',
+        };
+        sendJson(res, 200, {
+          id: 'msg_stub_ditado', type: 'message', role: 'assistant', model: body.model ?? 'claude-opus-5-5',
+          content: [{ type: 'text', text: JSON.stringify(ditado) }],
+          stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 400, output_tokens: 90 },
+        });
+        return;
+      }
       // Cartão de visita (com a imagem na mensagem).
       if (JSON.stringify(body.system ?? '').includes('cartão de visita')) {
         const hasImage = JSON.stringify(body.messages ?? '').includes('"type":"image"');

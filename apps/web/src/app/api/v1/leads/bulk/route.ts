@@ -8,6 +8,6 @@ import { bulkLeadAction } from '@/server/services/leads';
  * Só com sessão: os tokens de integração não podem apagar nem arquivar.
  */
 export const POST = apiRoute(async (req, ctx) => {
-  const { action, ids, assigned_to, tag, status, lost_reason } = await parseJson(req, LeadBulkActionSchema);
-  return json({ data: await bulkLeadAction(ctx, action, ids, { assignedTo: assigned_to ?? null, tag, status, lostReason: lost_reason ?? null }) });
+  const { action, ids, assigned_to, tag, status, lost_reason, retry_on } = await parseJson(req, LeadBulkActionSchema);
+  return json({ data: await bulkLeadAction(ctx, action, ids, { assignedTo: assigned_to ?? null, tag, status, lostReason: lost_reason ?? null, retryOn: retry_on ?? null }) });
 });

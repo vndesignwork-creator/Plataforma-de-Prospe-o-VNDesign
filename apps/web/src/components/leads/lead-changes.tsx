@@ -36,6 +36,7 @@ const EXTRA_LABELS: Record<string, string> = {
   pinned_note: 'Nota afixada',
   custom: 'Campos personalizados',
   lost_reason: 'Motivo (sem interesse)',
+  retry_on: 'Voltar a tentar a',
 };
 
 export const changeLabel = (field: string) => (LEAD_FIELD_LABELS as Record<string, string>)[field] ?? EXTRA_LABELS[field] ?? null;

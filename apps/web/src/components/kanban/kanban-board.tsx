@@ -433,11 +433,11 @@ export function KanbanBoard() {
   }
 
   const [askLost, setAskLost] = useState<Lead | null>(null);
-  async function saveLostReason(lead: Lead, reason: LostReason | null) {
+  async function saveLostReason(lead: Lead, reason: LostReason | null, retryOn: string | null) {
     setAskLost(null);
     if (!reason) return;
     try {
-      await api(`/leads/${lead.id}`, { method: 'PATCH', body: { lost_reason: reason } });
+      await api(`/leads/${lead.id}`, { method: 'PATCH', body: { lost_reason: reason, ...(retryOn ? { retry_on: retryOn } : {}) } });
       invalidate(lead.id);
     } catch (error) {
       toast.error(errorMessage(error));
@@ -609,7 +609,7 @@ export function KanbanBoard() {
         <LostReasonDialog
           open
           subject={`#${askLost.number} ${askLost.company_name}`}
-          onPick={(reason) => void saveLostReason(askLost, reason)}
+          onPick={(reason, retryOn) => void saveLostReason(askLost, reason, retryOn)}
           onCancel={() => setAskLost(null)}
         />
       ) : null}

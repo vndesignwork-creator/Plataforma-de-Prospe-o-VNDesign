@@ -6,6 +6,7 @@
  * A fila carrega-se ao abrir; cada resultado tira o lead da fila e passa ao seguinte.
  */
 import {
+  NO_ANSWER_LIMIT,
   PROSPECTING_FILTER_LABELS,
   PROSPECTING_FILTERS,
   formatDate,
@@ -50,6 +51,7 @@ import { useProspectingOutcome, useProspectingQueue, useSettings } from '@/lib/q
 import { cn, displayHost, telUrl, whatsappUrl } from '@/lib/utils';
 import { PinnedNoteBox } from '@/components/leads/pinned-note';
 import { LostReasonDialog } from '@/components/leads/lost-reason';
+import { Dialog } from '@/components/ui/dialog';
 
 const KIND_META: Record<ProspectingItem['kind'], { label: string; icon: typeof Eye; tone: 'success' | 'warning' | 'neutral' }> = {
   opened: { label: 'Abriu o email', icon: Eye, tone: 'success' },
@@ -185,9 +187,14 @@ function LeadCard({
 
   // "Sem interesse": pergunta primeiro o motivo (como na ficha e no Kanban).
   const [askLost, setAskLost] = useState(false);
+  // Tentativas: quantas vezes já se carregou em "Não atendeu" e "Contactado" neste lead.
+  const attempts = item.attempts ?? { no_answer: 0, contacted: 0, no_answer_streak: 0 };
+  const streak = attempts.no_answer_streak;
+  const [askGiveUp, setAskGiveUp] = useState(false);
 
-  async function record(value: ProspectingOutcome, days?: number, lostReason?: LostReason | null) {
+  async function record(value: ProspectingOutcome, days?: number, lostReason?: LostReason | null, retryOn?: string | null) {
     setAskLost(false);
+    setAskGiveUp(false);
     try {
       const result = await outcome.mutateAsync({
         leadId: lead.id,
@@ -195,6 +202,7 @@ function LeadCard({
         ...(note.trim() ? { note: note.trim() } : {}),
         ...(days ? { days } : {}),
         ...(lostReason ? { lost_reason: lostReason } : {}),
+        ...(retryOn ? { retry_on: retryOn } : {}),
       });
       const next = result.lead.next_action_on ? ` Próxima ação a ${formatDate(result.lead.next_action_on)}.` : '';
       toast.success(`#${lead.number} ${lead.company_name}: registado.${next}`);
@@ -322,11 +330,18 @@ function LeadCard({
         </label>
         <Textarea id={`note-${lead.id}`} rows={2} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ex.: falei com a dona, pediu para ligar depois das 15h" />
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
-          <Button variant="outline" onClick={() => record('no_answer')} disabled={outcome.isPending}>
+          <Button
+            variant="outline"
+            // À 3.ª vez seguida sem atender, pergunta se passa a "Sem interesse" (Não responde).
+            onClick={() => (streak >= NO_ANSWER_LIMIT - 1 ? setAskGiveUp(true) : void record('no_answer'))}
+            disabled={outcome.isPending}
+          >
             <PhoneOff className="h-4 w-4" aria-hidden /> Não atendeu
+            <AttemptCount n={attempts.no_answer} />
           </Button>
           <Button variant="outline" onClick={() => record('contacted')} disabled={outcome.isPending}>
             <UserCheck className="h-4 w-4" aria-hidden /> {item.sequence ? `Contactado (passo ${item.sequence.step})` : 'Contactado'}
+            <AttemptCount n={attempts.contacted} />
           </Button>
           <Button onClick={() => record('interested')} disabled={outcome.isPending}>
             <ThumbsUp className="h-4 w-4" aria-hidden /> Interessado
@@ -357,14 +372,43 @@ function LeadCard({
           a próxima ação para hoje.
         </p>
       </section>
+      {askGiveUp ? (
+        <Dialog
+          open
+          onOpenChange={(o) => (!o ? setAskGiveUp(false) : undefined)}
+          title={`${streak + 1}.ª vez sem resposta`}
+          description={`#${lead.number} ${lead.company_name} não atendeu as últimas ${streak} vezes. Passar a “Sem interesse” (Não responde)?`}
+          className="max-w-md"
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => void record('no_answer')}>
+                Só registar “Não atendeu”
+              </Button>
+              <Button onClick={() => void record('not_interested', undefined, 'nao_responde')}>Passar a Sem interesse</Button>
+            </>
+          }
+        >
+          <p className="text-sm text-muted">Fica em Estatísticas → Porque perdes leads, com o motivo “Não responde”. Podes sempre voltar a mudar o estado na ficha.</p>
+        </Dialog>
+      ) : null}
       {askLost ? (
         <LostReasonDialog
           open
           subject={`#${lead.number} ${lead.company_name}`}
-          onPick={(reason) => void record('not_interested', undefined, reason)}
+          onPick={(reason, retryOn) => void record('not_interested', undefined, reason, retryOn)}
           onCancel={() => setAskLost(false)}
         />
       ) : null}
     </Card>
+  );
+}
+
+/** "2×" no botão: quantas vezes já se registou este resultado neste lead. */
+function AttemptCount({ n }: { n: number }) {
+  if (!n) return null;
+  return (
+    <span className="rounded-full bg-surface-3 px-1.5 text-xs font-medium text-muted tabular" title="Vezes que já registaste este resultado">
+      {n}×<span className="sr-only"> ({n === 1 ? '1 vez' : `${n} vezes`} até agora)</span>
+    </span>
   );
 }

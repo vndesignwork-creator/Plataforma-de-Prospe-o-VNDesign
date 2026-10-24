@@ -124,7 +124,7 @@ test('organizar os cartões da ficha: esconder e mudar a ordem (e repor)', async
     await up.click();
   }
   await dialog.getByRole('button', { name: 'Guardar' }).click();
-  await expect(page.getByText('Ficha organizada.')).toBeVisible();
+  await expect(page.getByText('Cartões organizados.')).toBeVisible();
   await expect(aside.getByRole('heading', { name: 'Notas' })).toHaveCount(0);
   await expect(aside.getByRole('heading').first()).toHaveText('Linha do tempo');
 

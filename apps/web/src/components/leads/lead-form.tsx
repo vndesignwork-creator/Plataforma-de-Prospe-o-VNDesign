@@ -39,6 +39,7 @@ import { DuplicatePanel } from './duplicate-panel';
 import { MERGE_DRAFT_KEY } from './merge-view';
 import { ServicePicker } from '@/components/services/services';
 import { CardScanButton } from './card-scan';
+import { LeadQuickFill } from './lead-quick-fill';
 
 type FormInput = LeadCreateInput;
 
@@ -221,7 +222,12 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
         </p>
       ) : null}
 
-      {isEdit ? null : <CardScanButton onResult={fillFromCard} />}
+      {isEdit ? null : (
+        <div className="flex flex-col gap-2">
+          <CardScanButton onResult={fillFromCard} />
+          <LeadQuickFill onResult={fillFromCard} />
+        </div>
+      )}
 
       <Section title="Empresa" description="Só dados empresariais públicos (RGPD).">
         <Field label="Empresa" error={e('company_name')} required className="md:col-span-2">

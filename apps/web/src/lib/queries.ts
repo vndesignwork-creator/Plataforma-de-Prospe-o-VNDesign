@@ -199,6 +199,8 @@ export function useInvalidateLead() {
     void qc.invalidateQueries({ queryKey: ['leads'] });
     void qc.invalidateQueries({ queryKey: ['sectors'] });
     void qc.invalidateQueries({ queryKey: ['board'] });
+    // Clientes antigos: um email enviado tira o cliente da lista.
+    void qc.invalidateQueries({ queryKey: ['reconnect'] });
     void qc.invalidateQueries({ queryKey: ['dashboard'] });
     void qc.invalidateQueries({ queryKey: ['today'] });
     void qc.invalidateQueries({ queryKey: ['map'] });
@@ -307,7 +309,10 @@ export function useLogActivity(id: string) {
   return useMutation({
     mutationFn: (body: { type: string; body?: string; payload?: Record<string, unknown> }) =>
       api<{ data: Activity }>(`/leads/${id}/activities`, { method: 'POST', body }).then((r) => r.data),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.activities(id) }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: qk.activities(id) });
+      void qc.invalidateQueries({ queryKey: ['reconnect'] });
+    },
   });
 }
 
@@ -459,7 +464,7 @@ export function useProspectingQueue(filter: ProspectingFilter) {
 export function useProspectingOutcome() {
   const invalidate = useInvalidateLead();
   return useMutation({
-    mutationFn: ({ leadId, ...body }: { leadId: string; outcome: ProspectingOutcome; note?: string; days?: number; lost_reason?: LostReason | null }) =>
+    mutationFn: ({ leadId, ...body }: { leadId: string; outcome: ProspectingOutcome; note?: string; days?: number; lost_reason?: LostReason | null; retry_on?: string | null }) =>
       api<{ data: ProspectingResult }>(`/leads/${leadId}/prospecting`, { method: 'POST', body }).then((r) => r.data),
     onSuccess: (result) => invalidate(result.lead.id),
   });

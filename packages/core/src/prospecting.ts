@@ -35,6 +35,8 @@ export const ProspectingOutcomeSchema = z
     days: z.int().min(1, { error: 'Mínimo 1 dia.' }).max(60, { error: 'Máximo 60 dias.' }).optional(),
     /** "Sem interesse": porquê (vai para o lead e para as Estatísticas). */
     lost_reason: z.enum(LOST_REASONS, { error: 'Motivo inválido.' }).nullable().optional(),
+    /** "Sem interesse" com "Agora não": dia em que volta à prospeção. */
+    retry_on: z.iso.date({ error: 'Data inválida.' }).nullable().optional(),
   })
   .meta({ id: 'ProspectingOutcome' });
 export type ProspectingOutcomeInput = z.output<typeof ProspectingOutcomeSchema>;
@@ -44,6 +46,8 @@ export const ProspectingItemSchema = z
     lead: LeadSchema,
     kind: z.enum(['opened', 'follow_up', 'new']),
     reason: z.string().meta({ description: 'Porque está na lista (ex.: "Abriu o email há 2 h")' }),
+    /** Quantas vezes já se carregou em "Não atendeu" e "Contactado" na Prospeção (e as tentativas seguidas sem resposta). */
+    attempts: z.object({ no_answer: z.int(), contacted: z.int(), no_answer_streak: z.int() }).optional(),
     /** Com a sequência multicanal ligada: o passo a fazer agora. */
     sequence: z
       .object({ step: z.int(), total: z.int(), day: z.int(), channel: z.enum(SEQUENCE_CHANNELS), template_id: z.uuid().nullable() })
@@ -75,4 +79,30 @@ export function timeAgo(iso: string, now: Date = new Date()): string {
   if (h < 24) return `há ${h} h`;
   const d = Math.round(h / 24);
   return `há ${d} dia${d === 1 ? '' : 's'}`;
+}
+
+/** À 3.ª vez seguida sem atender, a Prospeção sugere passar a "Sem interesse" (Não responde). */
+export const NO_ANSWER_LIMIT = 3;
+
+export type ProspectingAttempts = { no_answer: number; contacted: number; no_answer_streak: number };
+
+/**
+ * Contagem dos resultados registados na Prospeção (do mais antigo para o mais
+ * recente): "Não atendeu", "Contactado" e as vezes seguidas sem resposta (desde
+ * o último resultado que não foi "Não atendeu").
+ */
+export function countAttempts(outcomes: readonly string[]): ProspectingAttempts {
+  let noAnswer = 0;
+  let contacted = 0;
+  let streak = 0;
+  for (const o of outcomes) {
+    if (o === 'no_answer') {
+      noAnswer++;
+      streak++;
+    } else {
+      if (o === 'contacted') contacted++;
+      streak = 0;
+    }
+  }
+  return { no_answer: noAnswer, contacted, no_answer_streak: streak };
 }

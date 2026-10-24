@@ -39,7 +39,7 @@ export const LEAD_SELECT = [
   'email', 'phone', 'contact_name', 'status', 'channel', 'first_contact_on', 'last_follow_up_on',
   'next_action_text', 'next_action_on', 'estimated_value', 'notes', 'approach_angle', 'source_url',
   'suggested_on', 'email_subject', 'email_body', 'services', 'kanban_position', 'status_changed_at',
-  'anonymized_at', 'archived_at', 'score', 'score_reasons', 'follow_up_count', 'project_completed_at', 'client_of', 'project_title', 'assigned_to', 'tags', 'pinned_note', 'custom', 'lost_reason', 'created_by', 'created_at', 'updated_at',
+  'anonymized_at', 'archived_at', 'score', 'score_reasons', 'follow_up_count', 'project_completed_at', 'client_of', 'project_title', 'assigned_to', 'tags', 'pinned_note', 'custom', 'lost_reason', 'retry_on', 'created_by', 'created_at', 'updated_at',
 ].join(', ');
 
 const NOT_FOUND = 'Lead não encontrado';
@@ -366,7 +366,7 @@ export async function bulkLeadAction(
   ctx: ApiContext,
   action: LeadBulkAction,
   ids: string[],
-  options: { assignedTo?: string | null; tag?: string; status?: LeadStatus; lostReason?: LostReason | null } = {},
+  options: { assignedTo?: string | null; tag?: string; status?: LeadStatus; lostReason?: LostReason | null; retryOn?: string | null } = {},
 ): Promise<LeadBulkResult> {
   const unique = [...new Set(ids)];
   const base = () => ctx.supabase.from('leads');
@@ -389,7 +389,11 @@ export async function bulkLeadAction(
   if (action === 'status') {
     // Um a um no SQL (as regras de cada estado aplicam-se); os que já estão nesse estado não contam.
     result = await base()
-      .update({ status: options.status, ...(options.status === 'sem_interesse' && options.lostReason ? { lost_reason: options.lostReason } : {}) })
+      .update({
+        status: options.status,
+        ...(options.status === 'sem_interesse' && options.lostReason ? { lost_reason: options.lostReason } : {}),
+        ...(options.status === 'sem_interesse' && options.retryOn ? { retry_on: options.retryOn } : {}),
+      })
       .eq('workspace_id', ctx.workspaceId)
       .in('id', unique)
       .neq('status', options.status!)
@@ -423,6 +427,13 @@ export async function bulkLeadAction(
 /** Arquivo automático (cron): leads em "Sem interesse" há mais de N dias, por workspace. */
 export async function autoArchiveLeads(admin: SupabaseClient, dryRun = false): Promise<number> {
   const { data, error } = await admin.rpc('auto_archive_leads', { p_dry_run: dryRun });
+  if (error) throw fromPostgrest(error);
+  return Number(data ?? 0);
+}
+
+/** "Agora não" com a data de voltar a tentar chegada: o lead volta à prospeção (cron diário). */
+export async function retryLostLeads(admin: SupabaseClient, dryRun = false): Promise<number> {
+  const { data, error } = await admin.rpc('retry_lost_leads', { p_dry_run: dryRun });
   if (error) throw fromPostgrest(error);
   return Number(data ?? 0);
 }

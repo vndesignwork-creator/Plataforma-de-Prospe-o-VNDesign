@@ -194,8 +194,8 @@ export function PushSettings() {
         <Bell className="h-4 w-4" aria-hidden /> Notificações no telemóvel e no computador
       </h3>
       <p className="text-sm text-muted">
-        Todas as manhãs, um aviso com os follow-ups e tarefas de hoje e em atraso, e os lembretes das tarefas à hora marcada — mesmo com a plataforma fechada. Ao tocar, abre o lead
-        ou o dashboard.{' '}
+        Todas as manhãs, um aviso com os follow-ups e tarefas de hoje e em atraso, os lembretes das tarefas à hora marcada e os avisos da equipa (tarefas que te derem e
+        @menções) — mesmo com a plataforma fechada. Ao tocar, abre o lead ou o dashboard.{' '}
         {status && status.subscriptions.length > 0 ? (
           <span>
             ({status.subscriptions.length} dispositivo{status.subscriptions.length === 1 ? '' : 's'} ativo

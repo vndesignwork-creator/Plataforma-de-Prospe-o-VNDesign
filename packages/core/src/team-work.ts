@@ -198,17 +198,22 @@ export const LeadCardLayoutSchema = z.object({
 });
 export type LeadCardLayout = z.infer<typeof LeadCardLayoutSchema>;
 
-/** Os cartões pela ordem escolhida (os novos ou nunca arrumados ficam onde estavam por omissão). */
-export function arrangeCards(layout: Partial<LeadCardLayout> | null | undefined): LeadCard[] {
-  const order = (layout?.order ?? []).filter((k): k is LeadCard => (LEAD_CARDS as readonly string[]).includes(k));
+/** Cartões pela ordem escolhida (os novos ou nunca arrumados ficam onde estavam por omissão). */
+export function arrangeKeys<K extends string>(defaults: readonly K[], layout: Partial<LeadCardLayout> | null | undefined): K[] {
+  const order = (layout?.order ?? []).filter((k): k is K => (defaults as readonly string[]).includes(k));
   const out = [...new Set(order)];
-  LEAD_CARDS.forEach((k, i) => {
+  defaults.forEach((k, i) => {
     if (out.includes(k)) return;
     // Entra a seguir ao cartão que, por omissão, vinha antes dele.
-    const prev = LEAD_CARDS.slice(0, i).reverse().find((p) => out.includes(p));
+    const prev = defaults.slice(0, i).reverse().find((p) => out.includes(p));
     out.splice(prev ? out.indexOf(prev) + 1 : 0, 0, k);
   });
   return out;
+}
+
+/** Os cartões da ficha pela ordem escolhida. */
+export function arrangeCards(layout: Partial<LeadCardLayout> | null | undefined): LeadCard[] {
+  return arrangeKeys(LEAD_CARDS, layout);
 }
 
 /** A Linha do tempo nunca se esconde (é o histórico do lead). */
@@ -216,3 +221,20 @@ export const ALWAYS_SHOWN_CARDS: readonly LeadCard[] = ['activity'];
 export function isCardHidden(layout: Partial<LeadCardLayout> | null | undefined, card: LeadCard): boolean {
   return !ALWAYS_SHOWN_CARDS.includes(card) && (layout?.hidden ?? []).includes(card);
 }
+
+// -----------------------------------------------------------------------------
+// Cartões do Dashboard (dono/administrador)
+// -----------------------------------------------------------------------------
+export const DASHBOARD_CARDS = ['summary', 'today', 'hot', 'pipeline', 'projects', 'reconnect'] as const;
+export type DashboardCard = (typeof DASHBOARD_CARDS)[number];
+export const DASHBOARD_CARD_LABELS: Record<DashboardCard, string> = {
+  summary: 'Resumo (4 números)',
+  today: 'Hoje',
+  hot: 'Leads mais quentes',
+  pipeline: 'Pipeline',
+  projects: 'Projetos',
+  reconnect: 'Clientes antigos',
+};
+export const DASHBOARD_CARDS_PREFERENCE = 'dashboard.cards';
+/** O "Hoje" fica sempre (é o essencial do Dashboard). */
+export const DASHBOARD_ALWAYS_SHOWN: readonly DashboardCard[] = ['today'];

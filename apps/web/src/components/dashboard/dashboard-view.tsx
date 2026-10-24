@@ -15,12 +15,15 @@ import {
   type TodayTask,
   leadPath,
   reschedulePlan,
+  DASHBOARD_CARDS,
+  DASHBOARD_CARDS_PREFERENCE,
+  type DashboardCard,
 } from '@vndesign/core';
 import { AlertCircle, BarChart3, BellRing, BriefcaseBusiness, CalendarClock, CalendarDays, Eye, Flame, ListChecks, MapPin, Phone, Users } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { useState, type ReactNode } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { StatTile } from '@/components/charts/stat-tile';
 import { FollowUpEmailButton } from '@/components/email/send-email-dialog';
 import { FollowUpActions } from '@/components/follow-up/follow-up-actions';
@@ -34,6 +37,8 @@ import { DueChip, ReminderChip } from '@/components/tasks/tasks-card';
 import { Linkified } from '@/lib/linkify';
 import { useBilling, useDashboard, useProjects, useReschedule, useRole, useSettings, useToday } from '@/lib/queries';
 import { MyTeamTiles } from './team-stats';
+import { ReconnectCard } from './reconnect-card';
+import { CardLayoutButton, DASHBOARD_BOARD, useCardLayout, visibleCards } from '@/components/leads/card-layout';
 import { cn } from '@/lib/utils';
 import { DueBadge, ProgressBar, StageLabel } from '@/components/projects/project-bits';
 import { meetingLabel } from '@/components/meetings/meetings-card';
@@ -552,6 +557,7 @@ function OwnerDashboard() {
   const { data, isLoading, error } = useDashboard();
   const { data: settings } = useSettings();
   const projectsOn = settings?.features.projects ?? false;
+  const layout = useCardLayout(DASHBOARD_CARDS_PREFERENCE);
 
   if (error) {
     return (
@@ -589,26 +595,68 @@ function OwnerDashboard() {
     );
   }
 
+  const summary = (
+    <section aria-label="Resumo" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <StatTile label="Leads ativos" value={t.active} hint={t.paused ? `${t.paused} em pausa` : `${t.total} no total`} />
+      <StatTile label="Clientes ganhos" value={t.won} hint={t.value_won ? `${euros(t.value_won)} ganhos` : undefined} />
+      <StatTile label="Taxa de conversão" value={formatPercent(t.conversion_rate_contacted)} hint="dos leads contactados" />
+      <StatTile label="Valor do pipeline" value={euros(t.value_pipeline)} hint="Soma dos leads ativos" />
+    </section>
+  );
+  const available = DASHBOARD_CARDS.filter((k) => projectsOn || (k !== 'projects' && k !== 'reconnect'));
+  const organize = <CardLayoutButton board={DASHBOARD_BOARD} available={available} />;
+
+  // Sem nada mudado: as duas filas alinhadas de sempre (cartões da mesma fila com a mesma altura):
+  // Hoje | Leads mais quentes e Pipeline | Projetos. Telemóvel: uma coluna, com o "Hoje" no topo e o Pipeline no fim.
+  if (!layout || (!layout.order.length && !layout.hidden.length)) {
+    return (
+      <div className="flex flex-col gap-5">
+        {summary}
+        <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+          <TodayCard className="lg:col-start-1 lg:row-start-1" />
+          <HotLeadsCard className="lg:col-start-2 lg:row-start-1" />
+          <PipelineCard
+            byStatus={data.by_status}
+            className={cn('max-lg:order-last lg:col-start-1 lg:row-start-2', !projectsOn && 'lg:col-span-2')}
+          />
+          <ProjectsCard className="lg:col-start-2 lg:row-start-2" />
+        </div>
+        {projectsOn ? <ReconnectCard /> : null}
+        {organize}
+      </div>
+    );
+  }
+
+  // Organizado à medida: pela ordem escolhida (o Resumo e os Clientes antigos a toda a largura; os outros em duas colunas).
+  const cards: Record<DashboardCard, ReactNode> = {
+    summary,
+    today: <TodayCard />,
+    hot: <HotLeadsCard />,
+    pipeline: <PipelineCard byStatus={data.by_status} />,
+    projects: <ProjectsCard />,
+    reconnect: <ReconnectCard />,
+  };
+  const wide = new Set<DashboardCard>(['summary', 'reconnect']);
+  const blocks: DashboardCard[][] = [];
+  for (const key of visibleCards(DASHBOARD_BOARD, layout, (k) => available.includes(k))) {
+    const last = blocks[blocks.length - 1];
+    if (wide.has(key) || !last || wide.has(last[0]!)) blocks.push([key]);
+    else last.push(key);
+  }
   return (
     <div className="flex flex-col gap-5">
-      <section aria-label="Resumo" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label="Leads ativos" value={t.active} hint={t.paused ? `${t.paused} em pausa` : `${t.total} no total`} />
-        <StatTile label="Clientes ganhos" value={t.won} hint={t.value_won ? `${euros(t.value_won)} ganhos` : undefined} />
-        <StatTile label="Taxa de conversão" value={formatPercent(t.conversion_rate_contacted)} hint="dos leads contactados" />
-        <StatTile label="Valor do pipeline" value={euros(t.value_pipeline)} hint="Soma dos leads ativos" />
-      </section>
-
-      {/* Duas filas alinhadas (cartões da mesma fila com a mesma altura): Hoje | Leads mais quentes e
-          Pipeline | Projetos. Telemóvel: uma coluna, com o "Hoje" no topo e o Pipeline no fim. */}
-      <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
-        <TodayCard className="lg:col-start-1 lg:row-start-1" />
-        <HotLeadsCard className="lg:col-start-2 lg:row-start-1" />
-        <PipelineCard
-          byStatus={data.by_status}
-          className={cn('max-lg:order-last lg:col-start-1 lg:row-start-2', !projectsOn && 'lg:col-span-2')}
-        />
-        <ProjectsCard className="lg:col-start-2 lg:row-start-2" />
-      </div>
+      {blocks.map((block) =>
+        wide.has(block[0]!) ? (
+          <Fragment key={block[0]}>{cards[block[0]!]}</Fragment>
+        ) : (
+          <div key={block.join('-')} className="flex flex-col gap-5 lg:grid lg:grid-flow-dense lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+            {block.map((key) => (
+              <Fragment key={key}>{cards[key]}</Fragment>
+            ))}
+          </div>
+        ),
+      )}
+      {organize}
     </div>
   );
 }

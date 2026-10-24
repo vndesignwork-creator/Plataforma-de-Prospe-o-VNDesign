@@ -15,7 +15,7 @@ export type NoteSearchQuery = z.output<typeof NoteSearchQuerySchema>;
 export const NoteSearchResultSchema = z
   .object({
     id: z.uuid(),
-    type: z.enum(['note', 'call_logged']),
+    type: z.enum(['note', 'call_logged', 'comment']),
     body: z.string(),
     created_at: z.string(),
     lead: z.object({ id: z.uuid(), number: z.int(), company_name: z.string(), project_title: z.string().nullable() }),

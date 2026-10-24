@@ -23,7 +23,7 @@ const RULES: Rule[] = [
   ['GET', new RegExp(`^/lead-generation/${ID}$`)],
   ['POST', new RegExp(`^/lead-generation/${ID}/add$`)],
   ['GET POST', /^\/leads$/],
-  ['POST', /^\/leads\/(check-duplicates|bulk|card-scan)$/],
+  ['POST', /^\/leads\/(check-duplicates|bulk|card-scan|from-text)$/],
   ['GET', /^\/custom-fields$/],
   ['GET', /^\/leads\/tags$/],
   ['GET PATCH', new RegExp(`^/leads/${ID}$`)],

@@ -174,6 +174,9 @@ import {
   LeadTagRenameSchema,
   LeadSummarySchema,
   CardScanInputSchema,
+  LeadTextInputSchema,
+  ReconnectQuerySchema,
+  ReconnectClientSchema,
   CardScanResultSchema,
   TrashItemSchema,
   TrashIdsSchema,
@@ -1036,6 +1039,14 @@ export function getOpenApiDocument() {
           responses: { '200': ok(data(CardScanResultSchema)), ...common },
         }),
       },
+      '/leads/from-text': {
+        post: op({
+          tags: ['Leads'],
+          summary: 'Texto ditado ou colado ({ text }) → dados do lead para o formulário (a IA preenche; não grava nada)',
+          requestBody: body(LeadTextInputSchema),
+          responses: { '200': ok(data(CardScanResultSchema)), ...common },
+        }),
+      },
       '/leads/trash': {
         get: op({
           tags: ['Leads'],
@@ -1224,6 +1235,14 @@ export function getOpenApiDocument() {
       '/payments/{id}': {
         patch: op({ tags: ['Projetos'], summary: 'Mudar ou marcar como pago', requestParams: { path: idParam }, requestBody: body(LeadPaymentUpdateSchema), responses: { '200': ok(data(LeadPaymentSchema)), ...withNotFound } }),
         delete: op({ tags: ['Projetos'], summary: 'Apagar um pagamento', requestParams: { path: idParam }, responses: { '204': { description: 'Apagado' }, ...withNotFound } }),
+      },
+      '/projects/reconnect': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Clientes antigos para voltar a contactar (último projeto concluído há mais de N meses, sem projeto em curso nem contacto recente)',
+          requestParams: { query: ReconnectQuerySchema },
+          responses: { '200': ok(data(z.array(ReconnectClientSchema))), ...common },
+        }),
       },
       '/projects': {
         get: op({

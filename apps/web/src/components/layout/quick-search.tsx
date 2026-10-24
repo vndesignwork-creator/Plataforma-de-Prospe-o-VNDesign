@@ -41,6 +41,7 @@ import {
   Upload,
   User,
   UserPlus,
+  MessagesSquare,
   type LucideIcon,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -349,9 +350,9 @@ function SearchBody({
             key: `n:${n.id}`,
             group: 'Notas e chamadas' as const,
             label: noteSnippet(n.body, term, 40),
-            hint: `#${n.lead.number} ${n.lead.company_name} · ${n.type === 'call_logged' ? 'Chamada' : 'Nota'} de ${formatDate(n.created_at)}`,
+            hint: `#${n.lead.number} ${n.lead.company_name} · ${n.type === 'call_logged' ? 'Chamada' : n.type === 'comment' ? 'Comentário da equipa' : 'Nota'} de ${formatDate(n.created_at)}`,
             href: leadPath(n.lead, '#atividade'),
-            icon: n.type === 'call_logged' ? Phone : StickyNote,
+            icon: n.type === 'call_logged' ? Phone : n.type === 'comment' ? MessagesSquare : StickyNote,
           }))
         : []),
     ];

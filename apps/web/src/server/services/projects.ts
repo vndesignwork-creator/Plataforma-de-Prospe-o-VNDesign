@@ -3,7 +3,7 @@
  * com o prazo, a fase, o progresso das tarefas, os pagamentos, a próxima
  * reunião, as revisões, as horas e as entregas.
  */
-import { DEFAULT_PROJECT_INFO, addDays, addMonths, entrySeconds, summarizePayments, todayIso, type Lead, type Project, type ProjectComplete } from '@vndesign/core';
+import { DEFAULT_PROJECT_INFO, UPSELL_TASK_PREFIX, addDays, addMonths, entrySeconds, summarizePayments, todayIso, type Lead, type Project, type ProjectComplete } from '@vndesign/core';
 import type { ApiContext } from '../context';
 import { fromPostgrest } from '../http';
 import { LEAD_SELECT, getLead } from './leads';
@@ -106,7 +106,7 @@ export async function setProjectCompleted(ctx: ApiContext, leadId: string, input
     }
     if (input.upsell_months) {
       await createTask(ctx, leadId, {
-        title: 'Propor um novo serviço (manutenção, redes sociais, novos materiais…)',
+        title: `${UPSELL_TASK_PREFIX} (manutenção, redes sociais, novos materiais…)`,
         due_on: addMonths(today, input.upsell_months),
         remind_at: null,
       });

@@ -15,6 +15,8 @@ import {
   type LostReason,
   leadPath,
   arrangeCards,
+  buildVCard,
+  vCardFileName,
   isCardHidden,
   type LeadCard,
 } from '@vndesign/core';
@@ -34,6 +36,7 @@ import {
   MoreHorizontal,
   Pin,
   Phone,
+  UserPlus,
   ShieldOff,
   Trash2,
 } from 'lucide-react';
@@ -86,7 +89,7 @@ import { LostReasonDialog, LostReasonField } from './lost-reason';
 import { StageAge } from './stage-age';
 import { LeadFilesCard } from './lead-files';
 import { LeadPager } from './lead-pager';
-import { CardLayoutButton, useCardLayout } from './card-layout';
+import { CardLayoutButton, LEAD_BOARD, useCardLayout } from './card-layout';
 import { LeadSummaryButton } from './lead-summary';
 import { PinnedNoteBox, PinnedNoteDialog } from './pinned-note';
 import { restoreDeletedLeads } from './trash-view';
@@ -142,6 +145,19 @@ function ExternalUrl({ url }: { url: string | null }) {
 }
 
 /** Atalhos para contactar o lead (no telemóvel: ligar ou abrir o WhatsApp com um toque). */
+/** Descarrega o contacto (.vcf): no telemóvel abre "Adicionar aos contactos". */
+function saveContact(lead: Lead) {
+  const blob = new Blob([buildVCard(lead)], { type: 'text/vcard;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = vCardFileName(lead.company_name);
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
 function QuickContact({ lead, whatsappMessages }: { lead: Lead; whatsappMessages: boolean }) {
   const whatsapp = whatsappUrl(lead.phone);
   const links = [
@@ -172,6 +188,15 @@ function QuickContact({ lead, whatsappMessages }: { lead: Lead; whatsappMessages
         <li>
           <LeadSummaryButton lead={lead} className={classes} />
         </li>
+        {/* Guardar no telemóvel: o WhatsApp e as chamadas passam a mostrar o nome. */}
+        {lead.phone || lead.email ? (
+          <li>
+            <button type="button" onClick={() => saveContact(lead)} className={classes} title="Guarda a empresa, o contacto, o telefone e o email nos contactos do telemóvel ou do computador">
+              <UserPlus className="h-4 w-4 text-accent-text" aria-hidden />
+              Guardar contacto
+            </button>
+          </li>
+        ) : null}
       </ul>
     </nav>
   );
@@ -256,14 +281,14 @@ export function LeadDetail({ id }: { id: string }) {
   const today = todayIso();
   const overdue = lead.next_action_on !== null && lead.next_action_on < today;
 
-  async function changeStatus(status: LeadStatus, lostReason?: LostReason | null) {
+  async function changeStatus(status: LeadStatus, lostReason?: LostReason | null, retryOn?: string | null) {
     if (status === 'sem_interesse' && lostReason === undefined) {
       setAskLost(true);
       return;
     }
     setAskLost(false);
     try {
-      const updated = await update.mutateAsync(status === 'sem_interesse' ? { status, lost_reason: lostReason ?? null } : { status });
+      const updated = await update.mutateAsync(status === 'sem_interesse' ? { status, lost_reason: lostReason ?? null, retry_on: retryOn ?? null } : { status });
       const scheduled =
         status === 'contactado' && updated.next_action_on && updated.next_action_on !== lead!.next_action_on;
       toast.success(
@@ -489,7 +514,7 @@ export function LeadDetail({ id }: { id: string }) {
         <LostReasonDialog
           open
           subject={`#${lead.number} ${lead.company_name}`}
-          onPick={(reason) => void changeStatus('sem_interesse', reason)}
+          onPick={(reason, retryOn) => void changeStatus('sem_interesse', reason, retryOn)}
           onCancel={() => setAskLost(false)}
         />
       ) : null}
@@ -732,7 +757,7 @@ export function LeadDetail({ id }: { id: string }) {
           {asideCards.map(([key, node]) => (
             <Fragment key={key}>{node}</Fragment>
           ))}
-          <CardLayoutButton available={availableCards} />
+          <CardLayoutButton board={LEAD_BOARD} available={availableCards} />
         </aside>
       </div>
 

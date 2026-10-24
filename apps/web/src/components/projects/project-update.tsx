@@ -126,7 +126,7 @@ export function WelcomeButton({ lead }: { lead: Lead }) {
 }
 
 /** Com email do cliente e a conta de envio ligada: rever e enviar. Senão, copiar o texto (e fica registado). */
-function DraftEmailButton({
+export function DraftEmailButton({
   lead,
   draft,
   template,

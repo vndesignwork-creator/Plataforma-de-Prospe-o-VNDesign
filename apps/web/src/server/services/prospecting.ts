@@ -8,6 +8,7 @@
 import {
   LOST_REASON_LABELS,
   PROSPECTING_OUTCOME_LABELS,
+  countAttempts,
   formatDate,
   planSequenceAdvance,
   sequenceStepText,
@@ -136,6 +137,10 @@ export async function getProspectingQueue(ctx: ApiContext, filter: ProspectingFi
     push(lead, 'new', lead.next_action_on ? `${lead.next_action_text ?? 'Primeiro contacto'} — ${formatDate(lead.next_action_on)}` : 'Ainda não foi contactado');
   }
 
+  // Quantas vezes já se carregou em "Não atendeu" e "Contactado" em cada lead.
+  const attempts = await outcomesByLead(ctx, items.map((i) => i.lead.id));
+  for (const item of items) item.attempts = countAttempts(attempts.get(item.lead.id) ?? []);
+
   // Sequência multicanal: o passo a fazer agora em cada lead (com o canal e o modelo).
   const seq = (await getSettings(ctx)).prospecting_sequence;
   if (seq.enabled && items.length) {
@@ -148,6 +153,27 @@ export async function getProspectingQueue(ctx: ApiContext, filter: ProspectingFi
     }
   }
   return { items, done_today: done };
+}
+
+/** Resultados registados na Prospeção, por lead, do mais antigo para o mais recente. */
+async function outcomesByLead(ctx: ApiContext, leadIds: string[]): Promise<Map<string, string[]>> {
+  const out = new Map<string, string[]>();
+  for (let i = 0; i < leadIds.length; i += 100) {
+    const { data, error } = await ctx.supabase
+      .from('lead_activities')
+      .select('lead_id, payload->>outcome')
+      .eq('workspace_id', ctx.workspaceId)
+      .eq('payload->>via', 'prospecting')
+      .in('lead_id', leadIds.slice(i, i + 100))
+      .order('created_at', { ascending: true })
+      .limit(5000);
+    if (error) throw fromPostgrest(error);
+    for (const r of (data ?? []) as unknown as { lead_id: string; outcome: string | null }[]) {
+      if (!r.outcome) continue;
+      out.set(r.lead_id, [...(out.get(r.lead_id) ?? []), r.outcome]);
+    }
+  }
+  return out;
 }
 
 /** Regista o resultado de um contacto feito na sessão. */
@@ -200,7 +226,13 @@ export async function recordProspectingOutcome(ctx: ApiContext, leadId: string, 
       await completeFollowUp(ctx, leadId, { action: 'snooze', days: input.days ?? 3, note: null });
       break;
     case 'not_interested':
-      await updateLead(ctx, leadId, { status: 'sem_interesse', lost_reason: input.lost_reason ?? null, next_action_on: null, next_action_text: null });
+      await updateLead(ctx, leadId, {
+        status: 'sem_interesse',
+        lost_reason: input.lost_reason ?? null,
+        retry_on: input.retry_on ?? null,
+        next_action_on: null,
+        next_action_text: null,
+      });
       break;
   }
 

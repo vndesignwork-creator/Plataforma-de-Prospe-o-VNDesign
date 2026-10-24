@@ -4,8 +4,10 @@
  * na base de dados; aqui só se leem, se marcam como lidos e se manda o push.
  */
 import {
+  buildNotificationsEmail,
   leadPath,
   notificationTitle,
+  plainTextToHtml,
   type Activity,
   type CommentCreate,
   type LeadTask,
@@ -16,6 +18,8 @@ import {
 import type { ApiContext } from '../context';
 import { fromPostgrest, unwrap } from '../http';
 import { getLead } from './leads';
+import { isMailConfigured, sendMail } from '../mailer';
+import { createSupabaseAdminClient } from '../supabase-admin';
 import { sendUserPush } from './push';
 import { teamNames } from './team';
 
@@ -116,4 +120,78 @@ export async function createComment(ctx: ApiContext, leadId: string, input: Comm
     ),
   );
   return activity;
+}
+
+/**
+ * Cron diário: os avisos por ler (dos últimos 3 dias) de quem não tem as
+ * notificações push ligadas seguem num email ("Tens 2 avisos…"). Cada aviso vai
+ * no máximo uma vez (emailed_at); quem tem push já os recebeu no telemóvel.
+ */
+export async function sendNotificationEmails(options: { appUrl: string; dryRun?: boolean }) {
+  const admin = createSupabaseAdminClient();
+  const since = new Date(Date.now() - 3 * 86_400_000).toISOString();
+  const { data, error } = await admin
+    .from('notifications')
+    .select('id, workspace_id, user_id, kind, text, created_at, actor_user_id, lead:leads(number, company_name)')
+    .is('read_at', null)
+    .is('emailed_at', null)
+    .gte('created_at', since)
+    .order('created_at', { ascending: true })
+    .limit(2000);
+  if (error) throw new Error(error.message);
+  type Row = {
+    id: string;
+    workspace_id: string;
+    user_id: string;
+    kind: Notification['kind'];
+    text: string;
+    created_at: string;
+    actor_user_id: string | null;
+    lead: { number: number; company_name: string } | null;
+  };
+  const rows = (data ?? []) as unknown as Row[];
+  const byUser = new Map<string, Row[]>();
+  for (const r of rows) byUser.set(`${r.workspace_id}:${r.user_id}`, [...(byUser.get(`${r.workspace_id}:${r.user_id}`) ?? []), r]);
+  let sent = 0;
+  let skipped = 0;
+  for (const [key, items] of byUser) {
+    const [workspaceId, userId] = key.split(':') as [string, string];
+    const done = async () => {
+      if (!options.dryRun) await admin.from('notifications').update({ emailed_at: new Date().toISOString() }).in('id', items.map((i) => i.id));
+    };
+    const { count } = await admin.from('push_subscriptions').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('user_id', userId);
+    if (count) {
+      skipped++;
+      await done();
+      continue;
+    }
+    const { data: user } = await admin.auth.admin.getUserById(userId);
+    const email = user.user?.email;
+    if (!email || options.dryRun || !isMailConfigured()) {
+      skipped++;
+      continue;
+    }
+    const people = [userId, ...items.map((i) => i.actor_user_id).filter((v): v is string => !!v)];
+    const { data: sigs } = await admin.from('signatures').select('user_id, full_name').eq('workspace_id', workspaceId).in('user_id', people);
+    const nameOf = (id: string | null) => (id ? ((sigs ?? []) as { user_id: string; full_name: string | null }[]).find((s) => s.user_id === id)?.full_name ?? null : null);
+    const mail = buildNotificationsEmail({
+      name: nameOf(userId),
+      appUrl: options.appUrl,
+      items: items.map((i) => ({
+        kind: i.kind,
+        text: i.text,
+        created_at: i.created_at,
+        actor: nameOf(i.actor_user_id),
+        lead: i.lead ? { ...i.lead, url: `${options.appUrl}${leadPath(i.lead)}` } : null,
+      })),
+    });
+    try {
+      await sendMail({ to: email, subject: mail.subject, text: mail.text, html: plainTextToHtml(mail.text) });
+      sent++;
+      await done();
+    } catch {
+      skipped++;
+    }
+  }
+  return { sent, skipped };
 }

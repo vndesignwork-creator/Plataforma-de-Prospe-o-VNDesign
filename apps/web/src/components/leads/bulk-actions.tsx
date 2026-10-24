@@ -143,14 +143,14 @@ export function BulkStatusMenu({ rows, onDone }: { rows: Lead[]; onDone: () => v
   const bulk = useBulkLeadAction();
   // "Sem interesse": pergunta o motivo antes (vale para todos os selecionados).
   const [askLost, setAskLost] = useState(false);
-  async function run(status: LeadStatus, lostReason?: LostReason | null) {
+  async function run(status: LeadStatus, lostReason?: LostReason | null, retryOn?: string | null) {
     if (status === 'sem_interesse' && lostReason === undefined) {
       setAskLost(true);
       return;
     }
     setAskLost(false);
     try {
-      const result = await bulk.mutateAsync({ action: 'status', ids: rows.map((l) => l.id), status, ...(lostReason ? { lost_reason: lostReason } : {}) });
+      const result = await bulk.mutateAsync({ action: 'status', ids: rows.map((l) => l.id), status, ...(lostReason ? { lost_reason: lostReason } : {}), ...(retryOn ? { retry_on: retryOn } : {}) });
       onDone();
       toast.success(`${bulkResultMessage(result).replace(/\.$/, '')} para “${LEAD_STATUS_META[status].label}”.`);
     } catch (error) {
@@ -176,7 +176,7 @@ export function BulkStatusMenu({ rows, onDone }: { rows: Lead[]; onDone: () => v
         <LostReasonDialog
           open
           subject={rows.length === 1 ? `#${rows[0]!.number} ${rows[0]!.company_name}` : `${rows.length} leads`}
-          onPick={(reason) => void run('sem_interesse', reason)}
+          onPick={(reason, retryOn) => void run('sem_interesse', reason, retryOn)}
           onCancel={() => setAskLost(false)}
         />
       ) : null}
