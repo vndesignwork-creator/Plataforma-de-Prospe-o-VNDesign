@@ -387,6 +387,10 @@ export const CalendarQuerySchema = z
     from: z.iso.date({ error: 'Data inválida.' }),
     to: z.iso.date({ error: 'Data inválida.' }),
     followups: z.enum(['true', 'false']).optional().meta({ description: 'true = também as próximas ações dos leads (Agenda)' }),
+    overdue: z
+      .enum(['true', 'false'])
+      .optional()
+      .meta({ description: 'true = também os follow-ups e as tarefas por fazer de dias anteriores a hoje (os em atraso)' }),
   })
   .refine((q) => q.from <= q.to && daysBetween(q.from, q.to) <= 62, { error: 'Intervalo inválido (máximo 62 dias).' });
 

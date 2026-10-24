@@ -5,6 +5,7 @@
  *   SUPABASE_URL=http://127.0.0.1:54321 SUPABASE_KEY=<publishable key> npm test
  */
 import { describe, expect, it } from 'vitest';
+import { workingDay } from '../src/format';
 import { isDirectoryUrl } from '../src/links';
 import { emailBusinessDomain, normalizeCompanyName, normalizeEmail, websiteKey } from '../src/normalize';
 
@@ -67,6 +68,10 @@ describe.skipIf(!url || !key)('paridade TypeScript ↔ SQL', () => {
   });
   it.each(LINKS)('vnd_is_directory_url(%j)', async (link) => {
     expect(await rpc('vnd_is_directory_url', { p: link })).toBe(isDirectoryUrl(link));
+  });
+  it.each(['2026-10-23', '2026-10-24', '2026-10-25', '2026-10-26'])('vnd_working_day(%j)', async (day) => {
+    expect(await rpc('vnd_working_day', { p_settings: {}, p_date: day })).toBe(workingDay(day));
+    expect(await rpc('vnd_working_day', { p_settings: { work_weekends: true }, p_date: day })).toBe(workingDay(day, true));
   });
   it.each(EMAILS)('vnd_normalize_email(%j)', async (email) => {
     const normalized = await rpc('vnd_normalize_email', { p: email });

@@ -12,6 +12,13 @@ const run = Date.now().toString(36);
 const FROM = `va+v5${run}@vndesign.pt`;
 const MAILPIT = 'http://127.0.0.1:54324/api/v1';
 // Dias de calendário em Lisboa (somar 24 h falha na mudança de hora).
+// Os follow-ups automáticos não caem ao fim de semana: sábado e domingo passam para segunda.
+const workday = (date: string) => {
+  const d = new Date(`${date}T12:00:00Z`);
+  const shift = d.getUTCDay() === 6 ? 2 : d.getUTCDay() === 0 ? 1 : 0;
+  d.setUTCDate(d.getUTCDate() + shift);
+  return d.toISOString().slice(0, 10);
+};
 const lisbonDay = (days: number) => {
   const d = new Date(`${new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Lisbon' }).format(new Date())}T12:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
@@ -160,7 +167,7 @@ test('aberturas do email: imagem de 1×1, clique no link, linha do tempo, Hoje e
 
 test('sessão de prospeção pela API: não atendeu, contactado e mais tarde', async ({ request }) => {
   const lead = await createLead(request, { company_name: `Sessão ${run}`, phone: '912000111' });
-  const tomorrow = lisbonDay(1);
+  const tomorrow = workday(lisbonDay(1));
   let res = await request.post(`/api/v1/leads/${lead.id}/prospecting`, { data: { outcome: 'no_answer' } });
   expect(res.status(), await res.text()).toBe(200);
   expect((await res.json()).data.lead).toMatchObject({ status: 'identificado', next_action_on: tomorrow });
@@ -169,7 +176,7 @@ test('sessão de prospeção pela API: não atendeu, contactado e mais tarde', a
   expect(body.lead.status).toBe('contactado');
   expect(body.done_today).toBeGreaterThanOrEqual(2);
   res = await request.post(`/api/v1/leads/${lead.id}/prospecting`, { data: { outcome: 'later', days: 7 } });
-  expect((await res.json()).data.lead.next_action_on).toBe(lisbonDay(7));
+  expect((await res.json()).data.lead.next_action_on).toBe(workday(lisbonDay(7)));
   const queue = (await (await request.get('/api/v1/prospecting?filter=new')).json()).data;
   expect(queue.items.some((i: { lead: { id: string } }) => i.lead.id === lead.id)).toBe(false);
 });

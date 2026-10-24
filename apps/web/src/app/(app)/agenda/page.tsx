@@ -9,7 +9,7 @@ export default function AgendaPage() {
     <>
       <PageHeader
         title="Agenda"
-        description="A semana: follow-ups, tarefas, reuniões, entregas e pagamentos. Arrasta (ou usa “Mudar o dia”) para passar uma tarefa, um follow-up ou uma entrega para outro dia."
+        description="A semana dos compromissos: reuniões, entregas, pagamentos e tarefas. Os follow-ups aparecem como um número por dia (fazem-se na Prospeção); arrasta ou usa “Mudar o dia” para passar algo para outro dia."
       />
       <AgendaView />
     </>

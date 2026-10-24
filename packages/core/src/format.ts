@@ -70,6 +70,17 @@ export function todayIso(now: Date = new Date()): string {
   return isoDateFormatter.format(now);
 }
 
+/**
+ * Dia útil: sábado e domingo passam para segunda-feira (a não ser que se trabalhe
+ * ao fim de semana). Espelho de vnd_working_day no SQL; só para as datas que a
+ * plataforma marca sozinha (as escolhidas à mão ficam como estão).
+ */
+export function workingDay(isoDate: string, workWeekends = false): string {
+  if (workWeekends) return isoDate;
+  const weekday = new Date(`${isoDate}T00:00:00Z`).getUTCDay(); // 0 = domingo, 6 = sábado
+  return weekday === 6 ? addDays(isoDate, 2) : weekday === 0 ? addDays(isoDate, 1) : isoDate;
+}
+
 /** Soma dias a uma data "AAAA-MM-DD". */
 export function addDays(isoDate: string, days: number): string {
   const [y, m, d] = isoDate.split('-').map(Number);

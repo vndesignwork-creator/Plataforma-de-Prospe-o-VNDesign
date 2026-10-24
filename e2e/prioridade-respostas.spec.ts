@@ -13,6 +13,13 @@ const FROM = `va+seq${run}@vndesign.pt`;
 const MAILPIT = 'http://127.0.0.1:54324/api/v1';
 const IMAP_PORT = 1143;
 const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Lisbon' }).format(new Date());
+// Os follow-ups automáticos não caem ao fim de semana: sábado e domingo passam para segunda.
+const workday = (date: string) => {
+  const d = new Date(`${date}T12:00:00Z`);
+  const shift = d.getUTCDay() === 6 ? 2 : d.getUTCDay() === 0 ? 1 : 0;
+  d.setUTCDate(d.getUTCDate() + shift);
+  return d.toISOString().slice(0, 10);
+};
 const plusDays = (iso: string, days: number) => {
   const [y, m, d] = iso.split('-').map(Number) as [number, number, number];
   return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
@@ -142,7 +149,7 @@ test('sequência: o 1.º email agenda o follow-up 1; “Enviar follow-up” resp
   await expect(page.getByText(new RegExp(`Follow-up 1 enviado para ${to}\\. Próximo: Follow-up 2 de 3 por email a`))).toBeVisible();
 
   current = await getLead(page.request, lead.id);
-  expect(current).toMatchObject({ follow_up_count: 1, last_follow_up_on: today(), next_action_text: 'Follow-up 2 de 3 por email', next_action_on: plusDays(today(), 7) });
+  expect(current).toMatchObject({ follow_up_count: 1, last_follow_up_on: today(), next_action_text: 'Follow-up 2 de 3 por email', next_action_on: workday(plusDays(today(), 7)) });
   await expect(page.getByLabel('Atividade do lead').getByText('Follow-up 1 enviado por email ✓')).toBeVisible();
 
   // O follow-up chegou como resposta ao primeiro email (o cliente de email junta-os na mesma conversa).

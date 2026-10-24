@@ -140,10 +140,17 @@ Seleciona leads com as caixas à esquerda: **Arquivar**/**Repor**, **Atribuir a�
 
 ## Agenda da semana
 
-Menu **Agenda** (ou *Agenda da semana* no cartão Hoje do Dashboard): de segunda a domingo, os **follow-ups** (próxima ação dos leads), as **tarefas**, as **reuniões**, as **entregas** e os **pagamentos previstos**.
+Menu **Agenda** (ou *Agenda da semana* no cartão Hoje do Dashboard): a semana dos **compromissos com data** — **reuniões** (com hora), **entregas**, **pagamentos previstos** e **tarefas** — de segunda a domingo.
 
+- Em cima, o **resumo da semana**: "3 reuniões · 2 entregas · 1 250 € a receber · 5 tarefas · 24 follow-ups".
+- **Em atraso** (só na semana atual): os follow-ups e as tarefas por fazer de dias anteriores, numa linha; abre-se para os ver e **Pôr em dia** passa-os todos para hoje, amanhã, a próxima semana ou outra data (com **Anular**).
+- **Follow-ups** (próxima ação dos leads): em cada dia, uma linha "12 follow-ups" que se abre com um toque (até 3 ficam logo à vista). Fazem-se na **Prospeção** (no dia de hoje há o atalho *Fazer na Prospeção*).
+  - **Distribuir**: num dia com mais de **8** follow-ups (de hoje para a frente), deixa 8 e passa os outros para os dias úteis seguintes com lugar (com **Anular**).
+  - **Tirar da agenda** (no menu 🗓 de cada follow-up): o lead fica sem data para a próxima ação (com **Anular**).
 - Mudar de dia: **arrasta** o cartão (computador) ou usa o botão 🗓 **Mudar o dia** (telemóvel e teclado), também para a *Próxima semana*. Muda a data da tarefa, a próxima ação do lead ou o prazo do projeto. Reuniões e pagamentos mudam-se na ficha.
 - Marca as tarefas como feitas na própria agenda; **‹ ›** muda de semana e **Esta semana** volta.
+- **Telemóvel**: abre no dia de hoje; os outros dias mostram quantos itens têm e abrem-se com um toque.
+- **Fins de semana**: os follow-ups que a plataforma marca sozinha ("Contactado", "Não atendeu", "Mais tarde", follow-up feito, sequências, "agora não" que volta) nunca caem ao sábado nem ao domingo — passam para segunda-feira. Quem trabalha ao fim de semana liga **Também trabalho ao fim de semana** em Definições → Follow-up e lembretes. As datas escolhidas à mão ficam como estão.
 - O cartão **Hoje** continua a ser a lista do que é urgente; a Agenda serve para planear a semana.
 - Mudar o dia tem **Anular** no aviso.
 - Os **follow-ups** também aparecem no **calendário subscrito** (Google Calendar / iPhone), como "🔔 próxima ação · empresa".

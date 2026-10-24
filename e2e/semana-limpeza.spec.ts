@@ -106,6 +106,11 @@ test('agenda da semana: follow-ups, tarefas e mudar o dia', async ({ page }) => 
   const task = (await (await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title: `Tarefa agenda ${run}`, due_on: iso(0) } })).json()).data as { id: string };
 
   await page.goto('/agenda');
+  // Os follow-ups de cada dia ficam num número ("12 follow-ups"); com muitos, abrem-se com um toque.
+  const todayGroup = page.getByRole('group', { name: new RegExp(`^Follow-ups de ${new Intl.DateTimeFormat('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${iso(0)}T00:00:00Z`))}$`) });
+  const toggle = todayGroup.getByRole('button', { name: /\d+ follow-ups?/ });
+  await expect(toggle).toBeVisible({ timeout: 30_000 });
+  if ((await toggle.getAttribute('aria-expanded')) === 'false') await toggle.click();
   const followUp = page.getByRole('article', { name: new RegExp(`Follow-up: Ligar ${run}`) });
   await expect(followUp).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole('article', { name: new RegExp(`Tarefa: Tarefa agenda ${run}`) })).toBeVisible();

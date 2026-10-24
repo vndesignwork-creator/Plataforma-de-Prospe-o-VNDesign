@@ -18,6 +18,7 @@ export function PreferencesSettings() {
   const { data: me } = useMe();
   const { data: settings, isLoading } = useSettings();
   const [followUpDays, setFollowUpDays] = useState('3');
+  const [workWeekends, setWorkWeekends] = useState(false);
   const { data: templates } = useTemplates();
   const followUpTemplates = (templates ?? []).filter((t) => t.kind === 'follow_up');
   const [sequenceEnabled, setSequenceEnabled] = useState(true);
@@ -36,6 +37,7 @@ export function PreferencesSettings() {
     if (!settings) return;
     /* eslint-disable react-hooks/set-state-in-effect -- sincroniza o formulário com os dados carregados */
     setFollowUpDays(String(settings.follow_up_days));
+    setWorkWeekends(settings.work_weekends);
     setSequenceEnabled(settings.follow_up_sequence.enabled);
     setSteps(settings.follow_up_sequence.steps.map((s) => ({ days: String(s.days), template_id: s.template_id ?? '' })));
     setOptOut(settings.opt_out_line);
@@ -54,6 +56,7 @@ export function PreferencesSettings() {
         method: 'PATCH',
         body: {
           follow_up_days: Number(followUpDays),
+          work_weekends: workWeekends,
           follow_up_sequence: {
             enabled: sequenceEnabled,
             steps: steps.map((s) => ({ days: Number(s.days), template_id: s.template_id || null })),
@@ -93,6 +96,16 @@ export function PreferencesSettings() {
         <Field label="Dias até ao follow-up" hint='Ao passar um lead a "Contactado" à mão (ou com a sequência desligada), a próxima ação fica para daqui a N dias.'>
           <Input type="number" min={1} max={60} value={followUpDays} onChange={(e) => setFollowUpDays(e.target.value)} />
         </Field>
+        <div className="flex flex-col gap-1.5 md:col-span-2">
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input type="checkbox" checked={workWeekends} onChange={(e) => setWorkWeekends(e.target.checked)} />
+            Também trabalho ao fim de semana
+          </label>
+          <p className="text-xs text-muted">
+            Desligado: os follow-ups que a plataforma marca sozinha (Contactado, Não atendeu, Mais tarde, sequências) nunca caem ao sábado
+            nem ao domingo — passam para segunda-feira. As datas que escolhes à mão ficam como estão.
+          </p>
+        </div>
         <Field label="Linha de opt-out (RGPD)" hint="Variável {{opt_out}} nos modelos de email.">
           <Input value={optOut} onChange={(e) => setOptOut(e.target.value)} />
         </Field>

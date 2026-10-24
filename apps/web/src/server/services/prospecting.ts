@@ -14,6 +14,7 @@ import {
   sequenceStepText,
   timeAgo,
   todayIso,
+  workingDay,
   type Lead,
   type ProspectingFilter,
   type ProspectingItem,
@@ -181,7 +182,8 @@ export async function recordProspectingOutcome(ctx: ApiContext, leadId: string, 
   const lead = await getLead(ctx, leadId);
   if (lead.anonymized_at) throw new ApiError(422, 'Lead anonimizado', 'Não é possível registar contactos num lead anonimizado.');
   const tomorrow = 1;
-  const seq = (await getSettings(ctx)).prospecting_sequence;
+  const settings = await getSettings(ctx);
+  const seq = settings.prospecting_sequence;
   const inSequence = seq.enabled && IN_SEQUENCE.has(lead.status);
   let seqDone: string | null = null;
 
@@ -191,7 +193,8 @@ export async function recordProspectingOutcome(ctx: ApiContext, leadId: string, 
     const plan = planSequenceAdvance(seq, Math.min(current, seq.steps.length - 1), todayIso());
     await updateLead(ctx, leadId, {
       ...(lead.status === 'identificado' ? { status: 'contactado' as const } : {}),
-      next_action_on: plan.on,
+      // Sem fins de semana (a não ser que se trabalhe ao fim de semana).
+      next_action_on: workingDay(plan.on, settings.work_weekends),
       next_action_text: plan.text,
     });
     await setSequenceStep(ctx, leadId, plan.step);
@@ -212,7 +215,7 @@ export async function recordProspectingOutcome(ctx: ApiContext, leadId: string, 
         await updateLead(ctx, leadId, { status: 'contactado' });
       } else {
         // Follow-up feito; o seguinte fica para daqui a uns dias (os das Definições).
-        await completeFollowUp(ctx, leadId, { action: 'done', days: (await getSettings(ctx)).follow_up_days, note: null });
+        await completeFollowUp(ctx, leadId, { action: 'done', days: settings.follow_up_days, note: null });
       }
       break;
     case 'interested':

@@ -1224,10 +1224,13 @@ export function useProfitability(enabled = true) {
   });
 }
 
-export function useProjectCalendar(from: string, to: string, enabled = true, followups = false) {
+export function useProjectCalendar(from: string, to: string, enabled = true, followups = false, overdue = false) {
   return useQuery({
-    queryKey: ['project-calendar', from, to, followups],
-    queryFn: () => api<{ data: CalendarEvent[] }>('/projects/calendar', { query: { from, to, followups: followups ? 'true' : undefined } }).then((r) => r.data),
+    queryKey: ['project-calendar', from, to, followups, overdue],
+    queryFn: () =>
+      api<{ data: CalendarEvent[] }>('/projects/calendar', {
+        query: { from, to, followups: followups ? 'true' : undefined, overdue: overdue ? 'true' : undefined },
+      }).then((r) => r.data),
     enabled,
     placeholderData: keepPreviousData,
   });

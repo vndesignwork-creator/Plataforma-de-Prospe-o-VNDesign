@@ -14,6 +14,13 @@ async function createLead(request: APIRequestContext, data: Record<string, unkno
   return (await res.json()).data as { id: string; number: number; company_name: string };
 }
 
+// Os follow-ups automáticos não caem ao fim de semana: sábado e domingo passam para segunda.
+const workday = (date: string) => {
+  const d = new Date(`${date}T12:00:00Z`);
+  const shift = d.getUTCDay() === 6 ? 2 : d.getUTCDay() === 0 ? 1 : 0;
+  d.setUTCDate(d.getUTCDate() + shift);
+  return d.toISOString().slice(0, 10);
+};
 const addDays = (n: number) => {
   const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Lisbon' }));
   d.setDate(d.getDate() + n);
@@ -80,7 +87,7 @@ test('sequência multicanal: o passo na Prospeção e "Contactado" agenda o segu
     const done = await page.request.post(`/api/v1/leads/${lead.id}/prospecting`, { data: { outcome: 'contacted' } });
     expect(done.status(), await done.text()).toBe(200);
     const after = (await done.json()).data.lead as { status: string; next_action_on: string; next_action_text: string };
-    expect(after).toMatchObject({ status: 'contactado', next_action_on: addDays(3), next_action_text: 'Passo 2 de 3: Email (dia 3)' });
+    expect(after).toMatchObject({ status: 'contactado', next_action_on: workday(addDays(3)), next_action_text: 'Passo 2 de 3: Email (dia 3)' });
     const acts = (await (await page.request.get(`/api/v1/leads/${lead.id}/activities`)).json()).data as { body: string | null }[];
     expect(acts.some((a) => a.body?.includes('Contactado — Passo 1 de 3: WhatsApp (dia 0)'))).toBe(true);
 

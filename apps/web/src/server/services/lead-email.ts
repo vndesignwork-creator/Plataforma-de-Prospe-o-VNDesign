@@ -12,6 +12,7 @@ import {
   replySubject,
   slugify,
   todayIso,
+  workingDay,
   type FollowUpDraft,
   type Lead,
   type LeadEmailSend,
@@ -136,11 +137,12 @@ export async function sendLeadEmail(ctx: ApiContext, leadId: string, input: Lead
   if (lead.status === 'identificado' || lead.status === 'contactado') {
     const first = lead.status === 'identificado';
     const sent = first ? 0 : (lead.follow_up_count ?? 0) + 1;
-    const plan = planNextFollowUp(await getSettings(ctx), sent, todayIso());
+    const settings = await getSettings(ctx);
+    const plan = planNextFollowUp(settings, sent, todayIso());
     const { error } = await ctx.supabase.rpc('vnd_after_email_sent', {
       p_lead_id: lead.id,
       p_first: first,
-      p_next_on: plan.on,
+      p_next_on: workingDay(plan.on, settings.work_weekends),
       p_next_text: plan.text,
       p_follow_up_count: sent,
       p_step: first ? null : sent,

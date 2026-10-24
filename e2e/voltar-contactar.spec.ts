@@ -42,6 +42,13 @@ async function createLead(request: APIRequestContext, data: Record<string, unkno
   return (await res.json()).data as LeadRow;
 }
 const getLead = async (request: APIRequestContext, id: string) => (await (await request.get(`/api/v1/leads/${id}`)).json()).data as LeadRow;
+// Os follow-ups automáticos não caem ao fim de semana: sábado e domingo passam para segunda.
+const workday = (date: string) => {
+  const d = new Date(`${date}T12:00:00Z`);
+  const shift = d.getUTCDay() === 6 ? 2 : d.getUTCDay() === 0 ? 1 : 0;
+  d.setUTCDate(d.getUTCDate() + shift);
+  return d.toISOString().slice(0, 10);
+};
 const lisbonToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Lisbon' }).format(new Date());
 
 test('Prospeção: contagem de "Não atendeu" e "Contactado"; à 3.ª vez sem resposta sugere Sem interesse', async ({ page }) => {
@@ -116,7 +123,7 @@ test('"Agora não" volta sozinho à Prospeção na data escolhida', async ({ pag
   const cron = await page.request.get('/api/v1/cron/daily-digest', { headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` } });
   expect(cron.status(), await cron.text()).toBe(200);
   expect((await cron.json()).retried).toBeGreaterThanOrEqual(1);
-  expect(await getLead(page.request, lead.id)).toMatchObject({ status: 'contactado', retry_on: null, lost_reason: null, next_action_on: lisbonToday() });
+  expect(await getLead(page.request, lead.id)).toMatchObject({ status: 'contactado', retry_on: null, lost_reason: null, next_action_on: workday(lisbonToday()) });
   const activities = (await (await page.request.get(`/api/v1/leads/${lead.id}/activities`)).json()).data as { body: string | null }[];
   expect(activities.some((a) => /^Voltou à prospeção: a \d{2}\/\d{2}\/\d{4} tinha dito “agora não”\.$/.test(a.body ?? ''))).toBe(true);
 });
