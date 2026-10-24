@@ -205,7 +205,14 @@ function LeadCard({
         ...(retryOn ? { retry_on: retryOn } : {}),
       });
       const next = result.lead.next_action_on ? ` Próxima ação a ${formatDate(result.lead.next_action_on)}.` : '';
-      toast.success(`#${lead.number} ${lead.company_name}: registado.${next}`);
+      // Cada toque passa ao lead seguinte: o aviso diz quantas vezes já vai neste lead.
+      const times =
+        value === 'no_answer'
+          ? ` — Não atendeu (${attempts.no_answer + 1}.ª vez); volta a aparecer${result.lead.next_action_on ? ` a ${formatDate(result.lead.next_action_on)}` : ' amanhã'}.`
+          : value === 'contacted'
+            ? ` — Contactado (${attempts.contacted + 1}.ª vez).${next}`
+            : `.${next}`;
+      toast.success(`#${lead.number} ${lead.company_name}: registado${times}`);
       onDone(result.done_today);
     } catch (error) {
       toast.error(errorMessage(error));
@@ -368,8 +375,9 @@ function LeadCard({
           </Button>
         </div>
         <p className="text-xs text-muted">
-          “Contactado” agenda o próximo follow-up; “Não atendeu” volta a mostrar o lead amanhã; “Interessado” passa-o a Respondeu, com
-          a próxima ação para hoje.
+          Cada toque regista e passa ao lead seguinte. O número nos botões é quantas vezes já o fizeste neste lead (à 3.ª vez seguida sem
+          atender, a plataforma pergunta se passa a Sem interesse). “Contactado” agenda o próximo follow-up; “Não atendeu” volta a mostrar o
+          lead amanhã; “Interessado” passa-o a Respondeu, com a próxima ação para hoje.
         </p>
       </section>
       {askGiveUp ? (

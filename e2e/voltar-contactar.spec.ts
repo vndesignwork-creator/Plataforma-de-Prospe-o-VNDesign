@@ -69,6 +69,19 @@ test('Prospeção: contagem de "Não atendeu" e "Contactado"; à 3.ª vez sem re
   expect(await getLead(page.request, lead.id)).toMatchObject({ status: 'sem_interesse', lost_reason: 'nao_responde' });
 });
 
+test('Prospeção: o aviso diz quantas vezes já vai neste lead (e passa ao seguinte)', async ({ page }) => {
+  const lead = await createLead(page.request, { company_name: `Aviso Tentativa ${run}`, status: 'contactado' });
+  expect((await page.request.post(`/api/v1/leads/${lead.id}/prospecting`, { data: { outcome: 'no_answer' } })).status()).toBe(200);
+  expect((await page.request.patch(`/api/v1/leads/${lead.id}`, { data: { next_action_on: '2019-01-01' } })).status()).toBe(200);
+  await page.goto('/prospecao');
+  await page.getByRole('tab', { name: 'Follow-ups' }).click();
+  await expect(page.getByRole('heading', { name: new RegExp(`Aviso Tentativa ${run}`) })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Não atendeu/ })).toContainText('1×');
+  await page.getByRole('button', { name: /Não atendeu/ }).click();
+  await expect(page.getByText(new RegExp(`#${lead.number} Aviso Tentativa ${run}: registado — Não atendeu \\(2\\.ª vez\\); volta a aparecer a \\d{2}/\\d{2}/\\d{4}\\.`))).toBeVisible();
+  await expect(page.getByRole('heading', { name: new RegExp(`Aviso Tentativa ${run}`) })).toHaveCount(0);
+});
+
 test('"Agora não" volta sozinho à Prospeção na data escolhida', async ({ page }) => {
   const lead = await createLead(page.request, { company_name: `Agora Não ${run}`, status: 'contactado' });
   await page.goto(`/leads/${lead.id}`);
