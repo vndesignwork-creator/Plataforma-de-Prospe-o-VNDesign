@@ -2,6 +2,7 @@
 
 import {
   LEAD_STATUS_META,
+  LOST_REASON_LABELS,
   LEAD_STATUSES,
   formatCurrency,
   formatDate,
@@ -11,6 +12,7 @@ import {
   todayIso,
   type Lead,
   type LeadStatus,
+  type LostReason,
   leadPath,
 } from '@vndesign/core';
 import {
@@ -78,6 +80,9 @@ import { rememberLead } from '@/lib/recent-leads';
 import { MeetingNotesButton } from './meeting-notes';
 import { TagChips, TagEditor } from './tags';
 import { CustomFieldsRows } from './custom-fields';
+import { LostReasonDialog, LostReasonField } from './lost-reason';
+import { StageAge } from './stage-age';
+import { LeadFilesCard } from './lead-files';
 import { LeadSummaryButton } from './lead-summary';
 import { PinnedNoteBox, PinnedNoteDialog } from './pinned-note';
 import { restoreDeletedLeads } from './trash-view';
@@ -222,6 +227,8 @@ export function LeadDetail({ id }: { id: string }) {
   }, [lead]);
   // Prospetor: só a parte comercial (sem valores, propostas, pagamentos, projetos nem apagar).
   const staff = me ? me.role !== 'prospector' : false;
+  // "Sem interesse": pergunta primeiro o motivo.
+  const [askLost, setAskLost] = useState(false);
 
   if (isLoading) {
     return (
@@ -244,9 +251,14 @@ export function LeadDetail({ id }: { id: string }) {
   const today = todayIso();
   const overdue = lead.next_action_on !== null && lead.next_action_on < today;
 
-  async function changeStatus(status: LeadStatus) {
+  async function changeStatus(status: LeadStatus, lostReason?: LostReason | null) {
+    if (status === 'sem_interesse' && lostReason === undefined) {
+      setAskLost(true);
+      return;
+    }
+    setAskLost(false);
     try {
-      const updated = await update.mutateAsync({ status });
+      const updated = await update.mutateAsync(status === 'sem_interesse' ? { status, lost_reason: lostReason ?? null } : { status });
       const scheduled =
         status === 'contactado' && updated.next_action_on && updated.next_action_on !== lead!.next_action_on;
       toast.success(
@@ -442,6 +454,14 @@ export function LeadDetail({ id }: { id: string }) {
       {!lead.anonymized_at ? <PinnedNoteBox note={lead.pinned_note} onEdit={() => setPinOpen(true)} className="mb-3 -mt-2" /> : null}
       {!lead.anonymized_at ? <QuickContact lead={lead} whatsappMessages={!!settings?.features.whatsapp_templates} /> : null}
       {!lead.anonymized_at ? <PinnedNoteDialog lead={lead} open={pinOpen} onOpenChange={setPinOpen} /> : null}
+      {askLost ? (
+        <LostReasonDialog
+          open
+          subject={`#${lead.number} ${lead.company_name}`}
+          onPick={(reason) => void changeStatus('sem_interesse', reason)}
+          onCancel={() => setAskLost(false)}
+        />
+      ) : null}
 
       {lead.archived_at ? (
         <div
@@ -498,6 +518,16 @@ export function LeadDetail({ id }: { id: string }) {
                 {!lead.anonymized_at ? <TagEditor lead={lead} /> : lead.tags?.length ? <TagChips tags={lead.tags} /> : dash}
               </Row>
               <CustomFieldsRows lead={lead} canEdit={!lead.anonymized_at} />
+              {lead.status === 'sem_interesse' ? (
+                <Row label="Motivo" className="md:col-span-2">
+                  {!lead.anonymized_at ? <LostReasonField lead={lead} /> : lead.lost_reason ? LOST_REASON_LABELS[lead.lost_reason] : dash}
+                </Row>
+              ) : null}
+              {!['cliente', 'sem_interesse'].includes(lead.status) ? (
+                <Row label="Nesta fase">
+                  <StageAge since={lead.status_changed_at} />
+                </Row>
+              ) : null}
               <Row label="Ângulo de abordagem" className="md:col-span-2">
                 {lead.approach_angle ? <span className="whitespace-pre-line">{lead.approach_angle}</span> : dash}
               </Row>
@@ -672,6 +702,8 @@ export function LeadDetail({ id }: { id: string }) {
           {staff && settings?.features.payments ? <PaymentsCard lead={lead} /> : null}
           {staff && settings?.features.projects ? <ClientProjectsCard lead={lead} /> : null}
           {staff && settings?.features.brand_kit && (lead.status === 'cliente' || lead.client_of) && !lead.anonymized_at ? <BrandKitCard lead={lead} /> : null}
+          {/* Antes de ser cliente: só os ficheiros (os mesmos do kit, que ficam lá quando ganhar). */}
+          {settings?.features.brand_kit && lead.status !== 'cliente' && !lead.client_of && !lead.anonymized_at ? <LeadFilesCard lead={lead} /> : null}
           {settings?.features.meetings ? <MeetingsCard lead={lead} /> : null}
           <NotesCard lead={lead} />
           {staff ? <ProposalsCard lead={lead} /> : null}

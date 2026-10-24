@@ -184,6 +184,17 @@ export const TEMPLATE_KIND_LABELS: Record<TemplateKind, string> = {
   whatsapp: 'WhatsApp',
 };
 
+/** Porque um lead passou a "Sem interesse" (para perceber onde se perdem leads). */
+export const LOST_REASONS = ['preco', 'ja_tem_site', 'agora_nao', 'nao_responde', 'outro'] as const;
+export type LostReason = (typeof LOST_REASONS)[number];
+export const LOST_REASON_LABELS: Record<LostReason, string> = {
+  preco: 'Preço',
+  ja_tem_site: 'Já tem site / fornecedor',
+  agora_nao: 'Agora não (talvez mais tarde)',
+  nao_responde: 'Não responde',
+  outro: 'Outro motivo',
+};
+
 /** Motivos devolvidos por find_lead_duplicates() e respetivo texto. */
 export const DUPLICATE_REASON_LABELS: Record<string, string> = {
   website: 'mesmo website',

@@ -61,3 +61,50 @@ export function buildProjectUpdate(input: ProjectUpdateInput): { subject: string
 
   return { subject: `${PROJECT_UPDATE_TEMPLATE} — ${input.projectTitle ?? input.company}`, body: lines.join('\n').trim() };
 }
+
+// -----------------------------------------------------------------------------
+// Boas-vindas ao novo cliente: o que já existe numa só mensagem (página do
+// cliente, briefing online, plano de pagamentos, próxima reunião e primeiros
+// passos). A pessoa revê antes de enviar.
+// -----------------------------------------------------------------------------
+
+export const WELCOME_TEMPLATE = 'Boas-vindas';
+
+export interface WelcomeInput {
+  company: string;
+  projectTitle: string | null;
+  contact: string | null;
+  dueOn: string | null;
+  tasks: readonly { title: string; done_at: string | null; due_on: string | null }[];
+  payments: readonly { description: string; amount: number; due_on: string | null; paid_on: string | null }[];
+  meeting: { starts_at: string } | null;
+  shareUrl: string | null;
+  /** Link do briefing online (só se ainda não foi respondido). */
+  briefingUrl: string | null;
+  signature: string | null;
+}
+
+export function buildWelcomeEmail(input: WelcomeInput): { subject: string; body: string } {
+  const name = input.projectTitle ? `${input.projectTitle} (${input.company})` : input.company;
+  const steps = input.tasks.filter((t) => !t.done_at).slice(0, 4);
+  const lines: string[] = [input.contact ? `Olá ${input.contact.split(' ')[0]},` : 'Boa tarde,', ''];
+  lines.push(`Obrigado pela confiança! Fico muito contente por começarmos o projeto ${name}.`, '');
+  lines.push('Para arrancar:');
+  if (input.briefingUrl) lines.push(`• Responda ao briefing (10 minutos, pode juntar logótipos e fotografias): ${input.briefingUrl}`);
+  if (input.meeting) {
+    const d = new Date(input.meeting.starts_at);
+    lines.push(`• A nossa reunião de arranque: ${formatDate(lisbonDay(input.meeting.starts_at))} às ${timeFmt.format(d)}.`);
+  }
+  for (const t of steps) lines.push(`• ${t.title}${t.due_on ? ` (até ${formatDate(t.due_on)})` : ''}`);
+  if (!input.briefingUrl && !input.meeting && !steps.length) lines.push('• Envie-me os conteúdos que já tiver (textos, logótipos, fotografias).');
+  lines.push('');
+  if (input.dueOn) lines.push(`Entrega prevista: ${formatDate(input.dueOn)}.`, '');
+  const open = input.payments.filter((p) => !p.paid_on);
+  if (open.length) {
+    lines.push('Pagamentos:', ...open.map((p) => `• ${p.description} — ${formatCurrency(p.amount, { decimals: false })}${p.due_on ? ` até ${formatDate(p.due_on)}` : ''}`), '');
+  }
+  if (input.shareUrl) lines.push(`Pode acompanhar o projeto (fases, tarefas, entregas e pagamentos) nesta página: ${input.shareUrl}`, '');
+  lines.push('Qualquer dúvida, diga.', '', 'Cumprimentos,');
+  if (input.signature) lines.push(input.signature);
+  return { subject: `${WELCOME_TEMPLATE} — ${input.projectTitle ?? input.company}`, body: lines.join('\n').trim() };
+}

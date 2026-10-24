@@ -222,7 +222,22 @@ function KitEditor({ lead, kit, onDone }: { lead: Lead; kit: BrandKit; onDone: (
   );
 }
 
-function FilesSection({ lead, kit }: { lead: Lead; kit: BrandKit | undefined }) {
+/** Ficheiros do kit. Também é o cartão "Ficheiros" dos leads que ainda não são clientes (os mesmos ficheiros). */
+export function FilesSection({
+  lead,
+  kit,
+  heading = 'Logótipos e ficheiros',
+  hint = 'Logótipo em várias versões, manual de marca, fotografias… (até 30 ficheiros de 25 MB).',
+  label = 'Ficheiros da marca',
+  listLabel = 'Ficheiros do kit',
+}: {
+  lead: Lead;
+  kit: BrandKit | undefined;
+  heading?: string;
+  hint?: string;
+  label?: string;
+  listLabel?: string;
+}) {
   const action = useBrandKitAction(lead.id);
   const files = kit?.files ?? [];
 
@@ -238,9 +253,9 @@ function FilesSection({ lead, kit }: { lead: Lead; kit: BrandKit | undefined }) 
   }
 
   return (
-    <section aria-label="Ficheiros da marca" className="border-t border-border px-4 py-3">
+    <section aria-label={label} className="border-t border-border px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">Logótipos e ficheiros</h3>
+        <h3 className="text-sm font-semibold">{heading}</h3>
         {!lead.anonymized_at ? (
           <>
             <input id={`brand-files-${lead.id}`} type="file" multiple className="sr-only" onChange={(e) => void upload(e.target.files).then(() => (e.target.value = ''))} />
@@ -251,7 +266,7 @@ function FilesSection({ lead, kit }: { lead: Lead; kit: BrandKit | undefined }) 
         ) : null}
       </div>
       {files.length ? (
-        <ul className="mt-2 grid gap-2 sm:grid-cols-2" aria-label="Ficheiros do kit">
+        <ul className="mt-2 grid gap-2 sm:grid-cols-2" aria-label={listLabel}>
           {files.map((f, i) => (
             <li key={`${f.name}-${i}`} className="flex items-center gap-2 rounded-lg border border-border p-2 text-sm">
               {f.type.startsWith('image/') ? (
@@ -281,7 +296,7 @@ function FilesSection({ lead, kit }: { lead: Lead; kit: BrandKit | undefined }) 
           ))}
         </ul>
       ) : (
-        <p className="mt-1 text-sm text-muted">Logótipo em várias versões, manual de marca, fotografias… (até 30 ficheiros de 25 MB).</p>
+        <p className="mt-1 text-sm text-muted">{hint}</p>
       )}
     </section>
   );

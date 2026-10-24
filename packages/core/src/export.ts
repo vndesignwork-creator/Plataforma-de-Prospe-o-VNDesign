@@ -2,7 +2,7 @@
  * Exportação de leads (CSV/XLSX) com as mesmas colunas da folha original,
  * para que um ficheiro exportado possa ser reimportado sem mapeamento manual.
  */
-import { LEAD_CHANNEL_META, LEAD_STATUS_META, MOBILE_STATUS_META } from './enums';
+import { LEAD_CHANNEL_META, LEAD_STATUS_META, LOST_REASON_LABELS, MOBILE_STATUS_META } from './enums';
 import type { Lead } from './schemas';
 import { serviceLabel, type ServiceInfo } from './services';
 import { formatCustomValue, type CustomField } from './custom-fields';
@@ -76,6 +76,7 @@ export function exportColumns(services?: readonly ServiceInfo[], fields: readonl
     },
     { header: 'Etiquetas', kind: 'text', width: 24, value: (l) => (l.tags?.length ? l.tags.join('; ') : null) },
     { header: 'Nota afixada', kind: 'text', width: 30, value: (l) => l.pinned_note ?? null },
+    { header: 'Motivo (sem interesse)', kind: 'text', width: 22, value: (l) => (l.lost_reason ? LOST_REASON_LABELS[l.lost_reason] : null) },
     ...fields.map((f): ExportColumn => ({
       header: f.label,
       kind: f.type === 'number' ? 'number' : 'text',

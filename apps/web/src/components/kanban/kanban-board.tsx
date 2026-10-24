@@ -28,6 +28,7 @@ import {
   type BoardColumn,
   type Lead,
   type LeadStatus,
+  type LostReason,
   leadPath,
 } from '@vndesign/core';
 import { ArrowLeftRight, GripVertical, Search } from 'lucide-react';
@@ -37,6 +38,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { toast } from 'sonner';
 import { MultiSelectFilter } from '@/components/leads/multi-select';
 import { TagChips, useTagFilterOptions } from '@/components/leads/tags';
+import { LostReasonDialog } from '@/components/leads/lost-reason';
+import { StageAge } from '@/components/leads/stage-age';
 import { Skeleton } from '@/components/ui/card';
 import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownTrigger } from '@/components/ui/dropdown';
 import { Input } from '@/components/ui/input';
@@ -114,6 +117,8 @@ function LeadCard({
               </span>
             ) : null}
             {lead.city ? <span>{lead.city}</span> : null}
+            {/* Há quanto tempo está nesta coluna (a laranja se parado). */}
+            {lead.status !== 'cliente' && lead.status !== 'sem_interesse' ? <StageAge since={lead.status_changed_at} compact /> : null}
           </p>
           <ServiceIcons services={lead.services} className="mt-1.5" labeled />
           <TaskProgress progress={lead.task_progress} className="mt-1.5" />
@@ -427,6 +432,18 @@ export function KanbanBoard() {
     });
   }
 
+  const [askLost, setAskLost] = useState<Lead | null>(null);
+  async function saveLostReason(lead: Lead, reason: LostReason | null) {
+    setAskLost(null);
+    if (!reason) return;
+    try {
+      await api(`/leads/${lead.id}`, { method: 'PATCH', body: { lost_reason: reason } });
+      invalidate(lead.id);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
+
   async function saveMove(original: Lead, to: LeadStatus, position: number, optimistic: Columns) {
     qc.setQueryData(['board', query], (old: BoardColumn[] | undefined) =>
       old?.map((c) => ({ ...c, leads: optimistic[c.status], total: optimistic[c.status].length })),
@@ -437,6 +454,8 @@ export function KanbanBoard() {
         body: { status: to, position },
       });
       if (original.status !== to) {
+        // "Sem interesse": pergunta o motivo (pode ficar sem motivo).
+        if (to === 'sem_interesse') setAskLost(updated);
         const scheduled = to === 'contactado' && updated.next_action_on && updated.next_action_on !== original.next_action_on;
         toast.success(
           `#${updated.number} → ${LEAD_STATUS_META[to].label}${scheduled ? `. Follow-up agendado para ${formatDate(updated.next_action_on)}.` : '.'}`,
@@ -586,6 +605,14 @@ export function KanbanBoard() {
           <DragOverlay>{activeLead ? <LeadCard lead={activeLead} today={today} dragging /> : null}</DragOverlay>
         </DndContext>
       )}
+      {askLost ? (
+        <LostReasonDialog
+          open
+          subject={`#${askLost.number} ${askLost.company_name}`}
+          onPick={(reason) => void saveLostReason(askLost, reason)}
+          onCancel={() => setAskLost(null)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   ACTIVITY_TYPES,
   LEAD_CHANNELS,
   LEAD_STATUSES,
+  LOST_REASONS,
   MANUAL_ACTIVITY_TYPES,
   MOBILE_STATUSES,
   SECTOR_ICON_KEYS,
@@ -159,6 +160,8 @@ const leadFields = {
   pinned_note: nullableText(200),
   /** Campos personalizados ({ chave: valor }; ver /custom-fields). Substitui o objeto todo. */
   custom: CustomValuesSchema,
+  /** Porque passou a "Sem interesse" (sai sozinho noutros estados). */
+  lost_reason: z.enum(LOST_REASONS, { error: 'Motivo inválido.' }).nullable(),
 };
 
 export const EDITABLE_LEAD_FIELDS = Object.keys(leadFields) as (keyof typeof leadFields)[];
@@ -241,6 +244,7 @@ export const LeadSchema = z
     assigned_to: z.uuid().nullable().optional(),
     tags: z.array(z.string()).optional().meta({ description: 'Etiquetas livres' }),
     pinned_note: z.string().nullable().optional().meta({ description: 'Nota afixada no topo da ficha' }),
+    lost_reason: z.enum(LOST_REASONS).nullable().optional().meta({ description: 'Motivo de "Sem interesse"' }),
     custom: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional().meta({ description: 'Campos personalizados' }),
     created_by: z.uuid().nullable(),
     created_at: z.string(),
@@ -305,6 +309,16 @@ export const LeadListQuerySchema = z
       .enum(['overdue', 'today', 'week', 'none'])
       .optional()
       .meta({ description: 'Próxima ação em atraso, para hoje, nos próximos 7 dias ou "none" = em conversa sem próximo passo' }),
+    lost: csvList(z.enum([...LOST_REASONS, 'none']))
+      .optional()
+      .meta({ description: 'Motivo de "Sem interesse" ("none" = sem motivo); só leads nesse estado' }),
+    stale: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(365)
+      .optional()
+      .meta({ description: 'Na mesma fase há mais de N dias (sem clientes nem "sem interesse")' }),
     cf: csvList(z.string().regex(/^f[a-z0-9]{6,12}:.{1,100}$/))
       .optional()
       .meta({ description: 'Campos personalizados: "chave:valor" (vários valores do mesmo campo = qualquer um)' }),
@@ -340,6 +354,8 @@ export const LeadBulkActionSchema = z
     tag: z.string().trim().max(30).optional(),
     /** Com action "status": o novo estado (as regras de cada estado aplicam-se). */
     status: LeadStatusSchema.optional(),
+    /** Com status "sem_interesse": o motivo. */
+    lost_reason: z.enum(LOST_REASONS).nullable().optional(),
   })
   .superRefine((v, ctx) => {
     if ((v.action === 'tag_add' || v.action === 'tag_remove') && !normalizeTags([v.tag ?? '']).length) {
@@ -941,6 +957,10 @@ export const FollowUpSchema = z
 export type FollowUpInput = z.infer<typeof FollowUpSchema>;
 
 export const LeadTagCountSchema = z.object({ tag: z.string(), count: z.int() }).meta({ id: 'LeadTagCount' });
+export const LostReasonCountSchema = z
+  .object({ reason: z.enum(LOST_REASONS).nullable(), count: z.int() })
+  .meta({ id: 'LostReasonCount', description: 'Leads em "Sem interesse" por motivo (null = sem motivo)' });
+export type LostReasonCount = z.infer<typeof LostReasonCountSchema>;
 export type LeadTagCount = z.infer<typeof LeadTagCountSchema>;
 
 /** Definições → Etiquetas: renomear (para uma que já existe = juntar as duas) ou apagar (to = null). */

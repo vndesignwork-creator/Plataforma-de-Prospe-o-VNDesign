@@ -12,6 +12,8 @@ import {
   LEAD_CHANNELS,
   LEAD_STATUS_META,
   LEAD_STATUSES,
+  LOST_REASONS,
+  LOST_REASON_LABELS,
   formatCurrency,
   formatDate,
   todayIso,
@@ -244,6 +246,13 @@ const DUE_OPTIONS = [
   { value: 'none', label: 'Sem próximo passo (em conversa)' },
 ];
 
+const STALE_OPTIONS = [
+  { value: '', label: 'Qualquer tempo na fase' },
+  { value: '7', label: 'Na fase há mais de 7 dias' },
+  { value: '14', label: 'Na fase há mais de 14 dias' },
+  { value: '30', label: 'Na fase há mais de 30 dias' },
+];
+
 const MOBILE_SORTS = [
   { value: 'number:desc', label: 'Mais recentes' },
   { value: 'score:desc', label: 'Prioridade (mais quentes)' },
@@ -299,6 +308,8 @@ export function LeadsTable() {
     service: getList('servico'),
     tag: getList('etiqueta'),
     cf: getList('cf'),
+    lost: getList('motivo'),
+    stale: get('parado') ? Number(get('parado')) : undefined,
     city: get('city') || undefined,
     due: get('due') || undefined,
     suggested_from: get('de') || undefined,
@@ -339,8 +350,8 @@ export function LeadsTable() {
   });
 
   const activeFilters =
-    query.sector.length + query.status.length + query.channel.length + query.service.length + query.tag.length + query.cf.length +
-    [query.q, query.city, query.due, query.suggested_from, query.suggested_to, query.archived, query.assigned].filter(Boolean).length;
+    query.sector.length + query.status.length + query.channel.length + query.service.length + query.tag.length + query.cf.length + query.lost.length +
+    [query.q, query.city, query.due, query.stale, query.suggested_from, query.suggested_to, query.archived, query.assigned].filter(Boolean).length;
   const [showFilters, setShowFilters] = useState(false);
 
   // Seleção para ações em conjunto. Fica presa aos filtros/página atuais:
@@ -629,6 +640,22 @@ export function LeadsTable() {
           options={DUE_OPTIONS}
           className="max-md:col-span-2"
         />
+        <SingleSelectFilter
+          label="Na fase há"
+          value={query.stale ? String(query.stale) : ''}
+          onChange={(v) => setParams({ parado: v || null })}
+          options={STALE_OPTIONS}
+          className="max-md:col-span-2"
+        />
+        {/* Motivo de "Sem interesse": só quando se veem esses leads (ou o filtro já está ativo). */}
+        {query.status.includes('sem_interesse') || query.lost.length ? (
+          <MultiSelectFilter
+            label="Motivo"
+            value={query.lost}
+            onChange={(v) => setParams({ motivo: v })}
+            options={[...LOST_REASONS.map((r) => ({ value: r, label: LOST_REASON_LABELS[r] })), { value: 'none', label: 'Sem motivo' }]}
+          />
+        ) : null}
         {hasTeam ? (
           <SingleSelectFilter
             label="Responsável"

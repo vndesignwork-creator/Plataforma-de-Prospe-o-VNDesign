@@ -69,9 +69,10 @@ describe('campos personalizados', () => {
   it('exportação: nota afixada e os campos no fim', () => {
     const cols = exportColumns(undefined, fields);
     const headers = cols.map((c) => c.header);
-    expect(headers.slice(-5)).toEqual(['Nota afixada', 'Nº de lojas', 'Tem Instagram?', 'Programa', 'Observação']);
-    const lead = { pinned_note: 'Ligar à tarde', custom: { fabc12345: 3, fdef67890: false } } as unknown as Lead;
-    expect(cols.at(-5)!.value(lead)).toBe('Ligar à tarde');
+    expect(headers.slice(-6)).toEqual(['Nota afixada', 'Motivo (sem interesse)', 'Nº de lojas', 'Tem Instagram?', 'Programa', 'Observação']);
+    const lead = { pinned_note: 'Ligar à tarde', lost_reason: 'preco', custom: { fabc12345: 3, fdef67890: false } } as unknown as Lead;
+    expect(cols.at(-6)!.value(lead)).toBe('Ligar à tarde');
+    expect(cols.at(-5)!.value(lead)).toBe('Preço');
     expect(cols.at(-4)!.value(lead)).toBe(3);
     expect(cols.at(-3)!.value(lead)).toBe('Não');
     expect(cols.at(-2)!.value(lead)).toBeNull();

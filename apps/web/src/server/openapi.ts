@@ -177,6 +177,7 @@ import {
   CustomFieldUpdateSchema,
   PeriodCompareQuerySchema,
   PeriodCompareSchema,
+  LostReasonCountSchema,
   NoteSearchQuerySchema,
   NoteSearchResultSchema,
   RescheduleResultSchema,
@@ -1418,6 +1419,13 @@ export function getOpenApiDocument() {
             '422': problem('Falta o email ou o telefone'),
             '429': problem('Demasiados pedidos'),
           },
+        }),
+      },
+      '/stats/lost-reasons': {
+        get: op({
+          tags: ['Dashboard'],
+          summary: 'Leads em "Sem interesse" por motivo (preço, já tem site, agora não, não responde, outro)',
+          responses: { '200': ok(data(z.array(LostReasonCountSchema))), ...common },
         }),
       },
       '/stats/compare': {

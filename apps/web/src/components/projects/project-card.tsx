@@ -26,7 +26,7 @@ import { DueBadge, ProgressBar, StageMenu, StageSteps, SummaryStat } from './pro
 import { RevisionsSection } from './revisions-section';
 import { ShareSection } from './share-section';
 import { PomodoroBox } from './pomodoro';
-import { ProjectUpdateButton } from './project-update';
+import { ProjectUpdateButton, WelcomeButton } from './project-update';
 import { TimeSection } from './time-section';
 
 const euros = (v: number) => formatCurrency(v, { decimals: false });
@@ -142,6 +142,7 @@ export function ProjectCard({ lead }: { lead: Lead }) {
         actions={
           info ? (
             <>
+              <WelcomeButton lead={lead} />
               <ProjectUpdateButton lead={lead} />
               <Button size="sm" variant="ghost" onClick={prepare} loading={start.isPending} title="Prazo e revisões pelos serviços; tarefas e plano de pagamentos se ainda não houver">
                 <Zap className="h-3.5 w-3.5" aria-hidden /> Preparar

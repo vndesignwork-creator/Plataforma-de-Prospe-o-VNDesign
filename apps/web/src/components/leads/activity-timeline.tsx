@@ -11,6 +11,8 @@ import {
   type ProposalStatus,
   LEAD_FIELD_LABELS,
   LEAD_STATUS_META,
+  LOST_REASON_LABELS,
+  type LostReason,
   formatDate,
   formatDateTime,
   type Activity,
@@ -63,10 +65,11 @@ import { Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { Select, Textarea } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
-import { useActivities, useEmailTracking, useLogActivity, useTeamNames } from '@/lib/queries';
+import { useActivities, useEmailTracking, useLead, useLogActivity, useTeamNames } from '@/lib/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { DictateButton, appendDictation } from '@/components/ui/dictate-button';
+import { LeadChanges, changeLabel } from './lead-changes';
 
 export const ICONS: Partial<Record<Activity["type"], LucideIcon>> = {
   created: Plus,
@@ -128,9 +131,9 @@ export function describe(a: Activity): string | null {
   const p = a.payload as Record<string, unknown>;
   switch (a.type) {
     case 'status_changed':
-      return `${statusLabel(p.from)} → ${statusLabel(p.to)}`;
+      return `${statusLabel(p.from)} → ${statusLabel(p.to)}${p.reason ? ` · Motivo: ${LOST_REASON_LABELS[p.reason as LostReason] ?? String(p.reason)}` : ''}`;
     case 'updated':
-      return Array.isArray(p.fields) ? p.fields.map((f) => fieldLabel(String(f))).join(', ') : null;
+      return Array.isArray(p.fields) ? p.fields.map((f) => changeLabel(String(f)) ?? fieldLabel(String(f))).join(', ') : null;
     case 'follow_up_scheduled':
       return `${p.snoozed ? 'Adiado: ' : ''}${p.text ?? 'Follow-up'} para ${formatDate(String(p.on))}`;
     case 'merged': {
@@ -308,6 +311,8 @@ export function ActivityTimeline({
   fitTo?: RefObject<HTMLElement | null>;
 }) {
   const { data: all, isLoading } = useActivities(leadId);
+  // O lead (já em cache na ficha): o "Repor" só aparece se o campo ainda tem o valor dessa edição.
+  const { data: lead } = useLead(leadId);
   // Equipa: quem fez cada coisa e filtro por pessoa.
   const { data: team } = useTeamNames();
   const hasTeam = (team?.length ?? 0) > 1;
@@ -459,7 +464,9 @@ export function ActivityTimeline({
             >
               {(data ?? []).map((a, i) => {
                 const Icon = ICONS[a.type] ?? Edit3;
-                const detail = describe(a);
+                const changes = a.type === 'updated' ? ((a.payload as Record<string, unknown>).changes as Record<string, { from: unknown; to: unknown }> | undefined) : undefined;
+                // Com os valores de antes e depois, a lista "O que mudou" substitui a dos nomes dos campos.
+                const detail = changes && Object.keys(changes).some((f) => changeLabel(f)) ? null : describe(a);
                 // Telemóvel: só os mais recentes até tocar em "Ver tudo".
                 const hidden = !expanded && i >= MOBILE_VISIBLE;
                 const lastShown = !expanded && i === MOBILE_VISIBLE - 1;
@@ -504,6 +511,7 @@ export function ActivityTimeline({
                         ) : null}
                       </p>
                       {detail ? <p className="text-sm text-muted">{detail}</p> : null}
+                      {changes ? <LeadChanges lead={lead} changes={changes} /> : null}
                       {a.body && a.type !== 'email_opened' && a.type !== 'email_clicked' ? (
                         <p className="mt-1 text-sm break-words whitespace-pre-line">{a.body}</p>
                       ) : null}

@@ -23,6 +23,8 @@ import {
   type LeadCreate,
   type LeadListQuery,
   type LeadStatus,
+  type LostReason,
+  type LostReasonCount,
   type LeadTagCount,
   type LeadUpdate,
 } from '@vndesign/core';
@@ -37,7 +39,7 @@ export const LEAD_SELECT = [
   'email', 'phone', 'contact_name', 'status', 'channel', 'first_contact_on', 'last_follow_up_on',
   'next_action_text', 'next_action_on', 'estimated_value', 'notes', 'approach_angle', 'source_url',
   'suggested_on', 'email_subject', 'email_body', 'services', 'kanban_position', 'status_changed_at',
-  'anonymized_at', 'archived_at', 'score', 'score_reasons', 'follow_up_count', 'project_completed_at', 'client_of', 'project_title', 'assigned_to', 'tags', 'pinned_note', 'custom', 'created_by', 'created_at', 'updated_at',
+  'anonymized_at', 'archived_at', 'score', 'score_reasons', 'follow_up_count', 'project_completed_at', 'client_of', 'project_title', 'assigned_to', 'tags', 'pinned_note', 'custom', 'lost_reason', 'created_by', 'created_at', 'updated_at',
 ].join(', ');
 
 const NOT_FOUND = 'Lead não encontrado';
@@ -60,7 +62,7 @@ type LeadQueryBuilder = ReturnType<typeof baseLeadQuery>;
 export type LeadFilters = Partial<
   Pick<
     LeadListQuery,
-    'q' | 'sector' | 'status' | 'channel' | 'city' | 'suggested_from' | 'suggested_to' | 'due' | 'include_anonymized' | 'archived' | 'service' | 'tag' | 'cf'
+    'q' | 'sector' | 'status' | 'channel' | 'city' | 'suggested_from' | 'suggested_to' | 'due' | 'include_anonymized' | 'archived' | 'service' | 'tag' | 'cf' | 'lost' | 'stale'
   >
 > & {
   /** Responsável já resolvido ("me" → o id de quem pede). */
@@ -118,6 +120,16 @@ function applyLeadFilters(q: LeadQueryBuilder, query: LeadFilters): LeadQueryBui
       byKey.set(pair.slice(0, at), [...(byKey.get(pair.slice(0, at)) ?? []), pair.slice(at + 1)]);
     }
     for (const [key, values] of byKey) q = q.in(`custom->>${key}`, values);
+  }
+  // Motivo de "Sem interesse" ("none" = sem motivo).
+  if (query.lost?.length) {
+    const reasons = query.lost.filter((r) => r !== 'none');
+    const parts = [...(reasons.length ? [`lost_reason.in.(${reasons.join(',')})`] : []), ...(query.lost.includes('none') ? ['lost_reason.is.null'] : [])];
+    q = q.eq('status', 'sem_interesse').or(parts.join(','));
+  }
+  // Na mesma fase há mais de N dias (sem clientes nem "sem interesse").
+  if (query.stale) {
+    q = q.not('status', 'in', CLOSED_STATUSES).lt('status_changed_at', new Date(Date.now() - query.stale * 86_400_000).toISOString());
   }
   if (query.due === 'none') {
     // Em conversa sem próximo passo marcado.
@@ -354,7 +366,7 @@ export async function bulkLeadAction(
   ctx: ApiContext,
   action: LeadBulkAction,
   ids: string[],
-  options: { assignedTo?: string | null; tag?: string; status?: LeadStatus } = {},
+  options: { assignedTo?: string | null; tag?: string; status?: LeadStatus; lostReason?: LostReason | null } = {},
 ): Promise<LeadBulkResult> {
   const unique = [...new Set(ids)];
   const base = () => ctx.supabase.from('leads');
@@ -377,7 +389,7 @@ export async function bulkLeadAction(
   if (action === 'status') {
     // Um a um no SQL (as regras de cada estado aplicam-se); os que já estão nesse estado não contam.
     result = await base()
-      .update({ status: options.status })
+      .update({ status: options.status, ...(options.status === 'sem_interesse' && options.lostReason ? { lost_reason: options.lostReason } : {}) })
       .eq('workspace_id', ctx.workspaceId)
       .in('id', unique)
       .neq('status', options.status!)
@@ -456,6 +468,13 @@ export async function leadTagCounts(ctx: ApiContext): Promise<LeadTagCount[]> {
   const { data, error } = await ctx.supabase.rpc('lead_tag_counts', { p_workspace_id: ctx.workspaceId });
   if (error) throw fromPostgrest(error);
   return ((data ?? []) as { tag: string; count: number | string }[]).map((r) => ({ tag: r.tag, count: Number(r.count) }));
+}
+
+/** Leads em "Sem interesse" por motivo (Estatísticas → Porque perdes leads). */
+export async function lostReasonCounts(ctx: ApiContext): Promise<LostReasonCount[]> {
+  const { data, error } = await ctx.supabase.rpc('lead_lost_reason_counts', { p_workspace_id: ctx.workspaceId });
+  if (error) throw fromPostgrest(error);
+  return ((data ?? []) as { reason: LostReasonCount['reason']; count: number | string }[]).map((r) => ({ reason: r.reason, count: Number(r.count) }));
 }
 
 /** Renomeia uma etiqueta em todos os leads (para uma que já existe = juntar; to = null apaga). */

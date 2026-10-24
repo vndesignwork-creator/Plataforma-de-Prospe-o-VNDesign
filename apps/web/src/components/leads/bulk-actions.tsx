@@ -6,7 +6,7 @@
  * follow-up. As etiquetas e o follow-up têm "Anular" no aviso (só repõe o que
  * mudou: quem já tinha a etiqueta, ou a data que cada um tinha).
  */
-import { LEAD_STATUSES, LEAD_STATUS_META, formatDate, normalizeTags, reschedulePlan, todayIso, type Lead, type LeadStatus } from '@vndesign/core';
+import { LEAD_STATUSES, LEAD_STATUS_META, formatDate, normalizeTags, reschedulePlan, todayIso, type Lead, type LeadStatus, type LostReason } from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { BellRing, CircleDot, Plus, Tag, X } from 'lucide-react';
 import { useState } from 'react';
@@ -19,6 +19,7 @@ import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownSep
 import { Input } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api-client';
 import { bulkResultMessage, useBulkLeadAction, useReschedule } from '@/lib/queries';
+import { LostReasonDialog } from './lost-reason';
 import { useLeadTags } from './tags';
 
 const fold = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -140,9 +141,16 @@ export function BulkTagMenu({ rows, onDone }: { rows: Lead[]; onDone: () => void
 /** Mudar o estado dos selecionados (as regras de cada estado aplicam-se, como na ficha). */
 export function BulkStatusMenu({ rows, onDone }: { rows: Lead[]; onDone: () => void }) {
   const bulk = useBulkLeadAction();
-  async function run(status: LeadStatus) {
+  // "Sem interesse": pergunta o motivo antes (vale para todos os selecionados).
+  const [askLost, setAskLost] = useState(false);
+  async function run(status: LeadStatus, lostReason?: LostReason | null) {
+    if (status === 'sem_interesse' && lostReason === undefined) {
+      setAskLost(true);
+      return;
+    }
+    setAskLost(false);
     try {
-      const result = await bulk.mutateAsync({ action: 'status', ids: rows.map((l) => l.id), status });
+      const result = await bulk.mutateAsync({ action: 'status', ids: rows.map((l) => l.id), status, ...(lostReason ? { lost_reason: lostReason } : {}) });
       onDone();
       toast.success(`${bulkResultMessage(result).replace(/\.$/, '')} para “${LEAD_STATUS_META[status].label}”.`);
     } catch (error) {
@@ -150,19 +158,29 @@ export function BulkStatusMenu({ rows, onDone }: { rows: Lead[]; onDone: () => v
     }
   }
   return (
-    <DropdownRoot>
-      <DropdownTrigger className={buttonClasses('outline', 'sm')}>
-        <CircleDot className="h-3.5 w-3.5" aria-hidden /> Estado…
-      </DropdownTrigger>
-      <DropdownContent>
-        <DropdownLabel>Passar para</DropdownLabel>
-        {LEAD_STATUSES.map((s) => (
-          <DropdownItem key={s} onSelect={() => void run(s)}>
-            <StatusIcon status={s} className="h-3.5 w-3.5" /> {LEAD_STATUS_META[s].label}
-          </DropdownItem>
-        ))}
-      </DropdownContent>
-    </DropdownRoot>
+    <>
+      <DropdownRoot>
+        <DropdownTrigger className={buttonClasses('outline', 'sm')}>
+          <CircleDot className="h-3.5 w-3.5" aria-hidden /> Estado…
+        </DropdownTrigger>
+        <DropdownContent>
+          <DropdownLabel>Passar para</DropdownLabel>
+          {LEAD_STATUSES.map((s) => (
+            <DropdownItem key={s} onSelect={() => void run(s)}>
+              <StatusIcon status={s} className="h-3.5 w-3.5" /> {LEAD_STATUS_META[s].label}
+            </DropdownItem>
+          ))}
+        </DropdownContent>
+      </DropdownRoot>
+      {askLost ? (
+        <LostReasonDialog
+          open
+          subject={rows.length === 1 ? `#${rows[0]!.number} ${rows[0]!.company_name}` : `${rows.length} leads`}
+          onPick={(reason) => void run('sem_interesse', reason)}
+          onCancel={() => setAskLost(false)}
+        />
+      ) : null}
+    </>
   );
 }
 

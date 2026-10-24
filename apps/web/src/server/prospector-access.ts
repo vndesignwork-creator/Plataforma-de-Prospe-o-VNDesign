@@ -35,6 +35,10 @@ const RULES: Rule[] = [
   ['POST', new RegExp(`^/leads/${ID}/(ai-email|email|find-contacts|follow-up|location|meeting-notes|move|prospecting|render-template|screenshots|summary)$`)],
   ['POST', new RegExp(`^/leads/${ID}/tasks/(reorder|template)$`)],
   ['GET PATCH', new RegExp(`^/leads/${ID}/geo$`)],
+  // Ficheiros do lead (fotos do espaço, menu…): na prospeção também.
+  ['GET', new RegExp(`^/leads/${ID}/brand-kit$`)],
+  ['POST', new RegExp(`^/leads/${ID}/brand-kit/files$`)],
+  ['GET DELETE', new RegExp(`^/leads/${ID}/brand-kit/files/\\d+$`)],
   ['POST', new RegExp(`^/leads/${ID}/geo/(faq|google)$`)],
   ['GET', /^\/map$/],
   ['POST', /^\/map\/geocode$/],

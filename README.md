@@ -208,6 +208,33 @@ Tudo é editável antes de **Guardar**. Usa o fornecedor de IA escolhido para os
 - **Dashboard → Projetos**: por cima da lista, “**N com a entrega atrasada**” e “**N com pagamentos em atraso**” levam aos **Projetos** já filtrados; os projetos com problemas aparecem primeiro.
 - **Ponto de situação** (cartão **Projeto** na ficha do cliente): prepara um email ao cliente com o que foi **concluído** desde o último ponto de situação, as **entregas**, os **próximos passos** (com datas), a **próxima reunião**, o **próximo pagamento** e o link da página do cliente. Revês e envias pela plataforma; sem email do cliente (ou sem a conta de envio ligada) copia o texto para colares no WhatsApp ou no teu email.
 
+## Motivo de “Sem interesse”
+
+Ao passar um lead a **Sem interesse** (na ficha, no Kanban ou em massa na lista) a plataforma pergunta **porquê**: *Preço*, *Já tem site / fornecedor*, *Agora não (talvez mais tarde)*, *Não responde* ou *Outro motivo* (ou **Sem motivo**). Depois muda-se na ficha (linha **Motivo** do cartão Pipeline); se o lead sair de *Sem interesse*, o motivo apaga-se sozinho.
+
+- Fica na linha do tempo junto com a mudança de estado (“Contactado → Sem interesse · Motivo: Preço”).
+- **Estatísticas → Porque perdes leads**: quantos leads em *Sem interesse* há por motivo.
+- Na lista, com o estado *Sem interesse* escolhido, filtro **Motivo** (API: `?lost=preco,none`). Entra na exportação (coluna *Motivo (sem interesse)*).
+- API: campo `lost_reason` nos leads (e nas ações em massa de estado); `GET /api/v1/stats/lost-reasons`.
+
+## Tempo em cada fase
+
+Os cartões do **Kanban** mostram há quantos dias o lead está na fase (⏳ “12 d”; a laranja com mais de 14 dias) e a ficha tem a linha **Nesta fase** (“há 12 dias”). Conta desde a última mudança de estado; não aparece em *Cliente* nem em *Sem interesse*.
+
+Na lista, filtro **Na fase há → mais de 7 / 14 / 30 dias** (só leads em curso; API: `?stale=14`). É diferente de *Sem próximo passo* (que olha para a próxima ação): um lead pode ter follow-ups marcados e estar há semanas na mesma fase.
+
+## Ficheiros do lead (antes de ser cliente)
+
+Na ficha de um lead que ainda não é cliente, cartão **Ficheiros**: fotografias do espaço ou da montra, o menu em PDF, o cartão de visita… (até 30 ficheiros de 25 MB; também para os colaboradores de prospeção). São os ficheiros do **kit da marca**: quando o lead passa a cliente, já lá estão (cartão *Kit da marca → Logótipos e ficheiros*), sem copiar nada.
+
+## O que mudou (e Repor)
+
+Na linha do tempo, cada **Lead editado** mostra o valor de antes e o de depois (“Telefone: 912 345 678 → 934 567 890”). **Repor** volta a pôr o valor de antes — só aparece enquanto o campo ainda tem o valor dessa edição (não desfaz uma alteração mais recente) e a reposição fica também registada. Textos longos (notas, emails) mostram só “(texto longo)” e não se repõem por aqui; os campos personalizados também não. Ao anonimizar um lead, os valores antigos são apagados da linha do tempo.
+
+## Boas-vindas ao novo cliente
+
+No cartão **Projeto** de um cliente novo, **Boas-vindas** prepara o primeiro email: agradecimento, o link do **briefing** (se ainda não foi respondido), a **reunião de arranque**, os primeiros passos (tarefas abertas, com datas), a **entrega prevista**, o **plano de pagamentos** e o link da **página do projeto**. Revês e envias pela plataforma; sem email do cliente (ou sem a conta de envio ligada) copia o texto. Depois de enviado (ou copiado) o botão sai e fica o **Ponto de situação** para os emails seguintes.
+
 ## Importar a folha atual
 
 1. No Google Sheets (“Leads_Prospeccao_VNDesign”): **Ficheiro → Transferir → Microsoft Excel (.xlsx)**.
