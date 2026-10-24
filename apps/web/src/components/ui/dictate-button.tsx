@@ -69,7 +69,7 @@ export function DictateButton({ onText, className, size = 'md' }: { onText: (spo
       }
     };
     r.onerror = (e) => {
-      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') toast.error('Sem acesso ao microfone: autoriza-o nas definições do browser.');
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') toast.error('Sem acesso ao microfone: toca no cadeado ao lado do endereço → Microfone → Permitir, e tenta outra vez.');
       else if (e.error !== 'no-speech' && e.error !== 'aborted') toast.error('O ditado parou. Tenta outra vez.');
     };
     r.onend = () => setListening(false);

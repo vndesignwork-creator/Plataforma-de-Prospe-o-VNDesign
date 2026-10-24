@@ -25,7 +25,8 @@ const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
+  // Microfone só no próprio site (ditado nas notas e tarefas); a câmara do cartão de visita usa o seletor de ficheiros.
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(self), geolocation=(self)' },
   // Depois da primeira visita por HTTPS, o browser nunca mais usa http:// (os browsers ignoram-no em localhost).
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
 ];

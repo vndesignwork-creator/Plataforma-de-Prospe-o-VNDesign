@@ -200,3 +200,9 @@ test('notas: recolher (fica o início à vista) e Notas com IA no cartão', asyn
   await page.getByRole('button', { name: 'Expandir: Notas' }).click();
   await expect(page.getByRole('button', { name: 'Recolher: Notas' })).toBeVisible();
 });
+
+test('o site deixa usar o microfone (ditado) mas não a câmara nem outros sites', async ({ request }) => {
+  const policy = (await request.get('/login')).headers()['permissions-policy'];
+  expect(policy).toContain('microphone=(self)');
+  expect(policy).toContain('camera=()');
+});
