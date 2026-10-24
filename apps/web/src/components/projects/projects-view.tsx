@@ -25,7 +25,6 @@ import { Card, EmptyState, Skeleton } from '@/components/ui/card';
 import { setCollapsedKeys } from '@/components/ui/collapse';
 import { Select } from '@/components/ui/input';
 import { useBilling, useProjects, useSettings } from '@/lib/queries';
-import { cn } from '@/lib/utils';
 import { ProjectRow, projectCollapseKey } from './project-row';
 import { WrapUpDialog } from './project-toggle';
 import { ProjectsCalendar } from './projects-calendar';
@@ -239,14 +238,19 @@ export function ProjectsView() {
       ) : view === 'stages' ? (
         <StagesBoard projects={projects} today={today} />
       ) : (
-        <Card>
-          {!shown?.length ? <p className="p-4 text-center text-sm text-muted">Nenhum projeto com este filtro.</p> : null}
-          <ul className={cn('divide-y divide-border')} aria-label={state === 'active' ? 'Projetos em curso' : 'Projetos concluídos'}>
+        <>
+          {!shown?.length ? (
+            <Card>
+              <p className="p-4 text-center text-sm text-muted">Nenhum projeto com este filtro.</p>
+            </Card>
+          ) : null}
+          {/* Cada projeto no seu cartão, com espaço entre eles (separa bem um projeto do seguinte). */}
+          <ul className="flex flex-col gap-5" aria-label={state === 'active' ? 'Projetos em curso' : 'Projetos concluídos'}>
             {(shown ?? []).map((p) => (
               <ProjectRow key={p.lead.id} project={p} today={today} features={features} onWrapUp={setWrapUp} />
             ))}
           </ul>
-        </Card>
+        </>
       )}
       {wrapUp ? <WrapUpDialog lead={wrapUp} onClose={() => setWrapUp(null)} /> : null}
     </div>

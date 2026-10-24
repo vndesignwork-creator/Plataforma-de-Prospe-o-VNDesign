@@ -115,7 +115,7 @@ export function ProjectRow({
   const timeColumn = !completed && features.time_tracking;
 
   return (
-    <li className="flex flex-col gap-3 px-4 py-4">
+    <li className="flex flex-col gap-3 rounded-xl border border-border bg-surface px-4 py-4 shadow-card">
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start">
         <div className="flex min-w-0 flex-col gap-1.5 sm:flex-[1_1_16rem]">
           <div className="flex items-start gap-1">
