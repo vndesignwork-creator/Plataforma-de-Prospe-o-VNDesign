@@ -206,3 +206,28 @@ test('o site deixa usar o microfone (ditado) mas não a câmara nem outros sites
   expect(policy).toContain('microphone=(self)');
   expect(policy).toContain('camera=()');
 });
+
+test('Prospeção: "Sem interesse" pergunta o motivo (e fica no lead e na linha do tempo)', async ({ page }) => {
+  const lead = await createLead(page.request, { company_name: `Prospeção Motivo ${run}` });
+  // API: o motivo vai para o lead e para o registo.
+  const res = await page.request.post(`/api/v1/leads/${lead.id}/prospecting`, { data: { outcome: 'not_interested', lost_reason: 'ja_tem_site' } });
+  expect(res.status(), await res.text()).toBe(200);
+  expect(await getLead(page.request, lead.id)).toMatchObject({ status: 'sem_interesse', lost_reason: 'ja_tem_site' });
+  const activities = (await (await page.request.get(`/api/v1/leads/${lead.id}/activities`)).json()).data as { body: string | null }[];
+  expect(activities.some((a) => a.body === 'Sem interesse (Já tem site / fornecedor)')).toBe(true);
+
+  // Na sessão: o botão abre a pergunta; Cancelar não regista nada.
+  await page.goto('/prospecao');
+  const button = page.getByRole('button', { name: 'Sem interesse', exact: true });
+  const hasQueue = await button.waitFor({ timeout: 15_000 }).then(
+    () => true,
+    () => false,
+  );
+  test.skip(!hasQueue, 'Sem leads na fila de prospeção');
+  await button.click();
+  const dialog = page.getByRole('dialog', { name: 'Porque fica “Sem interesse”?' });
+  await expect(dialog.getByLabel('Preço')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText(/: registado\./)).toHaveCount(0);
+});

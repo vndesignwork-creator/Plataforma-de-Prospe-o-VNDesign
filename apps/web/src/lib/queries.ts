@@ -41,6 +41,7 @@ import type {
   LaunchCheckKey,
   ProspectingFilter,
   ProspectingOutcome,
+  LostReason,
   ProspectingQueue,
   ProspectingResult,
   BoardColumn,
@@ -458,7 +459,7 @@ export function useProspectingQueue(filter: ProspectingFilter) {
 export function useProspectingOutcome() {
   const invalidate = useInvalidateLead();
   return useMutation({
-    mutationFn: ({ leadId, ...body }: { leadId: string; outcome: ProspectingOutcome; note?: string; days?: number }) =>
+    mutationFn: ({ leadId, ...body }: { leadId: string; outcome: ProspectingOutcome; note?: string; days?: number; lost_reason?: LostReason | null }) =>
       api<{ data: ProspectingResult }>(`/leads/${leadId}/prospecting`, { method: 'POST', body }).then((r) => r.data),
     onSuccess: (result) => invalidate(result.lead.id),
   });

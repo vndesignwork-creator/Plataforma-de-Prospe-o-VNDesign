@@ -6,6 +6,7 @@
  * em atraso ou para hoje e, por fim, os leads por contactar (mais quentes primeiro).
  */
 import {
+  LOST_REASON_LABELS,
   PROSPECTING_OUTCOME_LABELS,
   formatDate,
   planSequenceAdvance,
@@ -199,11 +200,13 @@ export async function recordProspectingOutcome(ctx: ApiContext, leadId: string, 
       await completeFollowUp(ctx, leadId, { action: 'snooze', days: input.days ?? 3, note: null });
       break;
     case 'not_interested':
-      await updateLead(ctx, leadId, { status: 'sem_interesse', next_action_on: null, next_action_text: null });
+      await updateLead(ctx, leadId, { status: 'sem_interesse', lost_reason: input.lost_reason ?? null, next_action_on: null, next_action_text: null });
       break;
   }
 
-  const label = seqDone ? `${PROSPECTING_OUTCOME_LABELS[input.outcome]} — ${seqDone}` : PROSPECTING_OUTCOME_LABELS[input.outcome];
+  const outcomeLabel =
+    input.outcome === 'not_interested' && input.lost_reason ? `${PROSPECTING_OUTCOME_LABELS[input.outcome]} (${LOST_REASON_LABELS[input.lost_reason]})` : PROSPECTING_OUTCOME_LABELS[input.outcome];
+  const label = seqDone ? `${outcomeLabel} — ${seqDone}` : outcomeLabel;
   const { error } = await ctx.supabase.from('lead_activities').insert({
     workspace_id: ctx.workspaceId,
     lead_id: leadId,

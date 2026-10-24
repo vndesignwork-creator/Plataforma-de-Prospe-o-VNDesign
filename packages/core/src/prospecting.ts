@@ -4,6 +4,7 @@
  * resultado de cada contacto registado com um toque.
  */
 import { z } from 'zod';
+import { LOST_REASONS } from './enums';
 import { SEQUENCE_CHANNELS } from './prospecting-sequence';
 import { LeadSchema } from './schemas';
 
@@ -32,6 +33,8 @@ export const ProspectingOutcomeSchema = z
     note: z.string().trim().max(2000, { error: 'Máximo de 2000 caracteres.' }).optional().transform((v) => v || null),
     /** "Mais tarde": daqui a quantos dias (por omissão 3). */
     days: z.int().min(1, { error: 'Mínimo 1 dia.' }).max(60, { error: 'Máximo 60 dias.' }).optional(),
+    /** "Sem interesse": porquê (vai para o lead e para as Estatísticas). */
+    lost_reason: z.enum(LOST_REASONS, { error: 'Motivo inválido.' }).nullable().optional(),
   })
   .meta({ id: 'ProspectingOutcome' });
 export type ProspectingOutcomeInput = z.output<typeof ProspectingOutcomeSchema>;

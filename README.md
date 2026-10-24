@@ -214,7 +214,7 @@ Tudo é editável antes de **Guardar**. Usa o fornecedor de IA escolhido para os
 
 ## Motivo de “Sem interesse”
 
-Ao passar um lead a **Sem interesse** (na ficha, no Kanban ou em massa na lista) a plataforma pergunta **porquê**: *Preço*, *Já tem site / fornecedor*, *Agora não (talvez mais tarde)*, *Não responde* ou *Outro motivo* (ou **Sem motivo**). Depois muda-se na ficha (linha **Motivo** do cartão Pipeline); se o lead sair de *Sem interesse*, o motivo apaga-se sozinho.
+Ao passar um lead a **Sem interesse** (na ficha, no Kanban, em massa na lista ou com o botão *Sem interesse* da Prospeção) a plataforma pergunta **porquê**: *Preço*, *Já tem site / fornecedor*, *Agora não (talvez mais tarde)*, *Não responde* ou *Outro motivo* (ou **Sem motivo**). Depois muda-se na ficha (linha **Motivo** do cartão Pipeline); se o lead sair de *Sem interesse*, o motivo apaga-se sozinho.
 
 - Fica na linha do tempo junto com a mudança de estado (“Contactado → Sem interesse · Motivo: Preço”).
 - **Estatísticas → Porque perdes leads**: quantos leads em *Sem interesse* há por motivo.

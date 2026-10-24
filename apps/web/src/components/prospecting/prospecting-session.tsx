@@ -12,6 +12,7 @@ import {
   leadPath,
   type ProspectingFilter,
   type ProspectingItem,
+  type LostReason,
   type ProspectingOutcome,
 } from '@vndesign/core';
 import {
@@ -48,6 +49,7 @@ import { errorMessage } from '@/lib/api-client';
 import { useProspectingOutcome, useProspectingQueue, useSettings } from '@/lib/queries';
 import { cn, displayHost, telUrl, whatsappUrl } from '@/lib/utils';
 import { PinnedNoteBox } from '@/components/leads/pinned-note';
+import { LostReasonDialog } from '@/components/leads/lost-reason';
 
 const KIND_META: Record<ProspectingItem['kind'], { label: string; icon: typeof Eye; tone: 'success' | 'warning' | 'neutral' }> = {
   opened: { label: 'Abriu o email', icon: Eye, tone: 'success' },
@@ -181,9 +183,19 @@ function LeadCard({
   const KindIcon = kind.icon;
   const wa = whatsappUrl(lead.phone);
 
-  async function record(value: ProspectingOutcome, days?: number) {
+  // "Sem interesse": pergunta primeiro o motivo (como na ficha e no Kanban).
+  const [askLost, setAskLost] = useState(false);
+
+  async function record(value: ProspectingOutcome, days?: number, lostReason?: LostReason | null) {
+    setAskLost(false);
     try {
-      const result = await outcome.mutateAsync({ leadId: lead.id, outcome: value, ...(note.trim() ? { note: note.trim() } : {}), ...(days ? { days } : {}) });
+      const result = await outcome.mutateAsync({
+        leadId: lead.id,
+        outcome: value,
+        ...(note.trim() ? { note: note.trim() } : {}),
+        ...(days ? { days } : {}),
+        ...(lostReason ? { lost_reason: lostReason } : {}),
+      });
       const next = result.lead.next_action_on ? ` Próxima ação a ${formatDate(result.lead.next_action_on)}.` : '';
       toast.success(`#${lead.number} ${lead.company_name}: registado.${next}`);
       onDone(result.done_today);
@@ -333,7 +345,7 @@ function LeadCard({
               ))}
             </DropdownContent>
           </DropdownRoot>
-          <Button variant="outline" onClick={() => record('not_interested')} disabled={outcome.isPending}>
+          <Button variant="outline" onClick={() => setAskLost(true)} disabled={outcome.isPending}>
             <ThumbsDown className="h-4 w-4" aria-hidden /> Sem interesse
           </Button>
           <Button variant="ghost" onClick={onSkip} disabled={outcome.isPending}>
@@ -345,6 +357,14 @@ function LeadCard({
           a próxima ação para hoje.
         </p>
       </section>
+      {askLost ? (
+        <LostReasonDialog
+          open
+          subject={`#${lead.number} ${lead.company_name}`}
+          onPick={(reason) => void record('not_interested', undefined, reason)}
+          onCancel={() => setAskLost(false)}
+        />
+      ) : null}
     </Card>
   );
 }
