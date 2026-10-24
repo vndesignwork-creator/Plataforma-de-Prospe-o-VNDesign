@@ -207,8 +207,8 @@ test('Dashboard: projetos a precisar de atenção levam aos Projetos já filtrad
   // Ponto de situação: o que foi feito, os próximos passos e a assinatura (sem conta de email ligada, copia o texto).
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto(`/leads/${lead.id}`);
-  await page.locator('#projeto').getByRole('button', { name: 'Ponto de situação' }).click();
   const account = (await (await page.request.get('/api/v1/mail-account')).json()).data;
+  await page.locator('#projeto').getByRole('button', { name: 'Ponto de situação' }).click();
   let body: string;
   if (account) {
     const dialog = page.getByRole('dialog', { name: 'Ponto de situação' });

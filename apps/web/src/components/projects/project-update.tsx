@@ -27,7 +27,7 @@ export function ProjectUpdateButton({ lead }: { lead: Lead }) {
   const { data: info } = useProjectInfo(lead.id);
   const { data: activities } = useActivities(lead.id);
   const { data: signature } = useSignature();
-  const { data: account } = useMailAccount();
+  const { data: account, isPending: accountPending } = useMailAccount();
   // Hora fixa ao abrir (para escolher a próxima reunião).
   const [now] = useState(() => Date.now());
   if (lead.anonymized_at) return null;
@@ -52,6 +52,14 @@ export function ProjectUpdateButton({ lead }: { lead: Lead }) {
   });
   const hint = last ? `O último foi a ${lisbonDay(last.created_at).split('-').reverse().join('/')}.` : 'Ainda não enviaste nenhum.';
 
+  // Enquanto não se sabe se há conta de envio, o botão espera (senão copiava em vez de abrir o email).
+  if (lead.email && accountPending) {
+    return (
+      <Button size="sm" variant="outline" disabled>
+        <ClipboardCopy className="h-3.5 w-3.5" aria-hidden /> Ponto de situação
+      </Button>
+    );
+  }
   // Com email do cliente e a conta de envio ligada: rever e enviar. Senão, copiar o texto.
   if (lead.email && account) {
     return (
