@@ -239,6 +239,25 @@ Na linha do tempo, cada **Lead editado** mostra o valor de antes e o de depois (
 
 No cartão **Projeto** de um cliente novo, **Boas-vindas** prepara o primeiro email: agradecimento, o link do **briefing** (se ainda não foi respondido), a **reunião de arranque**, os primeiros passos (tarefas abertas, com datas), a **entrega prevista**, o **plano de pagamentos** e o link da **página do projeto**. Revês e envias pela plataforma; sem email do cliente (ou sem a conta de envio ligada) copia o texto. Depois de enviado (ou copiado) o botão sai e fica o **Ponto de situação** para os emails seguintes.
 
+## Seguinte / Anterior na ficha
+
+Abre um lead a partir da lista (com os filtros e a ordem que quiseres): no topo da ficha aparece **‹ 3 de 25 ›**. As setas passam ao lead anterior ou seguinte dessa lista sem voltar atrás (no fim de uma página vai buscar a seguinte); no teclado, **J** (seguinte) e **K** (anterior). Tocar em "3 de 25" volta à lista com os mesmos filtros.
+
+## Tarefas da equipa e avisos
+
+- **Responsável:** ao editar uma tarefa (✏️) escolhe **Responsável** (só aparece com equipa). A tarefa mostra o nome e essa pessoa recebe um aviso.
+- **Página Tarefas** (menu, ou **G + T**): as tarefas por fazer de todos os leads e projetos, por **Em atraso / Hoje / Próximos 7 dias / Mais tarde / Sem prazo**. Com equipa: **As minhas** (para o dono, também as sem responsável — como nos leads), **Sem responsável**, **Todas** ou **De uma pessoa…**; o botão com o nome de cada tarefa muda o responsável. Marca a caixa para concluir (com **Anular**).
+- **Avisos (🔔):** no topo da barra lateral (no telemóvel, ao lado da pesquisa). Mostra as tarefas que te deram e quando te mencionam; tocar abre o lead no sítio certo. Se tiveres as notificações ligadas no dispositivo, chega também uma notificação.
+- API: `assigned_to` nas tarefas; `GET /api/v1/tasks?assigned=me|none|all|{id}`; `GET /api/v1/notifications`, `POST /api/v1/notifications/read`.
+
+## Comentários da equipa (@menções)
+
+Na linha do tempo → **Registar → Comentário para a equipa** (com equipa): conversa interna sobre o lead, separada das notas (o cliente nunca vê). Escreve **@** e escolhe a pessoa (setas + Enter); quem é mencionado recebe um aviso. O comentário fica destacado na linha do tempo e quem o escreveu pode apagá-lo. API: `POST /api/v1/leads/{id}/comments` (`{ body, mentions }`).
+
+## Organizar os cartões da ficha
+
+No fim da coluna lateral da ficha, **Organizar cartões**: muda a ordem (↑ ↓) de Tarefas, Pagamentos, Reuniões, Notas, Propostas, Linha do tempo… e esconde os que não usas (a Linha do tempo fica sempre). Vale para todos os leads e fica na tua conta (computador e telemóvel); **Repor original** volta ao de sempre.
+
 ## Importar a folha atual
 
 1. No Google Sheets (“Leads_Prospeccao_VNDesign”): **Ficheiro → Transferir → Microsoft Excel (.xlsx)**.

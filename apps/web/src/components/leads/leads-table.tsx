@@ -52,6 +52,7 @@ import { LeadScoreBadge } from './lead-score';
 import { MultiSelectFilter, SingleSelectFilter } from './multi-select';
 import { BulkFollowUpMenu, BulkStatusMenu, BulkTagMenu } from './bulk-actions';
 import { customFilterOptions, useCustomFields } from './custom-fields';
+import { rememberLeadList } from './lead-pager';
 import { SavedViewsMenu } from './saved-views';
 import { restoreDeletedLeads } from './trash-view';
 import { TagChips, useTagFilterOptions } from './tags';
@@ -322,6 +323,11 @@ export function LeadsTable() {
     limit: PAGE_SIZE,
   };
   const { data, isLoading, isFetching, error } = useLeads(query);
+  // A ficha mostra ← → para o lead seguinte desta lista (com estes filtros e ordem).
+  useEffect(() => {
+    if (data) rememberLeadList(query, data.meta.total, data.data);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
   const { data: sectors } = useSectors();
   const tagOptions = useTagFilterOptions();
   const { data: customFields } = useCustomFields();

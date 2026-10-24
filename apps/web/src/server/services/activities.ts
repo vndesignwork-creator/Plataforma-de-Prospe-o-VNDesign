@@ -39,8 +39,8 @@ export async function createActivity(
   return unwrap(result) as Activity;
 }
 
-/** Registos que se podem apagar: os escritos à mão (nota, chamada, email enviado). */
-const DELETABLE_TYPES = ['note', 'call_logged', 'email_sent'];
+/** Registos que se podem apagar: os escritos à mão (nota, chamada, email enviado, comentário). */
+const DELETABLE_TYPES = ['note', 'call_logged', 'email_sent', 'comment'];
 
 /** Só os registos manuais do próprio utilizador podem ser apagados (garantido também pelo RLS). */
 export async function deleteManualActivity(ctx: ApiContext, leadId: string, activityId: string): Promise<void> {

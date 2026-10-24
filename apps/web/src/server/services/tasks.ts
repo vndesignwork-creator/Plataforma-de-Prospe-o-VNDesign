@@ -10,6 +10,8 @@ import {
   type LeadTask,
   type LeadTaskCreate,
   type LeadTaskUpdate,
+  type TaskListItem,
+  type TaskListQuery,
   type TaskSearchQuery,
   type TaskSearchResult,
   type TaskTemplate,
@@ -23,8 +25,9 @@ import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest, unwrap } from '../http';
 import { createActivity } from './activities';
 import { getLead, likeEscape } from './leads';
+import { notifyTaskAssigned } from './team-work';
 
-const TASK_SELECT = 'id, lead_id, title, due_on, done_at, remind_at, reminded_at, position, created_at, updated_at';
+const TASK_SELECT = 'id, lead_id, title, due_on, done_at, remind_at, reminded_at, position, assigned_to, created_at, updated_at';
 const TEMPLATE_SELECT = 'id, name, service, items, sort_order';
 const TASK_NOT_FOUND = 'Tarefa não encontrada';
 
@@ -100,12 +103,21 @@ export async function createTask(ctx: ApiContext, leadId: string, input: LeadTas
     })
     .select(TASK_SELECT)
     .single();
-  return unwrap(result) as LeadTask;
+  const task = unwrap(result) as LeadTask;
+  if (task.assigned_to) await notifyTaskAssigned(ctx, task);
+  return task;
 }
 
 export async function updateTask(ctx: ApiContext, id: string, patch: LeadTaskUpdate): Promise<LeadTask> {
   const { done, ...rest } = patch;
   const update: Record<string, unknown> = { ...rest };
+  // Para avisar só quando o responsável muda.
+  const before =
+    rest.assigned_to !== undefined
+      ? ((await ctx.supabase.from('lead_tasks').select('assigned_to').eq('workspace_id', ctx.workspaceId).eq('id', id).maybeSingle()).data as {
+          assigned_to: string | null;
+        } | null)
+      : null;
   if (done !== undefined || (rest.remind_at && rest.due_on === undefined)) {
     const current = unwrap(
       await ctx.supabase.from('lead_tasks').select('done_at, due_on').eq('workspace_id', ctx.workspaceId).eq('id', id).maybeSingle(),
@@ -130,7 +142,34 @@ export async function updateTask(ctx: ApiContext, id: string, patch: LeadTaskUpd
     .eq('id', id)
     .select(TASK_SELECT)
     .maybeSingle();
-  return unwrap(result, TASK_NOT_FOUND) as LeadTask;
+  const task = unwrap(result, TASK_NOT_FOUND) as LeadTask;
+  if (before && task.assigned_to && task.assigned_to !== before.assigned_to) await notifyTaskAssigned(ctx, task);
+  return task;
+}
+
+/** "As minhas tarefas": as por fazer de todos os leads (sem arquivados nem anonimizados), pelo prazo. */
+export async function listOpenTasks(ctx: ApiContext, query: TaskListQuery): Promise<TaskListItem[]> {
+  let q = ctx.supabase
+    .from('lead_tasks')
+    .select(`${TASK_SELECT}, lead:leads!inner(id, number, company_name, project_title, status, archived_at, anonymized_at)`)
+    .eq('workspace_id', ctx.workspaceId)
+    .is('done_at', null)
+    .is('lead.archived_at', null)
+    .is('lead.anonymized_at', null);
+  // Como nos leads: sem responsável é do dono, por isso entram nas "minhas" dele.
+  if (query.assigned === 'me') q = ctx.role === 'owner' ? q.or(`assigned_to.eq.${ctx.user.id},assigned_to.is.null`) : q.eq('assigned_to', ctx.user.id);
+  else if (query.assigned === 'none') q = q.is('assigned_to', null);
+  else if (query.assigned !== 'all') q = q.eq('assigned_to', query.assigned);
+  const { data, error } = await q
+    .order('due_on', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: true })
+    .limit(query.limit);
+  if (error) throw fromPostgrest(error);
+  type Row = LeadTask & { lead: TaskListItem['lead'] & { archived_at: unknown; anonymized_at: unknown } };
+  return ((data ?? []) as unknown as Row[]).map(({ lead, ...task }) => ({
+    ...task,
+    lead: { id: lead.id, number: lead.number, company_name: lead.company_name, project_title: lead.project_title, status: lead.status },
+  }));
 }
 
 export async function deleteTask(ctx: ApiContext, id: string): Promise<void> {

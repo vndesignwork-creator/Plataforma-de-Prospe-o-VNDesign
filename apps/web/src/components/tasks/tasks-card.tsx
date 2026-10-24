@@ -25,7 +25,7 @@ import {
   type LeadTask,
   type TaskTemplate,
 } from '@vndesign/core';
-import { Bell, CalendarDays, Check, ChevronRight, Clock, Copy, GripVertical, ListPlus, Pencil, Plus, X } from 'lucide-react';
+import { Bell, CalendarDays, Check, ChevronRight, Clock, Copy, GripVertical, ListPlus, Pencil, Plus, UserRound, X } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -34,15 +34,15 @@ import { Card, Skeleton } from '@/components/ui/card';
 import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownSeparator, DropdownTrigger } from '@/components/ui/dropdown';
 import { DateInput, DateTimeInput } from '@/components/ui/date-input';
 import { Dialog } from '@/components/ui/dialog';
-import { Input, Textarea } from '@/components/ui/input';
+import { Input, Select, Textarea } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
-import { useInvalidateTasks, useLeadTasks, useTaskTemplates } from '@/lib/queries';
+import { useInvalidateTasks, useLeadTasks, useMe, useTaskTemplates, useTeamNames } from '@/lib/queries';
 import { Linkified } from '@/lib/linkify';
 import { formatReminder, isoToLocalInput, localInputToIso } from '@/lib/local-datetime';
 import { cn } from '@/lib/utils';
 import { TaskProgress } from './task-progress';
 
-type TaskPatch = { title: string; due_on: string | null; remind_at: string | null };
+type TaskPatch = { title: string; due_on: string | null; remind_at: string | null; assigned_to?: string | null };
 
 /** Prazo da tarefa: vermelho em atraso, laranja hoje. */
 export function DueChip({ due, today, done }: { due: string | null; today: string; done?: boolean }) {
@@ -184,12 +184,20 @@ function TaskEditor({
   const [title, setTitle] = useState(task.title);
   const [due, setDue] = useState(task.due_on ?? '');
   const [remind, setRemind] = useState(isoToLocalInput(task.remind_at));
+  const [assignee, setAssignee] = useState(task.assigned_to ?? '');
+  const { data: team } = useTeamNames();
+  const { data: me } = useMe();
   const [saving, setSaving] = useState(false);
   async function submit(e?: FormEvent) {
     e?.preventDefault();
     if (!title.trim()) return;
     setSaving(true);
-    await onSave({ title: title.replace(/\s*\n\s*/g, '\n').trim(), due_on: due || null, remind_at: localInputToIso(remind) });
+    await onSave({
+      title: title.replace(/\s*\n\s*/g, '\n').trim(),
+      due_on: due || null,
+      remind_at: localInputToIso(remind),
+      ...(assignee !== (task.assigned_to ?? '') ? { assigned_to: assignee || null } : {}),
+    });
     setSaving(false);
   }
   return (
@@ -251,6 +259,24 @@ function TaskEditor({
             <DateTimeInput id={`task-remind-${task.id}`} value={remind} onChange={setRemind} aria-label="Lembrete (dia e hora)" placeholder="🔔 dia e hora" />
           </div>
         </div>
+        {/* Com equipa: a quem fica a tarefa (essa pessoa recebe um aviso). */}
+        {(team?.length ?? 0) > 1 ? (
+          <div>
+            <label htmlFor={`task-assignee-${task.id}`} className="mb-1.5 block text-sm font-medium">
+              Responsável
+            </label>
+            <Select id={`task-assignee-${task.id}`} value={assignee} onChange={(e) => setAssignee(e.target.value)}>
+              <option value="">Ninguém</option>
+              {(team ?? []).map((m) => (
+                <option key={m.user_id} value={m.user_id}>
+                  {m.name}
+                  {m.user_id === me?.user.id ? ' (tu)' : ''}
+                </option>
+              ))}
+            </Select>
+            <p className="mt-1 text-xs text-muted">Recebe um aviso e vê-a em Tarefas → As minhas.</p>
+          </div>
+        ) : null}
       </form>
     </Dialog>
   );
@@ -267,8 +293,10 @@ function TaskRow({
   onCancelEdit,
   onDuplicate,
   onDelete,
+  assigneeName,
 }: {
   task: LeadTask;
+  assigneeName?: string | null;
   today: string;
   editing: boolean;
   sortable: boolean;
@@ -329,6 +357,16 @@ function TaskRow({
           <>
             {' '}
             <ReminderChip task={task} />
+          </>
+        ) : null}
+        {assigneeName ? (
+          <>
+            {' '}
+            <span className="inline-flex items-center gap-1 rounded bg-surface-3 px-1.5 text-xs whitespace-nowrap text-muted" title="Responsável">
+              <UserRound className="h-3 w-3" aria-hidden />
+              <span className="sr-only">Responsável: </span>
+              {assigneeName}
+            </span>
           </>
         ) : null}
         {task.time_seconds && task.time_seconds >= 60 ? (
@@ -417,6 +455,9 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
   const invalidate = useInvalidateTasks();
   const { data: tasks, isLoading, error: loadError } = useLeadTasks(lead.id);
   const { data: templates } = useTaskTemplates();
+  const { data: team } = useTeamNames();
+  const { data: me } = useMe();
+  const hasTeam = (team?.length ?? 0) > 1;
   const [title, setTitle] = useState('');
   const [due, setDue] = useState('');
   const [remind, setRemind] = useState('');
@@ -521,7 +562,7 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
     try {
       const { data: copy } = await api<{ data: LeadTask }>(`/leads/${lead.id}/tasks`, {
         method: 'POST',
-        body: { title: task.title, due_on: task.due_on },
+        body: { title: task.title, due_on: task.due_on, assigned_to: task.assigned_to ?? null },
       });
       const at = pending.findIndex((t) => t.id === task.id);
       if (at >= 0 && at < pending.length - 1) {
@@ -580,6 +621,7 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
 
   const rowProps = (task: LeadTask, sortable: boolean) => ({
     task,
+    assigneeName: task.assigned_to && hasTeam ? (task.assigned_to === me?.user.id ? 'Tu' : (team?.find((m) => m.user_id === task.assigned_to)?.name ?? null)) : null,
     today,
     sortable,
     editing: editingId === task.id,

@@ -1,7 +1,7 @@
 'use client';
 
 import * as RadixDialog from '@radix-ui/react-dialog';
-import { BarChart3, BriefcaseBusiness, CalendarDays, Columns3, Handshake, LayoutDashboard, LogOut, Menu, MessageSquareText, Moon, Search, Settings, Sparkles, Sun, Target, Users, X } from 'lucide-react';
+import { BarChart3, BriefcaseBusiness, CalendarDays, Columns3, Handshake, LayoutDashboard, ListChecks, LogOut, Menu, MessageSquareText, Moon, Search, Settings, Sparkles, Sun, Target, Users, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
@@ -15,6 +15,7 @@ import { useRole, useSettings } from '@/lib/queries';
 import { prospectorPageAllowed } from '@/lib/role-access';
 import { cn } from '@/lib/utils';
 import { Logo } from './logo';
+import { NotificationsBell } from './notifications-bell';
 import { QuickSearch, shortcutLabel, useQuickSearchShortcut } from './quick-search';
 import { ShortcutsDialog, useKeyboardShortcuts } from './keyboard-shortcuts';
 import { useTheme } from './theme';
@@ -22,6 +23,7 @@ import { useTheme } from './theme';
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, match: (p: string) => p.startsWith('/dashboard') },
   { href: '/agenda', label: 'Agenda', icon: CalendarDays, match: (p: string) => p.startsWith('/agenda') },
+  { href: '/tarefas', label: 'Tarefas', icon: ListChecks, match: (p: string) => p.startsWith('/tarefas') },
   // O mapa abre-se a partir dos Leads ("Ver no mapa"), por isso conta como Leads.
   { href: '/leads', label: 'Leads', icon: Users, match: (p: string) => p === '/leads' || p.startsWith('/leads/') || p.startsWith('/mapa') || p.startsWith('/importar') },
   { href: '/prospecao', label: 'Prospeção', icon: Target, match: (p: string) => p.startsWith('/prospecao'), feature: 'prospecting_session' as const },
@@ -151,9 +153,12 @@ export function AppShell({ email, children }: { email: string | null; children: 
 
       {/* Barra lateral (computador) */}
       <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r border-border bg-surface px-3 py-5 lg:flex">
-        <Link href="/dashboard" className="px-3">
-          <Logo />
-        </Link>
+        <div className="flex items-center justify-between gap-2 pl-3">
+          <Link href="/dashboard">
+            <Logo />
+          </Link>
+          <NotificationsBell />
+        </div>
         <nav aria-label="Principal" className="flex flex-1 flex-col gap-3">
           <SearchButton onClick={openSearch} />
           <NavLinks />
@@ -174,7 +179,8 @@ export function AppShell({ email, children }: { email: string | null; children: 
           <Logo />
         </Link>
         {role === 'prospector' ? null : <RunningTimer compact className="ml-auto min-w-0 py-0.5" />}
-        <button type="button" onClick={openSearch} className={cn('rounded-lg p-2 text-fg hover:bg-surface-2', role === 'prospector' && 'ml-auto')} aria-label="Pesquisar">
+        <NotificationsBell className={cn(role === 'prospector' && 'ml-auto')} />
+        <button type="button" onClick={openSearch} className="rounded-lg p-2 text-fg hover:bg-surface-2" aria-label="Pesquisar">
           <Search className="h-5 w-5" aria-hidden />
         </button>
         <RadixDialog.Root open={open} onOpenChange={setOpen}>

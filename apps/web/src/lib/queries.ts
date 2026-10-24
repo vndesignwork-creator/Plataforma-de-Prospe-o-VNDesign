@@ -591,6 +591,7 @@ export function useInvalidateTasks() {
     void qc.invalidateQueries({ queryKey: ['today'] });
     void qc.invalidateQueries({ queryKey: ['projects'] });
     void qc.invalidateQueries({ queryKey: ['project-calendar'] });
+    void qc.invalidateQueries({ queryKey: ['my-tasks'] });
   };
 }
 

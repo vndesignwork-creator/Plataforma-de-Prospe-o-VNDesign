@@ -44,6 +44,7 @@ import {
   GitMerge,
   Mail,
   MessageSquare,
+  MessagesSquare,
   MailOpen,
   Phone,
   Wallet,
@@ -69,7 +70,9 @@ import { useActivities, useEmailTracking, useLead, useLogActivity, useTeamNames 
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { DictateButton, appendDictation } from '@/components/ui/dictate-button';
+import { findMentions } from '@vndesign/core';
 import { LeadChanges, changeLabel } from './lead-changes';
+import { MentionText, MentionTextarea } from './mention-textarea';
 
 export const ICONS: Partial<Record<Activity["type"], LucideIcon>> = {
   created: Plus,
@@ -108,6 +111,7 @@ export const ICONS: Partial<Record<Activity["type"], LucideIcon>> = {
   briefing_received: ClipboardList,
   email_opened: Eye,
   email_clicked: MousePointerClick,
+  comment: MessagesSquare,
 };
 
 /** "Aberto 3× · último a …" num email enviado pela plataforma (com o rastreio ligado). */
@@ -251,7 +255,7 @@ const MOBILE_VISIBLE = 3;
  * Registos que o próprio utilizador pode apagar: os que escreveu à mão (um engano
  * acontece). O histórico automático (estados, propostas, tarefas…) fica sempre.
  */
-const DELETABLE: readonly Activity['type'][] = ['note', 'call_logged', 'email_sent'];
+const DELETABLE: readonly Activity['type'][] = ['note', 'call_logged', 'email_sent', 'comment'];
 
 /**
  * No computador, a linha do tempo não passa do fim da coluna principal: mede o espaço
@@ -296,6 +300,8 @@ const LOG_TYPES = [
   { value: 'call_logged', label: 'Chamada' },
   { value: 'note', label: 'Outro registo' },
 ];
+/** Com equipa: comentário interno (o cliente não vê), com @menções. */
+const COMMENT_TYPE = { value: 'comment', label: 'Comentário para a equipa' };
 
 export function ActivityTimeline({
   leadId,
@@ -344,8 +350,16 @@ export function ActivityTimeline({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (type === 'note' && !body.trim()) return;
+    if ((type === 'note' || type === 'comment') && !body.trim()) return;
     try {
+      if (type === 'comment') {
+        const mentions = findMentions(body, team ?? []);
+        await api(`/leads/${leadId}/comments`, { method: 'POST', body: { body: body.trim(), mentions } });
+        void qc.invalidateQueries({ queryKey: ['activities', leadId] });
+        close();
+        toast.success(mentions.length ? `Comentário guardado; ${mentions.length === 1 ? 'a pessoa mencionada foi avisada' : `${mentions.length} pessoas avisadas`}.` : 'Comentário guardado.');
+        return;
+      }
       await log.mutateAsync({ type, body: body.trim() || undefined });
       close();
       toast.success('Registado na linha do tempo.');
@@ -414,7 +428,7 @@ export function ActivityTimeline({
           className="flex flex-col gap-2 border-b border-border p-4"
         >
           <Select value={type} onChange={(e) => setType(e.target.value)} aria-label="Tipo de registo" className="h-9">
-            {LOG_TYPES.map((t) => (
+            {[...LOG_TYPES, ...(hasTeam ? [COMMENT_TYPE] : [])].map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}
               </option>
@@ -423,26 +437,39 @@ export function ActivityTimeline({
           <label htmlFor="activity-body" className="sr-only">
             Texto do registo
           </label>
-          <Textarea
-            id="activity-body"
-            rows={3}
-            autoFocus
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder={
-              type === 'note'
-                ? 'O que aconteceu? (ex.: encontrei o dono na feira, pediu portefólio)'
-                : type === 'call_logged'
-                  ? 'O que aconteceu? (ex.: liguei, pediu para voltar a ligar em março)'
-                  : 'O que enviaste? (ex.: proposta do site, com 2 opções de preço)'
-            }
-          />
+          {type === 'comment' ? (
+            <MentionTextarea
+              id="activity-body"
+              rows={3}
+              autoFocus
+              value={body}
+              onValueChange={setBody}
+              members={(team ?? []).filter((m) => m.user_id !== currentUserId)}
+              maxLength={2000}
+              placeholder="Para a equipa (o cliente não vê). Escreve @ para mencionar alguém, ex.: @Marta liga tu amanhã."
+            />
+          ) : (
+            <Textarea
+              id="activity-body"
+              rows={3}
+              autoFocus
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder={
+                type === 'note'
+                  ? 'O que aconteceu? (ex.: encontrei o dono na feira, pediu portefólio)'
+                  : type === 'call_logged'
+                    ? 'O que aconteceu? (ex.: liguei, pediu para voltar a ligar em março)'
+                    : 'O que enviaste? (ex.: proposta do site, com 2 opções de preço)'
+              }
+            />
+          )}
           <div className="flex justify-end gap-2">
             <DictateButton size="sm" onText={(spoken) => setBody((current) => appendDictation(current, spoken))} className="mr-auto" />
             <Button type="button" size="sm" variant="ghost" onClick={close}>
               Cancelar
             </Button>
-            <Button type="submit" size="sm" loading={log.isPending} disabled={type === 'note' && !body.trim()}>
+            <Button type="submit" size="sm" loading={log.isPending} disabled={(type === 'note' || type === 'comment') && !body.trim()}>
               Registar
             </Button>
           </div>
@@ -512,7 +539,11 @@ export function ActivityTimeline({
                       </p>
                       {detail ? <p className="text-sm text-muted">{detail}</p> : null}
                       {changes ? <LeadChanges lead={lead} changes={changes} /> : null}
-                      {a.body && a.type !== 'email_opened' && a.type !== 'email_clicked' ? (
+                      {a.body && a.type === 'comment' ? (
+                        <p className="mt-1 rounded-lg bg-surface-2 px-2.5 py-1.5 text-sm break-words whitespace-pre-line">
+                          <MentionText text={a.body} members={team ?? []} />
+                        </p>
+                      ) : a.body && a.type !== 'email_opened' && a.type !== 'email_clicked' ? (
                         <p className="mt-1 text-sm break-words whitespace-pre-line">{a.body}</p>
                       ) : null}
                       {a.type === 'email_sent' ? <OpenStatus tracking={opened.get(String((a.payload as Record<string, unknown>).tracking_id))} /> : null}

@@ -14,6 +14,9 @@ import {
   type LeadStatus,
   type LostReason,
   leadPath,
+  arrangeCards,
+  isCardHidden,
+  type LeadCard,
 } from '@vndesign/core';
 import {
   Archive,
@@ -36,7 +39,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/page-header';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
@@ -82,6 +85,8 @@ import { CustomFieldsRows } from './custom-fields';
 import { LostReasonDialog, LostReasonField } from './lost-reason';
 import { StageAge } from './stage-age';
 import { LeadFilesCard } from './lead-files';
+import { LeadPager } from './lead-pager';
+import { CardLayoutButton, useCardLayout } from './card-layout';
 import { LeadSummaryButton } from './lead-summary';
 import { PinnedNoteBox, PinnedNoteDialog } from './pinned-note';
 import { restoreDeletedLeads } from './trash-view';
@@ -228,6 +233,7 @@ export function LeadDetail({ id }: { id: string }) {
   const staff = me ? me.role !== 'prospector' : false;
   // "Sem interesse": pergunta primeiro o motivo.
   const [askLost, setAskLost] = useState(false);
+  const cardLayout = useCardLayout();
 
   if (isLoading) {
     return (
@@ -288,6 +294,28 @@ export function LeadDetail({ id }: { id: string }) {
     }
   }
 
+  // Coluna lateral: pela ordem que esta pessoa escolheu (Organizar cartões), sem os que escondeu.
+  const sideCards: Partial<Record<LeadCard, ReactNode>> = {
+    tasks: !lead.anonymized_at ? <TasksCard lead={lead} /> : null,
+    payments: staff && settings?.features.payments ? <PaymentsCard lead={lead} /> : null,
+    projects: staff && settings?.features.projects ? <ClientProjectsCard lead={lead} /> : null,
+    brand_kit: staff && settings?.features.brand_kit && (lead.status === 'cliente' || lead.client_of) && !lead.anonymized_at ? <BrandKitCard lead={lead} /> : null,
+    // Antes de ser cliente: só os ficheiros (os mesmos do kit, que ficam lá quando ganhar).
+    files: settings?.features.brand_kit && lead.status !== 'cliente' && !lead.client_of && !lead.anonymized_at ? <LeadFilesCard lead={lead} /> : null,
+    meetings: settings?.features.meetings ? <MeetingsCard lead={lead} /> : null,
+    notes: <NotesCard lead={lead} />,
+    proposals: staff ? <ProposalsCard lead={lead} /> : null,
+    contracts: staff && settings?.features.contracts ? <ContractsCard lead={lead} /> : null,
+    activity: (
+      <div id="atividade" className="scroll-mt-20">
+        <ActivityTimeline leadId={lead.id} currentUserId={me?.user.id} fitTo={mainColumn} />
+      </div>
+    ),
+  };
+  // Os que existem nesta ficha (escondidos incluídos: em "Organizar cartões" voltam a mostrar-se).
+  const availableCards = arrangeCards(cardLayout).filter((key) => sideCards[key]);
+  const asideCards = availableCards.filter((key) => !isCardHidden(cardLayout, key)).map((key) => [key, sideCards[key]] as const);
+
   /** Arquivar/repor, com "Anular" no aviso para desfazer logo. */
   async function setArchived(archived: boolean) {
     const ids = [lead!.id];
@@ -318,34 +346,38 @@ export function LeadDetail({ id }: { id: string }) {
     <>
       <PageHeader
         eyebrow={
-          <Breadcrumbs
-            items={[{ label: 'Leads', href: '/leads' }]}
-            meta={
-              <>
-                #{lead.number}
-                {lead.sector ? (
-                  <>
-                    {' · '}
-                    <span className="inline-flex items-center gap-1 align-[-2px]">
-                      <SectorIconView sector={lead.sector} className="h-3.5 w-3.5" />
-                      {lead.sector.name}
-                    </span>
-                  </>
-                ) : null}
-                <span className="ml-2 inline-flex align-middle">
-                  <LeadScoreDetails lead={lead} />
-                </span>
-                {lead.client_of ? (
-                  <>
-                    {' · '}
-                    <Link href={`/leads/${lead.client_of}`} className="text-accent-text hover:underline">
-                      projeto de um cliente que voltou (ver o cliente)
-                    </Link>
-                  </>
-                ) : null}
-              </>
-            }
-          />
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+            <Breadcrumbs
+              items={[{ label: 'Leads', href: '/leads' }]}
+              meta={
+                <>
+                  #{lead.number}
+                  {lead.sector ? (
+                    <>
+                      {' · '}
+                      <span className="inline-flex items-center gap-1 align-[-2px]">
+                        <SectorIconView sector={lead.sector} className="h-3.5 w-3.5" />
+                        {lead.sector.name}
+                      </span>
+                    </>
+                  ) : null}
+                  <span className="ml-2 inline-flex align-middle">
+                    <LeadScoreDetails lead={lead} />
+                  </span>
+                  {lead.client_of ? (
+                    <>
+                      {' · '}
+                      <Link href={`/leads/${lead.client_of}`} className="text-accent-text hover:underline">
+                        projeto de um cliente que voltou (ver o cliente)
+                      </Link>
+                    </>
+                  ) : null}
+                </>
+              }
+            />
+            {/* Vindo da lista: ← → para o lead anterior/seguinte dessa lista. */}
+            <LeadPager lead={lead} className="-my-1" />
+          </div>
         }
         title={
           lead.project_title ? (
@@ -697,19 +729,10 @@ export function LeadDetail({ id }: { id: string }) {
 
         {/* Coluna lateral (computador): o que se consulta durante uma chamada — notas, propostas e atividade. */}
         <aside aria-label="Tarefas, pagamentos, notas, propostas e atividade" className="flex flex-col gap-5">
-          {!lead.anonymized_at ? <TasksCard lead={lead} /> : null}
-          {staff && settings?.features.payments ? <PaymentsCard lead={lead} /> : null}
-          {staff && settings?.features.projects ? <ClientProjectsCard lead={lead} /> : null}
-          {staff && settings?.features.brand_kit && (lead.status === 'cliente' || lead.client_of) && !lead.anonymized_at ? <BrandKitCard lead={lead} /> : null}
-          {/* Antes de ser cliente: só os ficheiros (os mesmos do kit, que ficam lá quando ganhar). */}
-          {settings?.features.brand_kit && lead.status !== 'cliente' && !lead.client_of && !lead.anonymized_at ? <LeadFilesCard lead={lead} /> : null}
-          {settings?.features.meetings ? <MeetingsCard lead={lead} /> : null}
-          <NotesCard lead={lead} />
-          {staff ? <ProposalsCard lead={lead} /> : null}
-          {staff && settings?.features.contracts ? <ContractsCard lead={lead} /> : null}
-          <div id="atividade" className="scroll-mt-20">
-            <ActivityTimeline leadId={lead.id} currentUserId={me?.user.id} fitTo={mainColumn} />
-          </div>
+          {asideCards.map(([key, node]) => (
+            <Fragment key={key}>{node}</Fragment>
+          ))}
+          <CardLayoutButton available={availableCards} />
         </aside>
       </div>
 

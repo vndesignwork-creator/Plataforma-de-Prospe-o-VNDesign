@@ -49,3 +49,4 @@ export * from './lead-summary';
 export * from './card-scan';
 export * from './period-compare';
 export * from './saved-views';
+export * from './team-work';

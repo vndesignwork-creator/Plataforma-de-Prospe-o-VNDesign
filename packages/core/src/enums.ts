@@ -105,6 +105,7 @@ export const ACTIVITY_TYPES = [
   'briefing_received',
   'email_opened',
   'email_clicked',
+  'comment',
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
@@ -157,6 +158,7 @@ export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
   briefing_received: 'Briefing recebido',
   email_opened: 'O lead abriu o email',
   email_clicked: 'O lead carregou num link',
+  comment: 'Comentário da equipa',
 };
 
 export const TEMPLATE_KINDS = [

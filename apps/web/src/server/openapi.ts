@@ -132,6 +132,11 @@ import {
   MeetingNotesInputSchema,
   MeetingNotesResultSchema,
   TaskSearchQuerySchema,
+  TaskListQuerySchema,
+  TaskListItemSchema,
+  NotificationListSchema,
+  NotificationReadSchema,
+  CommentCreateSchema,
   TaskSearchResultSchema,
   TeamActivityQuerySchema,
   TeamActivitySchema,
@@ -587,10 +592,19 @@ export function getOpenApiDocument() {
           responses: { '201': ok(data(ActivitySchema), 'Criado'), ...withNotFound },
         }),
       },
+      '/leads/{id}/comments': {
+        post: op({
+          tags: ['Atividade'],
+          summary: 'Comentário da equipa na linha do tempo, com @menções (cada pessoa mencionada recebe um aviso)',
+          requestParams: { path: leadId },
+          requestBody: body(CommentCreateSchema),
+          responses: { '201': ok(data(ActivitySchema), 'Criado'), ...withNotFound },
+        }),
+      },
       '/leads/{id}/activities/{activityId}': {
         delete: op({
           tags: ['Atividade'],
-          summary: 'Apagar um registo manual próprio (nota, chamada, email enviado)',
+          summary: 'Apagar um registo manual próprio (nota, chamada, email enviado, comentário)',
           requestParams: { path: z.object({ id: z.uuid(), activityId: z.uuid() }) },
           responses: { '204': { description: 'Apagada' }, ...withNotFound },
         }),
@@ -1086,9 +1100,24 @@ export function getOpenApiDocument() {
       '/tasks': {
         get: op({
           tags: ['Tarefas'],
-          summary: 'Pesquisa rápida nas tarefas de todos os leads (Ctrl+K)',
-          requestParams: { query: TaskSearchQuerySchema },
-          responses: { '200': ok(data(z.array(TaskSearchResultSchema))), ...common },
+          summary: 'Com ?q=: pesquisa rápida nas tarefas (Ctrl+K). Sem q: tarefas por fazer de todos os leads (página Tarefas), filtradas por responsável',
+          requestParams: { query: TaskListQuerySchema.extend({ q: TaskSearchQuerySchema.shape.q.optional() }) },
+          responses: { '200': ok(data(z.union([z.array(TaskListItemSchema), z.array(TaskSearchResultSchema)]))), ...common },
+        }),
+      },
+      '/notifications': {
+        get: op({
+          tags: ['Equipa'],
+          summary: 'Os meus avisos (tarefas que me deram e @menções) e quantos estão por ler',
+          responses: { '200': ok(NotificationListSchema), ...common },
+        }),
+      },
+      '/notifications/read': {
+        post: op({
+          tags: ['Equipa'],
+          summary: 'Marcar avisos como lidos ({ ids } ou { all: true })',
+          requestBody: body(NotificationReadSchema),
+          responses: { '200': ok(data(z.object({ updated: z.int() }))), ...common },
         }),
       },
       '/tasks/{id}': {

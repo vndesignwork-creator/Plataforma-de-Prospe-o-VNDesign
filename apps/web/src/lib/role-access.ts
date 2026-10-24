@@ -3,7 +3,7 @@
  * para a Prospeção). A API bloqueia na mesma o que não é para ele; isto só
  * evita páginas vazias ou com erros.
  */
-const PROSPECTOR_PAGES = ['/dashboard', '/leads', '/prospecao', '/gerar-leads', '/kanban', '/mapa', '/scripts', '/partilhar', '/estatisticas', '/definicoes/assinatura', '/definicoes/conta'];
+const PROSPECTOR_PAGES = ['/dashboard', '/tarefas', '/leads', '/prospecao', '/gerar-leads', '/kanban', '/mapa', '/scripts', '/partilhar', '/estatisticas', '/definicoes/assinatura', '/definicoes/conta'];
 // Propostas, juntar, a limpeza de duplicados e os apagados são só do dono ou administrador.
 const BLOCKED_LEAD_PAGES = /^\/leads\/((duplicados|apagados)(\/|$)|[^/]+\/(propostas|juntar)(\/|$))/;
 

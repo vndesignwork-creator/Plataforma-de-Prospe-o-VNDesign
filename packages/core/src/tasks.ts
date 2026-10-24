@@ -31,6 +31,7 @@ export const LeadTaskSchema = z
     remind_at: z.string().nullable().optional().meta({ description: 'Lembrete (data e hora): envia uma notificação' }),
     reminded_at: z.string().nullable().optional().meta({ description: 'Quando o lembrete foi enviado' }),
     position: z.number().meta({ description: 'Ordem na lista (menor = mais acima)' }),
+    assigned_to: z.uuid().nullable().optional().meta({ description: 'Responsável (membro da equipa; null = ninguém)' }),
     time_seconds: z.int().optional().meta({ description: 'Tempo registado nesta tarefa (Pomodoro ou registos à mão)' }),
     created_at: z.string(),
     updated_at: z.string(),
@@ -48,6 +49,7 @@ export const LeadTaskCreateSchema = z
     title: taskTitle,
     due_on: nullableDate.optional().transform((v) => v ?? null),
     remind_at: remindAt.optional().transform((v) => v ?? null),
+    assigned_to: z.uuid({ error: 'Responsável inválido.' }).nullable().optional().meta({ description: 'Responsável (recebe um aviso)' }),
   })
   .meta({ id: 'LeadTaskCreate' });
 export type LeadTaskCreate = z.output<typeof LeadTaskCreateSchema>;
@@ -58,6 +60,7 @@ export const LeadTaskUpdateSchema = z
     due_on: nullableDate.optional(),
     remind_at: remindAt.optional(),
     done: z.boolean().optional().meta({ description: 'true = concluída' }),
+    assigned_to: z.uuid({ error: 'Responsável inválido.' }).nullable().optional().meta({ description: 'Responsável (null = ninguém); recebe um aviso' }),
   })
   .meta({ id: 'LeadTaskUpdate' });
 export type LeadTaskUpdate = z.output<typeof LeadTaskUpdateSchema>;

@@ -10,6 +10,7 @@ export type Shortcut = { keys: string[]; label: string; href?: string; action?: 
 export const GO_SHORTCUTS: Record<string, { href: string; label: string }> = {
   d: { href: '/dashboard', label: 'Dashboard' },
   a: { href: '/agenda', label: 'Agenda' },
+  t: { href: '/tarefas', label: 'Tarefas' },
   l: { href: '/leads', label: 'Leads' },
   k: { href: '/kanban', label: 'Kanban' },
   p: { href: '/projetos', label: 'Projetos' },
