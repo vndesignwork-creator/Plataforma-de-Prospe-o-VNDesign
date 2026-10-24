@@ -240,6 +240,11 @@ export function MyTasksView() {
           </Card>
         ))
       )}
+      {(data?.length ?? 0) >= 500 ? (
+        <p role="status" className="rounded-lg bg-warning/10 px-3 py-2 text-sm">
+          Estão aqui as primeiras 500 tarefas (por prazo). Conclui ou apaga as que já não fazem sentido para veres as restantes.
+        </p>
+      ) : null}
       {groups.length ? (
         <p className="flex items-center gap-1.5 text-xs text-muted">
           <ListChecks className="h-3.5 w-3.5" aria-hidden /> Só as por fazer, dos leads e projetos que não estão arquivados.

@@ -10,7 +10,8 @@ export const metadata: Metadata = { title: 'Leads' };
 
 export default function LeadsPage() {
   return (
-    <>
+    // Computador: a página cabe no ecrã; a tabela fica com o resto da altura (scroll e barra horizontal dentro dela).
+    <div className="lg:flex lg:h-[calc(100dvh-3.5rem)] lg:min-h-[32rem] lg:flex-col">
       <PageHeader
         title="Pipeline de leads"
         description="Todos os leads de prospeção, com filtros e pesquisa."
@@ -25,6 +26,6 @@ export default function LeadsPage() {
       <Suspense>
         <LeadsTable />
       </Suspense>
-    </>
+    </div>
   );
 }

@@ -162,7 +162,8 @@ export async function listOpenTasks(ctx: ApiContext, query: TaskListQuery): Prom
   else if (query.assigned !== 'all') q = q.eq('assigned_to', query.assigned);
   const { data, error } = await q
     .order('due_on', { ascending: true, nullsFirst: false })
-    .order('created_at', { ascending: true })
+    // No mesmo dia (e nas sem prazo), as mais recentes primeiro.
+    .order('created_at', { ascending: false })
     .limit(query.limit);
   if (error) throw fromPostgrest(error);
   type Row = LeadTask & { lead: TaskListItem['lead'] & { archived_at: unknown; anonymized_at: unknown } };

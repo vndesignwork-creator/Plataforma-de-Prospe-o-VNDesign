@@ -145,7 +145,7 @@ export const TaskListQuerySchema = z
       .union([z.enum(['me', 'none', 'all']), z.uuid()])
       .default('me')
       .meta({ description: 'De quem: "me" (as minhas; para o dono, também as sem responsável), "none" (sem responsável), "all" ou o id de uma pessoa' }),
-    limit: z.coerce.number().int().min(1).max(500).default(300),
+    limit: z.coerce.number().int().min(1).max(500).default(500),
   })
   .meta({ id: 'TaskListQuery' });
 export type TaskListQuery = z.output<typeof TaskListQuerySchema>;

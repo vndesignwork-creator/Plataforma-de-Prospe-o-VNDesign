@@ -453,7 +453,7 @@ export function LeadsTable() {
   const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1 lg:[&>*]:shrink-0">
       {/* Pesquisa e ações */}
       <div className="flex flex-wrap items-center gap-2">
         {/* Telemóvel: pesquisa numa linha; por baixo, Filtros · Ordenar · Exportar alinhados. */}
@@ -791,7 +791,8 @@ export function LeadsTable() {
         }
       />
 
-      <div className={cn('rounded-xl border border-border bg-surface transition-opacity', isFetching && !isLoading && 'opacity-70')}>
+      {/* Computador: a caixa encolhe para caber no ecrã (a tabela tem o seu scroll). */}
+      <div className={cn('rounded-xl border border-border bg-surface transition-opacity lg:flex lg:min-h-0 lg:!shrink lg:flex-col', isFetching && !isLoading && 'opacity-70')}>
         {isLoading ? (
           <div className="flex flex-col gap-2 p-4">
             {Array.from({ length: 8 }, (_, i) => (
@@ -814,7 +815,7 @@ export function LeadsTable() {
           <>
             {/* Tabela (computador). "relative": os textos só para leitores de ecrã (posição absoluta)
                 ficam dentro desta caixa em vez de esticarem a página. */}
-            <div className="relative hidden max-h-[calc(100dvh-16rem)] overflow-auto lg:block">
+            <div className="relative hidden min-h-0 overflow-auto lg:block">
               <table className="w-full border-collapse text-sm">
                 <caption className="sr-only">Leads — clica no nome da empresa para abrir a ficha</caption>
                 <thead className="sticky top-0 z-10 bg-surface-2">
