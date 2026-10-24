@@ -614,9 +614,11 @@ export const PROJECT_FILTER_LABELS: Record<ProjectFilter, string> = {
   semana: 'Entregam esta semana',
 };
 
-export const PROJECT_SORTS = ['prazo', 'valor', 'fase'] as const;
+export const PROJECT_SORTS = ['prazo', 'valor', 'fase', 'manual'] as const;
 export type ProjectSort = (typeof PROJECT_SORTS)[number];
-export const PROJECT_SORT_LABELS: Record<ProjectSort, string> = { prazo: 'Prazo', valor: 'Valor', fase: 'Fase' };
+export const PROJECT_SORT_LABELS: Record<ProjectSort, string> = { prazo: 'Prazo', valor: 'Valor', fase: 'Fase', manual: 'A minha ordem' };
+/** "A minha ordem" (arrastar os projetos): ids pela ordem escolhida, guardados na conta. */
+export const PROJECTS_ORDER_PREFERENCE = 'projects.order';
 
 type Filterable = Pick<Project, 'info' | 'payments' | 'value' | 'lead'>;
 
@@ -629,11 +631,31 @@ export function projectMatches<P extends Filterable>(p: P, filter: ProjectFilter
   return true;
 }
 
-/** Ordena: prazo (sem prazo no fim), valor (maior primeiro) ou fase (Entrega primeiro, depois prazo). */
-export function sortProjects<P extends Filterable>(projects: readonly P[], sort: ProjectSort): P[] {
+/**
+ * Ordena: prazo (sem prazo no fim), valor (maior primeiro), fase (Entrega primeiro, depois prazo)
+ * ou "a minha ordem" (a que se arrastou; os projetos novos ficam no fim, pelo prazo).
+ */
+export function sortProjects<P extends Filterable>(projects: readonly P[], sort: ProjectSort, manual: readonly string[] = []): P[] {
   const byDue = (a: P, b: P) => (a.info.due_on ?? '9999-12-31').localeCompare(b.info.due_on ?? '9999-12-31');
   const list = [...projects];
+  if (sort === 'manual') {
+    const pos = new Map(manual.map((id, i) => [id, i]));
+    const at = (p: P) => pos.get(p.lead.id) ?? Number.MAX_SAFE_INTEGER;
+    return list.sort((a, b) => at(a) - at(b) || byDue(a, b));
+  }
   if (sort === 'valor') return list.sort((a, b) => (b.value ?? -1) - (a.value ?? -1) || byDue(a, b));
   if (sort === 'fase') return list.sort((a, b) => PROJECT_STAGES.indexOf(b.info.stage) - PROJECT_STAGES.indexOf(a.info.stage) || byDue(a, b));
   return list.sort(byDue);
+}
+
+/**
+ * Nova ordem completa depois de arrastar numa lista filtrada: os projetos que se
+ * veem ficam pela nova ordem nos lugares que ocupavam; os outros não mexem.
+ */
+export function reorderSubset(full: readonly string[], subset: readonly string[]): string[] {
+  const inSubset = new Set(subset);
+  const next = [...full];
+  let j = 0;
+  for (let i = 0; i < next.length; i++) if (inSubset.has(next[i]!)) next[i] = subset[j++]!;
+  return next;
 }

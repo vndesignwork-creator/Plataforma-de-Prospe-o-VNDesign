@@ -173,3 +173,53 @@ test('Pesquisa rápida (Ctrl+K) encontra os comentários da equipa', async ({ pa
   await option.click();
   await expect(page).toHaveURL(/#atividade$/);
 });
+
+test('Projetos: mover os blocos (pega ⠿) passa a "A minha ordem" e fica guardada', async ({ page }) => {
+  expect((await page.request.put('/api/v1/preferences/projects.order', { data: { value: [] } })).status()).toBeLessThan(300);
+  const a = await createLead(page.request, { company_name: `Bloco A ${run}`, status: 'cliente' });
+  const b = await createLead(page.request, { company_name: `Bloco B ${run}`, status: 'cliente' });
+  // Os primeiros por prazo: A antes de B.
+  expect((await page.request.patch(`/api/v1/leads/${a.id}/project`, { data: { due_on: '2020-01-01' } })).status()).toBe(200);
+  expect((await page.request.patch(`/api/v1/leads/${b.id}/project`, { data: { due_on: '2020-01-02' } })).status()).toBe(200);
+
+  await page.goto('/projetos');
+  await page.evaluate(() => localStorage.removeItem('vnd.projects.sort'));
+  await page.reload();
+  const list = page.getByRole('list', { name: 'Projetos em curso' });
+  // Posição de cada um na lista (pode haver blocos de outros testes com o mesmo prazo).
+  const order = async () => {
+    const names = await list.getByRole('button', { name: /^Mover o projeto/ }).evaluateAll((els) => els.map((e) => e.getAttribute('aria-label') ?? ''));
+    return names.findIndex((n) => n.includes(`Bloco A ${run}`)) < names.findIndex((n) => n.includes(`Bloco B ${run}`)) ? 'A,B' : 'B,A';
+  };
+  await expect.poll(order).toBe('A,B');
+
+  // Teclado: Espaço, seta para cima, Espaço.
+  // Sobe B até ficar por cima de A (pode haver outros blocos pelo meio).
+  const names = await list.getByRole('button', { name: /^Mover o projeto/ }).evaluateAll((els) => els.map((e) => e.getAttribute('aria-label') ?? ''));
+  const posA = names.findIndex((n) => n.includes(`Bloco A ${run}`)) + 1;
+  const posB = names.findIndex((n) => n.includes(`Bloco B ${run}`)) + 1;
+  await page.getByRole('button', { name: `Mover o projeto: #${b.number} Bloco B ${run}` }).focus();
+  await page.keyboard.press('Space');
+  await expect(page.getByText(new RegExp(`Bloco B ${run} na posição ${posB} de`))).toBeAttached();
+  for (let p = posB - 1; p >= posA; p--) {
+    await page.keyboard.press('ArrowUp');
+    await expect(page.getByText(new RegExp(`Bloco B ${run} na posição ${p} de`))).toBeAttached();
+  }
+  await page.keyboard.press('Space');
+  await expect(page.getByText('Ordem guardada: “Ordenar por” passou a “A minha ordem”.')).toBeVisible();
+  await expect(page.getByLabel('Ordenar por')).toHaveValue('manual');
+  await expect.poll(order).toBe('B,A');
+  await expect
+    .poll(async () => {
+      const saved = (await (await page.request.get('/api/v1/preferences/projects.order')).json()).data.value as string[];
+      return saved.indexOf(b.id) < saved.indexOf(a.id);
+    })
+    .toBe(true);
+
+  // Recarregar: a ordem fica.
+  await page.reload();
+  await expect.poll(order).toBe('B,A');
+  // Voltar a "Prazo" volta à ordem pelo prazo.
+  await page.getByLabel('Ordenar por').selectOption('prazo');
+  await expect.poll(order).toBe('A,B');
+});

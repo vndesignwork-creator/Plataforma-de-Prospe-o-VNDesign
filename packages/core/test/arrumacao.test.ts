@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TaskSearchQuerySchema, TimeEntryCreateSchema, projectMatches, sortProjects, timeByTask } from '../src';
+import { TaskSearchQuerySchema, TimeEntryCreateSchema, projectMatches, reorderSubset, sortProjects, timeByTask } from '../src';
 
 const today = '2026-10-23';
 const project = (id: string, due: string | null, extra: { overdue?: number; value?: number | null; stage?: 'briefing' | 'producao' | 'revisoes' | 'entrega' } = {}) => ({
@@ -28,6 +28,18 @@ describe('filtros e ordem dos Projetos', () => {
     expect(ids(sortProjects([none, later, week, late], 'prazo'))).toEqual(['a', 'b', 'c', 'd']);
     expect(ids(sortProjects([none, later, week, late], 'valor'))).toEqual(['c', 'b', 'a', 'd']);
     expect(ids(sortProjects([none, later, week, late], 'fase'))).toEqual(['c', 'a', 'b', 'd']);
+  });
+
+  it('a minha ordem (arrastar): os que não estão na ordem guardada ficam no fim, pelo prazo', () => {
+    const ids = (list: { lead: unknown }[]) => list.map((p) => (p.lead as { id: string }).id);
+    expect(ids(sortProjects([none, later, week, late], 'manual', ['c', 'a']))).toEqual(['c', 'a', 'b', 'd']);
+    expect(ids(sortProjects([none, later, week, late], 'manual'))).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it('arrastar numa lista filtrada mexe só nos projetos que se veem', () => {
+    // Vê-se b e d (filtro); passa d para cima de b: a e c ficam onde estavam.
+    expect(reorderSubset(['a', 'b', 'c', 'd'], ['d', 'b'])).toEqual(['a', 'd', 'c', 'b']);
+    expect(reorderSubset(['a', 'b', 'c'], ['c', 'b', 'a'])).toEqual(['c', 'b', 'a']);
   });
 });
 

@@ -293,6 +293,10 @@ Quem não tem as notificações push ligadas recebe, no email da conta, os aviso
 
 O **Ctrl+K** encontra também o texto dos **comentários da equipa** (aparecem em *Notas e chamadas*, como “Comentário da equipa”).
 
+## Projetos: a minha ordem
+
+Na lista de **Projetos**, cada bloco tem uma pega **⠿** à esquerda: arrasta-o (rato, dedo ou, no teclado, Espaço + setas + Espaço) para outra posição. A ordem fica guardada na tua conta e **Ordenar por** passa a **A minha ordem**; os projetos novos entram no fim (pelo prazo). Com um filtro ativo (ex.: *Atrasados*) só mudam de lugar os que se veem. Para voltar à ordem automática, escolhe *Prazo*, *Valor* ou *Fase* — a tua ordem fica guardada para quando voltares a *A minha ordem*.
+
 ## Importar a folha atual
 
 1. No Google Sheets (“Leads_Prospeccao_VNDesign”): **Ficheiro → Transferir → Microsoft Excel (.xlsx)**.

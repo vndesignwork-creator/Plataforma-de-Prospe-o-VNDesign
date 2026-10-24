@@ -10,7 +10,9 @@ import {
   PROJECT_FILTER_LABELS,
   PROJECT_SORTS,
   PROJECT_SORT_LABELS,
+  PROJECTS_ORDER_PREFERENCE,
   formatCurrency,
+  reorderSubset,
   projectMatches,
   sortProjects,
   todayIso,
@@ -19,12 +21,25 @@ import {
   type ProjectSort,
 } from '@vndesign/core';
 import { CalendarDays, ChevronsDownUp, ChevronsUpDown, Columns3, List } from 'lucide-react';
+import {
+  DndContext,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type Announcements,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { StatTile } from '@/components/charts/stat-tile';
 import { Card, EmptyState, Skeleton } from '@/components/ui/card';
 import { setCollapsedKeys } from '@/components/ui/collapse';
 import { Select } from '@/components/ui/input';
-import { useBilling, useProjects, useSettings } from '@/lib/queries';
+import { useBilling, usePreference, useProjects, useSetPreference, useSettings } from '@/lib/queries';
 import { ProjectRow, projectCollapseKey } from './project-row';
 import { WrapUpDialog } from './project-toggle';
 import { ProjectsCalendar } from './projects-calendar';
@@ -129,7 +144,44 @@ export function ProjectsView() {
   // Filtros (só nos projetos em curso) e ordem, na vista em lista.
   const filtering = view === 'list' && state === 'active';
   const counts = Object.fromEntries(PROJECT_FILTERS.map((f) => [f, (projects ?? []).filter((p) => projectMatches(p, f, today)).length])) as Record<ProjectFilter, number>;
-  const shown = projects ? sortProjects(filtering ? projects.filter((p) => projectMatches(p, filter, today)) : projects, sort) : projects;
+  // "A minha ordem": a que se arrastou (guardada na conta, vale nos outros dispositivos).
+  const { data: savedOrder } = usePreference<string[]>(PROJECTS_ORDER_PREFERENCE);
+  const manual = Array.isArray(savedOrder) ? savedOrder : [];
+  const saveOrder = useSetPreference<string[]>(PROJECTS_ORDER_PREFERENCE);
+  const shown = projects ? sortProjects(filtering ? projects.filter((p) => projectMatches(p, filter, today)) : projects, sort, manual) : projects;
+
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const nameOf = (id: string | number) => {
+    const p = projects?.find((x) => x.lead.id === id);
+    return p ? `#${p.lead.number} ${p.lead.company_name}` : 'projeto';
+  };
+  const position = (id: string | number | undefined) => (shown ?? []).findIndex((p) => p.lead.id === id) + 1;
+  const announcements: Announcements = {
+    onDragStart: ({ active }) => `A mover ${nameOf(active.id)}.`,
+    onDragOver: ({ active, over }) => (over ? `${nameOf(active.id)} na posição ${position(over.id)} de ${shown?.length ?? 0}.` : ''),
+    onDragEnd: ({ active, over }) => (over ? `${nameOf(active.id)} largado na posição ${position(over.id)}.` : 'Movimento cancelado.'),
+    onDragCancel: () => 'Movimento cancelado.',
+  };
+
+  /** Arrastar um projeto: passa a "A minha ordem" (a partir da ordem que se estava a ver). */
+  function onDragEnd({ active, over }: DragEndEvent) {
+    if (!over || active.id === over.id || !projects || !shown) return;
+    const visible = shown.map((p) => p.lead.id);
+    const from = visible.indexOf(String(active.id));
+    const to = visible.indexOf(String(over.id));
+    if (from < 0 || to < 0) return;
+    const base = sortProjects(projects, sort, manual).map((p) => p.lead.id);
+    const next = reorderSubset(base, arrayMove(visible, from, to));
+    saveOrder.mutateAsync(next).catch(() => toast.error('Não foi possível guardar a ordem.'));
+    if (sort !== 'manual') {
+      changeSort('manual');
+      toast.success('Ordem guardada: “Ordenar por” passou a “A minha ordem”.');
+    }
+  }
 
   const overdueProjects = (projects ?? []).filter((p) => listState === 'active' && p.info.due_on && p.info.due_on < today).length;
 
@@ -245,11 +297,16 @@ export function ProjectsView() {
             </Card>
           ) : null}
           {/* Cada projeto no seu cartão, com espaço entre eles (separa bem um projeto do seguinte). */}
-          <ul className="flex flex-col gap-5" aria-label={state === 'active' ? 'Projetos em curso' : 'Projetos concluídos'}>
-            {(shown ?? []).map((p) => (
-              <ProjectRow key={p.lead.id} project={p} today={today} features={features} onWrapUp={setWrapUp} />
-            ))}
-          </ul>
+          {/* Pega ⠿ em cada projeto: arrastar muda a ordem (Ordenar por → A minha ordem). */}
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd} accessibility={{ announcements }}>
+            <SortableContext items={(shown ?? []).map((p) => p.lead.id)} strategy={verticalListSortingStrategy}>
+              <ul className="flex flex-col gap-5" aria-label={state === 'active' ? 'Projetos em curso' : 'Projetos concluídos'}>
+                {(shown ?? []).map((p) => (
+                  <ProjectRow key={p.lead.id} project={p} today={today} features={features} onWrapUp={setWrapUp} sortable={(shown?.length ?? 0) > 1} />
+                ))}
+              </ul>
+            </SortableContext>
+          </DndContext>
         </>
       )}
       {wrapUp ? <WrapUpDialog lead={wrapUp} onClose={() => setWrapUp(null)} /> : null}

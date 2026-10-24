@@ -6,7 +6,9 @@
  * as tarefas e, ao lado, o tempo (Pomodoro e cronómetro); em baixo o resto.
  */
 import { formatCurrency, formatDate, formatDuration, hourlyRate, leadPath, type Features, type Lead, type Project } from '@vndesign/core';
-import { ArrowRight, CalendarClock, CalendarPlus, ChevronDown, Clock, FolderOpen, ListChecks, Plus, Receipt, RefreshCcw, Wallet } from 'lucide-react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { ArrowRight, CalendarClock, CalendarPlus, ChevronDown, Clock, FolderOpen, GripVertical, ListChecks, Plus, Receipt, RefreshCcw, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { MeetingDialog, meetingLabel } from '@/components/meetings/meetings-card';
@@ -97,11 +99,14 @@ export function ProjectRow({
   today,
   features,
   onWrapUp,
+  sortable = false,
 }: {
   project: Project;
   today: string;
   features: Features;
   onWrapUp: (lead: Lead) => void;
+  /** Lista de projetos: pega ⠿ para arrastar o bloco (rato, dedo ou Espaço + setas). */
+  sortable?: boolean;
 }) {
   const { lead, info, next_meeting: meeting, revisions, time, deliverables, value, tasks } = project;
   const [meetingOpen, setMeetingOpen] = useState(false);
@@ -113,17 +118,40 @@ export function ProjectRow({
   const [collapsed, setCollapsed] = useCollapsed(projectCollapseKey(lead.id));
 
   const timeColumn = !completed && features.time_tracking;
+  const name = `#${lead.number} ${lead.company_name}${lead.project_title ? ` · ${lead.project_title}` : ''}`;
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: lead.id, disabled: !sortable });
 
   return (
-    <li className="flex flex-col gap-3 rounded-xl border border-border bg-surface px-4 py-4 shadow-card">
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={cn(
+        'flex flex-col gap-3 rounded-xl border border-border bg-surface px-4 py-4 shadow-card',
+        isDragging && 'relative z-10 opacity-90 ring-2 ring-accent',
+      )}
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start">
         <div className="flex min-w-0 flex-col gap-1.5 sm:flex-[1_1_16rem]">
           <div className="flex items-start gap-1">
+            {sortable ? (
+              <button
+                type="button"
+                ref={setActivatorNodeRef}
+                {...attributes}
+                {...listeners}
+                aria-roledescription="projeto arrastável"
+                aria-label={`Mover o projeto: ${name}`}
+                title="Arrastar para mudar a ordem"
+                className="-my-1 -ml-2 inline-flex h-8 w-7 shrink-0 cursor-grab touch-none items-center justify-center rounded-lg text-muted hover:bg-surface-2 hover:text-fg active:cursor-grabbing pointer-coarse:h-10"
+              >
+                <GripVertical className="h-4 w-4" aria-hidden />
+              </button>
+            ) : null}
             <CollapseButton
               collapsed={collapsed}
               onToggle={() => setCollapsed(!collapsed)}
               label={`${lead.company_name}${lead.project_title ? ` · ${lead.project_title}` : ''}`}
-              className="-my-1 -ml-2 shrink-0"
+              className={cn('-my-1 shrink-0', !sortable && '-ml-2')}
             />
             <Link href={leadPath(lead)} className="min-w-0 font-semibold hover:text-accent-text hover:underline">
               <span className="mr-1.5 text-muted tabular">#{lead.number}</span>
