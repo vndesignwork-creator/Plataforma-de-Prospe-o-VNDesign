@@ -25,7 +25,7 @@ import {
   type LeadTask,
   type TaskTemplate,
 } from '@vndesign/core';
-import { Bell, CalendarDays, Check, ChevronRight, Clock, GripVertical, ListPlus, Pencil, Plus, X } from 'lucide-react';
+import { Bell, CalendarDays, Check, ChevronRight, Clock, Copy, GripVertical, ListPlus, Pencil, Plus, X } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -265,6 +265,7 @@ function TaskRow({
   onEdit,
   onSave,
   onCancelEdit,
+  onDuplicate,
   onDelete,
 }: {
   task: LeadTask;
@@ -275,6 +276,7 @@ function TaskRow({
   onEdit: () => void;
   onSave: (patch: TaskPatch) => Promise<void>;
   onCancelEdit: () => void;
+  onDuplicate: () => void;
   onDelete: () => void;
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
@@ -348,6 +350,15 @@ function TaskRow({
           className="rounded p-1 text-muted hover:bg-surface-3 hover:text-fg pointer-coarse:p-1.5"
         >
           <Pencil className="h-3.5 w-3.5" aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={onDuplicate}
+          aria-label={`Duplicar: ${task.title}`}
+          title="Duplicar"
+          className="rounded p-1 text-muted hover:bg-surface-3 hover:text-fg pointer-coarse:p-1.5"
+        >
+          <Copy className="h-3.5 w-3.5" aria-hidden />
         </button>
         <button
           type="button"
@@ -505,6 +516,35 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
     }
   }
 
+  /** Cópia logo a seguir à original (mesmo texto e prazo; o lembrete não, que já passou ou ficava repetido), com "Anular". */
+  async function duplicate(task: LeadTask) {
+    try {
+      const { data: copy } = await api<{ data: LeadTask }>(`/leads/${lead.id}/tasks`, {
+        method: 'POST',
+        body: { title: task.title, due_on: task.due_on },
+      });
+      const at = pending.findIndex((t) => t.id === task.id);
+      if (at >= 0 && at < pending.length - 1) {
+        const ids = pending.map((t) => t.id);
+        ids.splice(at + 1, 0, copy.id);
+        await api(`/leads/${lead.id}/tasks/reorder`, { method: 'POST', body: { ids } });
+      }
+      toast.success('Tarefa duplicada.', {
+        action: {
+          label: 'Anular',
+          onClick: () =>
+            void api(`/tasks/${copy.id}`, { method: 'DELETE' })
+              .catch((error) => toast.error(errorMessage(error)))
+              .finally(() => invalidate(lead.id)),
+        },
+      });
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      invalidate(lead.id);
+    }
+  }
+
   async function onDragEnd({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return;
     const from = pending.findIndex((t) => t.id === active.id);
@@ -547,6 +587,7 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
     onEdit: () => setEditingId(task.id),
     onSave: (patch: TaskPatch) => save(task, patch),
     onCancelEdit: () => setEditingId(null),
+    onDuplicate: () => void duplicate(task),
     onDelete: () => void remove(task),
   });
 

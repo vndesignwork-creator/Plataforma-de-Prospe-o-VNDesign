@@ -305,7 +305,7 @@ export function ActivityTimeline({
 }: {
   leadId: string;
   currentUserId?: string;
-  /** Botões extra no cabeçalho (ex.: "Notas com IA"). */
+  /** Botões extra no cabeçalho. */
   actions?: ReactNode;
   /** Coluna principal da ficha: no computador, a linha do tempo recolhe-se ao chegar ao fim dela. */
   fitTo?: RefObject<HTMLElement | null>;

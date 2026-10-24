@@ -159,6 +159,10 @@ Um lead **em conversa** (Contactado, Respondeu, Reunião, Proposta enviada) sem 
 - no cartão **Hoje** aparece "**N leads em conversa sem próximo passo**" (toca para ver a lista) com **Marcar follow-up** (hoje, amanhã, próxima semana ou outra data, com **Anular**) — o mesmo menu do *Pôr em dia*;
 - na lista, filtro **Próxima ação → Sem próximo passo (em conversa)** (API: `?due=none`).
 
+## Notas
+
+O cartão **Notas** da ficha edita-se no sítio (**Editar**; Ctrl+Enter guarda) e tem as **Notas com IA** (ver abaixo). A seta ⌃ recolhe-o: fica só o início das notas à vista (a escolha fica guardada neste dispositivo).
+
 ## Nota afixada
 
 Uma frase sempre à vista no topo da ficha (ex.: "Só atende depois das 15h", "Falar com a Marta, não com o sócio"): ficha → **⋯ → Afixar uma nota…** (até 200 caracteres); **Editar** na própria nota para mudar ou **Tirar**. Aparece também na **Prospeção**, antes de ligar. Entra na exportação (coluna *Nota afixada*) e, ao juntar leads, passa para o principal.
@@ -195,7 +199,7 @@ O aviso que aparece depois de uma ação traz **Anular** durante uns segundos em
 
 ## Notas de reunião com IA
 
-Na ficha, linha do tempo → **Notas com IA** (ou *Notas com IA* nas ações da pesquisa rápida): cola ou escreve os apontamentos de uma chamada ou reunião, carrega em **Resumir** e revê:
+Na ficha, cartão **Notas** → **Notas com IA** (ou *Notas com IA* nas ações da pesquisa rápida): cola ou escreve os apontamentos de uma chamada ou reunião, carrega em **Resumir** e revê:
 
 - o **resumo** (fica na linha do tempo como nota “📝 Resumo da reunião/chamada”);
 - as **tarefas** com prazo (até 6; desmarca as que não queres);
@@ -303,6 +307,8 @@ português) com as mesmas colunas — pode ser reimportado sem mapear nada.
 - **Cartão "Tarefas" na ficha** (coluna da direita; no telemóvel, botão *Tarefas* no topo):
   escreve e carrega Enter, prazo opcional no botão **Prazo** (Hoje, Amanhã, Próxima semana ou outra data), marca a caixa quando está feito (passa para
   *Concluídas*), arrasta pela pega ⠿ para mudar a ordem (com o teclado: Espaço + setas).
+  Ao passar o rato numa tarefa: ✏️ editar, ⧉ **duplicar** (a cópia fica logo a seguir, com o mesmo
+  texto e prazo, sem o lembrete; com **Anular**) e ✕ apagar.
 - **Listas prontas por serviço** (Site Institucional, Landing Page, Identidade Visual, Flyers…):
   a ficha sugere as dos serviços do lead; *Usar lista* acrescenta-as sem repetir tarefas.
   Edita-as em **Definições → Listas de tarefas**.

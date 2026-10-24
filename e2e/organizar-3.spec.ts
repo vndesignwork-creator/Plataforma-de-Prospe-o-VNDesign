@@ -163,3 +163,40 @@ test('boas-vindas ao novo cliente: copiar o texto e depois sai', async ({ page }
   expect(body).toContain(`Obrigado pela confiança! Fico muito contente por começarmos o projeto ${name}.`);
   expect(body).toContain('Para arrancar:');
 });
+
+test('duplicar uma tarefa (logo a seguir à original, com Anular)', async ({ page }) => {
+  const lead = await createLead(page.request, { company_name: `Duplicar ${run}` });
+  for (const title of ['Pedir fotos', 'Publicar site']) {
+    expect((await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title, due_on: '2030-01-15' } })).status()).toBe(201);
+  }
+  const titles = async () => ((await (await page.request.get(`/api/v1/leads/${lead.id}/tasks`)).json()).data as { title: string; due_on: string | null }[]);
+  await page.goto(`/leads/${lead.id}`);
+  const card = page.locator('#tarefas');
+  await card.getByRole('button', { name: 'Duplicar: Pedir fotos' }).click();
+  await expect(page.getByText('Tarefa duplicada.')).toBeVisible();
+  await expect.poll(async () => (await titles()).map((t) => t.title)).toEqual(['Pedir fotos', 'Pedir fotos', 'Publicar site']);
+  expect((await titles())[1]!.due_on).toBe('2030-01-15');
+  await expect(card.getByRole('list', { name: 'Tarefas por fazer' }).getByRole('listitem')).toHaveCount(3);
+
+  await page.locator('[data-sonner-toast]').filter({ hasText: 'Tarefa duplicada.' }).getByRole('button', { name: 'Anular' }).click();
+  await expect.poll(async () => (await titles()).map((t) => t.title)).toEqual(['Pedir fotos', 'Publicar site']);
+});
+
+test('notas: recolher (fica o início à vista) e Notas com IA no cartão', async ({ page }) => {
+  const lead = await createLead(page.request, { company_name: `Notas ${run}`, notes: 'Atende depois das 15h. Falar com a Marta.' });
+  await page.goto(`/leads/${lead.id}`);
+  const notes = page.locator('div').filter({ has: page.getByRole('button', { name: 'Editar notas' }) }).last();
+  await expect(notes.getByRole('button', { name: 'Notas com IA' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Notas com IA' })).toHaveCount(1);
+
+  await page.getByRole('button', { name: 'Recolher: Notas' }).click();
+  await expect(page.getByRole('button', { name: 'Expandir: Notas' })).toBeVisible();
+  // O texto completo sai; o início fica como descrição.
+  await expect(page.getByText('Atende depois das 15h. Falar com a Marta.')).toHaveCount(1);
+  // Editar abre mesmo recolhido.
+  await page.getByRole('button', { name: 'Editar notas' }).click();
+  await expect(page.getByLabel('Notas do lead')).toHaveValue('Atende depois das 15h. Falar com a Marta.');
+  await page.getByRole('button', { name: 'Cancelar' }).click();
+  await page.getByRole('button', { name: 'Expandir: Notas' }).click();
+  await expect(page.getByRole('button', { name: 'Recolher: Notas' })).toBeVisible();
+});

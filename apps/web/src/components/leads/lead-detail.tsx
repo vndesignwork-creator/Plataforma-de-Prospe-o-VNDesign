@@ -77,7 +77,6 @@ import { ContactFinder } from './contact-finder';
 import { TasksCard } from '@/components/tasks/tasks-card';
 import { NotesCard } from './notes-card';
 import { rememberLead } from '@/lib/recent-leads';
-import { MeetingNotesButton } from './meeting-notes';
 import { TagChips, TagEditor } from './tags';
 import { CustomFieldsRows } from './custom-fields';
 import { LostReasonDialog, LostReasonField } from './lost-reason';
@@ -709,7 +708,7 @@ export function LeadDetail({ id }: { id: string }) {
           {staff ? <ProposalsCard lead={lead} /> : null}
           {staff && settings?.features.contracts ? <ContractsCard lead={lead} /> : null}
           <div id="atividade" className="scroll-mt-20">
-            <ActivityTimeline leadId={lead.id} currentUserId={me?.user.id} fitTo={mainColumn} actions={<MeetingNotesButton lead={lead} />} />
+            <ActivityTimeline leadId={lead.id} currentUserId={me?.user.id} fitTo={mainColumn} />
           </div>
         </aside>
       </div>
