@@ -510,18 +510,10 @@ const LEAD_EMBED = 'lead:leads!inner(id, number, company_name, status, archived_
 
 /**
  * Prazos de entrega (projetos em curso), reuniões, pagamentos previstos e tarefas
- * com prazo; com `followups`, também as próximas ações dos leads (a Agenda).
+ * com prazo; com `followups`, também as próximas ações dos leads.
  */
-export async function projectCalendar(
-  ctx: ApiContext,
-  from: string,
-  to: string,
-  options: { followups?: boolean; overdue?: boolean } = {},
-): Promise<CalendarEvent[]> {
+export async function projectCalendar(ctx: ApiContext, from: string, to: string, options: { followups?: boolean } = {}): Promise<CalendarEvent[]> {
   const ws = ctx.workspaceId;
-  // Em atraso: os follow-ups e as tarefas por fazer de antes de hoje entram também (a Agenda junta-os em cima).
-  const today = todayIso();
-  const overdue = !!options.overdue && from <= today;
   const [dues, meetings, payments, tasks, followups] = await Promise.all([
     ctx.supabase
       .from('lead_projects')
@@ -552,7 +544,7 @@ export async function projectCalendar(
       .from('lead_tasks')
       .select(`id, title, due_on, done_at, ${LEAD_EMBED}`)
       .eq('workspace_id', ws)
-      .or(overdue ? `due_on.gte.${from},and(due_on.lt.${today},done_at.is.null)` : `due_on.gte.${from}`)
+      .gte('due_on', from)
       .lte('due_on', to)
       .is('lead.archived_at', null),
     // Os mesmos follow-ups do "Hoje" (sem clientes nem "sem interesse").
@@ -564,7 +556,7 @@ export async function projectCalendar(
           .is('anonymized_at', null)
           .is('archived_at', null)
           .not('status', 'in', '(cliente,sem_interesse)')
-          .gte('next_action_on', overdue ? '2000-01-01' : from)
+          .gte('next_action_on', from)
           .lte('next_action_on', to)
           .limit(1000)
       : Promise.resolve({ data: [], error: null }),

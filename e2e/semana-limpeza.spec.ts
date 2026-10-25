@@ -3,7 +3,7 @@ import { startStubs } from './stubs';
 
 /*
  * Etiquetas, limpeza de duplicados (juntar sem perder pagamentos/reuniões/horas),
- * Agenda da semana, notas de reunião com IA, ações e recentes na pesquisa rápida,
+ * Notas de reunião com IA, ações e recentes na pesquisa rápida,
  * avisos dos projetos no Dashboard e o "Ponto de situação".
  * IA falsa em e2e/stubs.ts.
  */
@@ -98,37 +98,6 @@ test('duplicados: juntar no principal passa pagamentos, reuniões, horas e etiqu
   await expect(groups.getByRole('listitem').filter({ hasText: `Café Igual ${run}` })).toHaveCount(0);
   const left = (await (await page.request.get('/api/v1/leads/duplicates')).json()).data as { leads: { id: string }[] }[];
   expect(left.some((g) => g.leads.some((l) => l.id === a.id || l.id === b.id))).toBe(false);
-});
-
-test('agenda da semana: follow-ups, tarefas e mudar o dia', async ({ page }) => {
-  test.setTimeout(90_000);
-  const lead = await createLead(page.request, { company_name: `Agenda ${run}`, next_action_text: `Ligar ${run}`, next_action_on: iso(0) });
-  const task = (await (await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title: `Tarefa agenda ${run}`, due_on: iso(0) } })).json()).data as { id: string };
-
-  await page.goto('/agenda');
-  // Os follow-ups de cada dia ficam num número ("12 follow-ups"); com muitos, abrem-se com um toque.
-  const todayGroup = page.getByRole('group', { name: new RegExp(`^Follow-ups de ${new Intl.DateTimeFormat('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${iso(0)}T00:00:00Z`))}$`) });
-  const toggle = todayGroup.getByRole('button', { name: /\d+ follow-ups?/ });
-  await expect(toggle).toBeVisible({ timeout: 30_000 });
-  if ((await toggle.getAttribute('aria-expanded')) === 'false') await toggle.click();
-  const followUp = page.getByRole('article', { name: new RegExp(`Follow-up: Ligar ${run}`) });
-  await expect(followUp).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole('article', { name: new RegExp(`Tarefa: Tarefa agenda ${run}`) })).toBeVisible();
-
-  // Passar a tarefa para a próxima semana (o menu serve no telemóvel e no teclado).
-  await page.getByRole('button', { name: `Mudar o dia: Tarefa agenda ${run}` }).click();
-  await page.getByRole('menuitem', { name: /Próxima semana/ }).click();
-  await expect(page.getByText(/Tarefa passou para/)).toBeVisible();
-  await expect
-    .poll(async () => ((await (await page.request.get(`/api/v1/leads/${lead.id}/tasks`)).json()).data as { id: string; due_on: string }[]).find((t) => t.id === task.id)?.due_on)
-    .not.toBe(iso(0));
-
-  // Concluir o follow-up noutro dia: o lead muda a próxima ação.
-  await page.getByRole('button', { name: `Mudar o dia: Ligar ${run}` }).click();
-  await page.getByRole('menuitem', { name: /Próxima semana/ }).click();
-  await expect
-    .poll(async () => ((await (await page.request.get(`/api/v1/leads/${lead.id}`)).json()).data as { next_action_on: string }).next_action_on)
-    .not.toBe(iso(0));
 });
 
 test('notas de reunião com IA: resumo na linha do tempo, tarefas e próximo passo', async ({ page }) => {

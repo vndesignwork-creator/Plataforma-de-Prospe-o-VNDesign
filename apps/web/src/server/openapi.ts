@@ -1817,7 +1817,7 @@ export function getOpenApiDocument() {
       '/projects/calendar': {
         get: op({
           tags: ['Projetos'],
-          summary: 'Calendário: prazos de entrega, reuniões, pagamentos previstos e tarefas (máx. 62 dias); followups=true junta as próximas ações dos leads (Agenda)',
+          summary: 'Calendário: prazos de entrega, reuniões, pagamentos previstos e tarefas (máx. 62 dias); followups=true junta as próximas ações dos leads',
           requestParams: { query: CalendarQuerySchema },
           responses: { '200': ok(data(z.array(CalendarEventSchema))), ...common },
         }),

@@ -1,6 +1,6 @@
 /**
  * Atalhos de teclado (computador). Uma tecla (N, /, ?) ou G seguido de outra
- * para ir a uma página (como no Gmail): G A = Agenda, G P = Projetos…
+ * para ir a uma página (como no Gmail): G D = Dashboard, G P = Projetos…
  * Não contam quando se está a escrever num campo nem com uma janela aberta.
  */
 
@@ -9,7 +9,6 @@ export type Shortcut = { keys: string[]; label: string; href?: string; action?: 
 /** G + tecla → página. */
 export const GO_SHORTCUTS: Record<string, { href: string; label: string }> = {
   d: { href: '/dashboard', label: 'Dashboard' },
-  a: { href: '/agenda', label: 'Agenda' },
   t: { href: '/tarefas', label: 'Tarefas' },
   l: { href: '/leads', label: 'Leads' },
   k: { href: '/kanban', label: 'Kanban' },

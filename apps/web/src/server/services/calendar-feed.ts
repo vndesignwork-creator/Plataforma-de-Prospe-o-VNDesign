@@ -1,7 +1,7 @@
 /**
  * Calendário subscrito: um link secreto por utilizador (.ics) com as reuniões,
  * as entregas dos projetos, os pagamentos previstos, as tarefas com prazo e os
- * follow-ups (a próxima ação dos leads, como na Agenda).
+ * follow-ups (a próxima ação dos leads, como no Hoje).
  * O Google Calendar / iPhone vão buscá-lo de tempos a tempos (sem sessão).
  */
 import { randomBytes } from 'node:crypto';
@@ -84,7 +84,7 @@ export async function calendarFeedIcs(token: string, appUrl: string): Promise<st
       .is('done_at', null)
       .gte('due_on', from)
       .lte('due_on', to),
-    // Os mesmos follow-ups do "Hoje" e da Agenda (sem clientes nem "sem interesse").
+    // Os mesmos follow-ups do "Hoje" (sem clientes nem "sem interesse").
     admin
       .from('leads')
       .select('id, number, company_name, next_action_text, next_action_on, archived_at, anonymized_at')

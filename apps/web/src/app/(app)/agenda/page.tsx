@@ -1,17 +1,6 @@
-import type { Metadata } from 'next';
-import { PageHeader } from '@/components/layout/page-header';
-import { AgendaView } from '@/components/agenda/agenda-view';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = { title: 'Agenda' };
-
+/** A Agenda foi retirada (os follow-ups fazem-se na Prospeção e no Hoje; o resto está no calendário dos Projetos). */
 export default function AgendaPage() {
-  return (
-    <>
-      <PageHeader
-        title="Agenda"
-        description="A semana dos compromissos: reuniões, entregas, pagamentos e tarefas. Os follow-ups aparecem como um número por dia (fazem-se na Prospeção); arrasta ou usa “Mudar o dia” para passar algo para outro dia."
-      />
-      <AgendaView />
-    </>
-  );
+  redirect('/dashboard');
 }

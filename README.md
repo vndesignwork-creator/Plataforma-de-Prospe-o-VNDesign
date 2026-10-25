@@ -98,7 +98,7 @@ npm run dev        # http://localhost:3000
 
 Em qualquer página, **Ctrl+K** (⌘K no Mac), o botão **Pesquisar…** na barra lateral ou a lupa 🔍 no telemóvel abrem uma caixa para escrever o nome de um **lead ou projeto**, uma **tarefa**, uma **página** (incluindo as secções das Definições, ex.: "Setores", e outras palavras como "palavra-passe" → Conta) ou um **estado, setor ou serviço** ("Respondeu", "Restauração", "Loja online" → a lista de leads já filtrada). Setas ↑↓ e **Enter** (ou tocar) para saltar: os clientes abrem no Projeto, as tarefas na lista de tarefas da ficha. API: `GET /api/v1/tasks?q=` (pelo menos 2 letras).
 
-- **Recentes**: com a caixa vazia aparecem os últimos 8 leads que abriste (guardados neste browser) e as **Ações** gerais: *Novo lead*, *Agenda da semana*, *Limpar duplicados*.
+- **Recentes**: com a caixa vazia aparecem os últimos 8 leads que abriste (guardados neste browser) e as **Ações** gerais: *Novo lead*, *Limpar duplicados*.
 - **Ações num lead**: num lead da lista, **→**, **Tab** ou o botão **Ações ›** mostra o que fazer sem abrir a ficha: *Nova tarefa…*, *Registar chamada…* e *Registar nota…* (escreves logo ali e carregas Enter), *Notas com IA*, *Marcar reunião*, *Começar Pomodoro* (clientes) ou *Abrir a ficha*. **Backspace** com a caixa vazia volta atrás.
 - **Etiquetas**: escrever o nome de uma etiqueta abre a lista de leads filtrada por ela.
 - **Notas e chamadas**: também procura no texto das notas e chamadas registadas (sem contar acentos), com um excerto; abre a linha do tempo do lead.
@@ -106,7 +106,7 @@ Em qualquer página, **Ctrl+K** (⌘K no Mac), o botão **Pesquisar…** na barr
 
 ## Atalhos de teclado (computador)
 
-Fora dos campos de texto: **N** novo lead, **/** pesquisar, **?** a lista de atalhos, e **G** seguido de outra tecla para ir a uma página: **G D** Dashboard, **G A** Agenda, **G L** Leads, **G K** Kanban, **G P** Projetos, **G R** Prospeção, **G M** Mapa, **G E** Estatísticas, **G S** Scripts (só as páginas a que tens acesso). A lista também está no Ctrl+K → *Atalhos de teclado*.
+Fora dos campos de texto: **N** novo lead, **/** pesquisar, **?** a lista de atalhos, e **G** seguido de outra tecla para ir a uma página: **G D** Dashboard, **G T** Tarefas, **G L** Leads, **G K** Kanban, **G P** Projetos, **G R** Prospeção, **G M** Mapa, **G E** Estatísticas, **G S** Scripts (só as páginas a que tens acesso). A lista também está no Ctrl+K → *Atalhos de teclado*.
 
 ## Ditar por voz
 
@@ -138,22 +138,11 @@ Seleciona leads com as caixas à esquerda: **Arquivar**/**Repor**, **Atribuir a�
 - **Juntar todos nos principais** faz o mesmo em todos os grupos de uma vez (pede confirmação; não dá para desfazer).
 - Juntar leads (aqui ou no aviso de duplicado da ficha) **já não perde dados**: antes, pagamentos, reuniões, horas e o projeto do duplicado eram apagados com ele.
 
-## Agenda da semana
+## Fins de semana
 
-Menu **Agenda** (ou *Agenda da semana* no cartão Hoje do Dashboard): a semana dos **compromissos com data** — **reuniões** (com hora), **entregas**, **pagamentos previstos** e **tarefas** — de segunda a domingo.
+Os follow-ups que a plataforma marca sozinha ("Contactado", "Não atendeu", "Mais tarde", follow-up feito, sequências, "agora não" que volta) nunca caem ao sábado nem ao domingo — passam para segunda-feira. Quem trabalha ao fim de semana liga **Também trabalho ao fim de semana** em Definições → Follow-up e lembretes. As datas escolhidas à mão ficam como estão.
 
-- Em cima, o **resumo da semana**: "3 reuniões · 2 entregas · 1 250 € a receber · 5 tarefas · 24 follow-ups".
-- **Em atraso** (só na semana atual): os follow-ups e as tarefas por fazer de dias anteriores, numa linha; abre-se para os ver e **Pôr em dia** passa-os todos para hoje, amanhã, a próxima semana ou outra data (com **Anular**).
-- **Follow-ups** (próxima ação dos leads): em cada dia, uma linha "12 follow-ups" que se abre com um toque (até 3 ficam logo à vista). Fazem-se na **Prospeção** (no dia de hoje há o atalho *Fazer na Prospeção*).
-  - **Distribuir**: num dia com mais de **8** follow-ups (de hoje para a frente), deixa 8 e passa os outros para os dias úteis seguintes com lugar (com **Anular**).
-  - **Tirar da agenda** (no menu 🗓 de cada follow-up): o lead fica sem data para a próxima ação (com **Anular**).
-- Mudar de dia: **arrasta** o cartão (computador) ou usa o botão 🗓 **Mudar o dia** (telemóvel e teclado), também para a *Próxima semana*. Muda a data da tarefa, a próxima ação do lead ou o prazo do projeto. Reuniões e pagamentos mudam-se na ficha.
-- Marca as tarefas como feitas na própria agenda; **‹ ›** muda de semana e **Esta semana** volta.
-- **Telemóvel**: abre no dia de hoje; os outros dias mostram quantos itens têm e abrem-se com um toque.
-- **Fins de semana**: os follow-ups que a plataforma marca sozinha ("Contactado", "Não atendeu", "Mais tarde", follow-up feito, sequências, "agora não" que volta) nunca caem ao sábado nem ao domingo — passam para segunda-feira. Quem trabalha ao fim de semana liga **Também trabalho ao fim de semana** em Definições → Follow-up e lembretes. As datas escolhidas à mão ficam como estão.
-- O cartão **Hoje** continua a ser a lista do que é urgente; a Agenda serve para planear a semana.
-- Mudar o dia tem **Anular** no aviso.
-- Os **follow-ups** também aparecem no **calendário subscrito** (Google Calendar / iPhone), como "🔔 próxima ação · empresa".
+Os follow-ups do dia e os atrasados estão no cartão **Hoje** do Dashboard (com **Pôr em dia**) e fazem-se na **Prospeção**; reuniões, entregas, pagamentos e tarefas com prazo estão no **calendário dos Projetos** e no **calendário subscrito**. (A antiga página Agenda foi retirada: o endereço `/agenda` leva ao Dashboard.)
 
 ## Filtros guardados
 
@@ -202,7 +191,7 @@ No cartão **Hoje**, quando há follow-ups ou tarefas em atraso, aparece "**Em a
 
 ## Anular
 
-O aviso que aparece depois de uma ação traz **Anular** durante uns segundos em: arquivar (ficha e lista), etiquetas (pôr em vários, tirar na ficha), follow-up em massa, Pôr em dia, mudar o dia na Agenda, adiar um follow-up e concluir uma tarefa no cartão Hoje. Mudar o estado não tem Anular (as regras do estado já mudaram outras coisas, como o follow-up): muda-se outra vez.
+O aviso que aparece depois de uma ação traz **Anular** durante uns segundos em: arquivar (ficha e lista), etiquetas (pôr em vários, tirar na ficha), follow-up em massa, Pôr em dia, adiar um follow-up e concluir uma tarefa no cartão Hoje. Mudar o estado não tem Anular (as regras do estado já mudaram outras coisas, como o follow-up): muda-se outra vez.
 
 ## Notas de reunião com IA
 
@@ -253,7 +242,7 @@ Abre um lead a partir da lista (com os filtros e a ordem que quiseres): no topo 
 ## Tarefas da equipa e avisos
 
 - **Responsável:** ao editar uma tarefa (✏️) escolhe **Responsável** (só aparece com equipa). A tarefa mostra o nome e essa pessoa recebe um aviso.
-- **Página Tarefas** (menu, ou **G + T**): as tarefas por fazer de todos os leads e projetos, por **Em atraso / Hoje / Próximos 7 dias / Mais tarde / Sem prazo**. Com equipa: **As minhas** (para o dono, também as sem responsável — como nos leads), **Sem responsável**, **Todas** ou **De uma pessoa…**; o botão com o nome de cada tarefa muda o responsável. O botão 📅 de cada tarefa dá-lhe um prazo daqui mesmo (Hoje, Amanhã, Próxima semana, Escolher data… ou Sem prazo, com **Anular**): útil para as que estão em *Sem prazo*, que não aparecem no Hoje nem na Agenda. Marca a caixa para concluir (com **Anular**).
+- **Página Tarefas** (menu, ou **G + T**): as tarefas por fazer de todos os leads e projetos, por **Em atraso / Hoje / Próximos 7 dias / Mais tarde / Sem prazo**. Com equipa: **As minhas** (para o dono, também as sem responsável — como nos leads), **Sem responsável**, **Todas** ou **De uma pessoa…**; o botão com o nome de cada tarefa muda o responsável. O botão 📅 de cada tarefa dá-lhe um prazo daqui mesmo (Hoje, Amanhã, Próxima semana, Escolher data… ou Sem prazo, com **Anular**): útil para as que estão em *Sem prazo*, que não aparecem no Hoje nem no calendário. Marca a caixa para concluir (com **Anular**).
 - **Avisos (🔔):** no topo da barra lateral (no telemóvel, ao lado da pesquisa). Mostra as tarefas que te deram e quando te mencionam; tocar abre o lead no sítio certo. Se tiveres as notificações ligadas no dispositivo, chega também uma notificação.
 - API: `assigned_to` nas tarefas; `GET /api/v1/tasks?assigned=me|none|all|{id}`; `GET /api/v1/notifications`, `POST /api/v1/notifications/read`.
 

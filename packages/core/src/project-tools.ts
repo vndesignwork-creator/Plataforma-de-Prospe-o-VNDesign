@@ -357,7 +357,7 @@ export const ProjectsQuerySchema = z.object({
 // Calendário (prazos, reuniões, pagamentos e tarefas)
 // -----------------------------------------------------------------------------
 
-/** followup = próxima ação de um lead (só na Agenda, com followups=true). */
+/** followup = próxima ação de um lead (só com followups=true). */
 export const CALENDAR_EVENT_TYPES = ['due', 'meeting', 'payment', 'task', 'followup'] as const;
 export type CalendarEventType = (typeof CALENDAR_EVENT_TYPES)[number];
 export const CALENDAR_EVENT_LABELS: Record<CalendarEventType, string> = {
@@ -386,11 +386,7 @@ export const CalendarQuerySchema = z
   .object({
     from: z.iso.date({ error: 'Data inválida.' }),
     to: z.iso.date({ error: 'Data inválida.' }),
-    followups: z.enum(['true', 'false']).optional().meta({ description: 'true = também as próximas ações dos leads (Agenda)' }),
-    overdue: z
-      .enum(['true', 'false'])
-      .optional()
-      .meta({ description: 'true = também os follow-ups e as tarefas por fazer de dias anteriores a hoje (os em atraso)' }),
+    followups: z.enum(['true', 'false']).optional().meta({ description: 'true = também as próximas ações dos leads' }),
   })
   .refine((q) => q.from <= q.to && daysBetween(q.from, q.to) <= 62, { error: 'Intervalo inválido (máximo 62 dias).' });
 

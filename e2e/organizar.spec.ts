@@ -131,26 +131,15 @@ test('Hoje: Pôr em dia os atrasados (follow-ups e tarefas) e Anular', async ({ 
   expect(back.find((t) => t.id === task.id)?.due_on).toBe(iso(-2));
 });
 
-test('Agenda: mudar o dia tem Anular; follow-ups no calendário subscrito', async ({ page }) => {
-  const lead = await createLead(page.request, { company_name: `Agenda Anular ${run}`, status: 'contactado', next_action_on: iso(2), next_action_text: `Enviar proposta ${run}` });
-  const title = `Rever logótipo ${run}`;
-  const task = (await (await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title, due_on: iso(0) } })).json()).data as { id: string };
-
-  await page.goto('/agenda');
-  await page.getByRole('button', { name: `Mudar o dia: ${title}` }).click();
-  await page.getByRole('menuitem', { name: /^Próxima semana/ }).click();
-  await expect(page.getByText(/^Tarefa passou para/)).toBeVisible();
-  await expect.poll(async () => ((await (await page.request.get(`/api/v1/leads/${lead.id}/tasks`)).json()).data as { id: string; due_on: string }[]).find((t) => t.id === task.id)?.due_on).not.toBe(iso(0));
-  await undo(page, /^Tarefa passou para/);
-  await expect(page.getByText(/^Tarefa voltou a/)).toBeVisible();
-  await expect.poll(async () => ((await (await page.request.get(`/api/v1/leads/${lead.id}/tasks`)).json()).data as { id: string; due_on: string }[]).find((t) => t.id === task.id)?.due_on).toBe(iso(0));
-
-  // Calendário subscrito: o follow-up aparece como dia inteiro.
+test('follow-ups no calendário subscrito', async ({ page }) => {
+  const lead = await createLead(page.request, { company_name: `Calendário Subscrito ${run}`, status: 'contactado', next_action_on: iso(2), next_action_text: `Enviar proposta ${run}` });
+  // O follow-up aparece como dia inteiro.
   const feed = (await (await page.request.post('/api/v1/calendar-feed', { data: { enabled: true } })).json()).data as { token: string };
   const ics = await (await page.request.get(`/api/v1/calendar/${feed.token}.ics`)).text();
   expect(ics).toContain(`UID:followup-${lead.id}@vndesign-leads`);
-  expect(ics.replace(/\r\n /g, '')).toContain(`🔔 Enviar proposta ${run} · Agenda Anular ${run}`);
+  expect(ics.replace(/\r\n /g, '')).toContain(`🔔 Enviar proposta ${run} · Calendário Subscrito ${run}`);
 });
+
 
 test('pesquisa rápida encontra o texto das notas e chamadas (sem acentos)', async ({ page }) => {
   const lead = await createLead(page.request, { company_name: `Notas ${run}` });
@@ -208,8 +197,8 @@ test('atalhos de teclado: G + tecla, N, ? e nada enquanto se escreve', async ({ 
   await page.goto('/dashboard');
   await expect(page.getByRole('heading', { name: 'Hoje', exact: true })).toBeVisible();
   await page.keyboard.press('g');
-  await page.keyboard.press('a');
-  await expect(page).toHaveURL(/\/agenda$/);
+  await page.keyboard.press('t');
+  await expect(page).toHaveURL(/\/tarefas$/);
   await page.keyboard.press('Shift+?');
   const help = page.getByRole('dialog', { name: 'Atalhos de teclado' });
   await expect(help).toBeVisible();

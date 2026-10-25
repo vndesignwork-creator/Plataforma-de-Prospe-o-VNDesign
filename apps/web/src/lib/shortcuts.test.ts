@@ -14,7 +14,7 @@ describe('atalhos de teclado', () => {
   });
 
   it('G + tecla vai para a página', () => {
-    expect(resolveShortcut('a', true)).toMatchObject({ href: '/agenda' });
+    expect(resolveShortcut('d', true)).toMatchObject({ href: '/dashboard' });
     expect(resolveShortcut('P', true)).toMatchObject({ href: '/projetos' });
     expect(resolveShortcut('l', true)).toMatchObject({ href: '/leads' });
     // Depois do G, uma tecla sem página não faz nada (nem conta como N).
@@ -22,9 +22,9 @@ describe('atalhos de teclado', () => {
   });
 
   it('a lista só mostra as páginas a que a pessoa tem acesso', () => {
-    const list = shortcutList((href) => href !== '/projetos' && href !== '/agenda');
+    const list = shortcutList((href) => href !== '/projetos' && href !== '/kanban');
     expect(list.some((s) => s.href === '/projetos')).toBe(false);
-    expect(list.some((s) => s.href === '/agenda')).toBe(false);
+    expect(list.some((s) => s.href === '/kanban')).toBe(false);
     expect(list.find((s) => s.href === '/leads')?.keys).toEqual(['G', 'L']);
     expect(list.some((s) => s.action === 'help')).toBe(true);
   });

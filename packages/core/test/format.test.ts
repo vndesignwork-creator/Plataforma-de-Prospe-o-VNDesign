@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, daysBetween, formatCurrency, formatDate, formatDateTime, todayIso } from '../src/format';
+import { addDays, daysBetween, formatCurrency, formatDate, formatDateTime, todayIso, workingDay } from '../src/format';
 
 describe('formatação pt-PT', () => {
   it('datas DD/MM/AAAA', () => {
@@ -20,5 +20,14 @@ describe('formatação pt-PT', () => {
     expect(addDays('2026-12-30', 3)).toBe('2027-01-02');
     expect(daysBetween('2026-10-08', '2026-10-11')).toBe(3);
     expect(todayIso(new Date('2026-10-08T23:30:00Z'))).toBe('2026-10-09');
+  });
+});
+
+describe('dias úteis', () => {
+  it('sábado e domingo passam para segunda (a não ser que se trabalhe ao fim de semana)', () => {
+    expect(workingDay('2026-10-24')).toBe('2026-10-26'); // sábado
+    expect(workingDay('2026-10-25')).toBe('2026-10-26'); // domingo
+    expect(workingDay('2026-10-23')).toBe('2026-10-23'); // sexta
+    expect(workingDay('2026-10-25', true)).toBe('2026-10-25');
   });
 });

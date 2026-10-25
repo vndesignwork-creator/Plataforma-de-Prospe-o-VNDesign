@@ -401,7 +401,6 @@ function TodayStalled({ today, leads }: { today: string; leads: Lead[] }) {
 
 function TodayCard({ className }: { className?: string }) {
   const { data, isLoading } = useToday();
-  const role = useRole();
   // Tarefas em atraso e de hoje logo a seguir aos follow-ups de hoje; as da semana no fim.
   const urgentTasks = data?.tasks ? [...data.tasks.overdue, ...data.tasks.due_today] : [];
   const weekTasks = data?.tasks?.upcoming ?? [];
@@ -420,13 +419,6 @@ function TodayCard({ className }: { className?: string }) {
       <CardHeader
         title="Hoje"
         description={data ? `Follow-ups, próximas ações e tarefas · ${formatDate(data.today)}` : undefined}
-        actions={
-          role === 'prospector' ? null : (
-            <Link href="/agenda" className="text-sm text-accent-text hover:underline">
-              Agenda da semana
-            </Link>
-          )
-        }
       />
       <div className="flex max-h-[26rem] flex-col gap-4 overflow-y-auto p-3">
         {isLoading ? <Skeleton className="h-40" /> : null}
