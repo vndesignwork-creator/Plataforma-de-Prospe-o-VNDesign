@@ -1,11 +1,14 @@
 'use client';
 
 /**
- * Sessão de prospeção: a lista de chamadas do dia. Cada linha tem os botões
- * para contactar (ligar, WhatsApp, email) e para registar o resultado com um
- * toque. O lead não salta: passa para "Feito nesta sessão", onde se vê a
- * contagem subir e se pode registar outra tentativa. Os leads sem telefone nem
- * email ficam no separador "Falta contacto" (com o "Procurar contacto").
+ * Sessão de prospeção: a lista de contactos do dia, por email (por omissão) ou
+ * por telefone — a escolha fica na conta de cada pessoa.
+ *  - Email: o botão de cada linha abre o 1.º email (ou o follow-up seguinte) já
+ *    escrito; ao enviar, o lead passa a Contactado e o próximo follow-up fica
+ *    marcado sozinho. Os resultados de uma chamada ficam no menu "Registar".
+ *  - Telefone: Ligar, WhatsApp e os resultados com um toque (Não atendeu 2×…).
+ * O lead não salta: passa para "Feito nesta sessão". Os leads sem email (ou sem
+ * contacto nenhum, a telefonar) ficam num separador próprio, com o "Procurar".
  */
 import {
   NO_ANSWER_LIMIT,
@@ -13,8 +16,15 @@ import {
   PROSPECTING_FILTERS,
   formatDate,
   leadPath,
+  PROSPECTING_MODE_LABELS,
+  PROSPECTING_MODE_PREFERENCE,
+  PROSPECTING_MODES,
+  leadServiceCategory,
+  renderTemplate,
   type Lead,
+  type LeadEmailSendResult,
   type LostReason,
+  type ProspectingMode,
   type ProspectingAttempts,
   type ProspectingFilter,
   type ProspectingItem,
@@ -24,6 +34,7 @@ import {
 import {
   CalendarClock,
   ChevronDown,
+  Mail,
   ExternalLink,
   Eye,
   Flame,
@@ -32,6 +43,7 @@ import {
   Phone,
   PhoneOff,
   Pin,
+  PenLine,
   RotateCcw,
   Route,
   Search,
@@ -43,7 +55,7 @@ import {
 import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { SendEmailButton } from '@/components/email/send-email-dialog';
+import { FollowUpEmailButton, SendEmailButton } from '@/components/email/send-email-dialog';
 import { StatusBadge } from '@/components/leads/badges';
 import { ContactFinder } from '@/components/leads/contact-finder';
 import { LeadScoreBadge } from '@/components/leads/lead-score';
@@ -53,12 +65,14 @@ import { ContactScriptsCard } from '@/components/scripts/contact-scripts-card';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Badge, Card, EmptyState, Skeleton } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
-import { DropdownContent, DropdownItem, DropdownRoot, DropdownTrigger } from '@/components/ui/dropdown';
+import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownSeparator, DropdownTrigger } from '@/components/ui/dropdown';
+import { useServiceCatalog } from '@/components/services/services';
 import { Textarea } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api-client';
-import { useProspectingOutcome, useProspectingQueue, useSettings } from '@/lib/queries';
+import { usePreference, useProspectingOutcome, useProspectingQueue, useSetPreference, useSettings, useTemplates } from '@/lib/queries';
+import { useTemplateContext } from '@/lib/template-context';
 import { cn, displayHost, telUrl, whatsappUrl } from '@/lib/utils';
-import { SequenceStep } from './sequence-step';
+import { SequenceStep, pickTemplate } from './sequence-step';
 
 const KIND_ICON: Record<ProspectingItem['kind'], typeof Eye> = {
   opened: Eye,
@@ -74,14 +88,11 @@ const LATER = [
   { days: 30, label: 'Daqui a 1 mês' },
 ];
 
-/** Separadores: os da fila do servidor e "Falta contacto" (os da lista toda sem telefone nem email). */
+/** Separadores: os da fila do servidor e "Falta email" / "Falta contacto" (os da lista toda sem forma de contactar). */
 type View = ProspectingFilter | 'missing';
-const VIEWS: { value: View; label: string }[] = [
-  ...PROSPECTING_FILTERS.map((f) => ({
-    value: f as View,
-    label: PROSPECTING_FILTER_LABELS[f],
-  })),
-  { value: 'missing', label: 'Falta contacto' },
+const views = (mode: ProspectingMode): { value: View; label: string }[] => [
+  ...PROSPECTING_FILTERS.map((f) => ({ value: f as View, label: PROSPECTING_FILTER_LABELS[f] })),
+  { value: 'missing', label: mode === 'email' ? 'Falta email' : 'Falta contacto' },
 ];
 
 const PAGE = 25;
@@ -91,10 +102,12 @@ const NO_ATTEMPTS: ProspectingAttempts = {
   no_answer_streak: 0,
 };
 const hasContact = (lead: Lead) => !!(lead.phone || lead.email);
+/** A email: sem email não há nada a enviar; a telefonar: basta um telefone ou um email. */
+const reachable = (lead: Lead, mode: ProspectingMode) => (mode === 'email' ? !!lead.email : hasContact(lead));
 
 /** O que se registou nesta sessão (fica à vista na linha). */
 type Done = {
-  outcome: ProspectingOutcome;
+  outcome: ProspectingOutcome | 'email';
   text: string;
   tone: 'neutral' | 'success' | 'danger' | 'warning';
 };
@@ -127,7 +140,22 @@ function doneLabel(outcome: ProspectingOutcome, lead: Lead, attempts: Prospectin
   }
 }
 
+/** Depois de enviar um email: o lead como fica (Contactado, próximo follow-up) e o que se mostra na linha. */
+function afterEmail(lead: Lead, result: LeadEmailSendResult): { lead: Lead; done: Done } {
+  const next: Lead = {
+    ...lead,
+    status: result.status_changed && lead.status === 'identificado' ? 'contactado' : lead.status,
+    next_action_on: result.next_action_on,
+    next_action_text: result.next_action_text ?? lead.next_action_text,
+  };
+  const on = result.next_action_on ? formatDate(result.next_action_on) : null;
+  return { lead: next, done: { outcome: 'email', tone: 'success', text: `Email enviado${on ? ` · próximo a ${on}` : ''}` } };
+}
+
 export function ProspectingSession() {
+  const { data: modePref } = usePreference<ProspectingMode>(PROSPECTING_MODE_PREFERENCE);
+  const setModePref = useSetPreference<ProspectingMode>(PROSPECTING_MODE_PREFERENCE);
+  const mode: ProspectingMode = modePref === 'phone' ? 'phone' : 'email';
   const [view, setView] = useState<View>('all');
   const { data, isLoading, refetch, isFetching } = useProspectingQueue(view === 'missing' ? 'all' : view);
   // O que mudou nesta sessão em cada lead (lead atualizado, contagens, último resultado).
@@ -137,15 +165,17 @@ export function ProspectingSession() {
   const [doneOpen, setDoneOpen] = useState(true);
   const [limit, setLimit] = useState(PAGE);
   const [doneToday, setDoneToday] = useState<number | null>(null);
+  const [emailsSent, setEmailsSent] = useState(0);
 
   const items = data?.items ?? [];
-  // Falta contacto: decide-se pelo lead como veio da fila (guardar um telefone não o faz saltar de separador).
-  const missing = items.filter((i) => !hasContact(i.lead));
-  const pending = (view === 'missing' ? missing : items.filter((i) => hasContact(i.lead)))
+  // Falta email/contacto: decide-se pelo lead como veio da fila (guardar um contacto não o faz saltar de separador).
+  const missing = items.filter((i) => !reachable(i.lead, mode));
+  const pending = (view === 'missing' ? missing : items.filter((i) => reachable(i.lead, mode)))
     .filter((i) => !local[i.lead.id]?.done)
     .map((i) => local[i.lead.id]?.item ?? i);
   const done = doneIds.map((id) => local[id]).filter((d) => !!d);
   const today = doneToday ?? data?.done_today ?? 0;
+  const emailsToday = (data?.emails_today ?? 0) + emailsSent;
 
   function changeView(next: View) {
     setLimit(PAGE);
@@ -161,6 +191,13 @@ export function ProspectingSession() {
         item: { ...(l[lead.id]?.item ?? item), lead },
       },
     }));
+  }
+
+  function emailed(item: ProspectingItem, result: LeadEmailSendResult) {
+    const { lead, done } = afterEmail(item.lead, result);
+    setLocal((l) => ({ ...l, [lead.id]: { item: { ...(l[lead.id]?.item ?? item), lead }, done } }));
+    setDoneIds((ids) => [lead.id, ...ids.filter((id) => id !== lead.id)]);
+    setEmailsSent((n) => n + 1);
   }
 
   function recorded(item: ProspectingItem, outcome: ProspectingOutcome, result: ProspectingResult) {
@@ -192,7 +229,7 @@ export function ProspectingSession() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div role="tablist" aria-label="Que leads" className="flex flex-wrap gap-1 rounded-lg bg-surface-2 p-1">
-          {VIEWS.map((v) => (
+          {views(mode).map((v) => (
             <button
               key={v.value}
               type="button"
@@ -208,14 +245,42 @@ export function ProspectingSession() {
             </button>
           ))}
         </div>
+        <div role="radiogroup" aria-label="Trabalho por" className="flex items-center gap-1 text-sm">
+          <span className="mr-1 text-muted">Trabalho por:</span>
+          {PROSPECTING_MODES.map((m) => (
+            <button
+              key={m}
+              type="button"
+              role="radio"
+              aria-checked={mode === m}
+              onClick={() => {
+                if (m === mode) return;
+                setModePref.mutate(m);
+                setLimit(PAGE);
+              }}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 font-medium transition-colors',
+                mode === m ? 'border-accent/60 bg-accent-soft text-accent-text' : 'border-border text-muted hover:text-fg',
+              )}
+            >
+              {m === 'email' ? <Mail className="h-3.5 w-3.5" aria-hidden /> : <Phone className="h-3.5 w-3.5" aria-hidden />}
+              {PROSPECTING_MODE_LABELS[m]}
+            </button>
+          ))}
+        </div>
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted" aria-live="polite">
           <span>
             Nesta sessão: <strong className="text-fg tabular">{done.length}</strong>
           </span>
-          <span>
-            Hoje: <strong className="text-fg tabular">{today}</strong> contacto
-            {today === 1 ? '' : 's'}
-          </span>
+          {mode === 'email' ? (
+            <span>
+              Hoje: <strong className="text-fg tabular">{emailsToday}</strong> email{emailsToday === 1 ? '' : 's'} enviado{emailsToday === 1 ? '' : 's'}
+            </span>
+          ) : (
+            <span>
+              Hoje: <strong className="text-fg tabular">{today}</strong> contacto{today === 1 ? '' : 's'}
+            </span>
+          )}
           {data ? (
             <span>
               Faltam <strong className="text-fg tabular">{pending.length}</strong>
@@ -225,8 +290,12 @@ export function ProspectingSession() {
       </div>
       <p className="text-sm text-muted">
         {view === 'missing'
-          ? 'Leads da lista sem telefone nem email: procura o contacto (Google, Maps, redes sociais ou automaticamente) e guarda-o; depois já os podes contactar aqui.'
-          : 'Contacta e regista o resultado na própria linha. O lead passa para “Feito nesta sessão”, onde vês a contagem (1×, 2×…) e podes registar outra tentativa.'}
+          ? mode === 'email'
+            ? 'Leads da lista sem email: procura-o (site, Google, Maps, redes sociais ou automaticamente) e guarda-o; depois já lhes podes escrever aqui.'
+            : 'Leads da lista sem telefone nem email: procura o contacto (Google, Maps, redes sociais ou automaticamente) e guarda-o; depois já os podes contactar aqui.'
+          : mode === 'email'
+            ? 'Cada linha tem o email pronto a rever e enviar (o 1.º ou o follow-up seguinte). Ao enviar, o lead passa a Contactado e o próximo follow-up fica marcado — não precisas de registar nada. Ligaste? Usa “Registar”.'
+            : 'Contacta e regista o resultado na própria linha. O lead passa para “Feito nesta sessão”, onde vês a contagem (1×, 2×…) e podes registar outra tentativa.'}
       </p>
 
       {isLoading ? <Skeleton className="h-96" /> : null}
@@ -234,14 +303,14 @@ export function ProspectingSession() {
       {data && !pending.length ? (
         <Card>
           {view === 'missing' ? (
-            <EmptyState title="Nenhum lead sem contacto">
-              <p>Todos os leads da lista têm telefone ou email.</p>
+            <EmptyState title={mode === 'email' ? 'Nenhum lead sem email' : 'Nenhum lead sem contacto'}>
+              <p>{mode === 'email' ? 'Todos os leads da lista têm email.' : 'Todos os leads da lista têm telefone ou email.'}</p>
             </EmptyState>
           ) : (
             <EmptyState title={done.length ? 'Terminaste a lista! 🎉' : 'Não há leads para contactar agora'}>
               <p>
                 {done.length
-                  ? `Registaste ${done.length} contacto${done.length === 1 ? '' : 's'} nesta sessão.`
+                  ? `Trataste ${done.length} lead${done.length === 1 ? '' : 's'} nesta sessão.`
                   : 'Os follow-ups de hoje estão feitos e não há leads por contactar. Gera novos leads ou importa uma lista.'}
               </p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -264,7 +333,9 @@ export function ProspectingSession() {
               <LeadRow
                 key={item.lead.id}
                 item={item}
+                mode={mode}
                 onSaved={(lead) => saved(item, lead)}
+                onEmailed={(result) => emailed(item, result)}
                 onRecorded={(outcome, result) => recorded(item, outcome, result)}
               />
             ))}
@@ -281,7 +352,7 @@ export function ProspectingSession() {
 
       {view !== 'missing' && data && missing.length ? (
         <button type="button" onClick={() => changeView('missing')} className="self-start text-sm text-accent-text hover:underline">
-          {missing.length} lead{missing.length === 1 ? '' : 's'} desta lista sem telefone nem email → Falta contacto
+          {missing.length} lead{missing.length === 1 ? '' : 's'} desta lista {mode === 'email' ? 'sem email → Falta email' : 'sem telefone nem email → Falta contacto'}
         </button>
       ) : null}
 
@@ -303,8 +374,10 @@ export function ProspectingSession() {
                   <LeadRow
                     key={item.lead.id}
                     item={item}
+                    mode={mode}
                     done={result}
                     onSaved={(lead) => saved(item, lead)}
+                    onEmailed={(r) => emailed(item, r)}
                     onRecorded={(outcome, r) => recorded(item, outcome, r)}
                   />
                 ))}
@@ -319,13 +392,17 @@ export function ProspectingSession() {
 
 function LeadRow({
   item,
+  mode,
   done,
   onSaved,
+  onEmailed,
   onRecorded,
 }: {
   item: ProspectingItem;
+  mode: ProspectingMode;
   done?: Done;
   onSaved: (lead: Lead) => void;
+  onEmailed: (result: LeadEmailSendResult) => void;
   onRecorded: (outcome: ProspectingOutcome, result: ProspectingResult) => void;
 }) {
   const lead = item.lead;
@@ -373,6 +450,8 @@ function LeadRow({
   }
 
   const meta = [lead.contact_name, lead.sector?.name, lead.city].filter(Boolean).join(' · ');
+  // "Não atendeu" à 3.ª vez seguida pergunta se passa a "Sem interesse" (Não responde).
+  const noAnswer = () => (streak >= NO_ANSWER_LIMIT - 1 ? setAskGiveUp(true) : void record('no_answer'));
 
   return (
     <li aria-labelledby={headingId} className={cn('flex flex-col gap-3 p-3 sm:p-4', done && 'bg-surface-2/30')}>
@@ -408,81 +487,134 @@ function LeadRow({
         </p>
       ) : null}
 
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-        <nav aria-label="Contactar" className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap [&>*]:justify-center">
-          {lead.phone ? (
-            <a href={telUrl(lead.phone)} className={buttonClasses('soft', 'sm')}>
-              <Phone className="h-3.5 w-3.5" aria-hidden /> Ligar
-            </a>
-          ) : null}
-          {wa ? (
-            settings?.features.whatsapp_templates ? (
-              <WhatsAppMenu lead={lead} className={buttonClasses('outline', 'sm')} />
-            ) : (
-              <a href={wa} target="_blank" rel="noreferrer" className={buttonClasses('outline', 'sm')}>
+      {mode === 'email' ? (
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+          <nav aria-label="Contactar" className="flex flex-wrap gap-2">
+            <EmailAction lead={lead} onSent={onEmailed} />
+            {!lead.email ? (
+              <Button size="sm" variant="soft" aria-expanded={finder} onClick={() => setFinder(!finder)}>
+                <Search className="h-3.5 w-3.5" aria-hidden /> Procurar email
+              </Button>
+            ) : null}
+            {lead.phone ? (
+              <a href={telUrl(lead.phone)} className={buttonClasses('ghost', 'sm')}>
+                <Phone className="h-3.5 w-3.5" aria-hidden /> Ligar
+              </a>
+            ) : null}
+            {wa ? (
+              <a href={wa} target="_blank" rel="noreferrer" className={buttonClasses('ghost', 'sm')}>
                 <MessageCircle className="h-3.5 w-3.5" aria-hidden /> WhatsApp
               </a>
-            )
-          ) : null}
-          {lead.email ? (
-            <SendEmailButton
-              lead={lead}
-              label="Email"
-              variant="outline"
-              subject={lead.email_subject ?? ''}
-              body={lead.email_body ?? ''}
-              template="Email de prospeção"
-            />
-          ) : null}
-          {!lead.phone || !lead.email ? (
-            <Button size="sm" variant="ghost" aria-expanded={finder} onClick={() => setFinder(!finder)}>
-              <Search className="h-3.5 w-3.5" aria-hidden />{' '}
-              {hasContact(lead) ? `Procurar ${lead.phone ? 'email' : 'telefone'}` : 'Procurar contacto'}
-            </Button>
-          ) : null}
-        </nav>
-
-        <div
-          role="group"
-          aria-label="Resultado do contacto"
-          className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap [&_button]:whitespace-nowrap [&_svg]:shrink-0 max-sm:[&>:last-child]:col-span-2"
-        >
-          <Button
-            size="sm"
-            variant="outline"
-            // À 3.ª vez seguida sem atender, pergunta se passa a "Sem interesse" (Não responde).
-            onClick={() => (streak >= NO_ANSWER_LIMIT - 1 ? setAskGiveUp(true) : void record('no_answer'))}
-            disabled={busy}
-          >
-            <PhoneOff className="h-3.5 w-3.5" aria-hidden /> Não atendeu
-            <AttemptCount n={attempts.no_answer} />
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => void record('contacted')} disabled={busy}>
-            <UserCheck className="h-3.5 w-3.5" aria-hidden /> {item.sequence ? `Contactado (passo ${item.sequence.step})` : 'Contactado'}
-            <AttemptCount n={attempts.contacted} />
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => void record('interested')} disabled={busy}>
-            <ThumbsUp className="h-3.5 w-3.5 text-success" aria-hidden /> Interessado
-          </Button>
+            ) : null}
+          </nav>
+          {/* Uma chamada ou uma resposta por outra via: regista-se aqui (o email enviado já fica registado sozinho). */}
           <DropdownRoot>
             <DropdownTrigger asChild>
-              <Button size="sm" variant="outline" disabled={busy}>
-                <CalendarClock className="h-3.5 w-3.5" aria-hidden /> Mais tarde
+              <Button size="sm" variant="outline" disabled={busy} className="self-start lg:self-auto">
+                <PenLine className="h-3.5 w-3.5" aria-hidden /> Registar <ChevronDown className="h-3.5 w-3.5" aria-hidden />
               </Button>
             </DropdownTrigger>
             <DropdownContent align="end">
+              <DropdownLabel>Registar um contacto</DropdownLabel>
+              <DropdownItem onSelect={() => void record('contacted')}>
+                <UserCheck className="h-4 w-4 text-muted" aria-hidden /> Contactado ({attempts.contacted}×)
+              </DropdownItem>
+              <DropdownItem onSelect={noAnswer}>
+                <PhoneOff className="h-4 w-4 text-muted" aria-hidden /> Não atendeu ({attempts.no_answer}×)
+              </DropdownItem>
+              <DropdownItem onSelect={() => void record('interested')}>
+                <ThumbsUp className="h-4 w-4 text-success" aria-hidden /> Interessado
+              </DropdownItem>
+              <DropdownSeparator />
+              <DropdownLabel>Mais tarde</DropdownLabel>
               {LATER.map((l) => (
                 <DropdownItem key={l.days} onSelect={() => void record('later', l.days)}>
-                  {l.label}
+                  <CalendarClock className="h-4 w-4 text-muted" aria-hidden /> {l.label}
                 </DropdownItem>
               ))}
+              <DropdownSeparator />
+              <DropdownItem onSelect={() => setAskLost(true)}>
+                <ThumbsDown className="h-4 w-4 text-muted" aria-hidden /> Sem interesse…
+              </DropdownItem>
             </DropdownContent>
           </DropdownRoot>
-          <Button size="sm" variant="outline" onClick={() => setAskLost(true)} disabled={busy}>
-            <ThumbsDown className="h-3.5 w-3.5" aria-hidden /> Sem interesse
-          </Button>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+          <nav aria-label="Contactar" className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap [&>*]:justify-center">
+            {lead.phone ? (
+              <a href={telUrl(lead.phone)} className={buttonClasses('soft', 'sm')}>
+                <Phone className="h-3.5 w-3.5" aria-hidden /> Ligar
+              </a>
+            ) : null}
+            {wa ? (
+              settings?.features.whatsapp_templates ? (
+                <WhatsAppMenu lead={lead} className={buttonClasses('outline', 'sm')} />
+              ) : (
+                <a href={wa} target="_blank" rel="noreferrer" className={buttonClasses('outline', 'sm')}>
+                  <MessageCircle className="h-3.5 w-3.5" aria-hidden /> WhatsApp
+                </a>
+              )
+            ) : null}
+            {lead.email ? (
+              <SendEmailButton
+                lead={lead}
+                label="Email"
+                variant="outline"
+                subject={lead.email_subject ?? ''}
+                body={lead.email_body ?? ''}
+                template="Email de prospeção"
+              />
+            ) : null}
+            {!lead.phone || !lead.email ? (
+              <Button size="sm" variant="ghost" aria-expanded={finder} onClick={() => setFinder(!finder)}>
+                <Search className="h-3.5 w-3.5" aria-hidden />{' '}
+                {hasContact(lead) ? `Procurar ${lead.phone ? 'email' : 'telefone'}` : 'Procurar contacto'}
+              </Button>
+            ) : null}
+          </nav>
+
+          <div
+            role="group"
+            aria-label="Resultado do contacto"
+            className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap [&_button]:whitespace-nowrap [&_svg]:shrink-0 max-sm:[&>:last-child]:col-span-2"
+          >
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={noAnswer}
+              disabled={busy}
+            >
+              <PhoneOff className="h-3.5 w-3.5" aria-hidden /> Não atendeu
+              <AttemptCount n={attempts.no_answer} />
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => void record('contacted')} disabled={busy}>
+              <UserCheck className="h-3.5 w-3.5" aria-hidden /> {item.sequence ? `Contactado (passo ${item.sequence.step})` : 'Contactado'}
+              <AttemptCount n={attempts.contacted} />
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => void record('interested')} disabled={busy}>
+              <ThumbsUp className="h-3.5 w-3.5 text-success" aria-hidden /> Interessado
+            </Button>
+            <DropdownRoot>
+              <DropdownTrigger asChild>
+                <Button size="sm" variant="outline" disabled={busy}>
+                  <CalendarClock className="h-3.5 w-3.5" aria-hidden /> Mais tarde
+                </Button>
+              </DropdownTrigger>
+              <DropdownContent align="end">
+                {LATER.map((l) => (
+                  <DropdownItem key={l.days} onSelect={() => void record('later', l.days)}>
+                    {l.label}
+                  </DropdownItem>
+                ))}
+              </DropdownContent>
+            </DropdownRoot>
+            <Button size="sm" variant="outline" onClick={() => setAskLost(true)} disabled={busy}>
+              <ThumbsDown className="h-3.5 w-3.5" aria-hidden /> Sem interesse
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
         <button
@@ -560,6 +692,44 @@ function LeadRow({
         />
       ) : null}
     </li>
+  );
+}
+
+const FIRST_EMAIL_STEP = { step: 1, total: 1, day: 0, channel: 'email' as const, template_id: null };
+
+/**
+ * O email desta linha: o follow-up seguinte num lead contactado; o 1.º email num
+ * lead novo (o escrito na ficha, ou o 1.º modelo de email preenchido); noutros
+ * estados, um email em branco. Revê-se sempre antes de enviar.
+ */
+function EmailAction({ lead, onSent }: { lead: Lead; onSent: (result: LeadEmailSendResult) => void }) {
+  const { data: templates } = useTemplates();
+  const context = useTemplateContext(lead);
+  const catalog = useServiceCatalog();
+  if (!lead.email) return null;
+  if (lead.status === 'contactado') return <FollowUpEmailButton lead={lead} variant="soft" onSent={onSent} />;
+  const first = lead.status === 'identificado';
+  let subject = lead.email_subject ?? '';
+  let body = lead.email_body ?? '';
+  let template = 'Email de prospeção';
+  if (first && !body.trim() && templates) {
+    const t = pickTemplate(templates, FIRST_EMAIL_STEP, leadServiceCategory(lead.services, catalog.all) ?? null);
+    if (t) {
+      subject = t.subject ? renderTemplate(t.subject, context).text : '';
+      body = renderTemplate(t.body, context).text;
+      template = t.name;
+    }
+  }
+  return (
+    <SendEmailButton
+      lead={lead}
+      label={first ? 'Enviar 1.º email' : 'Enviar email'}
+      variant="soft"
+      subject={subject}
+      body={body}
+      template={template}
+      onSent={onSent}
+    />
   );
 }
 

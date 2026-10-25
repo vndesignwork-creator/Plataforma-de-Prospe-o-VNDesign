@@ -63,6 +63,19 @@ export function lisbonMidnight(day: string): string {
   return new Date(guess.getTime() - hour * 3_600_000).toISOString();
 }
 
+/** Emails enviados hoje pela plataforma por esta pessoa (modo email da Prospeção). */
+async function emailsToday(ctx: ApiContext): Promise<number> {
+  const { count, error } = await ctx.supabase
+    .from('lead_activities')
+    .select('id', { count: 'exact', head: true })
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('actor_user_id', ctx.user.id)
+    .eq('type', 'email_sent')
+    .gte('created_at', lisbonMidnight(todayIso()));
+  if (error) throw fromPostgrest(error);
+  return count ?? 0;
+}
+
 async function doneToday(ctx: ApiContext): Promise<number> {
   const { count, error } = await ctx.supabase
     .from('lead_activities')
@@ -90,7 +103,7 @@ export async function getProspectingQueue(ctx: ApiContext, filter: ProspectingFi
   };
   const want = (k: ProspectingItem['kind']) => filter === 'all' || filter === k;
 
-  const [opened, followUps, fresh, done] = await Promise.all([
+  const [opened, followUps, fresh, done, emails] = await Promise.all([
     want('opened') ? fetchRecentlyOpened(ctx.supabase, ctx.workspaceId, 30) : Promise.resolve([]),
     want('follow_up')
       ? base()
@@ -109,6 +122,7 @@ export async function getProspectingQueue(ctx: ApiContext, filter: ProspectingFi
           .limit(MAX_ITEMS)
       : null,
     doneToday(ctx),
+    emailsToday(ctx),
   ]);
   if (followUps?.error) throw fromPostgrest(followUps.error);
   if (fresh?.error) throw fromPostgrest(fresh.error);
@@ -153,7 +167,7 @@ export async function getProspectingQueue(ctx: ApiContext, filter: ProspectingFi
       item.sequence = { step: index + 1, total: seq.steps.length, day: step.day, channel: step.channel, template_id: step.template_id };
     }
   }
-  return { items, done_today: done };
+  return { items, done_today: done, emails_today: emails };
 }
 
 /** Resultados registados na Prospeção, por lead, do mais antigo para o mais recente. */

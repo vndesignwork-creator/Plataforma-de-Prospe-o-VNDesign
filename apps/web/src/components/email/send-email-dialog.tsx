@@ -191,7 +191,7 @@ export function SendEmailButton({
   size = 'sm',
   disabled,
   ...props
-}: SendEmailProps & { label?: string; variant?: 'primary' | 'outline' | 'secondary'; size?: 'sm' | 'md'; disabled?: boolean }) {
+}: SendEmailProps & { label?: string; variant?: 'primary' | 'outline' | 'secondary' | 'soft'; size?: 'sm' | 'md'; disabled?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -207,7 +207,19 @@ export function SendEmailButton({
  * "Enviar follow-up": pede à plataforma o próximo follow-up da sequência (modelo
  * do passo preenchido, "Re:" do último email) e abre-o para rever e enviar.
  */
-export function FollowUpEmailButton({ lead, compact, className }: { lead: Lead; compact?: boolean; className?: string }) {
+export function FollowUpEmailButton({
+  lead,
+  compact,
+  className,
+  variant = 'outline',
+  onSent,
+}: {
+  lead: Lead;
+  compact?: boolean;
+  className?: string;
+  variant?: 'outline' | 'soft';
+  onSent?: (result: LeadEmailSendResult) => void;
+}) {
   const [draft, setDraft] = useState<FollowUpDraft | null>(null);
   const [loading, setLoading] = useState(false);
   if (lead.status !== 'contactado' || !lead.email || lead.anonymized_at) return null;
@@ -240,7 +252,7 @@ export function FollowUpEmailButton({ lead, compact, className }: { lead: Lead; 
           <Reply className="h-4 w-4" aria-hidden />
         </Button>
       ) : (
-        <Button size="sm" variant="outline" onClick={open} loading={loading} className={className}>
+        <Button size="sm" variant={variant} onClick={open} loading={loading} className={className}>
           <Reply className="h-3.5 w-3.5" aria-hidden /> Enviar follow-up
         </Button>
       )}
@@ -252,6 +264,7 @@ export function FollowUpEmailButton({ lead, compact, className }: { lead: Lead; 
           inReplyTo={draft.in_reply_to}
           template={`Follow-up ${draft.step}${draft.template_name ? ` — ${draft.template_name}` : ''}`}
           title={draft.step <= draft.total ? `Enviar follow-up ${draft.step} de ${draft.total}` : `Enviar follow-up ${draft.step}`}
+          onSent={onSent}
           onClose={() => setDraft(null)}
         />
       ) : null}

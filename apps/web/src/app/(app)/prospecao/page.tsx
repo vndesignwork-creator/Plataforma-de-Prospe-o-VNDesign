@@ -9,7 +9,7 @@ export default function ProspectingPage() {
     <>
       <PageHeader
         title="Sessão de prospeção"
-        description="A lista de chamadas do dia: contacta e regista o resultado com um toque, sem sair do sítio."
+        description="Os contactos do dia, por email ou por telefone: envia ou regista com um toque, sem sair do sítio."
       />
       <ProspectingSession />
     </>

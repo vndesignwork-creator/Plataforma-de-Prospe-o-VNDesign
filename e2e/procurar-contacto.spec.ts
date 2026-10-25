@@ -54,6 +54,7 @@ test('sessão de prospeção: lead sem contactos, colar o telefone e aparece Lig
   const lead = await createLead(page.request, { company_name: `Sem Contactos ${run}`, status: 'contactado', website: 'https://www.facebook.com/semcontactos' });
   // Follow-up muito atrasado: fica em primeiro na fila.
   expect((await page.request.patch(`/api/v1/leads/${lead.id}`, { data: { next_action_on: '2000-01-01' } })).status()).toBe(200);
+  await page.request.put('/api/v1/preferences/prospecting.mode', { data: { value: 'phone' } });
   await page.goto('/prospecao');
   // Sem telefone nem email: fica no separador "Falta contacto".
   await page.getByRole('tab', { name: 'Falta contacto' }).click();

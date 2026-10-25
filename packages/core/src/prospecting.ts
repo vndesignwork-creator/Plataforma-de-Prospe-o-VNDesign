@@ -1,5 +1,5 @@
 /**
- * Sessão de prospeção: os leads a contactar agora, numa lista (quem abriu
+ * Sessão de prospeção: os leads a contactar agora, numa lista — por email ou por telefone (quem abriu
  * um email, follow-ups em atraso ou para hoje e leads por contactar), e o
  * resultado de cada contacto registado com um toque.
  */
@@ -16,6 +16,12 @@ export const PROSPECTING_FILTER_LABELS: Record<ProspectingFilter, string> = {
   follow_up: 'Follow-ups',
   new: 'Por contactar',
 };
+
+/** Como se trabalha a Prospeção (preferência de cada pessoa): por email (por omissão) ou por telefone. */
+export const PROSPECTING_MODES = ['email', 'phone'] as const;
+export type ProspectingMode = (typeof PROSPECTING_MODES)[number];
+export const PROSPECTING_MODE_LABELS: Record<ProspectingMode, string> = { email: 'Email', phone: 'Telefone' };
+export const PROSPECTING_MODE_PREFERENCE = 'prospecting.mode';
 
 export const PROSPECTING_OUTCOMES = ['no_answer', 'contacted', 'interested', 'later', 'not_interested'] as const;
 export type ProspectingOutcome = (typeof PROSPECTING_OUTCOMES)[number];
@@ -61,6 +67,7 @@ export const ProspectingQueueSchema = z
   .object({
     items: z.array(ProspectingItemSchema),
     done_today: z.int().meta({ description: 'Contactos registados hoje na sessão de prospeção' }),
+    emails_today: z.int().meta({ description: 'Emails enviados hoje pela plataforma (por quem pede)' }),
   })
   .meta({ id: 'ProspectingQueue' });
 export type ProspectingQueue = z.infer<typeof ProspectingQueueSchema>;

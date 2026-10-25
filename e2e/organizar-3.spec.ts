@@ -216,7 +216,8 @@ test('Prospeção: "Sem interesse" pergunta o motivo (e fica no lead e na linha 
   const activities = (await (await page.request.get(`/api/v1/leads/${lead.id}/activities`)).json()).data as { body: string | null }[];
   expect(activities.some((a) => a.body === 'Sem interesse (Já tem site / fornecedor)')).toBe(true);
 
-  // Na sessão: o botão abre a pergunta; Cancelar não regista nada.
+  // Na sessão (a telefonar): o botão abre a pergunta; Cancelar não regista nada.
+  await page.request.put('/api/v1/preferences/prospecting.mode', { data: { value: 'phone' } });
   await page.goto('/prospecao');
   const button = page.getByRole('button', { name: 'Sem interesse', exact: true }).first();
   const hasQueue = await button.waitFor({ timeout: 15_000 }).then(

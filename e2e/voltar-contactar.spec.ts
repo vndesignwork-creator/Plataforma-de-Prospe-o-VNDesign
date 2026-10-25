@@ -62,6 +62,8 @@ test('Prospeção: contagem de "Não atendeu" e "Contactado"; à 3.ª vez sem re
   const queue = (await (await page.request.get('/api/v1/prospecting?filter=follow_up')).json()).data as { items: { lead: { id: string }; attempts?: unknown }[] };
   expect(queue.items.find((i) => i.lead.id === lead.id)?.attempts).toEqual({ no_answer: 2, contacted: 1, no_answer_streak: 2 });
 
+  // A telefonar (o modo email esconde os resultados no menu "Registar").
+  await page.request.put('/api/v1/preferences/prospecting.mode', { data: { value: 'phone' } });
   await page.goto('/prospecao');
   await page.getByRole('tab', { name: 'Follow-ups' }).click();
   const row = page.getByRole('list', { name: 'Leads para contactar' }).getByRole('listitem', { name: new RegExp(`Tentativas ${run}`) });
@@ -80,6 +82,8 @@ test('Prospeção: o lead fica à vista em "Feito nesta sessão" e a contagem so
   const lead = await createLead(page.request, { company_name: `Aviso Tentativa ${run}`, status: 'contactado', phone: '912 000 444' });
   expect((await page.request.post(`/api/v1/leads/${lead.id}/prospecting`, { data: { outcome: 'no_answer' } })).status()).toBe(200);
   expect((await page.request.patch(`/api/v1/leads/${lead.id}`, { data: { next_action_on: '2019-01-01' } })).status()).toBe(200);
+  // A telefonar (o modo email esconde os resultados no menu "Registar").
+  await page.request.put('/api/v1/preferences/prospecting.mode', { data: { value: 'phone' } });
   await page.goto('/prospecao');
   await page.getByRole('tab', { name: 'Follow-ups' }).click();
   const name = new RegExp(`Aviso Tentativa ${run}`);

@@ -150,14 +150,27 @@ test('aberturas do email: imagem de 1×1, clique no link, linha do tempo, Hoje e
   const opened = page.getByRole('region', { name: 'Abriram o teu email' });
   await expect(opened.getByText(`Abre Email ${run}`)).toBeVisible();
 
-  // Sessão de prospeção: quem abriu o email aparece primeiro.
+  // Sessão de prospeção (a trabalhar por email): quem abriu o email aparece primeiro.
+  await page.request.put('/api/v1/preferences/prospecting.mode', { data: { value: 'email' } });
   await page.goto('/prospecao');
+  await expect(page.getByRole('radio', { name: 'Email' })).toHaveAttribute('aria-checked', 'true');
   await page.getByRole('tab', { name: 'Abriram o email' }).click();
-  const row = page.getByRole('list', { name: 'Leads para contactar' }).getByRole('listitem', { name: new RegExp(`Abre Email ${run}`) });
+  const name = new RegExp(`Abre Email ${run}`);
+  const row = page.getByRole('list', { name: 'Leads para contactar' }).getByRole('listitem', { name });
   await expect(row.getByText(/Carregou num link do email/)).toBeVisible();
-  await row.getByRole('button', { name: 'Nota' }).click();
-  await row.getByLabel('Nota (opcional)').fill('Pediu para ligar às 15h');
-  await row.getByRole('button', { name: 'Interessado' }).click();
+  // O follow-up seguinte já escrito: rever e enviar. O lead fica em "Feito nesta sessão", sem registar nada.
+  await row.getByRole('button', { name: 'Enviar follow-up' }).click();
+  const dialog = page.getByRole('dialog', { name: /Enviar follow-up/ });
+  await expect(dialog.getByLabel('Assunto')).toHaveValue(/^Re: /);
+  await dialog.getByRole('button', { name: 'Enviar', exact: true }).click();
+  const done = page.getByRole('list', { name: 'Leads tratados nesta sessão' }).getByRole('listitem', { name });
+  await expect(done).toContainText('Email enviado');
+  await expect(page.getByText(/Hoje: \d+ emails? enviados?/)).toBeVisible();
+  // Depois ligou: Nota + Registar → Interessado.
+  await done.getByRole('button', { name: 'Nota' }).click();
+  await done.getByLabel('Nota (opcional)').fill('Pediu para ligar às 15h');
+  await done.getByRole('button', { name: 'Registar' }).click();
+  await page.getByRole('menuitem', { name: 'Interessado' }).click();
   await expect(page.getByText(new RegExp(`#${lead.number} Abre Email ${run}: registado`))).toBeVisible();
   const after = (await (await page.request.get(`/api/v1/leads/${lead.id}`)).json()).data;
   expect(after.status).toBe('respondeu');

@@ -572,7 +572,10 @@ Como ligar: no Bricks, elemento Formulário → ações → **Webhook** (POST, J
 
 ## Sessão de prospeção
 
-Menu **Prospeção**: a lista de chamadas do dia — contactar e registar o resultado na própria linha, sem saltar de lead.
+Menu **Prospeção**: os contactos do dia numa lista, sem saltar de lead. Em cima escolhes **Trabalho por: Email / Telefone** (fica na tua conta; por omissão, Email).
+
+- **Email**: cada linha tem o botão **Enviar 1.º email** (lead novo: o email de prospeção da ficha ou, se não houver, o 1.º modelo de email já preenchido), **Enviar follow-up** (lead contactado: o follow-up seguinte da sequência, na mesma conversa) ou **Enviar email** (noutros estados). Revês sempre antes de enviar. Ao enviar, o lead passa a Contactado e o próximo follow-up fica marcado sozinho (sem fins de semana) — não é preciso registar nada; a linha passa para *Feito nesta sessão* ("Email enviado · próximo a 28/10/2026"). Uma chamada ou uma resposta por outra via regista-se no menu **Registar** (Contactado, Não atendeu, Interessado, Mais tarde, Sem interesse). Em cima: "Hoje: 12 emails enviados". O separador **Falta email** junta os leads sem email, com *Procurar email*.
+- **Telefone**: Ligar, WhatsApp e os resultados com um toque, como abaixo.
 
 - A lista começa por quem **abriu um email** nas últimas 48 horas, depois os **follow-ups** em atraso ou para hoje e, por fim, os leads **por contactar** (os mais quentes primeiro). Os separadores filtram cada grupo; **Falta contacto** junta os que não têm telefone nem email.
 - Cada linha: o motivo ("Abriu o email há 2 h"), a nota afixada, **Ligar**, **WhatsApp** (com as mensagens prontas), **Email** (o de prospeção) e os botões do resultado. **Nota** abre uma caixa para escrever (vai com o próximo resultado); **Ver mais** mostra o ângulo de abordagem, os problemas, as notas, o site e os scripts; **Ficha** abre o lead num separador novo.

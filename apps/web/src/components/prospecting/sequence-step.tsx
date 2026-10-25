@@ -26,7 +26,7 @@ import { telUrl, whatsappUrl } from '@/lib/utils';
 const ICONS = { whatsapp: MessageCircle, email: Mail, call: Phone, dm: MessagesSquare } as const;
 
 /** O modelo do passo: o escolhido nas definições ou o 1.º do canal (da categoria do lead, se houver). */
-function pickTemplate(templates: ContactTemplate[], step: NonNullable<ProspectingItem['sequence']>, category: string | null): ContactTemplate | null {
+export function pickTemplate(templates: ContactTemplate[], step: NonNullable<ProspectingItem['sequence']>, category: string | null): ContactTemplate | null {
   if (step.template_id) {
     const chosen = templates.find((t) => t.id === step.template_id);
     if (chosen) return chosen;
