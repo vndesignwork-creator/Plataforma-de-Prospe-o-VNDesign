@@ -25,6 +25,7 @@ import { isMailConfigured, sendMail, sendWithAccount } from '../mailer';
 import { requestOrigin } from '../request-origin';
 import { createSupabaseAdminClient } from '../supabase-admin';
 import { loadSmtpAccount } from './mail-account';
+import { teamProfiles } from './profile';
 import { sendUserPush } from './push';
 import { getSettings, getSignature } from './workspace';
 
@@ -64,11 +65,14 @@ export async function getTeam(ctx: ApiContext): Promise<Team> {
 /** Nomes dos membros (para o "Responsável"); qualquer membro pode ver. */
 export async function teamNames(ctx: ApiContext): Promise<{ user_id: string; name: string; role: MemberRole }[]> {
   const admin = createSupabaseAdminClient();
-  const [{ data: rows }, { data: sigs }] = await Promise.all([
+  const [{ data: rows }, { data: sigs }, profiles] = await Promise.all([
     admin.from('workspace_members').select('user_id, role').eq('workspace_id', ctx.workspaceId),
     admin.from('signatures').select('user_id, full_name').eq('workspace_id', ctx.workspaceId),
+    teamProfiles(ctx),
   ]);
+  // A alcunha (Definições → Conta) primeiro; senão o nome da assinatura.
   const names = new Map(((sigs ?? []) as { user_id: string; full_name: string | null }[]).map((s) => [s.user_id, s.full_name]));
+  for (const [id, p] of profiles) if (p.display_name) names.set(id, p.display_name);
   const out: { user_id: string; name: string; role: MemberRole }[] = [];
   for (const r of (rows ?? []) as { user_id: string; role: MemberRole }[]) {
     let name = names.get(r.user_id) || null;

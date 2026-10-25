@@ -197,6 +197,8 @@ import {
   LeadSchema,
   LeadUpdateSchema,
   MeSchema,
+  ProfileSchema,
+  ProfileUpdateSchema,
   PaginationMetaSchema,
   PreferenceValueSchema,
   ProblemSchema,
@@ -299,6 +301,31 @@ export function getOpenApiDocument() {
     paths: {
       '/me': {
         get: op({ tags: ['Conta'], summary: 'Utilizador e workspace atuais', responses: { '200': ok(data(MeSchema)), ...common } }),
+      },
+      '/me/profile': {
+        get: op({ tags: ['Conta'], summary: 'O meu nome a mostrar e a foto', responses: { '200': ok(data(ProfileSchema)), ...common } }),
+        patch: op({
+          tags: ['Conta'],
+          summary: 'Mudar o nome a mostrar (alcunha; null = usa o nome da assinatura)',
+          requestBody: body(ProfileUpdateSchema),
+          responses: { '200': ok(data(ProfileSchema)), ...common },
+        }),
+      },
+      '/me/avatar': {
+        post: op({
+          tags: ['Conta'],
+          summary: 'Foto nova (multipart, campo "file": JPEG, PNG ou WebP até 1 MB)',
+          responses: { '200': ok(data(ProfileSchema)), '422': problem('Sem foto, formato inválido ou demasiado grande'), ...common },
+        }),
+        delete: op({ tags: ['Conta'], summary: 'Tirar a foto (voltam as iniciais)', responses: { '200': ok(data(ProfileSchema)), ...common } }),
+      },
+      '/avatars/{userId}': {
+        get: op({
+          tags: ['Conta'],
+          summary: 'A foto de alguém da equipa (redireciona para um link temporário)',
+          requestParams: { path: z.object({ userId: z.uuid() }) },
+          responses: { '302': { description: 'Link temporário' }, '404': problem('Sem foto'), ...common },
+        }),
       },
       '/meta': {
         get: op({

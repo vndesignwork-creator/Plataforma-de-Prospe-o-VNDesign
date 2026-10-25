@@ -1,9 +1,11 @@
 import { WorkspaceSettingsSchema, type Me, type PomodoroSettings, type QuoteSettings, type Signature, type WorkspaceSettings } from '@vndesign/core';
 import { assertAiProviderExists } from '../ai/providers';
+import { getProfile } from './profile';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest, unwrap } from '../http';
 
 export async function getMe(ctx: ApiContext): Promise<Me> {
+  const profile = getProfile(ctx);
   const workspace = unwrap(
     await ctx.supabase
       .from('workspaces')
@@ -20,6 +22,7 @@ export async function getMe(ctx: ApiContext): Promise<Me> {
       settings: WorkspaceSettingsSchema.parse(workspace.settings ?? {}),
     },
     role: ctx.role,
+    profile: await profile,
   };
 }
 

@@ -34,6 +34,7 @@ export * from './quote';
 export * from './pomodoro';
 export * from './contact-finder';
 export * from './team';
+export * from './profile';
 export * from './ai-visibility';
 export * from './geo-assets';
 export * from './site-form';

@@ -5,6 +5,7 @@
  * valores em euros com 2 casas decimais.
  */
 import { z } from 'zod';
+import { ProfileSchema } from './profile';
 import { DEFAULT_SITE_FORM, SiteFormSettingsSchema } from './site-form';
 import { DEFAULT_PROSPECTING_SEQUENCE, ProspectingSequenceSchema } from './prospecting-sequence';
 import {
@@ -774,6 +775,7 @@ export const MeSchema = z
     user: z.object({ id: z.uuid(), email: z.string().nullable() }),
     workspace: z.object({ id: z.uuid(), name: z.string(), settings: WorkspaceSettingsSchema }),
     role: z.enum(MEMBER_ROLES),
+    profile: ProfileSchema,
   })
   .meta({ id: 'Me' });
 export type Me = z.infer<typeof MeSchema>;

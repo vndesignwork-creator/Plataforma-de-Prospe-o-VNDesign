@@ -750,6 +750,12 @@ Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**
 
 ---
 
+## Perfil (nome e foto)
+
+**Definições → Conta → Perfil** (também pelo bloco da conta no fundo do menu, com a tua foto e o teu nome — leva a esta página):
+- **Foto**: *Escolher foto* (JPEG, PNG ou WebP); o browser recorta o quadrado do centro e reduz para 256 px antes de enviar. Fica privada (servida por links temporários) e aparece em círculo no menu. *Tirar foto* volta às iniciais.
+- **Nome a mostrar**: um nome curto ou alcunha, no menu, na equipa e no "Responsável" dos leads. Vazio = o nome da Assinatura, que continua a ser o dos emails.
+
 ## Segurança da conta
 
 **Verificação em dois passos** (Definições → Conta)

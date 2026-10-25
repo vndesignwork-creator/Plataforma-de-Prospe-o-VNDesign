@@ -11,7 +11,8 @@ import { RunningTimer } from '@/components/projects/running-timer';
 import { ReminderWatcher } from '@/components/tasks/reminder-watcher';
 import { NavigationTracker } from './back-link';
 import { UpdateWatcher } from './update-watcher';
-import { useRole, useSettings } from '@/lib/queries';
+import { Avatar } from '@/components/ui/avatar';
+import { useMe, useRole, useSettings } from '@/lib/queries';
 import { prospectorPageAllowed } from '@/lib/role-access';
 import { cn } from '@/lib/utils';
 import { Logo } from './logo';
@@ -99,26 +100,43 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 
 function SidebarFooter({ email }: { email: string | null }) {
   const { theme, setTheme } = useTheme();
+  const { data: me } = useMe();
+  const name = me?.profile.name ?? email?.split('@')[0] ?? '';
   return (
-    <div className="flex flex-col gap-2 border-t border-border pt-3">
-      <button
-        type="button"
-        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted hover:bg-surface-2 hover:text-fg"
+    <div className="flex flex-col gap-1 border-t border-border pt-3">
+      {/* A conta: foto, nome a mostrar e email; leva a Definições → Conta (nome, foto, palavra-passe, segurança). */}
+      <Link
+        href="/definicoes/conta"
+        className="group flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-2"
+        title="Definições da conta"
+        aria-label={`A minha conta: ${name}`}
       >
-        {theme === 'dark' ? <Sun className="h-4 w-4" aria-hidden /> : <Moon className="h-4 w-4" aria-hidden />}
-        {theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
-      </button>
-      <form action="/auth/signout" method="post">
+        <Avatar name={name || '?'} url={me?.profile.avatar_url} size={36} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium">{name}</span>
+          {email ? <span className="block truncate text-xs text-muted">{email}</span> : null}
+        </span>
+        <Settings className="h-4 w-4 shrink-0 text-muted group-hover:text-fg" aria-hidden />
+      </Link>
+      <div className="flex flex-col">
         <button
-          type="submit"
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted hover:bg-surface-2 hover:text-fg"
+          type="button"
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-muted hover:bg-surface-2 hover:text-fg"
         >
-          <LogOut className="h-4 w-4" aria-hidden />
-          Terminar sessão
+          {theme === 'dark' ? <Sun className="h-4 w-4 shrink-0" aria-hidden /> : <Moon className="h-4 w-4 shrink-0" aria-hidden />}
+          {theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
         </button>
-      </form>
-      {email ? <p className="truncate px-3 text-xs text-muted" title={email}>{email}</p> : null}
+        <form action="/auth/signout" method="post">
+          <button
+            type="submit"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-muted hover:bg-surface-2 hover:text-fg"
+          >
+            <LogOut className="h-4 w-4 shrink-0" aria-hidden />
+            Terminar sessão
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

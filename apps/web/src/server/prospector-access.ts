@@ -12,6 +12,9 @@ const ID = '[0-9a-fA-F-]{36}';
 const RULES: Rule[] = [
   ['GET', /^\/me$/],
   ['GET', /^\/me\/sessions$/],
+  ['GET PATCH', /^\/me\/profile$/],
+  ['POST DELETE', /^\/me\/avatar$/],
+  ['GET', new RegExp(`^/avatars/${ID}$`)],
   ['DELETE', new RegExp(`^/me/sessions/${ID}$`)],
   ['GET', /^\/meta$/],
   ['GET', /^\/settings$/],
