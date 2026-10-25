@@ -256,6 +256,12 @@ test('editar tarefa: escolher o prazo e o lembrete (dia e hora) no calendário d
   await edit.getByRole('button', { name: 'Abrir calendário' }).nth(1).click();
   await page.getByRole('button', { name: 'Mês seguinte' }).click();
   await page.getByRole('button', { name: label, exact: true }).click();
+  // Setas: horas de 1 em 1, minutos de 15 em 15 (09:00 → 11:15).
+  await page.getByRole('button', { name: 'Mais horas' }).click();
+  await page.getByRole('button', { name: 'Mais horas' }).click();
+  await page.getByRole('button', { name: 'Mais minutos' }).click();
+  await expect(page.getByLabel('Horas', { exact: true })).toHaveValue('11');
+  await expect(edit.getByLabel('Lembrete (dia e hora)')).toHaveValue(new RegExp(`^15/${day.slice(5, 7)}/${day.slice(0, 4)},? 11:15$`));
   await page.getByRole('group', { name: 'Horas habituais' }).getByRole('button', { name: '15:00' }).click();
   await page.getByRole('button', { name: 'OK', exact: true }).click();
   await expect(edit.getByLabel('Lembrete (dia e hora)')).toHaveValue(new RegExp(`^15/${day.slice(5, 7)}/${day.slice(0, 4)},? 15:00$`));

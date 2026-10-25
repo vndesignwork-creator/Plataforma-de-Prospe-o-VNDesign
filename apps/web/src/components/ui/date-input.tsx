@@ -8,7 +8,7 @@
  */
 import * as Popover from '@radix-ui/react-popover';
 import { todayIso } from '@vndesign/core';
-import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-react';
 import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from 'react';
 import {
   MONTHS_PT,
@@ -320,6 +320,73 @@ export function DateInput({
 
 const QUICK_TIMES = ['09:00', '12:00', '15:00', '18:00'];
 
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+/**
+ * Horas ou minutos com setas: ▲/▼ (ou as setas do teclado) sobem e descem — as
+ * horas de 1 em 1, os minutos de 15 em 15 —, e também se pode escrever o número.
+ */
+function TimeSegment({
+  id,
+  label,
+  value,
+  max,
+  step,
+  onChange,
+}: {
+  id?: string;
+  label: string;
+  value: number;
+  max: number;
+  step: number;
+  onChange: (value: number) => void;
+}) {
+  const [text, setText] = useState(pad2(value));
+  const [prev, setPrev] = useState(value);
+  if (value !== prev) {
+    setPrev(value);
+    setText(pad2(value));
+  }
+  const size = max + 1;
+  // Os minutos encaixam no quarto de hora seguinte/anterior (07 → 15 ou 00); 45 + 15 volta a 00.
+  const bump = (dir: 1 | -1) => {
+    const next = step > 1 ? (dir > 0 ? Math.floor(value / step) + 1 : Math.ceil(value / step) - 1) * step : value + dir;
+    onChange(((next % size) + size) % size);
+  };
+  const arrow = 'inline-flex h-9 w-7 items-center justify-center rounded-md text-muted hover:bg-surface-3 hover:text-fg pointer-coarse:h-10 pointer-coarse:w-9';
+  return (
+    <div className="flex items-center rounded-lg border border-border-input bg-surface">
+      <button type="button" className={arrow} onClick={() => bump(-1)} aria-label={`Menos ${label.toLowerCase()}`}>
+        <ChevronDown className="h-4 w-4" aria-hidden />
+      </button>
+      <input
+        id={id}
+        aria-label={label}
+        value={text}
+        inputMode="numeric"
+        maxLength={2}
+        onChange={(e) => {
+          const digits = e.target.value.replace(/\D/g, '').slice(0, 2);
+          setText(digits);
+          if (digits && Number(digits) <= max) onChange(Number(digits));
+        }}
+        onBlur={() => setText(pad2(value))}
+        onFocus={(e) => e.currentTarget.select()}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            bump(e.key === 'ArrowUp' ? 1 : -1);
+          }
+        }}
+        className="h-9 w-8 bg-transparent text-center text-base font-medium tabular focus-visible:outline-none"
+      />
+      <button type="button" className={arrow} onClick={() => bump(1)} aria-label={`Mais ${label.toLowerCase()}`}>
+        <ChevronUp className="h-4 w-4" aria-hidden />
+      </button>
+    </div>
+  );
+}
+
 /** Campo de data e hora ("AAAA-MM-DDTHH:MM" na hora local, ou ''), com calendário e hora. */
 export function DateTimeInput({
   value,
@@ -371,6 +438,8 @@ export function DateTimeInput({
   }
 
   const wide = useWideScreen();
+  // A hora à vista nas setas: a escrita (se for válida) ou a do valor.
+  const shownTime = parseTimeText(timeText) ?? time;
 
   function setTime(t: string) {
     setTimeText(t);
@@ -421,27 +490,37 @@ export function DateTimeInput({
           max={max}
           footer={
             <div className="flex w-full flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <label htmlFor={`${field.id ?? 'dt'}-time`} className="text-sm text-muted">
-                  Hora
-                </label>
-                <input
+              <div className="flex items-center gap-2" role="group" aria-label="Hora">
+                <span className="mr-auto text-sm text-muted">Hora</span>
+                <TimeSegment
                   id={`${field.id ?? 'dt'}-time`}
-                  value={timeText}
-                  inputMode="numeric"
-                  onChange={(e) => setTime(e.target.value)}
-                  className="h-9 w-16 rounded-md border border-border-input bg-surface px-2 text-center text-sm tabular focus-visible:border-accent focus-visible:outline-none"
+                  label="Horas"
+                  value={Number(shownTime.slice(0, 2))}
+                  max={23}
+                  step={1}
+                  onChange={(h) => setTime(`${pad2(h)}:${shownTime.slice(3, 5)}`)}
+                />
+                <span className="font-medium text-muted">:</span>
+                <TimeSegment
+                  label="Minutos"
+                  value={Number(shownTime.slice(3, 5))}
+                  max={59}
+                  step={15}
+                  onChange={(m) => setTime(`${shownTime.slice(0, 2)}:${pad2(m)}`)}
                 />
               </div>
-              <div className="grid grid-cols-4 gap-1" role="group" aria-label="Horas habituais">
+              <div className="grid grid-cols-4 gap-1.5" role="group" aria-label="Horas habituais">
                 {QUICK_TIMES.map((t) => (
                   <button
                     key={t}
                     type="button"
                     onClick={() => setTime(t)}
+                    aria-pressed={shownTime === t && !!date}
                     className={cn(
-                      'h-8 rounded-md text-xs tabular',
-                      time === t && date ? 'bg-accent-soft font-medium text-accent-text' : 'text-muted hover:bg-surface-3 hover:text-fg',
+                      'h-8 rounded-md border text-xs tabular transition-colors',
+                      shownTime === t && date
+                        ? 'border-accent/60 bg-accent-soft font-medium text-accent-text'
+                        : 'border-border text-muted hover:bg-surface-3 hover:text-fg',
                     )}
                   >
                     {t}
