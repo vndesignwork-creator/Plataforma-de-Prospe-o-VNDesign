@@ -24,6 +24,7 @@ import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
+import { EmailCheckHint } from '@/components/email/email-check-hint';
 import { Controller, useForm, useWatch, type Control, type FieldPath } from 'react-hook-form';
 import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
@@ -275,9 +276,13 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
         <Field label="Pessoa de contacto" error={e('contact_name')}>
           <Input autoComplete="off" {...register('contact_name')} />
         </Field>
-        <Field label="Email" error={e('email')}>
-          <Input type="email" inputMode="email" autoComplete="off" {...register('email')} />
-        </Field>
+        <div className="flex flex-col">
+          <Field label="Email" error={e('email')}>
+            <Input type="email" inputMode="email" autoComplete="off" {...register('email')} />
+          </Field>
+          {/* O domínio existe e recebe emails? (só avisa) */}
+          <EmailCheckHint email={email} />
+        </div>
         <Field label="Telefone" error={e('phone')}>
           <Input type="tel" inputMode="tel" autoComplete="off" {...register('phone')} />
         </Field>

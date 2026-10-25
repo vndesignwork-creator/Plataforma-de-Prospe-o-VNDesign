@@ -162,8 +162,21 @@ export const ReplyCheckResultSchema = z
   .object({
     checked: z.int().meta({ description: 'Emails novos lidos na caixa de entrada' }),
     replies: z
-      .array(z.object({ lead_id: z.uuid(), company_name: z.string(), from: z.string(), subject: z.string(), status_changed: z.boolean() }))
+      .array(
+        z.object({
+          lead_id: z.uuid(),
+          company_name: z.string(),
+          from: z.string(),
+          subject: z.string(),
+          status_changed: z.boolean(),
+          intent: z.enum(['unsubscribe', 'not_interested']).nullable().optional().meta({ description: 'Respondeu que não tem interesse / pediu para não ser contactado' }),
+        }),
+      )
       .meta({ description: 'Respostas de leads encontradas' }),
+    bounces: z
+      .array(z.object({ lead_id: z.uuid(), company_name: z.string(), email: z.string() }))
+      .meta({ description: 'Emails devolvidos (o endereço do lead não existe ou não aceita emails)' }),
+    out_of_office: z.int().meta({ description: 'Respostas automáticas de ausência com o follow-up adiado para o regresso' }),
   })
   .meta({ id: 'ReplyCheckResult' });
 export type ReplyCheckResult = z.infer<typeof ReplyCheckResultSchema>;
@@ -231,8 +244,13 @@ export type TodayOpenedEmail = z.infer<typeof TodayOpenedEmailSchema>;
 // Deteção de respostas (caixa de entrada)
 // -----------------------------------------------------------------------------
 
-/** Um email da caixa de entrada (só o cabeçalho: nunca se lê o texto). */
+/**
+ * Um email da caixa de entrada: o cabeçalho e, só nos avisos de devolução e
+ * nas respostas de leads, o início do texto (para devoluções, "não tenho
+ * interesse" e datas de ausência).
+ */
 export interface InboxMessage {
+  uid?: number;
   from: string;
   fromName: string | null;
   subject: string;
@@ -241,6 +259,10 @@ export interface InboxMessage {
   date: string;
   /** "Auto-Submitted" ou assunto de ausência/férias: não conta como resposta. */
   auto: boolean;
+  /** Aviso de devolução ("Undelivered Mail…"). */
+  bounce?: boolean;
+  /** O início do texto (só quando foi pedido). */
+  text?: string | null;
 }
 
 export interface ReplyCandidate {
@@ -285,4 +307,27 @@ export function matchReplyToLead(
   if (!domain || isGenericDomain(domain)) return null;
   const sameDomain = leads.filter((l) => l.email && domainOf(lower(l.email)) === domain);
   return sameDomain.length === 1 ? sameDomain[0]!.id : null;
+}
+
+// -----------------------------------------------------------------------------
+// Verificar o email antes de enviar (o domínio recebe emails?)
+// -----------------------------------------------------------------------------
+export const EMAIL_CHECK_STATUSES = ['ok', 'no_mail', 'no_domain', 'invalid', 'unknown'] as const;
+export const EmailCheckSchema = z
+  .object({
+    status: z.enum(EMAIL_CHECK_STATUSES).meta({
+      description: 'ok = recebe; no_mail = o domínio não recebe emails; no_domain = o domínio não existe; invalid = formato; unknown = não foi possível verificar',
+    }),
+    domain: z.string().nullable(),
+  })
+  .meta({ id: 'EmailCheck' });
+export type EmailCheck = z.infer<typeof EmailCheckSchema>;
+export const EmailCheckQuerySchema = z.object({ email: z.string().trim().min(3).max(254) });
+
+/** O aviso a mostrar (null = nada a dizer). */
+export function emailCheckWarning(check: EmailCheck | null | undefined): string | null {
+  if (!check) return null;
+  if (check.status === 'no_domain') return `O domínio “${check.domain}” não existe: confirma o endereço.`;
+  if (check.status === 'no_mail') return `O domínio “${check.domain}” não recebe emails: confirma o endereço.`;
+  return null;
 }

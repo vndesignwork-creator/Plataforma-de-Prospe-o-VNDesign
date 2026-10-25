@@ -17,6 +17,7 @@ import { ServiceIcon, useServiceCatalog } from '@/components/services/services';
 import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
 import { errorMessage } from '@/lib/api-client';
 import { useDashboard, useRole, useSectors, useTeamNames } from '@/lib/queries';
+import { EmailStatsSection } from './email-stats';
 import { LostReasonsCard } from './lost-reasons';
 import { PeriodCompareCard } from './period-compare';
 import { PomodoroStatsSection } from './pomodoro-stats';
@@ -210,6 +211,7 @@ function OwnerStats() {
       </div>
 
       <LostReasonsCard />
+      <EmailStatsSection />
       {team && team.length > 1 ? <TeamStatsSection /> : null}
       <ProfitabilitySection />
       <PomodoroStatsSection />

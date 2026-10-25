@@ -197,6 +197,10 @@ import {
   LeadSchema,
   LeadUpdateSchema,
   MeSchema,
+  EmailStatsSchema,
+  EmailStatsQuerySchema,
+  EmailCheckSchema,
+  EmailCheckQuerySchema,
   ProfileSchema,
   ProfileUpdateSchema,
   PaginationMetaSchema,
@@ -301,6 +305,14 @@ export function getOpenApiDocument() {
     paths: {
       '/me': {
         get: op({ tags: ['Conta'], summary: 'Utilizador e workspace atuais', responses: { '200': ok(data(MeSchema)), ...common } }),
+      },
+      '/email-check': {
+        get: op({
+          tags: ['Leads'],
+          summary: 'Verificar um email: o domínio existe e recebe emails? (MX; só um aviso)',
+          requestParams: { query: EmailCheckQuerySchema },
+          responses: { '200': ok(data(EmailCheckSchema)), ...common },
+        }),
       },
       '/me/profile': {
         get: op({ tags: ['Conta'], summary: 'O meu nome a mostrar e a foto', responses: { '200': ok(data(ProfileSchema)), ...common } }),
@@ -1499,8 +1511,16 @@ export function getOpenApiDocument() {
       '/stats/lost-reasons': {
         get: op({
           tags: ['Dashboard'],
-          summary: 'Leads em "Sem interesse" por motivo (preço, já tem site, agora não, não responde, outro)',
+          summary: 'Leads em "Sem interesse" por motivo (preço, já tem site, agora não, não responde, respondeu que não, outro)',
           responses: { '200': ok(data(z.array(LostReasonCountSchema))), ...common },
+        }),
+      },
+      '/stats/emails': {
+        get: op({
+          tags: ['Dashboard'],
+          summary: 'Emails enviados pela plataforma: abertura, clique e resposta por modelo, e quando são abertos (dia e hora)',
+          requestParams: { query: EmailStatsQuerySchema },
+          responses: { '200': ok(data(EmailStatsSchema)), ...common },
         }),
       },
       '/stats/compare': {

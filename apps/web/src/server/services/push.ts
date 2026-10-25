@@ -1,8 +1,9 @@
 /**
  * Subscrições de notificações push (uma por browser/dispositivo) e o aviso
- * diário de follow-ups enviado pelo cron.
+ * diário de follow-ups enviado pelo cron. Quem tem horário de silêncio não
+ * recebe push nesse período (os lembretes das tarefas esperam pelo fim).
  */
-import { leadPath, type PushSubscriptionCreate, type Today } from '@vndesign/core';
+import { isQuietTime, leadPath, parseQuietHours, QUIET_HOURS_PREFERENCE, type PushSubscriptionCreate, type Today } from '@vndesign/core';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
 import { isPushConfigured, sendPush, vapidPublicKey, type PushPayload, type StoredSubscription } from '../push';
@@ -57,9 +58,47 @@ async function deliver(subs: StoredSubscription[], payload: PushPayload) {
   return { sent: sent.length, removed: gone.length, failed: results.length - sent.length - gone.length };
 }
 
-/** Notificação para todos os dispositivos de um utilizador (trabalho do servidor, ex.: cron). */
-export async function sendUserPush(workspaceId: string, userId: string, payload: PushPayload) {
+type OwnedSubscription = StoredSubscription & { workspace_id: string; user_id: string };
+const ownerKey = (s: { workspace_id: string; user_id: string }) => `${s.workspace_id}:${s.user_id}`;
+
+/**
+ * Horário de silêncio dos donos destas subscrições: quem o tem ligado
+ * (`configured`) e quem está agora dentro dele (`quiet`), por "workspace:utilizador".
+ * Se a leitura falhar, ninguém fica em silêncio (melhor avisar a mais do que perder um aviso).
+ */
+async function quietOwners(subs: { workspace_id: string; user_id: string }[], now = new Date()) {
+  const quiet = new Set<string>();
+  const configured = new Set<string>();
+  if (!subs.length) return { quiet, configured };
+  const { data, error } = await createSupabaseAdminClient()
+    .from('user_preferences')
+    .select('workspace_id, user_id, value')
+    .eq('key', QUIET_HOURS_PREFERENCE)
+    .in('user_id', [...new Set(subs.map((s) => s.user_id))]);
+  if (error) {
+    console.warn('[push] horário de silêncio por ler', error.message);
+    return { quiet, configured };
+  }
+  for (const row of data ?? []) {
+    const hours = parseQuietHours(row.value);
+    if (!hours.enabled) continue;
+    configured.add(ownerKey(row));
+    if (isQuietTime(hours, now)) quiet.add(ownerKey(row));
+  }
+  return { quiet, configured };
+}
+
+/**
+ * Notificação para todos os dispositivos de um utilizador (trabalho do servidor, ex.: cron).
+ * No horário de silêncio não envia nada (o aviso fica no sino), menos com `ignoreQuiet`
+ * (ex.: o pomodoro, que a própria pessoa pôs a correr).
+ */
+export async function sendUserPush(workspaceId: string, userId: string, payload: PushPayload, options: { ignoreQuiet?: boolean } = {}) {
   if (!isPushConfigured()) return { sent: 0, removed: 0, failed: 0 };
+  const owner = { workspace_id: workspaceId, user_id: userId };
+  if (!options.ignoreQuiet && (await quietOwners([owner])).quiet.has(ownerKey(owner))) {
+    return { sent: 0, removed: 0, failed: 0 };
+  }
   const { data, error } = await createSupabaseAdminClient()
     .from('push_subscriptions')
     .select('id, endpoint, p256dh, auth')
@@ -118,7 +157,9 @@ export function buildDailyPush(today: Today): PushPayload | null {
 export interface DailyPushResult {
   workspace_id: string;
   devices: number;
-  status: 'sent' | 'skipped' | 'dry_run';
+  status: 'sent' | 'skipped' | 'quiet' | 'dry_run';
+  /** Dispositivos que ficaram de fora por estarem no horário de silêncio. */
+  quiet?: number;
   sent?: number;
   removed?: number;
   failed?: number;
@@ -128,21 +169,25 @@ export interface DailyPushResult {
 export async function sendDailyPushes(options: { dryRun?: boolean } = {}): Promise<DailyPushResult[]> {
   if (!isPushConfigured()) return [];
   const admin = createSupabaseAdminClient();
-  const { data, error } = await admin.from('push_subscriptions').select('id, workspace_id, endpoint, p256dh, auth');
+  const { data, error } = await admin.from('push_subscriptions').select('id, workspace_id, user_id, endpoint, p256dh, auth');
   if (error) throw new Error(error.message);
-  const byWorkspace = new Map<string, StoredSubscription[]>();
-  for (const row of (data ?? []) as (StoredSubscription & { workspace_id: string })[]) {
-    byWorkspace.set(row.workspace_id, [...(byWorkspace.get(row.workspace_id) ?? []), row]);
-  }
+  const rows = (data ?? []) as OwnedSubscription[];
+  const { quiet } = await quietOwners(rows);
+  const byWorkspace = new Map<string, OwnedSubscription[]>();
+  for (const row of rows) byWorkspace.set(row.workspace_id, [...(byWorkspace.get(row.workspace_id) ?? []), row]);
   const results: DailyPushResult[] = [];
-  for (const [workspaceId, subs] of byWorkspace) {
+  for (const [workspaceId, all] of byWorkspace) {
+    const subs = all.filter((s) => !quiet.has(ownerKey(s)));
+    const silenced = all.length - subs.length;
     const payload = buildDailyPush(await fetchToday(admin, workspaceId));
     if (!payload) {
-      results.push({ workspace_id: workspaceId, devices: subs.length, status: 'skipped' });
+      results.push({ workspace_id: workspaceId, devices: all.length, status: 'skipped' });
+    } else if (!subs.length) {
+      results.push({ workspace_id: workspaceId, devices: all.length, status: 'quiet', quiet: silenced });
     } else if (options.dryRun) {
-      results.push({ workspace_id: workspaceId, devices: subs.length, status: 'dry_run' });
+      results.push({ workspace_id: workspaceId, devices: subs.length, status: 'dry_run', quiet: silenced });
     } else {
-      results.push({ workspace_id: workspaceId, devices: subs.length, status: 'sent', ...(await deliver(subs, payload)) });
+      results.push({ workspace_id: workspaceId, devices: subs.length, status: 'sent', quiet: silenced, ...(await deliver(subs, payload)) });
     }
   }
   return results;
@@ -155,11 +200,13 @@ export interface ReminderResult {
   task_id: string;
   workspace_id: string;
   devices: number;
-  status: 'sent' | 'no_devices' | 'expired' | 'dry_run';
+  status: 'sent' | 'no_devices' | 'quiet' | 'expired' | 'dry_run';
 }
 
 /** Lembretes mais antigos do que isto (ex.: o cron esteve parado) já não são enviados, só marcados. */
 const REMINDER_MAX_DELAY_MS = 12 * 60 * 60 * 1000;
+/** Com horário de silêncio (que pode ser o fim de semana inteiro), o lembrete pode esperar mais. */
+const REMINDER_MAX_DELAY_QUIET_MS = 3 * 24 * 60 * 60 * 1000;
 
 export function buildReminderPush(task: {
   id: string;
@@ -199,24 +246,40 @@ export async function sendTaskReminders(options: { dryRun?: boolean; now?: Date 
 
   const configured = isPushConfigured();
   const workspaces = [...new Set(tasks.map((t) => t.workspace_id))];
-  const subsByWorkspace = new Map<string, StoredSubscription[]>();
+  const subsByWorkspace = new Map<string, OwnedSubscription[]>();
+  let silence = { quiet: new Set<string>(), configured: new Set<string>() };
   if (configured) {
     const { data: subs, error: subsError } = await admin
       .from('push_subscriptions')
-      .select('id, workspace_id, endpoint, p256dh, auth')
+      .select('id, workspace_id, user_id, endpoint, p256dh, auth')
       .in('workspace_id', workspaces);
     if (subsError) throw new Error(subsError.message);
-    for (const row of (subs ?? []) as (StoredSubscription & { workspace_id: string })[]) {
-      subsByWorkspace.set(row.workspace_id, [...(subsByWorkspace.get(row.workspace_id) ?? []), row]);
-    }
+    const rows = (subs ?? []) as OwnedSubscription[];
+    for (const row of rows) subsByWorkspace.set(row.workspace_id, [...(subsByWorkspace.get(row.workspace_id) ?? []), row]);
+    silence = await quietOwners(rows, now);
   }
 
   const results: ReminderResult[] = [];
   for (const task of tasks) {
-    const subs = subsByWorkspace.get(task.workspace_id) ?? [];
-    const expired = now.getTime() - new Date(task.remind_at).getTime() > REMINDER_MAX_DELAY_MS;
-    const status: ReminderResult['status'] = options.dryRun ? 'dry_run' : expired ? 'expired' : subs.length ? 'sent' : 'no_devices';
+    const all = subsByWorkspace.get(task.workspace_id) ?? [];
+    const subs = all.filter((s) => !silence.quiet.has(ownerKey(s)));
+    const maxDelay = all.some((s) => silence.configured.has(ownerKey(s))) ? REMINDER_MAX_DELAY_QUIET_MS : REMINDER_MAX_DELAY_MS;
+    const expired = now.getTime() - new Date(task.remind_at).getTime() > maxDelay;
+    const status: ReminderResult['status'] = options.dryRun
+      ? 'dry_run'
+      : expired
+        ? 'expired'
+        : subs.length
+          ? 'sent'
+          : all.length
+            ? 'quiet'
+            : 'no_devices';
     if (status === 'sent') await deliver(subs, buildReminderPush(task));
+    // Todos em silêncio: fica por marcar e vai no primeiro cron depois do silêncio.
+    if (status === 'quiet') {
+      results.push({ task_id: task.id, workspace_id: task.workspace_id, devices: all.length, status });
+      continue;
+    }
     // Marca sempre (menos no teste): sem dispositivos, o aviso aparece na plataforma ("Hoje").
     if (!options.dryRun) {
       await admin.from('lead_tasks').update({ reminded_at: now.toISOString() }).eq('id', task.id);

@@ -60,7 +60,8 @@ export function ContactFinder({ lead, onSaved, className }: { lead: Lead; onSave
     }
   }
 
-  const missing = [!lead.phone && 'telefone', !lead.email && 'email'].filter(Boolean).join(' nem ');
+  // Email devolvido conta como sem email (procura-se outro).
+  const missing = [!lead.phone && 'telefone', !lead.email ? 'email' : lead.email_bounced_at ? 'email válido' : false].filter(Boolean).join(' nem ');
 
   return (
     <section aria-label="Procurar contacto" className={cn('flex flex-col gap-3 rounded-lg border border-dashed border-border p-3', className)}>

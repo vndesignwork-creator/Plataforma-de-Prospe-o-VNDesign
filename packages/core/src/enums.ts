@@ -106,6 +106,7 @@ export const ACTIVITY_TYPES = [
   'email_opened',
   'email_clicked',
   'comment',
+  'email_bounced',
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
@@ -159,6 +160,7 @@ export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
   email_opened: 'O lead abriu o email',
   email_clicked: 'O lead carregou num link',
   comment: 'Comentário da equipa',
+  email_bounced: 'Email devolvido',
 };
 
 export const TEMPLATE_KINDS = [
@@ -187,13 +189,14 @@ export const TEMPLATE_KIND_LABELS: Record<TemplateKind, string> = {
 };
 
 /** Porque um lead passou a "Sem interesse" (para perceber onde se perdem leads). */
-export const LOST_REASONS = ['preco', 'ja_tem_site', 'agora_nao', 'nao_responde', 'outro'] as const;
+export const LOST_REASONS = ['preco', 'ja_tem_site', 'agora_nao', 'nao_responde', 'respondeu_nao', 'outro'] as const;
 export type LostReason = (typeof LOST_REASONS)[number];
 export const LOST_REASON_LABELS: Record<LostReason, string> = {
   preco: 'Preço',
   ja_tem_site: 'Já tem site / fornecedor',
   agora_nao: 'Agora não (talvez mais tarde)',
   nao_responde: 'Não responde',
+  respondeu_nao: 'Respondeu que não tem interesse',
   outro: 'Outro motivo',
 };
 

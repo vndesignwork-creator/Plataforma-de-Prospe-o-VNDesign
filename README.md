@@ -185,6 +185,15 @@ Em **Novo lead**, **📷 Ler cartão de visita**: no telemóvel abre a câmara. 
 
 No topo de **Estatísticas**, "**Este mês vs. o mês passado**" (ou **Semana**): leads novos, primeiros contactos, respostas, reuniões marcadas, propostas enviadas, clientes ganhos e recebido, comparados **até ao mesmo dia** (1–24 de outubro contra 1–24 de setembro), com ↑/↓ e a percentagem. Não são metas: mostra só se estás a melhorar. API: `GET /api/v1/stats/compare?period=month|week`.
 
+## Emails: o que resulta e quando abrem
+
+Em **Estatísticas**, dois cartões sobre os emails enviados pela plataforma (últimos 30, 90, 180 ou 365 dias):
+
+- **Emails: o que resulta** — por modelo (ex.: "Email de prospeção", "Follow-up 1"): enviados, % abertos, % com clique e % respondidos. Uma resposta conta para o último email enviado a esse lead antes dela (até 30 dias). ★ marca o modelo com mais respostas (com pelo menos 5 envios).
+- **Quando abrem os teus emails** — a primeira abertura de cada email, por dia da semana e hora (Lisboa, 7h–22h), e as melhores alturas ("terça entre as 9h e as 11h"), para saberes quando enviar ou ligar.
+
+Só conta emails com rastreio (enviados pela plataforma). API: `GET /api/v1/stats/emails?days=90`.
+
 ## Pôr em dia os atrasados
 
 No cartão **Hoje**, quando há follow-ups ou tarefas em atraso, aparece "**Em atraso:** 4 follow-ups e 2 tarefas" com **Pôr em dia**: passa todos para hoje, amanhã, a próxima semana ou outra data, de uma vez, com **Anular**. API: `POST /api/v1/reschedule` (`{ leads: [{ id, next_action_on }], tasks: [{ id, due_on }] }`, até 200 de cada).
@@ -412,6 +421,8 @@ Enviar um resumo de teste agora**.
 
 O mesmo cron envia também as **notificações push** a todos os dispositivos ativados.
 
+**Horário de silêncio** (Definições → Conta → Notificações, de cada pessoa): por exemplo das 21:00 às 08:00 e, se quiseres, o fim de semana inteiro. Nesse período não chegam notificações push (os avisos ficam no sino da plataforma); os **lembretes das tarefas** esperam e chegam quando o silêncio acaba (até 3 dias). O aviso da manhã não é enviado a quem estiver em silêncio à hora do cron. Os alertas das reuniões e do pomodoro continuam.
+
 **Lembretes das tarefas** (sino 🔔 no cartão Tarefas: dia e hora) — outro cron, **de 5 em 5
 minutos**, envia a notificação quando chega a hora (e lança as pesquisas automáticas do gerador de leads e lê as caixas de entrada para detetar respostas):
 
@@ -544,12 +555,18 @@ Depois de um email enviado pela plataforma, a próxima ação passa a ser o **fo
 
 Com a opção **Detetar respostas na caixa de entrada** ligada (Definições → Email de envio, ligada por omissão):
 
-- De 10 em 10 minutos (pelo cron dos lembretes), a plataforma lê na caixa de entrada **só o remetente e o assunto** dos emails novos. Nunca lê o texto.
+- De 10 em 10 minutos (pelo cron dos lembretes), a plataforma lê na caixa de entrada o remetente e o assunto dos emails novos. O **texto** só é lido nos avisos de devolução e nas respostas dos leads (até 32 KB, sem guardar o texto); os outros emails nunca são abertos.
 - Um email de um lead (resposta ao email enviado, o mesmo endereço, ou o mesmo domínio de empresa) fica na linha do tempo como **Resposta recebida**.
 - Se o lead estava "Contactado", passa a **Respondeu**, com a próxima ação "Responder ao cliente" para hoje, e recebes uma notificação.
-- As respostas automáticas (férias, ausência) ficam registadas mas não mudam o estado.
+- **"Não temos interesse"** (ou "não precisamos", "já temos site"…) passa o lead a **Sem interesse** com o motivo *Respondeu que não tem interesse*. **"Removam-me"** (ou "não nos voltem a contactar", "unsubscribe") faz o mesmo e junta o email à lista **Não contactar**. Só conta o texto novo da resposta (não a mensagem citada). Se for engano, muda o estado na ficha.
+- **Respostas automáticas** (férias, ausência) ficam registadas mas não mudam o estado; se disserem até quando a pessoa está fora ("estou fora até 10/11", "regresso a 3 de novembro", "back on November 10"), o follow-up passa para esse dia (dia útil, até 60 dias).
+- **Emails devolvidos** ("Undelivered Mail…", "Mensagem não entregue"): o lead fica com o email riscado na ficha ("Email devolvido a …: procura outro email ou liga."), a linha do tempo mostra **Email devolvido**, a próxima ação passa para hoje ("procurar outro email ou contactar por telefone") e o **Procurar contacto** aparece. Na Prospeção (modo email), o lead sai da lista até ter outro email. Ao mudar o email, o aviso desaparece. API: campo `email_bounced_at` nos leads.
 - Usa a mesma palavra-passe de aplicação do Gmail (IMAP: `imap.gmail.com:993`). Hostinger: `imap.hostinger.com:993`. Outro serviço: indica o servidor IMAP.
 - **Verificar agora** lê logo a caixa. Se a leitura falhar (ex.: palavra-passe mudada), o erro aparece nessa secção.
+
+### Verificar o email antes de enviar
+
+Ao escrever o email de um lead (formulário do lead e janela **Enviar email**), a plataforma confirma se o domínio existe e recebe emails (registo MX), sem enviar nada. Se não, aparece "O domínio “…” não existe / não recebe emails: confirma o endereço." Gmail, Outlook, Sapo e afins não precisam de verificação. Se o servidor não conseguir confirmar (DNS em baixo), não mostra nada. API: `GET /api/v1/email-check?email=…` (`status`: `ok`, `no_mail`, `no_domain`, `invalid` ou `unknown`).
 
 ### Saber quando o lead abre o email
 

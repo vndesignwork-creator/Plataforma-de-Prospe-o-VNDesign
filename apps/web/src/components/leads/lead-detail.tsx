@@ -629,9 +629,17 @@ export function LeadDetail({ id }: { id: string }) {
               <Row label="Contacto">{lead.contact_name ?? dash}</Row>
               <Row label="Email">
                 {lead.email ? (
-                  <a href={`mailto:${lead.email}`} className="text-accent-text hover:underline">
-                    {lead.email}
-                  </a>
+                  <span className="flex flex-col gap-0.5">
+                    <a href={`mailto:${lead.email}`} className={cn('text-accent-text hover:underline', lead.email_bounced_at && 'line-through opacity-70')}>
+                      {lead.email}
+                    </a>
+                    {/* O último email foi devolvido: o endereço não existe (limpa-se ao mudar o email). */}
+                    {lead.email_bounced_at ? (
+                      <span className="text-xs font-medium text-danger">
+                        Email devolvido a {formatDate(lead.email_bounced_at.slice(0, 10))}: procura outro email ou liga.
+                      </span>
+                    ) : null}
+                  </span>
                 ) : (
                   dash
                 )}
@@ -650,7 +658,7 @@ export function LeadDetail({ id }: { id: string }) {
                 <ExternalUrl url={lead.source_url} />
               </Row>
             </dl>
-            {(!lead.phone || !lead.email) && !lead.anonymized_at ? (
+            {(!lead.phone || !lead.email || lead.email_bounced_at) && !lead.anonymized_at ? (
               <div className="px-4 pb-4">
                 <ContactFinder key={lead.updated_at} lead={lead} />
               </div>

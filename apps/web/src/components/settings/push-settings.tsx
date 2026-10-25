@@ -1,12 +1,16 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, Download, Smartphone } from 'lucide-react';
+import { Bell, Download, Moon, Smartphone } from 'lucide-react';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
+import { parseQuietHours, QUIET_HOURS_PREFERENCE, type QuietHours } from '@vndesign/core';
 import { Badge } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { api, errorMessage } from '@/lib/api-client';
+import { usePreference, useSetPreference } from '@/lib/queries';
 import { NOTIFY_KEY, notificationsEnabled } from '@/components/follow-up/follow-up-notifier';
 
 interface PushStatus {
@@ -104,6 +108,71 @@ function InAppNotifications() {
     <Button size="sm" variant={enabled ? 'outline' : 'primary'} onClick={toggle}>
       {enabled ? 'Desligar avisos neste browser' : 'Avisar ao abrir a plataforma'}
     </Button>
+  );
+}
+
+const HALF_HOURS = Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2)).padStart(2, '0')}:${i % 2 ? '30' : '00'}`);
+
+/** Horário de silêncio (de cada pessoa): sem push à noite e, se quiser, ao fim de semana. */
+function QuietHoursSettings() {
+  const { data, isPending } = usePreference<QuietHours>(QUIET_HOURS_PREFERENCE);
+  const save = useSetPreference<QuietHours>(QUIET_HOURS_PREFERENCE);
+  // Cópia local: a mudança vê-se logo (e várias mudanças seguidas partem sempre da última).
+  const [draft, setDraft] = useState<QuietHours | null>(null);
+  const quiet = draft ?? parseQuietHours(data);
+  const update = (patch: Partial<QuietHours>) => {
+    const next = { ...quiet, ...patch };
+    setDraft(next);
+    save.mutate(next, { onError: (error) => toast.error(errorMessage(error)) });
+  };
+  const hours = (value: string) => (HALF_HOURS.includes(value) ? HALF_HOURS : [...HALF_HOURS, value].sort());
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-border pt-3" data-testid="quiet-hours">
+      <div className="flex items-center justify-between gap-3">
+        <h4 className="flex items-center gap-2 text-sm font-semibold">
+          <Moon className="h-4 w-4" aria-hidden /> Horário de silêncio
+        </h4>
+        <Switch
+          checked={quiet.enabled}
+          onCheckedChange={(enabled) => update({ enabled })}
+          label={quiet.enabled ? 'Desligar o horário de silêncio' : 'Ligar o horário de silêncio'}
+          disabled={isPending}
+        />
+      </div>
+      <p className="text-sm text-muted">
+        Nesse período não recebes notificações no telemóvel nem no computador; os avisos ficam no sino e os lembretes das tarefas chegam
+        quando o silêncio acabar. Os alertas das reuniões e do pomodoro continuam.
+      </p>
+      {quiet.enabled ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+          <label className="flex items-center gap-2">
+            Das
+            <Select className="w-24" value={quiet.from} onChange={(e) => update({ from: e.target.value })} aria-label="Início do silêncio">
+              {hours(quiet.from).map((h) => (
+                <option key={h} value={h}>
+                  {h}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="flex items-center gap-2">
+            às
+            <Select className="w-24" value={quiet.to} onChange={(e) => update({ to: e.target.value })} aria-label="Fim do silêncio">
+              {hours(quiet.to).map((h) => (
+                <option key={h} value={h}>
+                  {h}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" className="h-4 w-4 accent-[var(--accent)]" checked={quiet.weekends} onChange={(e) => update({ weekends: e.target.checked })} />
+            Fim de semana inteiro
+          </label>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -235,6 +304,8 @@ export function PushSettings() {
           )}
         </div>
       )}
+
+      <QuietHoursSettings />
 
       <div className="flex flex-col gap-1.5 border-t border-border pt-3">
         <h4 className="flex items-center gap-2 text-sm font-semibold">

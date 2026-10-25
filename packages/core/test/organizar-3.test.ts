@@ -6,7 +6,7 @@ describe('Motivo de "Sem interesse"', () => {
     expect(LeadUpdateSchema.parse({ lost_reason: 'preco' }).lost_reason).toBe('preco');
     expect(LeadUpdateSchema.parse({ lost_reason: null }).lost_reason).toBeNull();
     expect(LeadUpdateSchema.safeParse({ lost_reason: 'caro' }).success).toBe(false);
-    expect(Object.keys(LOST_REASON_LABELS)).toEqual(['preco', 'ja_tem_site', 'agora_nao', 'nao_responde', 'outro']);
+    expect(Object.keys(LOST_REASON_LABELS)).toEqual(['preco', 'ja_tem_site', 'agora_nao', 'nao_responde', 'respondeu_nao', 'outro']);
   });
 
   it('filtro por motivo (com "none") e motivo nas ações em massa', () => {

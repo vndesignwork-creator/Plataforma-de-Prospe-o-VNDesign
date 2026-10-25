@@ -103,7 +103,8 @@ const NO_ATTEMPTS: ProspectingAttempts = {
 };
 const hasContact = (lead: Lead) => !!(lead.phone || lead.email);
 /** A email: sem email não há nada a enviar; a telefonar: basta um telefone ou um email. */
-const reachable = (lead: Lead, mode: ProspectingMode) => (mode === 'email' ? !!lead.email : hasContact(lead));
+// Um email devolvido não conta (o endereço não existe): o lead vai para "Falta email".
+const reachable = (lead: Lead, mode: ProspectingMode) => (mode === 'email' ? !!lead.email && !lead.email_bounced_at : hasContact(lead));
 
 /** O que se registou nesta sessão (fica à vista na linha). */
 type Done = {
@@ -491,7 +492,7 @@ function LeadRow({
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <nav aria-label="Contactar" className="flex flex-wrap gap-2">
             <EmailAction lead={lead} onSent={onEmailed} />
-            {!lead.email ? (
+            {!lead.email || lead.email_bounced_at ? (
               <Button size="sm" variant="soft" aria-expanded={finder} onClick={() => setFinder(!finder)}>
                 <Search className="h-3.5 w-3.5" aria-hidden /> Procurar email
               </Button>
@@ -706,7 +707,7 @@ function EmailAction({ lead, onSent }: { lead: Lead; onSent: (result: LeadEmailS
   const { data: templates } = useTemplates();
   const context = useTemplateContext(lead);
   const catalog = useServiceCatalog();
-  if (!lead.email) return null;
+  if (!lead.email || lead.email_bounced_at) return null;
   if (lead.status === 'contactado') return <FollowUpEmailButton lead={lead} variant="soft" onSent={onSent} />;
   const first = lead.status === 'identificado';
   let subject = lead.email_subject ?? '';

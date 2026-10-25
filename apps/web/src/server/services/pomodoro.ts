@@ -337,7 +337,7 @@ export async function advancePomodoros(options: { dryRun?: boolean; now?: Date }
     advanced++;
     const notice = pomodoroNotice(result.row.phase, settings, row.lead.company_name);
     try {
-      const sent = await sendUserPush(row.workspace_id, row.user_id, { ...notice, url: '/projetos', tag: 'pomodoro' });
+      const sent = await sendUserPush(row.workspace_id, row.user_id, { ...notice, url: '/projetos', tag: 'pomodoro' }, { ignoreQuiet: true });
       if (sent.sent) notified++;
     } catch {
       // Sem push configurado: a app avisa quando abrir.

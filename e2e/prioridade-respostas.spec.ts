@@ -201,7 +201,7 @@ test('respostas: “Verificar agora” lê a caixa de entrada, passa o lead a Re
 
   // Segunda leitura: nada de novo.
   const again = (await (await page.request.post('/api/v1/mail-account/check-replies')).json()).data;
-  expect(again).toEqual({ checked: 0, replies: [] });
+  expect(again).toEqual({ checked: 0, replies: [], bounces: [], out_of_office: 0 });
 
   await page.goto(`/leads/${lead.id}`);
   await expect(page.getByLabel('Atividade do lead').getByText(`De joao@${domain}`)).toBeVisible();

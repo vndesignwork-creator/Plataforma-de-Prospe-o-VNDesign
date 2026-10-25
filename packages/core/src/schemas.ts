@@ -249,6 +249,7 @@ export const LeadSchema = z
     pinned_note: z.string().nullable().optional().meta({ description: 'Nota afixada no topo da ficha' }),
     lost_reason: z.enum(LOST_REASONS).nullable().optional().meta({ description: 'Motivo de "Sem interesse"' }),
     retry_on: z.string().nullable().optional().meta({ description: '"Sem interesse": dia em que volta à prospeção (AAAA-MM-DD)' }),
+    email_bounced_at: z.string().nullable().optional().meta({ description: 'O último email ao lead foi devolvido (endereço inexistente); limpa-se ao mudar o email' }),
     custom: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional().meta({ description: 'Campos personalizados' }),
     created_by: z.uuid().nullable(),
     created_at: z.string(),

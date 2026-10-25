@@ -58,6 +58,7 @@ import {
   Trash2,
   ChevronDown,
   type LucideIcon,
+  MailX,
 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { toast } from 'sonner';
@@ -113,6 +114,7 @@ export const ICONS: Partial<Record<Activity["type"], LucideIcon>> = {
   email_opened: Eye,
   email_clicked: MousePointerClick,
   comment: MessagesSquare,
+  email_bounced: MailX,
 };
 
 /** "Aberto 3× · último a …" num email enviado pela plataforma (com o rastreio ligado). */

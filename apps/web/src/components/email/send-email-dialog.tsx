@@ -15,6 +15,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input, Textarea } from '@/components/ui/input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
+import { EmailCheckHint } from './email-check-hint';
 import { useAudits, useInvalidateLead, useMailAccount, useSettings } from '@/lib/queries';
 
 interface SendEmailProps {
@@ -145,9 +146,23 @@ function SendEmailDialog({
           }}
           noValidate
         >
-          <Field label="Para" required error={errors.to?.[0]} hint={lead.email ? undefined : 'Este lead não tem email: escreve o endereço.'}>
-            <Input type="email" inputMode="email" autoComplete="off" value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} />
-          </Field>
+          <div className="flex flex-col">
+            <Field
+              label="Para"
+              required
+              error={errors.to?.[0]}
+              hint={
+                !lead.email
+                  ? 'Este lead não tem email: escreve o endereço.'
+                  : lead.email_bounced_at && form.to.trim().toLowerCase() === lead.email.trim().toLowerCase()
+                    ? 'Atenção: o último email para este endereço foi devolvido (não existe). Confirma ou escreve outro.'
+                    : undefined
+              }
+            >
+              <Input type="email" inputMode="email" autoComplete="off" value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} />
+            </Field>
+            <EmailCheckHint email={form.to} />
+          </div>
           <Field label="Assunto" required error={errors.subject?.[0]}>
             <Input value={form.subject} maxLength={300} onChange={(e) => setForm({ ...form, subject: e.target.value })} />
           </Field>

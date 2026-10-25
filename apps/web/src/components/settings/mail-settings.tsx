@@ -102,12 +102,20 @@ function MailForm({ account, defaultName }: { account: MailAccount | null; defau
     try {
       const { data } = await api<{ data: ReplyCheckResult }>('/mail-account/check-replies', { method: 'POST' });
       await qc.invalidateQueries({ queryKey: ['mail-account'] });
-      if (data.replies.length) {
+      const bounces = data.bounces ?? [];
+      if (data.replies.length || bounces.length || data.out_of_office) {
         void qc.invalidateQueries({ queryKey: ['leads'] });
         void qc.invalidateQueries({ queryKey: ['today'] });
-        toast.success(
-          `${data.replies.length === 1 ? '1 resposta nova' : `${data.replies.length} respostas novas`}: ${data.replies.map((r) => r.company_name).join(', ')}.`,
-        );
+        const declined = data.replies.filter((r) => r.intent);
+        const parts = [
+          data.replies.length
+            ? `${data.replies.length === 1 ? '1 resposta nova' : `${data.replies.length} respostas novas`}: ${data.replies.map((r) => r.company_name).join(', ')}`
+            : '',
+          declined.length ? `${declined.length} sem interesse` : '',
+          bounces.length ? `${bounces.length === 1 ? '1 email devolvido' : `${bounces.length} emails devolvidos`}: ${bounces.map((b) => b.company_name).join(', ')}` : '',
+          data.out_of_office ? `${data.out_of_office} ausente${data.out_of_office === 1 ? '' : 's'} (follow-up adiado)` : '',
+        ].filter(Boolean);
+        toast.success(`${parts.join(' · ')}.`);
       } else {
         toast.success(`Caixa de entrada lida (${data.checked === 1 ? '1 email novo' : `${data.checked} emails novos`}). Nenhuma resposta de leads.`);
       }
