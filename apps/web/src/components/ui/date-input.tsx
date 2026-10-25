@@ -165,10 +165,21 @@ export function Calendar({ value, onSelect, min, max, footer }: CalendarProps) {
 
 const footerButton = 'rounded-md px-2 py-1 text-sm font-medium text-accent-text hover:bg-surface-3';
 
-function PickerContent({ children }: { children: ReactNode }) {
+const subscribeWide = (cb: () => void) => {
+  const mq = window.matchMedia('(min-width: 1024px)');
+  mq.addEventListener('change', cb);
+  return () => mq.removeEventListener('change', cb);
+};
+/** Computador: há largura para abrir o calendário ao lado do campo. */
+function useWideScreen() {
+  return useSyncExternalStore(subscribeWide, () => window.matchMedia('(min-width: 1024px)').matches, () => false);
+}
+
+function PickerContent({ children, side }: { children: ReactNode; side?: 'bottom' | 'right' }) {
   return (
     <Popover.Portal>
       <Popover.Content
+        side={side}
         align="start"
         sideOffset={6}
         collisionPadding={12}
@@ -178,7 +189,8 @@ function PickerContent({ children }: { children: ReactNode }) {
           const root = e.currentTarget as HTMLElement;
           root.querySelector<HTMLButtonElement>('[role="grid"] button[tabindex="0"]')?.focus();
         }}
-        className="z-50 rounded-xl border border-border-strong bg-surface-2 p-3 shadow-card"
+        // Nunca sai do ecrã: num espaço curto (janela a meio do ecrã) fica com scroll por dentro.
+        className="z-50 max-h-[var(--radix-popover-content-available-height)] overflow-y-auto overscroll-contain rounded-xl border border-border-strong bg-surface-2 p-3 shadow-card"
       >
         {children}
       </Popover.Content>
@@ -358,6 +370,8 @@ export function DateTimeInput({
     setText(formatDateTimeText(local ?? current));
   }
 
+  const wide = useWideScreen();
+
   function setTime(t: string) {
     setTimeText(t);
     const parsed = parseTimeText(t);
@@ -398,7 +412,8 @@ export function DateTimeInput({
           </Popover.Trigger>
         </span>
       </Popover.Anchor>
-      <PickerContent>
+      {/* Dia e hora é alto (calendário + horas): no computador abre ao lado, onde cabe inteiro. */}
+      <PickerContent side={wide ? 'right' : 'bottom'}>
         <Calendar
           value={date}
           onSelect={(iso) => set(`${iso}T${parseTimeText(timeText) ?? time}`)}

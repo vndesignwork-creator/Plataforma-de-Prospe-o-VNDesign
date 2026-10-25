@@ -231,3 +231,38 @@ test('lembretes: marcar no cartão, aviso na plataforma e envio pelo cron', asyn
     expect(tasks.find((t: { title: string }) => t.title === `Ligar ao cliente ${run}`).reminded_at).toBeNull();
   }
 });
+
+test('editar tarefa: escolher o prazo e o lembrete (dia e hora) no calendário da janela', async ({ page }) => {
+  const lead = (await (await page.request.post('/api/v1/leads?force=true', { data: { company_name: `Calendário ${run}` } })).json()).data as { id: string };
+  const title = `Escolher data ${run}`;
+  const task = (await (await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title } })).json()).data as { id: string };
+  // Dia 15 do mês seguinte (no mês à vista, para o clique escolher o dia).
+  const now = new Date(`${iso(0)}T12:00:00Z`);
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 15));
+  const day = next.toISOString().slice(0, 10);
+  const label = `15 de ${new Intl.DateTimeFormat('pt-PT', { month: 'long', timeZone: 'UTC' }).format(next)} de ${next.getUTCFullYear()}`;
+
+  await page.goto(`/leads/${lead.id}`);
+  await page.getByRole('button', { name: `Editar: ${title}` }).click();
+  const edit = page.getByRole('dialog', { name: 'Editar tarefa' });
+
+  // Prazo: o calendário abre por cima da janela e o clique no dia conta.
+  await edit.getByRole('button', { name: 'Abrir calendário' }).first().click();
+  await page.getByRole('button', { name: 'Mês seguinte' }).click();
+  await page.getByRole('button', { name: label, exact: true }).click();
+  await expect(edit.getByLabel('Prazo da tarefa')).toHaveValue(`15/${day.slice(5, 7)}/${day.slice(0, 4)}`);
+
+  // Lembrete: dia e hora.
+  await edit.getByRole('button', { name: 'Abrir calendário' }).nth(1).click();
+  await page.getByRole('button', { name: 'Mês seguinte' }).click();
+  await page.getByRole('button', { name: label, exact: true }).click();
+  await page.getByRole('group', { name: 'Horas habituais' }).getByRole('button', { name: '15:00' }).click();
+  await page.getByRole('button', { name: 'OK', exact: true }).click();
+  await expect(edit.getByLabel('Lembrete (dia e hora)')).toHaveValue(new RegExp(`^15/${day.slice(5, 7)}/${day.slice(0, 4)},? 15:00$`));
+
+  await edit.getByRole('button', { name: 'Guardar' }).click();
+  await expect(edit).toHaveCount(0);
+  await expect
+    .poll(async () => ((await (await page.request.get(`/api/v1/leads/${lead.id}/tasks`)).json()).data as { id: string; due_on: string | null }[]).find((t) => t.id === task.id)?.due_on)
+    .toBe(day);
+});
