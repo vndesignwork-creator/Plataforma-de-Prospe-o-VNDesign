@@ -1423,7 +1423,7 @@ export function getOpenApiDocument() {
         get: op({
           tags: ['Equipa'],
           summary: 'Nomes e papéis dos membros (para o responsável de um lead)',
-          responses: { '200': ok(data(z.array(z.object({ user_id: z.uuid(), name: z.string(), role: z.enum(MEMBER_ROLES) })))), ...common },
+          responses: { '200': ok(data(z.array(z.object({ user_id: z.uuid(), name: z.string(), role: z.enum(MEMBER_ROLES), avatar_url: z.string().nullable() })))), ...common },
         }),
       },
       '/team/activity': {

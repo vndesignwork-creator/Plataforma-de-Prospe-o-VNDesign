@@ -1317,7 +1317,7 @@ export function useTeam(enabled = true) {
 export function useTeamNames(enabled = true) {
   return useQuery({
     queryKey: ['team', 'names'],
-    queryFn: () => api<{ data: { user_id: string; name: string; role: MemberRole }[] }>('/team/names').then((r) => r.data),
+    queryFn: () => api<{ data: { user_id: string; name: string; role: MemberRole; avatar_url: string | null }[] }>('/team/names').then((r) => r.data),
     enabled,
     staleTime: 300_000,
   });

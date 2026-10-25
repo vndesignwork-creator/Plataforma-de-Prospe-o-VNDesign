@@ -71,6 +71,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { DictateButton, appendDictation } from '@/components/ui/dictate-button';
 import { findMentions } from '@vndesign/core';
+import { Avatar } from '@/components/ui/avatar';
 import { LeadChanges, changeLabel } from './lead-changes';
 import { MentionText, MentionTextarea } from './mention-textarea';
 
@@ -323,6 +324,7 @@ export function ActivityTimeline({
   const { data: team } = useTeamNames();
   const hasTeam = (team?.length ?? 0) > 1;
   const names = new Map((team ?? []).map((m) => [m.user_id, m.user_id === currentUserId ? 'tu' : m.name]));
+  const people = new Map((team ?? []).map((m) => [m.user_id, m]));
   const [person, setPerson] = useState('');
   const data = person ? all?.filter((a) => a.actor_user_id === person) : all;
   // Só há aberturas a mostrar se algum email enviado pela plataforma levou o rastreio.
@@ -504,9 +506,14 @@ export function ActivityTimeline({
                     className={cn('relative flex gap-3 pb-4 last:pb-0', hidden && 'max-lg:hidden', lastShown && 'max-lg:pb-0')}
                   >
                     <span className={cn('absolute top-8 bottom-0 left-4 w-px bg-border', lastShown && 'max-lg:hidden')} aria-hidden />
-                    <span className="z-[1] flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface-2">
-                      <Icon className="h-4 w-4 text-muted" aria-hidden />
-                    </span>
+                    {/* Comentários da equipa: a foto (ou as iniciais) de quem escreveu. */}
+                    {a.type === 'comment' && a.actor_user_id && people.get(a.actor_user_id) ? (
+                      <Avatar name={people.get(a.actor_user_id)!.name} url={people.get(a.actor_user_id)!.avatar_url} size={32} className="z-[1]" />
+                    ) : (
+                      <span className="z-[1] flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface-2">
+                        <Icon className="h-4 w-4 text-muted" aria-hidden />
+                      </span>
+                    )}
                     <div className="min-w-0 flex-1 pt-1">
                       <p className="flex items-start justify-between gap-2 text-sm">
                         <span className="font-medium">{ACTIVITY_TYPE_LABELS[a.type]}</span>

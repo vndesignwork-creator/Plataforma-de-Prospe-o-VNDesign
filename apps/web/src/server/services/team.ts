@@ -25,7 +25,7 @@ import { isMailConfigured, sendMail, sendWithAccount } from '../mailer';
 import { requestOrigin } from '../request-origin';
 import { createSupabaseAdminClient } from '../supabase-admin';
 import { loadSmtpAccount } from './mail-account';
-import { teamProfiles } from './profile';
+import { avatarUrl, teamProfiles } from './profile';
 import { sendUserPush } from './push';
 import { getSettings, getSignature } from './workspace';
 
@@ -38,10 +38,11 @@ function assertAdmin(ctx: ApiContext) {
 export async function getTeam(ctx: ApiContext): Promise<Team> {
   assertAdmin(ctx);
   const admin = createSupabaseAdminClient();
-  const [{ data: rows, error }, { data: invites, error: iError }, { data: sigs }] = await Promise.all([
+  const [{ data: rows, error }, { data: invites, error: iError }, { data: sigs }, profiles] = await Promise.all([
     admin.from('workspace_members').select('user_id, role, created_at').eq('workspace_id', ctx.workspaceId).order('created_at'),
     ctx.supabase.from('workspace_invites').select(INVITE_SELECT).eq('workspace_id', ctx.workspaceId).is('accepted_at', null).order('invited_at'),
     admin.from('signatures').select('user_id, full_name').eq('workspace_id', ctx.workspaceId),
+    teamProfiles(ctx),
   ]);
   if (error) throw fromPostgrest(error);
   if (iError) throw fromPostgrest(iError);
@@ -53,7 +54,8 @@ export async function getTeam(ctx: ApiContext): Promise<Team> {
     members.push({
       user_id: r.user_id,
       email: data.user?.email ?? null,
-      name: names.get(r.user_id) || meta.full_name || null,
+      name: profiles.get(r.user_id)?.display_name || names.get(r.user_id) || meta.full_name || null,
+      avatar_url: avatarUrl(profiles.get(r.user_id)),
       role: r.role,
       joined_at: r.created_at,
       is_me: r.user_id === ctx.user.id,
@@ -63,7 +65,7 @@ export async function getTeam(ctx: ApiContext): Promise<Team> {
 }
 
 /** Nomes dos membros (para o "Responsável"); qualquer membro pode ver. */
-export async function teamNames(ctx: ApiContext): Promise<{ user_id: string; name: string; role: MemberRole }[]> {
+export async function teamNames(ctx: ApiContext): Promise<{ user_id: string; name: string; role: MemberRole; avatar_url: string | null }[]> {
   const admin = createSupabaseAdminClient();
   const [{ data: rows }, { data: sigs }, profiles] = await Promise.all([
     admin.from('workspace_members').select('user_id, role').eq('workspace_id', ctx.workspaceId),
@@ -73,14 +75,14 @@ export async function teamNames(ctx: ApiContext): Promise<{ user_id: string; nam
   // A alcunha (Definições → Conta) primeiro; senão o nome da assinatura.
   const names = new Map(((sigs ?? []) as { user_id: string; full_name: string | null }[]).map((s) => [s.user_id, s.full_name]));
   for (const [id, p] of profiles) if (p.display_name) names.set(id, p.display_name);
-  const out: { user_id: string; name: string; role: MemberRole }[] = [];
+  const out: { user_id: string; name: string; role: MemberRole; avatar_url: string | null }[] = [];
   for (const r of (rows ?? []) as { user_id: string; role: MemberRole }[]) {
     let name = names.get(r.user_id) || null;
     if (!name) {
       const { data } = await admin.auth.admin.getUserById(r.user_id);
       name = (data.user?.user_metadata as { full_name?: string } | undefined)?.full_name || data.user?.email?.split('@')[0] || 'Sem nome';
     }
-    out.push({ user_id: r.user_id, name, role: r.role });
+    out.push({ user_id: r.user_id, name, role: r.role, avatar_url: avatarUrl(profiles.get(r.user_id)) });
   }
   return out.sort((a, b) => a.name.localeCompare(b.name, 'pt'));
 }

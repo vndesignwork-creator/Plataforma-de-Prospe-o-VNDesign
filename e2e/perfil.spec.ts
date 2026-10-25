@@ -33,6 +33,13 @@ test('perfil: nome a mostrar e foto no menu; o menu leva à conta', async ({ pag
     expect(photo.status()).toBe(200);
     expect(photo.headers()['content-type']).toMatch(/^image\//);
 
+    // A foto também aparece na equipa (Definições → Equipa e nos nomes do Responsável).
+    const withPhoto = (await (await page.request.get('/api/v1/team/names')).json()).data as { name: string; avatar_url: string | null }[];
+    expect(withPhoto.find((n) => n.name === nick)?.avatar_url).toMatch(/^\/api\/v1\/avatars\//);
+    await page.goto('/definicoes/equipa');
+    await expect(page.getByRole('list', { name: 'Membros da equipa' }).getByRole('listitem').filter({ hasText: nick }).locator('img')).toBeVisible();
+    await page.goto('/definicoes/conta');
+
     await card.getByRole('button', { name: 'Tirar foto' }).click();
     await expect(page.getByText('Foto tirada.')).toBeVisible();
     await expect(account.locator('img')).toHaveCount(0);

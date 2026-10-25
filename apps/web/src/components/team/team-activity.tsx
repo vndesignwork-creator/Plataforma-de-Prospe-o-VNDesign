@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { describe, ICONS } from '@/components/leads/activity-timeline';
 import { Card, EmptyState, Skeleton } from '@/components/ui/card';
 import { Select } from '@/components/ui/input';
+import { Avatar } from '@/components/ui/avatar';
 import { useMe, useTeamActivity, useTeamNames } from '@/lib/queries';
 
 const PERIODS = [
@@ -26,6 +27,7 @@ export function TeamActivityList() {
   const [days, setDays] = useState(7);
   const { data: me } = useMe();
   const { data: team } = useTeamNames();
+  const avatars = new Map((team ?? []).map((m) => [m.user_id, m.avatar_url]));
   const { data, isLoading } = useTeamActivity({ user: user || undefined, days });
 
   return (
@@ -64,8 +66,12 @@ export function TeamActivityList() {
               const detail = describe(asActivity(a));
               return (
                 <li key={a.id} className="flex gap-3 px-4 py-3 text-sm">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface-2">
-                    <Icon className="h-4 w-4 text-muted" aria-hidden />
+                  {/* A foto de quem fez (ou as iniciais), com o tipo de registo num selo. */}
+                  <span className="relative h-8 w-8 shrink-0">
+                    <Avatar name={a.actor_name ?? '?'} url={avatars.get(a.actor_user_id ?? '')} size={32} />
+                    <span className="absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full border border-border bg-surface-2">
+                      <Icon className="h-2.5 w-2.5 text-muted" aria-hidden />
+                    </span>
                   </span>
                   <div className="min-w-0 flex-1">
                     <p>

@@ -27,6 +27,7 @@ export const TeamMemberSchema = z
     user_id: z.uuid(),
     email: z.string().nullable(),
     name: z.string().nullable(),
+    avatar_url: z.string().nullable(),
     role: z.enum(MEMBER_ROLES),
     joined_at: z.string(),
     is_me: z.boolean(),

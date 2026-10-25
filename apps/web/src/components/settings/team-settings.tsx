@@ -11,6 +11,7 @@ import { MEMBER_ROLE_LABELS, formatDate, type InviteRole } from '@vndesign/core'
 import { Check, Copy, Mail, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
@@ -58,6 +59,7 @@ export function TeamMembers() {
           <ul className="flex flex-col divide-y divide-border" aria-label="Membros da equipa">
             {team.members.map((m) => (
               <li key={m.user_id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 text-sm">
+                <Avatar name={m.name ?? m.email ?? '?'} url={m.avatar_url} size={36} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium">
                     {m.name ?? m.email} {m.is_me ? <span className="font-normal text-muted">(tu)</span> : null}
