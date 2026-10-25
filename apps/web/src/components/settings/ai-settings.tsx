@@ -216,7 +216,7 @@ function ModelPicker({
               }
             }}
           />
-          <ul role="listbox" aria-label="Modelos" className="max-h-72 overflow-y-auto">
+          <ul role="listbox" aria-label="Modelos" className="relative max-h-72 overflow-y-auto">
             {defaultModel && !q ? (
               <li>
                 <button type="button" role="option" aria-selected={!value} onClick={() => choose('')} className={optionClass(!value)}>

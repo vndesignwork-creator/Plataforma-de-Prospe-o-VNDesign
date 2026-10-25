@@ -420,7 +420,7 @@ function TodayCard({ className }: { className?: string }) {
         title="Hoje"
         description={data ? `Follow-ups, próximas ações e tarefas · ${formatDate(data.today)}` : undefined}
       />
-      <div className="flex max-h-[26rem] flex-col gap-4 overflow-y-auto p-3">
+      <div className="relative flex max-h-[26rem] flex-col gap-4 overflow-y-auto p-3">
         {isLoading ? <Skeleton className="h-40" /> : null}
         {empty ? <p className="px-2 py-6 text-center text-sm text-muted">Nada agendado para os próximos 7 dias. 🎉</p> : null}
         {data ? (

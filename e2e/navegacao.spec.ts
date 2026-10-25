@@ -101,3 +101,22 @@ test('listas de escolha: menu da plataforma (não a lista do sistema) e o valor 
   await expect(page.getByRole('heading', { level: 1, name: `Lista própria ${run}` })).toBeVisible();
   await expect(page.getByText('Restauração').first()).toBeVisible();
 });
+
+test('dashboard: a página acaba nos cartões (sem espaço vazio por baixo, mesmo com o "Hoje" cheio)', async ({ page }) => {
+  // Muitos follow-ups em atraso: a lista do "Hoje" passa a altura do cartão e rola por dentro.
+  const run = Date.now().toString(36);
+  const past = new Date(Date.now() - 3 * 86_400_000).toISOString().slice(0, 10);
+  for (let i = 0; i < 25; i++) {
+    await page.request.post('/api/v1/leads?force=true', {
+      data: { company_name: `Atrasado ${run} ${i}`, status: 'contactado', next_action_on: past, next_action_text: 'Ligar' },
+    });
+  }
+  await page.goto('/dashboard');
+  await expect(page.getByText(`Atrasado ${run} 0`).first()).toBeAttached();
+  const { doc, main, inner } = await page.evaluate(() => ({
+    doc: document.documentElement.scrollHeight,
+    inner: window.innerHeight,
+    main: Math.ceil((document.querySelector('main')?.getBoundingClientRect().bottom ?? 0) + window.scrollY),
+  }));
+  expect(doc).toBeLessThanOrEqual(Math.max(main, inner) + 2);
+});

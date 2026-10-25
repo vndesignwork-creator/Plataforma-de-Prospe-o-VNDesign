@@ -426,7 +426,7 @@ export function ImportWizard() {
             {preview.summary.blocked ? <Badge tone="danger">{preview.summary.blocked} na lista “não contactar”</Badge> : null}
             {preview.summary.invalid ? <Badge tone="danger">{preview.summary.invalid} inválidas</Badge> : null}
           </div>
-          <div className="max-h-[60dvh] overflow-auto">
+          <div className="relative max-h-[60dvh] overflow-auto">
             <table className="w-full text-sm">
               <thead className="sticky top-0 z-10 bg-surface-2 text-left text-xs tracking-wide text-muted uppercase">
                 <tr>
@@ -556,7 +556,7 @@ export function ImportWizard() {
             ))}
           </div>
           {created.length ? (
-            <ul className="mx-4 mb-4 max-h-64 overflow-auto rounded-lg border border-border text-sm">
+            <ul className="relative mx-4 mb-4 max-h-64 overflow-auto rounded-lg border border-border text-sm">
               {created.map((r) => (
                 <li key={r.index} className="border-b border-border px-3 py-1.5 last:border-0">
                   <Link href={`/leads/${r.lead_id}`} className="hover:underline">
