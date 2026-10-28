@@ -25,7 +25,7 @@ import {
   type LeadTask,
   type TaskTemplate,
 } from '@vndesign/core';
-import { Bell, CalendarDays, Check, ChevronRight, Clock, Copy, GripVertical, ListPlus, Pencil, Plus, UserRound, X } from 'lucide-react';
+import { Bell, CalendarDays, Check, ChevronRight, Clock, Copy, CopyPlus, GripVertical, ListPlus, MoreVertical, Pencil, Plus, UserRound, X } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -39,6 +39,7 @@ import { api, errorMessage } from '@/lib/api-client';
 import { useInvalidateTasks, useLeadTasks, useMe, useTaskTemplates, useTeamNames } from '@/lib/queries';
 import { Linkified } from '@/lib/linkify';
 import { formatReminder, isoToLocalInput, localInputToIso } from '@/lib/local-datetime';
+import { verticalOnly } from '@/lib/dnd';
 import { cn } from '@/lib/utils';
 import { TaskProgress } from './task-progress';
 
@@ -332,7 +333,7 @@ function TaskRow({
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={cn('group flex items-start gap-2 px-3 py-2 hover:bg-surface-2', isDragging && 'relative z-10 bg-surface-2 opacity-80 shadow-card')}
+      className={cn('group relative flex items-start gap-1.5 px-2 py-2 hover:bg-surface-2 sm:gap-2 sm:px-3', isDragging && 'z-10 bg-surface-2 opacity-80 shadow-card')}
     >
       {sortable ? (
         <button
@@ -342,7 +343,7 @@ function TaskRow({
           {...listeners}
           aria-roledescription="tarefa arrastável"
           aria-label={`Mover a tarefa: ${task.title}`}
-          className="-my-0.5 shrink-0 cursor-grab touch-none rounded p-1 text-muted hover:bg-surface-3 hover:text-fg pointer-coarse:p-1.5"
+          className="-my-0.5 shrink-0 cursor-grab touch-none rounded p-1 text-muted hover:bg-surface-3 hover:text-fg"
         >
           <GripVertical className="h-4 w-4" aria-hidden />
         </button>
@@ -355,7 +356,7 @@ function TaskRow({
         className="mt-1 h-4 w-4 shrink-0 cursor-pointer"
       />
       {editing ? <TaskEditor task={task} onSave={onSave} onCancel={onCancelEdit} /> : null}
-      {/* Tocar no texto edita; os links do texto abrem (o lápis faz o mesmo, para o teclado). */}
+      {/* Tocar no texto edita; os links do texto abrem (com o teclado: Tab até ao lápis). */}
       <span
         onClick={(e) => {
           if (!(e.target as HTMLElement).closest('a')) onEdit();
@@ -396,14 +397,25 @@ function TaskRow({
           </>
         ) : null}
       </span>
-      <span className="flex shrink-0 items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100 pointer-coarse:opacity-100">
+      {/* Editar: toca-se no texto. O lápis só aparece com o teclado (Tab). */}
+      <button
+        type="button"
+        onClick={onEdit}
+        aria-label={`Editar: ${task.title}`}
+        className="sr-only text-muted focus-visible:not-sr-only focus-visible:shrink-0 focus-visible:rounded focus-visible:p-1"
+      >
+        <Pencil className="h-3.5 w-3.5" aria-hidden />
+      </button>
+      {/* Computador: os ícones aparecem ao passar o rato. */}
+      <span className="hidden shrink-0 items-center gap-0.5 sm:flex sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100 pointer-coarse:opacity-100">
         <button
           type="button"
-          onClick={onEdit}
-          aria-label={`Editar: ${task.title}`}
+          onClick={() => void copyText(task.title)}
+          aria-label={`Copiar o texto: ${task.title}`}
+          title="Copiar o texto"
           className="rounded p-1 text-muted hover:bg-surface-3 hover:text-fg pointer-coarse:p-1.5"
         >
-          <Pencil className="h-3.5 w-3.5" aria-hidden />
+          <Copy className="h-3.5 w-3.5" aria-hidden />
         </button>
         <button
           type="button"
@@ -412,7 +424,7 @@ function TaskRow({
           title="Duplicar"
           className="rounded p-1 text-muted hover:bg-surface-3 hover:text-fg pointer-coarse:p-1.5"
         >
-          <Copy className="h-3.5 w-3.5" aria-hidden />
+          <CopyPlus className="h-3.5 w-3.5" aria-hidden />
         </button>
         <button
           type="button"
@@ -423,8 +435,35 @@ function TaskRow({
           <X className="h-4 w-4" aria-hidden />
         </button>
       </span>
+      {/* Telemóvel: um só botão "⋯" (o texto fica com a largura toda). */}
+      <DropdownRoot>
+        <DropdownTrigger aria-label={`Mais ações: ${task.title}`} className="-my-0.5 shrink-0 rounded p-1.5 text-muted hover:bg-surface-3 hover:text-fg sm:hidden">
+          <MoreVertical className="h-4 w-4" aria-hidden />
+        </DropdownTrigger>
+        <DropdownContent align="end">
+          <DropdownItem onSelect={() => void copyText(task.title)}>
+            <Copy className="h-4 w-4" aria-hidden /> Copiar o texto
+          </DropdownItem>
+          <DropdownItem onSelect={onDuplicate}>
+            <CopyPlus className="h-4 w-4" aria-hidden /> Duplicar
+          </DropdownItem>
+          <DropdownItem danger onSelect={onDelete}>
+            <X className="h-4 w-4" aria-hidden /> Apagar
+          </DropdownItem>
+        </DropdownContent>
+      </DropdownRoot>
     </li>
   );
+}
+
+/** Copia o texto da tarefa (para colar num email, no WhatsApp…). */
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success('Texto copiado.');
+  } catch {
+    toast.error('Não foi possível copiar. Seleciona o texto e usa Ctrl+C.');
+  }
 }
 
 function TemplateMenu({ templates, suggested, onApply }: { templates: TaskTemplate[]; suggested: TaskTemplate[]; onApply: (t: TaskTemplate) => void }) {
@@ -752,6 +791,7 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
           {pending.length ? (
             <DndContext
               sensors={sensors}
+              modifiers={[verticalOnly]}
               collisionDetection={closestCenter}
               onDragEnd={(e) => void onDragEnd(e)}
               accessibility={{

@@ -89,3 +89,23 @@ test('no telemóvel: contacto rápido na ficha, ordenar a lista e formulário cu
   await page.locator('summary').filter({ hasText: 'Mais detalhes' }).click();
   await expect(page.getByLabel('Assunto do email')).toBeVisible();
 });
+
+test('no telemóvel as tarefas compridas usam a largura toda; as ações ficam no botão ⋯', async ({ page }) => {
+  const lead = (await (await page.request.post('/api/v1/leads', { data: { company_name: `Tarefas Telemóvel ${Date.now().toString(36)}` } })).json()).data;
+  const long = 'lorem ipsum dolor sit amet consectetuer adipiscing elit. maecenas porttitor congue massa ipsum dolor sit amet consectetuer adipiscing elit.';
+  expect((await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title: long } })).status()).toBe(201);
+  await page.goto(`/leads/${lead.id}`);
+  const row = page.locator('#tarefas').getByRole('listitem').filter({ hasText: long });
+  await expect(row).toBeVisible();
+  // Sem a coluna de ícones: o texto ocupa quase toda a linha.
+  await expect(row.getByRole('button', { name: /^Duplicar:/ })).toBeHidden();
+  const [rowBox, textBox] = [(await row.boundingBox())!, (await row.getByText(long).boundingBox())!];
+  expect(textBox.width).toBeGreaterThan(rowBox.width * 0.65);
+  await row.getByRole('button', { name: /^Mais ações:/ }).click();
+  await expect(page.getByRole('menuitem', { name: 'Copiar o texto' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Duplicar' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Apagar' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});

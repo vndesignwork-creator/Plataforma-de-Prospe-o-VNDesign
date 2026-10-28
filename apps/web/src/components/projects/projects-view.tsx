@@ -39,6 +39,7 @@ import { StatTile } from '@/components/charts/stat-tile';
 import { Card, EmptyState, Skeleton } from '@/components/ui/card';
 import { setCollapsedKeys } from '@/components/ui/collapse';
 import { Select } from '@/components/ui/input';
+import { verticalOnly } from '@/lib/dnd';
 import { useBilling, usePreference, useProjects, useSetPreference, useSettings } from '@/lib/queries';
 import { ProjectRow, projectCollapseKey } from './project-row';
 import { WrapUpDialog } from './project-toggle';
@@ -298,7 +299,7 @@ export function ProjectsView() {
           ) : null}
           {/* Cada projeto no seu cartão, com espaço entre eles (separa bem um projeto do seguinte). */}
           {/* Pega ⠿ em cada projeto: arrastar muda a ordem (Ordenar por → A minha ordem). */}
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd} accessibility={{ announcements }}>
+          <DndContext sensors={sensors} modifiers={[verticalOnly]} collisionDetection={closestCenter} onDragEnd={onDragEnd} accessibility={{ announcements }}>
             <SortableContext items={(shown ?? []).map((p) => p.lead.id)} strategy={verticalListSortingStrategy}>
               <ul className="flex flex-col gap-5" aria-label={state === 'active' ? 'Projetos em curso' : 'Projetos concluídos'}>
                 {(shown ?? []).map((p) => (

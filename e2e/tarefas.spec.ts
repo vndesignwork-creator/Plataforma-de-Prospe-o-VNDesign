@@ -41,7 +41,7 @@ test('ficha: acrescentar, reordenar com o teclado, concluir e editar tarefas', a
   await expect(page.getByLabel('Atividade do lead').getByText('Tarefa concluída')).toBeVisible();
 
   // Editar com prazo.
-  await card.getByRole('button', { name: 'Editar: Fazer maquete' }).click();
+  await card.getByText('Fazer maquete', { exact: true }).click();
   const edit = page.getByRole('dialog', { name: 'Editar tarefa' });
   await edit.getByLabel('Texto da tarefa').fill('Fazer maquete da página inicial');
   await edit.getByLabel('Prazo da tarefa').fill(iso(-1));
@@ -50,7 +50,7 @@ test('ficha: acrescentar, reordenar com o teclado, concluir e editar tarefas', a
   await expect(card.getByText('Fazer maquete da página inicial')).toBeVisible();
 
   // Texto comprido: na janela vê-se todo, com várias linhas (Shift+Enter muda de linha).
-  await card.getByRole('button', { name: 'Editar: Fazer maquete da página inicial' }).click();
+  await card.getByText('Fazer maquete da página inicial').first().click();
   const long = 'Fazer maquete da página inicial com o menu, o banner com a fotografia da equipa, a secção de serviços e o formulário de contacto';
   await edit.getByLabel('Texto da tarefa').fill(long);
   await edit.getByLabel('Texto da tarefa').press('Shift+Enter');
@@ -243,7 +243,7 @@ test('editar tarefa: escolher o prazo e o lembrete (dia e hora) no calendário d
   const label = `15 de ${new Intl.DateTimeFormat('pt-PT', { month: 'long', timeZone: 'UTC' }).format(next)} de ${next.getUTCFullYear()}`;
 
   await page.goto(`/leads/${lead.id}`);
-  await page.getByRole('button', { name: `Editar: ${title}` }).click();
+  await page.getByText(title, { exact: true }).click();
   const edit = page.getByRole('dialog', { name: 'Editar tarefa' });
 
   // Prazo: o calendário abre por cima da janela e o clique no dia conta.
@@ -288,11 +288,40 @@ test('arrastar uma tarefa curta por cima de uma comprida: não estica nem deform
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
   await page.mouse.move(from.x + from.width / 2, from.y - 10, { steps: 5 });
-  await page.mouse.move(to.x + to.width / 2, to.y + 5, { steps: 15 });
+  // Mesmo puxando para o lado, a tarefa só sobe e desce.
+  await page.mouse.move(to.x + to.width / 2 + 60, to.y + 5, { steps: 15 });
   await page.waitForTimeout(300);
   // Durante o arrasto, a tarefa só se desloca (sem scale).
   const transform = await handle.evaluate((el) => (el.closest('li') as HTMLElement).style.transform, undefined, { timeout: 5000 });
   expect(transform).toMatch(/translate/);
   expect(transform).not.toMatch(/scale/);
+  expect(transform).toMatch(/^translate3d\(0px,/);
   await page.mouse.up();
+});
+
+test('copiar o texto da tarefa (no lugar do lápis; editar = tocar no texto)', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  const lead = (await (await page.request.post('/api/v1/leads', { data: { company_name: `Copiar ${run}` } })).json()).data;
+  const title = `Enviar orçamento ao cliente ${run}`;
+  expect((await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title } })).status()).toBe(201);
+  await page.goto(`/leads/${lead.id}`);
+  const card = page.locator('#tarefas');
+  const row = card.getByRole('listitem').filter({ hasText: title });
+  await row.hover();
+  // Ícones à vista: Copiar o texto, Duplicar, Apagar (editar = tocar no texto; o lápis só aparece com o Tab).
+  const visible = await row.getByRole('button').evaluateAll((els) =>
+    els.filter((e) => (e as HTMLElement).offsetWidth > 1 && e.getAttribute('aria-label')).map((e) => e.getAttribute('aria-label')!.split(':')[0]),
+  );
+  expect(visible.filter((l) => ['Editar', 'Copiar o texto', 'Duplicar', 'Apagar'].includes(l))).toEqual(['Copiar o texto', 'Duplicar', 'Apagar']);
+  // Com o teclado, o lápis aparece ao chegar lá (Tab) e abre a edição.
+  const pencil = row.getByRole('button', { name: `Editar: ${title}` });
+  await pencil.focus();
+  await expect.poll(() => pencil.evaluate((e) => (e as HTMLElement).offsetWidth)).toBeGreaterThan(1);
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog', { name: 'Editar tarefa' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await row.hover();
+  await row.getByRole('button', { name: `Copiar o texto: ${title}` }).click();
+  await expect(page.getByText('Texto copiado.')).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(title);
 });

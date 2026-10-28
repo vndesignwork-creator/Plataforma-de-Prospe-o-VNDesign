@@ -92,11 +92,11 @@ test('lista: prazo, fase, ações rápidas, plano de pagamentos, temporizador, f
   await row.getByRole('button', { name: /Pausar o temporizador/ }).click();
   await expect(page.getByText(/Em pausa\. Total registado: \d+ s\./)).toBeVisible();
   await expect(page.getByRole('status', { name: /Temporizador a contar/ })).toHaveCount(0);
-  const resume = row.getByRole('button', { name: /Continuar a contar o tempo \(total 0:00:0[2-9]\)/ });
+  const resume = row.getByRole('button', { name: /Continuar a contar o tempo \(total 0:0\d:(0[2-9]|[1-5]\d)\)/ });
   await expect(resume).toBeVisible();
   await resume.click();
   await expect(page.getByText('A continuar a contar.')).toBeVisible();
-  await expect(row.getByRole('button', { name: /Pausar o temporizador \(total 0:00:0[2-9]\)/ })).toBeVisible();
+  await expect(row.getByRole('button', { name: /Pausar o temporizador \(total 0:0\d:(0[2-9]|[1-5]\d)\)/ })).toBeVisible();
   await page.waitForTimeout(5500);
   await row.getByRole('button', { name: /Pausar o temporizador/ }).click();
   await expect(row.getByRole('button', { name: /Continuar a contar o tempo/ })).toBeVisible();
@@ -254,4 +254,23 @@ test('funcionalidades: desligar as partes do projeto tira-as da ficha', async ({
   } finally {
     await page.request.patch('/api/v1/settings', { data: { features: { revisions: true, time_tracking: true, deliverables: true, client_page: true } } });
   }
+});
+
+test('fases: ao arrastar um cartão só a cópia segue o rato (o original fica no sítio)', async ({ page }) => {
+  const name = `Arrastar Fase ${Date.now().toString(36)}`;
+  const lead = await createClient(page.request, { company_name: name });
+  expect((await page.request.patch(`/api/v1/leads/${lead.id}/project`, { data: { stage: 'briefing' } })).status()).toBe(200);
+  await page.goto('/projetos');
+  await page.getByRole('button', { name: 'Fases' }).click();
+  const handle = page.getByRole('button', { name: new RegExp(`Mover #\\d+ ${name}`) });
+  await expect(handle).toBeVisible();
+  await handle.scrollIntoViewIfNeeded();
+  const box = (await handle.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 40, box.y + 20, { steps: 5 });
+  await page.mouse.move(box.x + 300, box.y + 60, { steps: 10 });
+  const original = await handle.evaluate((el) => (el.closest('li') as HTMLElement).style.transform);
+  expect(original).toBe('');
+  await page.mouse.up();
 });

@@ -6,7 +6,6 @@
  * o botão da fase no próprio cartão.
  */
 import { DndContext, DragOverlay, KeyboardSensor, MouseSensor, TouchSensor, closestCorners, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 import { useQueryClient } from '@tanstack/react-query';
 import { PROJECT_STAGE_LABELS, PROJECT_STAGES, leadPath, type Project, type ProjectStage } from '@vndesign/core';
 import { GripVertical } from 'lucide-react';
@@ -40,11 +39,11 @@ function StageCard({ project, today, dragging, handle }: { project: Project; tod
 }
 
 function DraggableCard({ project, today }: { project: Project; today: string }) {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useDraggable({ id: project.lead.id });
+  // Quem segue o rato é a cópia (DragOverlay); o original fica no sítio, esbatido.
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({ id: project.lead.id });
   return (
     <li
       ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform) }}
       className={cn('touch-manipulation pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]', isDragging && 'opacity-40')}
       {...listeners}
     >

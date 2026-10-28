@@ -48,7 +48,7 @@ test('equipa: dar uma tarefa, aviso no sino, página Tarefas e comentário com @
     expect((await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title: `Ligar ao dono ${run}` } })).status()).toBe(201);
     await page.goto(`/leads/${lead.id}`);
     const tasks = page.locator('#tarefas');
-    await tasks.getByRole('button', { name: `Editar: Ligar ao dono ${run}` }).click();
+    await tasks.getByText(`Ligar ao dono ${run}`, { exact: true }).click();
     const editor = page.getByRole('dialog', { name: 'Editar tarefa' });
     await editor.getByLabel('Responsável').selectOption(userId);
     await editor.getByRole('button', { name: 'Guardar' }).click();
