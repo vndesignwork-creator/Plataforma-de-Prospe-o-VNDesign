@@ -117,6 +117,8 @@ test('lista: prazo, fase, ações rápidas, plano de pagamentos, temporizador, f
 
   // Calendário: a entrega aparece no dia do prazo.
   await page.getByRole('button', { name: 'Calendário' }).click();
+  // Prazo já no mês seguinte (fim do mês): avança um mês.
+  if (due.slice(0, 7) !== iso(0).slice(0, 7)) await page.getByRole('button', { name: 'Mês seguinte' }).click();
   // Num dia com muitos eventos (testes anteriores), "+N mais" mostra o resto.
   const dayCell = page.getByRole('gridcell', {
     name: new Intl.DateTimeFormat('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${due}T00:00:00Z`)),

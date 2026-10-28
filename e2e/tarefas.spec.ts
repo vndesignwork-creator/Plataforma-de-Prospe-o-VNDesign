@@ -272,3 +272,27 @@ test('editar tarefa: escolher o prazo e o lembrete (dia e hora) no calendário d
     .poll(async () => ((await (await page.request.get(`/api/v1/leads/${lead.id}/tasks`)).json()).data as { id: string; due_on: string | null }[]).find((t) => t.id === task.id)?.due_on)
     .toBe(day);
 });
+
+test('arrastar uma tarefa curta por cima de uma comprida: não estica nem deforma', async ({ page }) => {
+  const lead = (await (await page.request.post('/api/v1/leads', { data: { company_name: `Arrastar ${run}` } })).json()).data;
+  const long = 'lorem ipsum dolor sit amet consectetuer adipiscing elit. maecenas porttitor congue massa '.repeat(2).trim();
+  for (const title of [long, 'Tarefa 2', 'Tarefa 3']) {
+    expect((await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title } })).status()).toBe(201);
+  }
+  await page.goto(`/leads/${lead.id}`);
+  const card = page.locator('#tarefas');
+  const handle = card.getByRole('button', { name: 'Mover a tarefa: Tarefa 3' });
+  const target = card.getByRole('button', { name: `Mover a tarefa: ${long}` });
+  const from = (await handle.boundingBox())!;
+  const to = (await target.boundingBox())!;
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width / 2, from.y - 10, { steps: 5 });
+  await page.mouse.move(to.x + to.width / 2, to.y + 5, { steps: 15 });
+  await page.waitForTimeout(300);
+  // Durante o arrasto, a tarefa só se desloca (sem scale).
+  const transform = await handle.evaluate((el) => (el.closest('li') as HTMLElement).style.transform, undefined, { timeout: 5000 });
+  expect(transform).toMatch(/translate/);
+  expect(transform).not.toMatch(/scale/);
+  await page.mouse.up();
+});

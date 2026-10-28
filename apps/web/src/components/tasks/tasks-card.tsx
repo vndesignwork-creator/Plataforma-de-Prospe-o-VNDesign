@@ -331,7 +331,7 @@ function TaskRow({
   return (
     <li
       ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn('group flex items-start gap-2 px-3 py-2 hover:bg-surface-2', isDragging && 'relative z-10 bg-surface-2 opacity-80 shadow-card')}
     >
       {sortable ? (

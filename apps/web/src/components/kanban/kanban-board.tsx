@@ -179,7 +179,7 @@ function SortableCard({ lead, today, statuses, onMove }: { lead: Lead; today: st
   return (
     <li
       ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
         'touch-manipulation pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]',
         isDragging && 'opacity-40',
