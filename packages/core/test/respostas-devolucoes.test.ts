@@ -40,3 +40,15 @@ describe('respostas', () => {
     expect(outOfOfficeReturn('Obrigado pelo seu email.', today)).toBeNull();
   });
 });
+
+describe('prospeção: quem se pode contactar', () => {
+  it('um email devolvido não conta; por telefone basta telefone ou email válido', async () => {
+    const { prospectingReachable } = await import('../src');
+    const bounced = { email: 'a@x.pt', phone: null, email_bounced_at: '2026-10-01T10:00:00Z' };
+    expect(prospectingReachable(bounced, 'email')).toBe(false);
+    expect(prospectingReachable(bounced, 'phone')).toBe(false);
+    expect(prospectingReachable({ ...bounced, phone: '912345678' }, 'phone')).toBe(true);
+    expect(prospectingReachable({ ...bounced, email_bounced_at: null }, 'email')).toBe(true);
+    expect(prospectingReachable({ email: null, phone: '912345678', email_bounced_at: null }, 'email')).toBe(false);
+  });
+});

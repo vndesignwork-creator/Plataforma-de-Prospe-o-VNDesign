@@ -119,7 +119,7 @@ import {
   LaunchChecklistUpdateSchema,
   SharePayloadSchema,
   SharedLeadDraftSchema,
-  PROSPECTING_FILTERS,
+  ProspectingQuerySchema,
   ProspectingOutcomeSchema,
   ProspectingQueueSchema,
   ProspectingResultSchema,
@@ -1754,7 +1754,7 @@ export function getOpenApiDocument() {
         get: op({
           tags: ['Leads'],
           summary: 'Sessão de prospeção: leads a contactar agora (abriram o email, follow-ups, por contactar)',
-          requestParams: { query: z.object({ filter: z.enum(PROSPECTING_FILTERS).optional() }) },
+          requestParams: { query: ProspectingQuerySchema },
           responses: { '200': ok(data(ProspectingQueueSchema)), ...common },
         }),
       },

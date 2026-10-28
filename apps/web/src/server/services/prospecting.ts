@@ -4,6 +4,9 @@
  *
  * Ordem da fila: quem abriu um email nas últimas 48 horas, depois os follow-ups
  * em atraso ou para hoje e, por fim, os leads por contactar (mais quentes primeiro).
+ * Os follow-ups e por contactar sem forma de contactar neste modo (sem email válido,
+ * ou sem telefone nem email) vão para "Falta email" / "Falta contacto". Quem abriu
+ * o email fica sempre na lista.
  */
 import {
   LOST_REASON_LABELS,
@@ -16,11 +19,12 @@ import {
   todayIso,
   workingDay,
   type Lead,
-  type ProspectingFilter,
   type ProspectingItem,
+  type ProspectingMode,
   type ProspectingOutcomeInput,
   type ProspectingQueue,
   type ProspectingResult,
+  type ProspectingView,
 } from '@vndesign/core';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
@@ -88,44 +92,79 @@ async function doneToday(ctx: ApiContext): Promise<number> {
   return count ?? 0;
 }
 
-export async function getProspectingQueue(ctx: ApiContext, filter: ProspectingFilter = 'all'): Promise<ProspectingQueue> {
+export async function getProspectingQueue(ctx: ApiContext, filter: ProspectingView = 'all', mode?: ProspectingMode): Promise<ProspectingQueue> {
   const today = todayIso();
   // A equipa de prospeção trabalha só os leads de que é responsável.
   const mine = ctx.role === 'prospector';
-  const base = () => {
+  const base = (count = false) => {
     const q = ctx.supabase
       .from('leads')
-      .select(LEAD_SELECT)
+      .select(count ? 'id' : LEAD_SELECT, count ? { count: 'exact', head: true } : undefined)
       .eq('workspace_id', ctx.workspaceId)
       .is('archived_at', null)
       .is('anonymized_at', null);
     return mine ? q.eq('assigned_to', ctx.user.id) : q;
   };
-  const want = (k: ProspectingItem['kind']) => filter === 'all' || filter === k;
+  type Query = ReturnType<typeof base>;
+  // Contactável neste modo (o mesmo que prospectingReachable): um email devolvido não conta.
+  // Sem modo (clientes antigos da API): a lista não filtra; "Falta …" usa o critério do email.
+  const reach = (q: Query, ok: boolean): Query =>
+    !mode && ok
+      ? q
+      : mode !== 'phone'
+      ? ok
+        ? q.not('email', 'is', null).is('email_bounced_at', null)
+        : q.or('email.is.null,email_bounced_at.not.is.null')
+      : ok
+        ? q.or('phone.not.is.null,and(email.not.is.null,email_bounced_at.is.null)')
+        : q.is('phone', null).or('email.is.null,email_bounced_at.not.is.null');
+  const followUps = (count = false) => base(count).in('status', ['contactado', 'respondeu']).lte('next_action_on', today);
+  const fresh = (count = false) => base(count).eq('status', 'identificado').or(`next_action_on.is.null,next_action_on.lte.${today}`);
 
-  const [opened, followUps, fresh, done, emails] = await Promise.all([
-    want('opened') ? fetchRecentlyOpened(ctx.supabase, ctx.workspaceId, 30) : Promise.resolve([]),
+  // Quem abriu o email (só os leads que se podem ver: não arquivados, da pessoa na equipa de prospeção).
+  const recentlyOpened = await fetchRecentlyOpened(ctx.supabase, ctx.workspaceId, 30);
+  let opened: { lead: Lead; reason: string }[] = [];
+  if (recentlyOpened.length) {
+    const { data, error } = await base().in('id', recentlyOpened.map((o) => o.lead.id));
+    if (error) throw fromPostgrest(error);
+    const byId = new Map(((data ?? []) as unknown as Lead[]).map((l) => [l.id, l]));
+    opened = recentlyOpened
+      .filter((o) => byId.has(o.lead.id))
+      .map((o) => ({
+        lead: byId.get(o.lead.id)!,
+        reason: `${o.clicks ? 'Carregou num link do email' : 'Abriu o email'} ${timeAgo(o.last_opened_at)} — “${o.subject}”`,
+      }));
+  }
+  // Quem abriu fica em "Abriram o email" e não conta nos outros separadores.
+  const openedIds = opened.map((o) => o.lead.id);
+  const notOpened = (q: Query): Query => (openedIds.length ? q.not('id', 'in', `(${openedIds.join(',')})`) : q);
+  const count = async (q: Query) => {
+    const { count: n, error } = await q;
+    if (error) throw fromPostgrest(error);
+    return n ?? 0;
+  };
+  const list = async (q: Query) => {
+    const { data, error } = await q.limit(MAX_ITEMS);
+    if (error) throw fromPostgrest(error);
+    return (data ?? []) as unknown as Lead[];
+  };
+  const missing = filter === 'missing';
+  const want = (k: ProspectingItem['kind']) => filter === 'all' || filter === k || (missing && k !== 'opened');
+
+  const [followUpLeads, freshLeads, nFollowUp, nFresh, nMissingFollowUp, nMissingFresh, done, emails] = await Promise.all([
     want('follow_up')
-      ? base()
-          .in('status', ['contactado', 'respondeu'])
-          .lte('next_action_on', today)
-          .order('next_action_on', { ascending: true })
-          .order('number', { ascending: true })
-          .limit(MAX_ITEMS)
-      : null,
+      ? list(notOpened(reach(followUps(), !missing)).order('next_action_on', { ascending: true }).order('number', { ascending: true }))
+      : [],
     want('new')
-      ? base()
-          .eq('status', 'identificado')
-          .or(`next_action_on.is.null,next_action_on.lte.${today}`)
-          .order('score', { ascending: false })
-          .order('number', { ascending: true })
-          .limit(MAX_ITEMS)
-      : null,
+      ? list(notOpened(reach(fresh(), !missing)).order('score', { ascending: false }).order('number', { ascending: true }))
+      : [],
+    count(notOpened(reach(followUps(true), true))),
+    count(notOpened(reach(fresh(true), true))),
+    count(notOpened(reach(followUps(true), false))),
+    count(notOpened(reach(fresh(true), false))),
     doneToday(ctx),
     emailsToday(ctx),
   ]);
-  if (followUps?.error) throw fromPostgrest(followUps.error);
-  if (fresh?.error) throw fromPostgrest(fresh.error);
 
   const items: ProspectingItem[] = [];
   const seen = new Set<string>();
@@ -135,22 +174,21 @@ export async function getProspectingQueue(ctx: ApiContext, filter: ProspectingFi
     items.push({ lead, kind, reason });
   };
 
-  if (opened.length) {
-    const { data, error } = await base().in('id', opened.map((o) => o.lead.id));
-    if (error) throw fromPostgrest(error);
-    const byId = new Map(((data ?? []) as unknown as Lead[]).map((l) => [l.id, l]));
-    for (const o of opened) {
-      const lead = byId.get(o.lead.id);
-      if (lead) push(lead, 'opened', `${o.clicks ? 'Carregou num link do email' : 'Abriu o email'} ${timeAgo(o.last_opened_at)} — “${o.subject}”`);
-    }
-  }
-  for (const lead of (followUps?.data ?? []) as unknown as Lead[]) {
+  if (want('opened') && !missing) for (const o of opened) push(o.lead, 'opened', o.reason);
+  for (const lead of followUpLeads) {
     const late = lead.next_action_on && lead.next_action_on < today;
     push(lead, 'follow_up', `${lead.next_action_text ?? 'Follow-up'} — ${late ? `em atraso desde ${formatDate(lead.next_action_on)}` : 'para hoje'}`);
   }
-  for (const lead of (fresh?.data ?? []) as unknown as Lead[]) {
+  for (const lead of freshLeads) {
     push(lead, 'new', lead.next_action_on ? `${lead.next_action_text ?? 'Primeiro contacto'} — ${formatDate(lead.next_action_on)}` : 'Ainda não foi contactado');
   }
+  const counts = {
+    opened: opened.length,
+    follow_up: nFollowUp,
+    new: nFresh,
+    missing: nMissingFollowUp + nMissingFresh,
+    all: opened.length + nFollowUp + nFresh,
+  };
 
   // Quantas vezes já se carregou em "Não atendeu" e "Contactado" em cada lead.
   const attempts = await outcomesByLead(ctx, items.map((i) => i.lead.id));
@@ -167,7 +205,7 @@ export async function getProspectingQueue(ctx: ApiContext, filter: ProspectingFi
       item.sequence = { step: index + 1, total: seq.steps.length, day: step.day, channel: step.channel, template_id: step.template_id };
     }
   }
-  return { items, done_today: done, emails_today: emails };
+  return { items, counts, done_today: done, emails_today: emails };
 }
 
 /** Resultados registados na Prospeção, por lead, do mais antigo para o mais recente. */

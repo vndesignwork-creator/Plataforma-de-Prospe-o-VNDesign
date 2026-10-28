@@ -215,7 +215,9 @@ test('prospeção (email): quem abriu o email aparece em "Abriram o email", mesm
   const row = page.getByRole('list', { name: 'Leads para contactar' }).getByRole('listitem', { name: new RegExp(`Quintal ${run}`) });
   await expect(row.getByText(/Carregou num link do email/)).toBeVisible();
   await expect(row.getByRole('link', { name: 'Ligar' }).or(row.getByRole('button', { name: 'Ligar' })).first()).toBeVisible();
-  await expect(page.getByText(/desta lista sem email/)).toHaveCount(0);
+  // E não aparece em "Falta email".
+  const missing = (await (await page.request.get('/api/v1/prospecting?filter=missing&mode=email')).json()).data.items as { lead: { id: string } }[];
+  expect(missing.some((i) => i.lead.id === lead.id)).toBe(false);
 });
 
 test('prospeção (telefone): um email devolvido não conta como contacto e não há follow-up para ele', async ({ page }) => {
@@ -248,4 +250,44 @@ test('prospeção (telefone): um email devolvido não conta como contacto e não
   await expect(page.getByText(/Email devolvido a/)).toBeVisible();
   await expect(page.getByRole('button', { name: /Enviar follow-up/ })).toHaveCount(0);
   await page.request.put('/api/v1/preferences/prospecting.mode', { data: { value: 'email' } });
+});
+
+test('prospeção: separadores com contagens e "Falta email" calculado no servidor', async ({ page }) => {
+  const past = '2020-01-03';
+  const semEmail = await createLead(page.request, { company_name: `Sem Email FU ${run}`, phone: '912000111', status: 'contactado' });
+  const comEmail = await createLead(page.request, { company_name: `Com Email FU ${run}`, email: `geral@fu-${run}.pt`, status: 'contactado' });
+  for (const id of [semEmail.id, comEmail.id]) {
+    const res = await page.request.patch(`/api/v1/leads/${id}`, { data: { next_action_on: past, next_action_text: 'Follow-up' } });
+    expect(res.status(), await res.text()).toBe(200);
+  }
+  const queue = async (filter: string, mode: string) =>
+    (await (await page.request.get(`/api/v1/prospecting?filter=${filter}&mode=${mode}`)).json()).data as {
+      items: { lead: { id: string }; kind: string }[];
+      counts: Record<string, number>;
+    };
+  const ids = (q: { items: { lead: { id: string } }[] }) => q.items.map((i) => i.lead.id);
+
+  // Por email: o lead sem email está em "Falta email", não em "Follow-ups".
+  const fu = await queue('follow_up', 'email');
+  expect(ids(fu)).toContain(comEmail.id);
+  expect(ids(fu)).not.toContain(semEmail.id);
+  const miss = await queue('missing', 'email');
+  expect(ids(miss)).toContain(semEmail.id);
+  expect(ids(miss)).not.toContain(comEmail.id);
+  expect(miss.counts.missing).toBeGreaterThanOrEqual(1);
+  expect(fu.counts.all).toBe(fu.counts.opened + fu.counts.follow_up + fu.counts.new);
+  // Por telefone: o mesmo lead (tem telefone) já está nos "Follow-ups".
+  expect(ids(await queue('follow_up', 'phone'))).toContain(semEmail.id);
+  expect(ids(await queue('missing', 'phone'))).not.toContain(semEmail.id);
+
+  // No ecrã: contagem em cada separador e a lista "Falta email" vem do servidor.
+  await page.request.put('/api/v1/preferences/prospecting.mode', { data: { value: 'email' } });
+  await page.goto('/prospecao');
+  await expect(page.getByRole('tab', { name: /^Follow-ups \d+$/ })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /^Falta email \d+$/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /com follow-up ou por contactar sem email → Falta email/ })).toBeVisible();
+  await page.getByRole('tab', { name: /^Falta email/ }).click();
+  await expect(page.getByRole('list', { name: 'Leads sem contacto' }).getByRole('listitem', { name: new RegExp(`Sem Email FU ${run}`) })).toBeVisible();
+  await page.getByRole('tab', { name: /^Follow-ups/ }).click();
+  await expect(page.getByRole('list', { name: 'Leads para contactar' }).getByRole('listitem', { name: new RegExp(`Com Email FU ${run}`) })).toBeVisible();
 });

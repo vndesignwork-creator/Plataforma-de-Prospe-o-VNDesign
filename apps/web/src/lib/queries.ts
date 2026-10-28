@@ -39,7 +39,8 @@ import type {
   ProjectCollaborator,
   LaunchChecklist,
   LaunchCheckKey,
-  ProspectingFilter,
+  ProspectingMode,
+  ProspectingView,
   ProspectingOutcome,
   LostReason,
   ProspectingQueue,
@@ -452,10 +453,10 @@ export function useRunAudit(leadId: string) {
 }
 
 /** Sessão de prospeção: a fila carrega-se uma vez (a ordem não muda a meio da sessão). */
-export function useProspectingQueue(filter: ProspectingFilter) {
+export function useProspectingQueue(filter: ProspectingView, mode: ProspectingMode) {
   return useQuery({
-    queryKey: ['prospecting', filter],
-    queryFn: () => api<{ data: ProspectingQueue }>(`/prospecting?filter=${filter}`).then((r) => r.data),
+    queryKey: ['prospecting', filter, mode],
+    queryFn: () => api<{ data: ProspectingQueue }>('/prospecting', { query: { filter, mode } }).then((r) => r.data),
     staleTime: Infinity,
     refetchOnWindowFocus: false,
   });

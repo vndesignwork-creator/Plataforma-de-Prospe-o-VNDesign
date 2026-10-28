@@ -63,9 +63,35 @@ export const ProspectingItemSchema = z
   .meta({ id: 'ProspectingItem' });
 export type ProspectingItem = z.infer<typeof ProspectingItemSchema>;
 
+/** Separadores: os da fila e "Falta email" / "Falta contacto" (follow-ups e por contactar sem forma de contactar). */
+export const PROSPECTING_VIEWS = [...PROSPECTING_FILTERS, 'missing'] as const;
+export type ProspectingView = (typeof PROSPECTING_VIEWS)[number];
+
+export const ProspectingQuerySchema = z.object({
+  filter: z.enum(PROSPECTING_VIEWS).catch('all').default('all'),
+  /**
+   * A trabalhar por email (só conta quem tem um email válido) ou por telefone (telefone ou email
+   * válido). Sem modo, a lista traz todos (e "missing" usa o critério do email).
+   */
+  mode: z.enum(PROSPECTING_MODES).optional().catch(undefined),
+});
+
+/**
+ * Pode-se contactar este lead neste modo? Um email devolvido não conta. Quem abriu o
+ * email conta sempre (o email chegou-lhe).
+ */
+export function prospectingReachable(lead: Pick<z.infer<typeof LeadSchema>, 'email' | 'phone' | 'email_bounced_at'>, mode: ProspectingMode): boolean {
+  const email = !!lead.email && !lead.email_bounced_at;
+  return mode === 'email' ? email : email || !!lead.phone;
+}
+
 export const ProspectingQueueSchema = z
   .object({
     items: z.array(ProspectingItemSchema),
+    /** Quantos há em cada separador (neste modo), mesmo os que não vêm na lista (máx. 150 por pedido). */
+    counts: z
+      .object({ all: z.int(), opened: z.int(), follow_up: z.int(), new: z.int(), missing: z.int() })
+      .optional(),
     done_today: z.int().meta({ description: 'Contactos registados hoje na sessão de prospeção' }),
     emails_today: z.int().meta({ description: 'Emails enviados hoje pela plataforma (por quem pede)' }),
   })

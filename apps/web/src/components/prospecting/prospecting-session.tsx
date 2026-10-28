@@ -26,7 +26,7 @@ import {
   type LostReason,
   type ProspectingMode,
   type ProspectingAttempts,
-  type ProspectingFilter,
+  type ProspectingView,
   type ProspectingItem,
   type ProspectingOutcome,
   type ProspectingResult,
@@ -88,8 +88,8 @@ const LATER = [
   { days: 30, label: 'Daqui a 1 mês' },
 ];
 
-/** Separadores: os da fila do servidor e "Falta email" / "Falta contacto" (os da lista toda sem forma de contactar). */
-type View = ProspectingFilter | 'missing';
+/** Separadores: os da fila do servidor e "Falta email" / "Falta contacto" (follow-ups e por contactar sem forma de contactar). */
+type View = ProspectingView;
 const views = (mode: ProspectingMode): { value: View; label: string }[] => [
   ...PROSPECTING_FILTERS.map((f) => ({ value: f as View, label: PROSPECTING_FILTER_LABELS[f] })),
   { value: 'missing', label: mode === 'email' ? 'Falta email' : 'Falta contacto' },
@@ -103,9 +103,6 @@ const NO_ATTEMPTS: ProspectingAttempts = {
 };
 // Um email devolvido não conta como contacto (o endereço não existe).
 const hasContact = (lead: Lead) => !!(lead.phone || (lead.email && !lead.email_bounced_at));
-/** A email: sem email não há nada a enviar; a telefonar: basta um telefone ou um email. */
-// Um email devolvido não conta (o endereço não existe): o lead vai para "Falta email".
-const reachable = (lead: Lead, mode: ProspectingMode) => (mode === 'email' ? !!lead.email && !lead.email_bounced_at : hasContact(lead));
 
 /** O que se registou nesta sessão (fica à vista na linha). */
 type Done = {
@@ -154,12 +151,27 @@ function afterEmail(lead: Lead, result: LeadEmailSendResult): { lead: Lead; done
   return { lead: next, done: { outcome: 'email', tone: 'success', text: `Email enviado${on ? ` · próximo a ${on}` : ''}` } };
 }
 
+/** Lista vazia: o que quer dizer em cada separador. */
+function emptyText(view: View, mode: ProspectingMode, missing: number): string {
+  const elsewhere = missing ? ` Há ${missing} lead${missing === 1 ? '' : 's'} em “${mode === 'email' ? 'Falta email' : 'Falta contacto'}”.` : '';
+  switch (view) {
+    case 'opened':
+      return 'Ninguém abriu um email teu nas últimas 48 horas. Quando alguém abrir ou carregar num link, aparece aqui primeiro.';
+    case 'follow_up':
+      return `Não há follow-ups para hoje nem em atraso.${elsewhere}`;
+    case 'new':
+      return `Não há leads por contactar.${elsewhere} Gera novos leads ou importa uma lista.`;
+    default:
+      return `Os follow-ups de hoje estão feitos e não há leads por contactar.${elsewhere} Gera novos leads ou importa uma lista.`;
+  }
+}
+
 export function ProspectingSession() {
   const { data: modePref } = usePreference<ProspectingMode>(PROSPECTING_MODE_PREFERENCE);
   const setModePref = useSetPreference<ProspectingMode>(PROSPECTING_MODE_PREFERENCE);
   const mode: ProspectingMode = modePref === 'phone' ? 'phone' : 'email';
   const [view, setView] = useState<View>('all');
-  const { data, isLoading, refetch, isFetching } = useProspectingQueue(view === 'missing' ? 'all' : view);
+  const { data, isLoading, refetch, isFetching } = useProspectingQueue(view, mode);
   // O que mudou nesta sessão em cada lead (lead atualizado, contagens, último resultado).
   const [local, setLocal] = useState<Record<string, { item: ProspectingItem; done?: Done }>>({});
   // Os tratados, do mais recente para o mais antigo.
@@ -170,11 +182,10 @@ export function ProspectingSession() {
   const [emailsSent, setEmailsSent] = useState(0);
 
   const items = data?.items ?? [];
-  // Falta email/contacto: decide-se pelo lead como veio da fila (guardar um contacto não o faz saltar de separador).
-  // Quem abriu o email fica sempre na lista (o email chegou-lhe; o passo seguinte é ligar ou responder).
-  const ready = (i: ProspectingItem) => i.kind === 'opened' || reachable(i.lead, mode);
-  const missing = items.filter((i) => !ready(i));
-  const pending = (view === 'missing' ? missing : items.filter(ready))
+  // O servidor separa os sem email/contacto ("Falta …") dos outros; guardar um contacto não faz o lead saltar de separador.
+  const counts = data?.counts;
+  const missingCount = counts?.missing ?? 0;
+  const pending = items
     .filter((i) => !local[i.lead.id]?.done)
     .map((i) => local[i.lead.id]?.item ?? i);
   const done = doneIds.map((id) => local[id]).filter((d) => !!d);
@@ -246,6 +257,10 @@ export function ProspectingSession() {
               )}
             >
               {v.label}
+              {counts ? ' ' : null}
+              {counts ? (
+                <span className={cn('ml-0.5 text-xs tabular', v.value === 'missing' && counts.missing ? 'text-warning' : 'text-muted')}>{counts[v.value]}</span>
+              ) : null}
             </button>
           ))}
         </div>
@@ -312,11 +327,7 @@ export function ProspectingSession() {
             </EmptyState>
           ) : (
             <EmptyState title={done.length ? 'Terminaste a lista! 🎉' : 'Não há leads para contactar agora'}>
-              <p>
-                {done.length
-                  ? `Trataste ${done.length} lead${done.length === 1 ? '' : 's'} nesta sessão.`
-                  : 'Os follow-ups de hoje estão feitos e não há leads por contactar. Gera novos leads ou importa uma lista.'}
-              </p>
+              <p>{done.length ? `Trataste ${done.length} lead${done.length === 1 ? '' : 's'} nesta sessão.` : emptyText(view, mode, missingCount)}</p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 <Button variant="outline" onClick={() => changeView(view)} loading={isFetching}>
                   <RotateCcw className="h-4 w-4" aria-hidden /> Recarregar a lista
@@ -354,9 +365,15 @@ export function ProspectingSession() {
         </Card>
       ) : null}
 
-      {view !== 'missing' && data && missing.length ? (
+      {data && counts && counts[view] > items.length ? (
+        <p className="text-sm text-muted">
+          A mostrar os primeiros {items.length} de {counts[view]}. Quando acabares, carrega em “Recarregar a lista” para veres os seguintes.
+        </p>
+      ) : null}
+
+      {view !== 'missing' && data && missingCount ? (
         <button type="button" onClick={() => changeView('missing')} className="self-start text-sm text-accent-text hover:underline">
-          {missing.length} lead{missing.length === 1 ? '' : 's'} desta lista {mode === 'email' ? 'sem email → Falta email' : 'sem telefone nem email → Falta contacto'}
+          {missingCount} lead{missingCount === 1 ? '' : 's'} com follow-up ou por contactar {mode === 'email' ? 'sem email → Falta email' : 'sem telefone nem email → Falta contacto'}
         </button>
       ) : null}
 
