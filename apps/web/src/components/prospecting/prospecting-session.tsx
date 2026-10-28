@@ -170,8 +170,10 @@ export function ProspectingSession() {
 
   const items = data?.items ?? [];
   // Falta email/contacto: decide-se pelo lead como veio da fila (guardar um contacto não o faz saltar de separador).
-  const missing = items.filter((i) => !reachable(i.lead, mode));
-  const pending = (view === 'missing' ? missing : items.filter((i) => reachable(i.lead, mode)))
+  // Quem abriu o email fica sempre na lista (o email chegou-lhe; o passo seguinte é ligar ou responder).
+  const ready = (i: ProspectingItem) => i.kind === 'opened' || reachable(i.lead, mode);
+  const missing = items.filter((i) => !ready(i));
+  const pending = (view === 'missing' ? missing : items.filter(ready))
     .filter((i) => !local[i.lead.id]?.done)
     .map((i) => local[i.lead.id]?.item ?? i);
   const done = doneIds.map((id) => local[id]).filter((d) => !!d);

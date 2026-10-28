@@ -116,6 +116,8 @@ async function announce(row: TrackingRow, kind: 'opened' | 'clicked', now: Date,
       body: row.subject,
       payload: { tracking_id: row.id, ...(url ? { url } : {}) },
     });
+    // Abriu o email: o endereço funciona (um aviso de devolução antigo deixa de valer).
+    await admin.from('leads').update({ email_bounced_at: null }).eq('id', row.lead_id).not('email_bounced_at', 'is', null);
   }
   const due = first || !row.notified_at || now.getTime() - new Date(row.notified_at).getTime() >= RENOTIFY_MS;
   if (!due || !row.created_by) return;

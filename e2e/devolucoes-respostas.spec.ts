@@ -196,3 +196,24 @@ test('horário de silêncio: ligar, escolher as horas e o fim de semana', async 
   await page.reload();
   await expect(page.getByTestId('quiet-hours').getByRole('switch', { name: 'Desligar o horário de silêncio' })).toBeVisible();
 });
+
+test('prospeção (email): quem abriu o email aparece em "Abriram o email", mesmo sem email válido na ficha', async ({ page }) => {
+  await connectAccount(page);
+  const to = `abriu-${run}@quintal.pt`;
+  // O email foi enviado para um endereço escrito à mão; a ficha não tem email.
+  const lead = await createLead(page.request, { company_name: `Quintal ${run}`, phone: '912345678', status: 'contactado' });
+  const subject = `Sugestão ${run}`;
+  const sent = await page.request.post(`/api/v1/leads/${lead.id}/email`, { data: { to, subject, body: 'Olá,\n\nVeja: https://vndesign.pt/portefolio' } });
+  expect(sent.status(), await sent.text()).toBe(200);
+  const html = await mailHtml(page.request, to, subject);
+  const link = /href="([^"]+\/api\/v1\/public\/t\/[^"]+\/0)"/.exec(html)?.[1];
+  await page.request.get(link!, { maxRedirects: 0, headers: { 'user-agent': 'Mozilla/5.0 (iPhone)' } });
+
+  await page.request.put('/api/v1/preferences/prospecting.mode', { data: { value: 'email' } });
+  await page.goto('/prospecao');
+  await page.getByRole('tab', { name: 'Abriram o email' }).click();
+  const row = page.getByRole('list', { name: 'Leads para contactar' }).getByRole('listitem', { name: new RegExp(`Quintal ${run}`) });
+  await expect(row.getByText(/Carregou num link do email/)).toBeVisible();
+  await expect(row.getByRole('link', { name: 'Ligar' }).or(row.getByRole('button', { name: 'Ligar' })).first()).toBeVisible();
+  await expect(page.getByText(/desta lista sem email/)).toHaveCount(0);
+});
