@@ -139,6 +139,17 @@
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * Barras de rolagem finas em toda a plataforma (página, listas, janelas, menus), iguais às
+ * de Leads e Kanban. Fica na camada base: "[scrollbar-width:none]" continua a escondê-las.
+ */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-input) transparent;
+  }
+}
+
 /* Barras de rolagem mais finas (tabela de Leads, quadro do Kanban). */
 @utility scroll-thin {
   scrollbar-width: thin;
