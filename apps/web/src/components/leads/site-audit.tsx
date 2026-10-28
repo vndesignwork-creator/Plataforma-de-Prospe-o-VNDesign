@@ -124,7 +124,7 @@ function AuditScreenshots({ audit, lead, latest }: { audit: SiteAudit; lead: Lea
       </div>
       {capture.isPending ? <p className="text-sm text-muted" aria-live="polite">A abrir o site no telemóvel e no computador… (até 1 minuto)</p> : null}
       {shots.length ? (
-        <div className="flex items-end gap-3 overflow-x-auto pb-1">
+        <div className="relative flex items-end gap-3 overflow-x-auto pb-1">
           {shots.map((shot) => (
             <figure key={shot.device} className="shrink-0">
               <a href={shot.url} target="_blank" rel="noopener" className="block overflow-hidden rounded-lg border border-border bg-surface-2 hover:border-border-strong">

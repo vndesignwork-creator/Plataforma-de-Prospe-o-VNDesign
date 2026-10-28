@@ -42,7 +42,7 @@ export function TeamStatsSection() {
       </div>
       <Card>
         <CardHeader title="Por pessoa" description="Contactos registados, leads que avançaram e leads criados." />
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full min-w-[44rem] text-sm">
             <caption className="sr-only">Trabalho de cada pessoa da equipa</caption>
             <thead>

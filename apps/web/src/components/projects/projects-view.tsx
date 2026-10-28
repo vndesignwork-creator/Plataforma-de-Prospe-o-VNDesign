@@ -222,7 +222,7 @@ export function ProjectsView() {
       {view === 'list' && projects?.length ? (
         <div className="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-4">
           {filtering ? (
-            <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none]" role="group" aria-label="Filtrar projetos">
+            <div className="relative flex gap-1.5 overflow-x-auto [scrollbar-width:none]" role="group" aria-label="Filtrar projetos">
               {PROJECT_FILTERS.filter((f) => f !== 'pagamentos' || showPayments).map((f) => (
                 <button
                   key={f}

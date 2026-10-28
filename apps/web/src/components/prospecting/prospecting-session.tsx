@@ -101,7 +101,8 @@ const NO_ATTEMPTS: ProspectingAttempts = {
   contacted: 0,
   no_answer_streak: 0,
 };
-const hasContact = (lead: Lead) => !!(lead.phone || lead.email);
+// Um email devolvido não conta como contacto (o endereço não existe).
+const hasContact = (lead: Lead) => !!(lead.phone || (lead.email && !lead.email_bounced_at));
 /** A email: sem email não há nada a enviar; a telefonar: basta um telefone ou um email. */
 // Um email devolvido não conta (o endereço não existe): o lead vai para "Falta email".
 const reachable = (lead: Lead, mode: ProspectingMode) => (mode === 'email' ? !!lead.email && !lead.email_bounced_at : hasContact(lead));
@@ -569,7 +570,7 @@ function LeadRow({
                 template="Email de prospeção"
               />
             ) : null}
-            {!lead.phone || !lead.email ? (
+            {!lead.phone || !lead.email || lead.email_bounced_at ? (
               <Button size="sm" variant="ghost" aria-expanded={finder} onClick={() => setFinder(!finder)}>
                 <Search className="h-3.5 w-3.5" aria-hidden />{' '}
                 {hasContact(lead) ? `Procurar ${lead.phone ? 'email' : 'telefone'}` : 'Procurar contacto'}

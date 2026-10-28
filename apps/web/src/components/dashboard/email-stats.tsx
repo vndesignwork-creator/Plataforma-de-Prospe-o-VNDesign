@@ -39,7 +39,7 @@ export function EmailStatsSection() {
     <div className="grid gap-4 xl:grid-cols-2">
       <Card>
         <CardHeader title="Emails: o que resulta" description="Os emails enviados pela plataforma, por modelo" actions={period} />
-        <div className="overflow-x-auto p-4">
+        <div className="relative overflow-x-auto p-4">
           {isLoading ? (
             <Skeleton className="h-32" />
           ) : !data?.templates.length ? (
@@ -121,7 +121,7 @@ export function EmailStatsSection() {
 function Heatmap({ grid }: { grid: number[][] }) {
   const max = Math.max(1, ...grid.flat());
   return (
-    <div className="overflow-x-auto">
+    <div className="relative overflow-x-auto">
       <table className="border-separate border-spacing-0.5 text-xs" aria-label="Aberturas por dia e hora">
         <thead>
           <tr>

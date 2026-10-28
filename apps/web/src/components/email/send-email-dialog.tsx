@@ -237,7 +237,8 @@ export function FollowUpEmailButton({
 }) {
   const [draft, setDraft] = useState<FollowUpDraft | null>(null);
   const [loading, setLoading] = useState(false);
-  if (lead.status !== 'contactado' || !lead.email || lead.anonymized_at) return null;
+  // Email devolvido: não há follow-up a enviar para esse endereço (procura-se outro).
+  if (lead.status !== 'contactado' || !lead.email || lead.email_bounced_at || lead.anonymized_at) return null;
 
   async function open() {
     setLoading(true);

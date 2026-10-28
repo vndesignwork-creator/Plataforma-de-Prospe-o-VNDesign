@@ -97,9 +97,9 @@ export function SequenceStep({ lead, step }: { lead: Lead; step: NonNullable<Pro
           </Button>
         ) : null}
       </div>
-      {(step.channel === 'whatsapp' && !wa) || (step.channel === 'email' && !lead.email) || (step.channel === 'call' && !lead.phone) ? (
+      {(step.channel === 'whatsapp' && !wa) || (step.channel === 'email' && (!lead.email || lead.email_bounced_at)) || (step.channel === 'call' && !lead.phone) ? (
         <p className="text-xs text-warning">
-          Falta o {step.channel === 'email' ? 'email' : 'telefone'} deste lead: usa “Procurar contacto” ou outro canal e regista “Contactado” na mesma.
+          {step.channel === 'email' && lead.email_bounced_at ? 'O email deste lead foi devolvido' : `Falta o ${step.channel === 'email' ? 'email' : 'telefone'} deste lead`}: usa “Procurar contacto” ou outro canal e regista “Contactado” na mesma.
         </p>
       ) : null}
       <p className="text-xs text-muted">Depois de enviar, carrega em “Contactado”: o próximo passo fica agendado para o dia certo.</p>

@@ -325,7 +325,7 @@ export function QuoteSettingsCard({ settings }: { settings: SettingsWithMail }) 
         <Field label="Objetivo por hora (€)" hint="Vazio = sem comparação." className="w-48">
           <Input inputMode="decimal" placeholder="35" value={targetValue} onChange={(e) => setTarget(e.target.value)} />
         </Field>
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full min-w-[40rem] text-sm">
             <caption className="sr-only">Extras da calculadora</caption>
             <thead>

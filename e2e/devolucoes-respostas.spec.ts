@@ -217,3 +217,35 @@ test('prospeção (email): quem abriu o email aparece em "Abriram o email", mesm
   await expect(row.getByRole('link', { name: 'Ligar' }).or(row.getByRole('button', { name: 'Ligar' })).first()).toBeVisible();
   await expect(page.getByText(/desta lista sem email/)).toHaveCount(0);
 });
+
+test('prospeção (telefone): um email devolvido não conta como contacto e não há follow-up para ele', async ({ page }) => {
+  await connectAccount(page);
+  const email = `ninguem@so-email-${run}.pt`;
+  const lead = await createLead(page.request, { company_name: `Só Email ${run}`, email, status: 'contactado' });
+  await deliverToInbox(
+    'Mail Delivery System <MAILER-DAEMON@mail.vndesign.pt>',
+    'Undelivered Mail Returned to Sender',
+    `This is the mail system.\r\n\r\nFinal-Recipient: rfc822; ${email}\r\nStatus: 5.1.1\r\n`,
+  );
+  await page.request.post('/api/v1/mail-account/check-replies');
+  expect((await getLead(page.request, lead.id)).email_bounced_at).not.toBeNull();
+  // O mais atrasado vem primeiro na fila (a base de teste tem muitos follow-ups).
+  const patch = await page.request.patch(`/api/v1/leads/${lead.id}`, { data: { next_action_on: '2020-01-02' } });
+  expect(patch.status(), await patch.text()).toBe(200);
+
+  await page.request.put('/api/v1/preferences/prospecting.mode', { data: { value: 'phone' } });
+  await page.goto('/prospecao');
+  await page.getByRole('tab', { name: 'Follow-ups' }).click();
+  const name = new RegExp(`Só Email ${run}`);
+  await expect(page.getByRole('list', { name: 'Leads para contactar' }).getByRole('listitem', { name })).toHaveCount(0);
+  await page.getByRole('tab', { name: 'Falta contacto' }).click();
+  const row = page.getByRole('listitem', { name });
+  await expect(row).toBeVisible();
+  await expect(row.getByRole('button', { name: 'Procurar contacto' })).toBeVisible();
+
+  // Na ficha: sem botão "Enviar follow-up" para o endereço devolvido.
+  await page.goto(`/leads/${lead.id}`);
+  await expect(page.getByText(/Email devolvido a/)).toBeVisible();
+  await expect(page.getByRole('button', { name: /Enviar follow-up/ })).toHaveCount(0);
+  await page.request.put('/api/v1/preferences/prospecting.mode', { data: { value: 'email' } });
+});
