@@ -75,14 +75,15 @@ export function SettingsNav() {
         </Link>
       ) : null}
       <nav aria-label="Secções das definições" className="hidden lg:block">
-        <div className="sticky top-6 flex flex-col gap-4">
+        <div className="sticky top-6 flex flex-col gap-3">
           {SETTINGS_GROUPS.map((group) => {
             const items = sections.filter((s) => s.group === group.id);
             if (!items.length) return null;
             return (
               <div key={group.id}>
-                <p className="mb-1 px-3 text-xs font-medium tracking-wide text-muted uppercase">{group.label}</p>
-                <ul className="flex flex-col gap-0.5 text-sm">
+                <p className="mb-1.5 px-1 text-xs font-medium tracking-wide text-muted uppercase">{group.label}</p>
+                {/* Cada grupo num cartão com contorno (o mesmo estilo dos grupos dos Scripts). */}
+                <ul className="flex flex-col gap-0.5 rounded-xl border border-border bg-surface p-1.5 text-sm">
                   {items.map(({ slug, label, icon: Icon }) => {
                     const href = `/definicoes/${slug}`;
                     const active = pathname === href;
@@ -92,11 +93,18 @@ export function SettingsNav() {
                           href={href}
                           aria-current={active ? 'page' : undefined}
                           className={cn(
-                            'flex min-h-9 items-center gap-2.5 rounded-lg px-3 transition-colors',
-                            active ? 'bg-accent-soft font-medium text-accent-text' : 'text-muted hover:bg-surface-2 hover:text-fg',
+                            'flex min-h-10 items-center gap-2.5 rounded-lg px-2 transition-colors',
+                            active ? 'bg-accent-soft font-medium text-accent-text' : 'hover:bg-surface-2',
                           )}
                         >
-                          <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                          <span
+                            className={cn(
+                              'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
+                              active ? 'bg-accent-soft text-accent-text' : 'bg-surface-2 text-muted',
+                            )}
+                          >
+                            <Icon className="h-3.5 w-3.5" aria-hidden />
+                          </span>
                           <span className="truncate">{label}</span>
                         </Link>
                       </li>
