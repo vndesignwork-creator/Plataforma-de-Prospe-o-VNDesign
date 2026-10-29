@@ -7,10 +7,13 @@ import {
   businessFromLead,
   buildTemplateContext,
   googleComparison,
+  googleMapsSearchUrl,
+  googleProfileUnconfirmed,
   guessBusinessType,
   jsonLdScript,
   parseGoogleProfiles,
   renderTemplate,
+  similarCompanyName,
   toOpeningHours,
 } from '../src';
 
@@ -84,7 +87,17 @@ describe('Kit GEO: perfil do Google', () => {
     expect(googleComparison({ lead: mk(4.2, 18), competitors: [mk(4.6, 100), mk(4.8, 140)] })).toBe(
       'No Google Maps, a sua empresa tem 4,2★ com 18 avaliações; os concorrentes que as IAs recomendam têm em média 4,7★ e 120 avaliações.',
     );
-    expect(googleComparison({ lead: mk(null, null, false), competitors: [] })).toBe('A sua empresa não aparece no Google Maps.');
+    // Só a Google Places API pode dizer que não há perfil; pela pesquisa da IA fica "não confirmado" (sem frase).
+    expect(googleComparison({ source: 'places', lead: mk(null, null, false), competitors: [] })).toBe('A sua empresa não aparece no Google Maps.');
+    expect(googleComparison({ source: 'ia', lead: mk(null, null, false), competitors: [mk(4.6, 100)] })).toBeNull();
+    expect(googleProfileUnconfirmed({ source: 'ia' }, mk(null, null, false))).toBe(true);
+    expect(googleProfileUnconfirmed({ source: 'places' }, mk(null, null, false))).toBe(false);
+  });
+  it('nomes escritos de outra forma e pesquisa no Maps', () => {
+    expect(similarCompanyName('LANG — Sociedade de Construções e Projectos, Lda.', 'LANG - Soc. Construções e Projectos, lda')).toBe(true);
+    expect(similarCompanyName('API Construções', 'Api-construções Lda')).toBe(true);
+    expect(similarCompanyName('API Construções', 'Lusa Construções')).toBe(false);
+    expect(googleMapsSearchUrl('API Construções', 'Amadora')).toBe('https://www.google.com/maps/search/?api=1&query=API%20Constru%C3%A7%C3%B5es%20Amadora');
   });
 });
 

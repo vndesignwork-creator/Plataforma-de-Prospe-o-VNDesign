@@ -476,7 +476,7 @@ recomendar o negócio (bloco **Preparado para as IAs (GEO)**, "x de 6"):
 ### Kit GEO (ficha do lead)
 
 O que se entrega ao cliente para o site aparecer nas IAs, tudo pronto a copiar (WordPress/Bricks: elemento "Código"):
-- **Perfil do Google**: nota e número de avaliações do lead e dos concorrentes do último "Aparece nas IAs?", com uma frase de comparação para o cliente (também no relatório PDF). Com `GOOGLE_PLACES_API_KEY` usa a Google Places API (dados exatos); sem ela, a IA com pesquisa (aproximado — confirmar no Maps).
+- **Perfil do Google**: nota e número de avaliações do lead e dos concorrentes do último "Aparece nas IAs?", com uma frase de comparação para o cliente (também no relatório PDF). Com `GOOGLE_PLACES_API_KEY` usa a Google Places API (dados exatos; reconhece o perfil pelo site, telefone ou nome escrito de outra forma); sem ela, a IA com pesquisa (aproximado). A pesquisa da IA não vê o Google Maps: quando não encontra o perfil mostra "Não confirmado" (e não "Sem perfil"), não escreve a frase para o cliente e dá o link "Procurar no Maps" para confirmar.
 - **Dados estruturados**: o código schema.org (JSON-LD) do negócio — tipo, morada, telefone, horário ("Seg–Sex 09:00–18:00"), redes, serviços — sugerido a partir da ficha e editável.
 - **Perguntas frequentes**: a IA (fornecedor do "Email com IA") escreve 8 a 10 perguntas e respostas do setor, editáveis; sai o HTML (acordeão) e o JSON-LD FAQPage.
 - **llms.txt**: resumo do negócio para as IAs, para pôr na raiz do site (descarregar ou copiar).

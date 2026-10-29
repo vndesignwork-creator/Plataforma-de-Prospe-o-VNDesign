@@ -7,6 +7,7 @@
  */
 import { z } from 'zod';
 import { isSocialUrl } from './links';
+import { normalizeCompanyName } from './normalize';
 
 // -----------------------------------------------------------------------------
 // Dados do negócio (editáveis)
@@ -261,10 +262,44 @@ export const GoogleCheckSchema = z
   .meta({ id: 'GoogleCheck' });
 export type GoogleCheck = z.infer<typeof GoogleCheckSchema>;
 
+/** Pesquisa no Google Maps (para confirmar à mão). */
+export function googleMapsSearchUrl(name: string, city?: string | null): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([name, city].filter(Boolean).join(' '))}`;
+}
+
+/**
+ * Sem perfil confirmado: só a Google Places API pode dizer que não existe. A
+ * pesquisa da IA não vê o Google Maps — "não encontrado" quer dizer "por confirmar".
+ */
+export function googleProfileUnconfirmed(check: Pick<GoogleCheck, 'source'>, p: GoogleProfile): boolean {
+  return !p.found && check.source !== 'places';
+}
+
+const NAME_FILLERS = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'soc', 'sociedade', 'lda', 'unipessoal', 'sa', 'o', 'a', 'os', 'as', 'the']);
+
+/**
+ * O mesmo nome com outra escrita: "LANG — Sociedade de Construções e Projectos, Lda."
+ * = "LANG - Soc. Construções e Projectos, lda"; "API Construções" = "Api-construções Lda".
+ */
+export function similarCompanyName(a: string | null | undefined, b: string | null | undefined): boolean {
+  const x = normalizeCompanyName(a);
+  const y = normalizeCompanyName(b);
+  if (!x || !y) return false;
+  if (x === y || (x.length >= 5 && y.length >= 5 && (x.includes(y) || y.includes(x)))) return true;
+  const words = (v: string) => v.split(' ').filter((w) => w.length > 1 && !NAME_FILLERS.has(w));
+  const wx = words(x);
+  const wy = words(y);
+  if (!wx.length || !wy.length || wx[0] !== wy[0]) return false;
+  const shared = wx.filter((w) => wy.includes(w)).length;
+  return shared / Math.min(wx.length, wy.length) >= 0.6;
+}
+
 /** Frase de comparação para o cliente ("4,2★ com 18 avaliações; os concorrentes têm em média 4,7★ e 120"). */
-export function googleComparison(check: Pick<GoogleCheck, 'lead' | 'competitors'>): string | null {
+export function googleComparison(check: Pick<GoogleCheck, 'lead' | 'competitors'> & Partial<Pick<GoogleCheck, 'source'>>): string | null {
   const fmt = (n: number) => n.toLocaleString('pt-PT', { maximumFractionDigits: 1 });
   const rated = check.competitors.filter((c) => c.found && c.rating !== null);
+  // Pela pesquisa da IA, "não encontrado" não chega para dizer ao cliente que não tem perfil.
+  if (!check.lead.found && check.source !== 'places') return null;
   if (!check.lead.found) {
     return rated.length
       ? `A sua empresa não aparece no Google Maps; os concorrentes têm em média ${fmt(avg(rated.map((c) => c.rating!)))}★ e ${Math.round(avg(rated.map((c) => c.reviews ?? 0)))} avaliações.`
@@ -311,18 +346,29 @@ export const GOOGLE_CHECK_TOOL = {
   },
 } as const;
 
+const GOOGLE_CHECK_HOW = `Para cada empresa, faz pelo menos duas pesquisas: "<nome> <cidade>" e "<nome> avaliações Google" (e, se houver, o telefone).
+O nome no Google pode estar escrito de outra forma (ex.: "LANG - Soc. Construções e Projectos, lda" = "LANG — Sociedade de Construções e Projectos, Lda."; "Api-construções Lda" = "API Construções"):
+é a mesma empresa se coincidir o telefone, a morada, o site ou o nome na mesma cidade.
+Contam como prova de perfil: um link google.com/maps ou maps.app.goo.gl, ou páginas que mostrem a nota e as avaliações do Google dessa empresa.`;
+
 export const GOOGLE_CHECK_SYSTEM_PROMPT = `Procuras perfis de empresas no Google Maps (Perfil da Empresa no Google) em Portugal.
 Para cada empresa pedida, pesquisa e indica se tem perfil, a nota média, o número de avaliações, o link do Maps e a morada.
-Usa só o que encontrares nas pesquisas; se não tiveres certeza de que é a mesma empresa, indica encontrado = false. Não inventes números.
+${GOOGLE_CHECK_HOW}
+Usa só o que encontrares nas pesquisas; se não encontrares prova, indica encontrado = false (quer dizer "não confirmado"). Não inventes números.
 No fim, chama a ferramenta ${GOOGLE_CHECK_TOOL_NAME} uma única vez, com um perfil por empresa, pela mesma ordem.`;
 
 export const GOOGLE_CHECK_JSON_SYSTEM_PROMPT = `Procuras perfis de empresas no Google Maps (Perfil da Empresa no Google) em Portugal.
 Para cada empresa pedida, pesquisa e indica se tem perfil, a nota média, o número de avaliações, o link do Maps e a morada.
-Usa só o que encontrares; se não tiveres certeza de que é a mesma empresa, encontrado = false. Não inventes números.
+${GOOGLE_CHECK_HOW}
+Usa só o que encontrares; se não encontrares prova, encontrado = false (quer dizer "não confirmado"). Não inventes números.
 Responde só com {"perfis":[{"nome":"…","encontrado":true,"nota":4.6,"avaliacoes":120,"link_maps":"…","morada":"…"}]}, sem texto à volta.`;
 
-export function buildGoogleCheckPrompt(companies: { name: string; city: string | null; website?: string | null }[]): string {
-  return `Empresas:\n${companies.map((c, i) => `${i + 1}. ${c.name}${c.city ? ` (${c.city})` : ''}${c.website ? ` — ${c.website}` : ''}`).join('\n')}`;
+export function buildGoogleCheckPrompt(
+  companies: { name: string; city: string | null; website?: string | null; phone?: string | null; address?: string | null }[],
+): string {
+  const line = (c: (typeof companies)[number], i: number) =>
+    `${i + 1}. ${c.name}${c.city ? ` (${c.city})` : ''}${c.website ? ` — ${c.website}` : ''}${c.phone ? ` — tel. ${c.phone}` : ''}${c.address ? ` — ${c.address}` : ''}`;
+  return `Empresas:\n${companies.map(line).join('\n')}`;
 }
 
 /** Lê a resposta da IA (pela ordem pedida). */

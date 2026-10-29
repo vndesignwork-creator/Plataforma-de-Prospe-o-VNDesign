@@ -14,6 +14,8 @@ import {
   buildLlmsTxt,
   formatDateTime,
   googleComparison,
+  googleMapsSearchUrl,
+  googleProfileUnconfirmed,
   jsonLdScript,
   type GeoBusiness,
   type GeoFaqItem,
@@ -110,7 +112,7 @@ export function GeoKitCard({ lead }: { lead: Lead }) {
             {isLoading || !geo ? (
               <Skeleton className="h-24" />
             ) : tab === 'google' ? (
-              <GoogleTab leadId={lead.id} geo={geo} />
+              <GoogleTab leadId={lead.id} geo={geo} city={lead.city} />
             ) : tab === 'schema' ? (
               <SchemaTab key={JSON.stringify(geo.business)} leadId={lead.id} geo={geo} />
             ) : tab === 'faq' ? (
@@ -127,7 +129,9 @@ export function GeoKitCard({ lead }: { lead: Lead }) {
 
 // -----------------------------------------------------------------------------
 
-function Stars({ p }: { p: GoogleProfile }) {
+function Stars({ p, unconfirmed }: { p: GoogleProfile; unconfirmed: boolean }) {
+  // A pesquisa da IA não vê o Google Maps: não encontrar não prova que não exista.
+  if (unconfirmed) return <span className="text-sm text-warning">Não confirmado</span>;
   if (!p.found) return <span className="text-sm text-danger">Sem perfil no Google</span>;
   return (
     <span className="inline-flex items-center gap-1 text-sm tabular">
@@ -138,7 +142,7 @@ function Stars({ p }: { p: GoogleProfile }) {
   );
 }
 
-function GoogleTab({ leadId, geo }: { leadId: string; geo: LeadGeo }) {
+function GoogleTab({ leadId, geo, city }: { leadId: string; geo: LeadGeo; city: string | null }) {
   const action = useLeadGeoAction(leadId);
   const g = geo.google;
   const sentence = g ? googleComparison(g) : null;
@@ -167,15 +171,25 @@ function GoogleTab({ leadId, geo }: { leadId: string; geo: LeadGeo }) {
                 <span className="min-w-0 flex-1 text-sm font-medium">
                   {p.name} {i === 0 ? <Badge tone="accent">este lead</Badge> : null}
                 </span>
-                <Stars p={p} />
-                {p.maps_url ? (
-                  <a href={p.maps_url} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-0.5 text-xs text-accent-text hover:underline">
-                    Maps <ExternalLink className="h-3 w-3" aria-hidden />
-                  </a>
-                ) : null}
+                <Stars p={p} unconfirmed={googleProfileUnconfirmed(g, p)} />
+                <a
+                  href={p.maps_url ?? googleMapsSearchUrl(p.name, city)}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="inline-flex items-center gap-0.5 text-xs text-accent-text hover:underline"
+                  aria-label={`${p.maps_url ? 'Abrir' : 'Procurar'} ${p.name} no Google Maps`}
+                >
+                  {p.maps_url ? 'Maps' : 'Procurar no Maps'} <ExternalLink className="h-3 w-3" aria-hidden />
+                </a>
               </li>
             ))}
           </ul>
+          {g.source !== 'places' && !g.lead.found ? (
+            <p className="rounded-lg border border-warning/40 bg-warning-soft p-3 text-sm">
+              A pesquisa da IA não encontrou o perfil, mas ela não vê o Google Maps — confirma em “Procurar no Maps”. Com a chave da Google
+              Places API (GOOGLE_PLACES_API_KEY) a nota e as avaliações vêm diretamente do Google.
+            </p>
+          ) : null}
           {sentence ? (
             <div className="flex items-start gap-2 rounded-lg border border-border bg-surface-2 p-3 text-sm">
               <p className="flex-1">{sentence}</p>

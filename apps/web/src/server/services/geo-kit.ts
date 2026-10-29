@@ -16,8 +16,8 @@ import {
   buildFaqPrompt,
   buildGoogleCheckPrompt,
   businessFromLead,
-  normalizeCompanyName,
   parseGoogleProfiles,
+  similarCompanyName,
   websiteKey,
   type GeoBusiness,
   type GeoFaqItem,
@@ -104,16 +104,11 @@ export async function generateFaq(ctx: ApiContext, leadId: string): Promise<Lead
 // Perfil do Google
 // -----------------------------------------------------------------------------
 
-type Target = { name: string; city: string | null; website: string | null };
+type Target = { name: string; city: string | null; website: string | null; phone?: string | null; address?: string | null };
+
+const digits = (v: string | null | undefined) => (v ?? '').replace(/\D/g, '').replace(/^351(?=\d{9}$)/, '');
 
 const PLACES_ENDPOINT = 'https://places.googleapis.com/v1/places:searchText';
-
-function sameName(a: string | null | undefined, b: string | null | undefined): boolean {
-  const x = normalizeCompanyName(a);
-  const y = normalizeCompanyName(b);
-  if (!x || !y) return false;
-  return x === y || (x.length >= 5 && y.length >= 5 && (x.includes(y) || y.includes(x)));
-}
 
 /** Google Places API (New): procura pelo nome e cidade e escolhe o resultado certo (site ou nome). */
 async function placesLookup(key: string, t: Target): Promise<GoogleProfile> {
@@ -122,13 +117,23 @@ async function placesLookup(key: string, t: Target): Promise<GoogleProfile> {
     headers: {
       'content-type': 'application/json',
       'X-Goog-Api-Key': key,
-      'X-Goog-FieldMask': 'places.displayName,places.rating,places.userRatingCount,places.googleMapsUri,places.formattedAddress,places.websiteUri',
+      'X-Goog-FieldMask':
+        'places.displayName,places.rating,places.userRatingCount,places.googleMapsUri,places.formattedAddress,places.websiteUri,places.nationalPhoneNumber,places.internationalPhoneNumber',
     },
     body: JSON.stringify({ textQuery: [t.name, t.city].filter(Boolean).join(' '), languageCode: 'pt', regionCode: 'PT', pageSize: 5 }),
     signal: AbortSignal.timeout(15_000),
   });
   const json = (await res.json().catch(() => null)) as {
-    places?: { displayName?: { text?: string }; rating?: number; userRatingCount?: number; googleMapsUri?: string; formattedAddress?: string; websiteUri?: string }[];
+    places?: {
+      displayName?: { text?: string };
+      rating?: number;
+      userRatingCount?: number;
+      googleMapsUri?: string;
+      formattedAddress?: string;
+      websiteUri?: string;
+      nationalPhoneNumber?: string;
+      internationalPhoneNumber?: string;
+    }[];
     error?: { message?: string };
   } | null;
   if (!res.ok) {
@@ -136,7 +141,12 @@ async function placesLookup(key: string, t: Target): Promise<GoogleProfile> {
   }
   const places = json?.places ?? [];
   const site = websiteKey(t.website);
-  const hit = (site ? places.find((p) => websiteKey(p.websiteUri) === site) : undefined) ?? places.find((p) => sameName(p.displayName?.text, t.name));
+  const phone = digits(t.phone);
+  // O mesmo site, o mesmo telefone ou o nome escrito de outra forma ("Soc." / "Sociedade", "Lda").
+  const hit =
+    (site ? places.find((p) => websiteKey(p.websiteUri) === site) : undefined) ??
+    (phone.length >= 9 ? places.find((p) => [p.nationalPhoneNumber, p.internationalPhoneNumber].some((n) => digits(n) === phone)) : undefined) ??
+    places.find((p) => similarCompanyName(p.displayName?.text, t.name));
   if (!hit) return { name: t.name, found: false, rating: null, reviews: null, maps_url: null, address: null };
   return {
     name: t.name,
@@ -170,7 +180,7 @@ async function aiLookup(ctx: ApiContext, targets: Target[], city: string | null)
       city,
       tool: GOOGLE_CHECK_TOOL,
       schemaName: 'perfis',
-      limits: { webSearches: 6, webFetches: 0 },
+      limits: { webSearches: 10, webFetches: 0 },
       labels: { feature: 'o perfil do Google', missing: 'A IA não entregou os perfis', retry: 'Tenta outra vez.' },
     },
     usage,
@@ -183,7 +193,7 @@ export async function checkGoogleProfile(ctx: ApiContext, leadId: string): Promi
   const lead = await getLead(ctx, leadId);
   const latest = (await listVisibilityChecks(ctx, leadId)).find((c) => c.status === 'done');
   const competitors: Target[] = (latest?.competitors ?? []).slice(0, 3).map((c) => ({ name: c.name, city: lead.city, website: c.website }));
-  const targets: Target[] = [{ name: lead.company_name, city: lead.city, website: lead.website }, ...competitors];
+  const targets: Target[] = [{ name: lead.company_name, city: lead.city, website: lead.website, phone: lead.phone, address: lead.address }, ...competitors];
   const key = process.env.GOOGLE_PLACES_API_KEY;
   const profiles = key ? await Promise.all(targets.map((t) => placesLookup(key, t))) : await aiLookup(ctx, targets, lead.city);
   const google: GoogleCheck = {
