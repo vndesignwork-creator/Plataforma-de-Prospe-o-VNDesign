@@ -155,7 +155,7 @@ test('Kanban: arrastar com o rato para outra coluna', async ({ page }) => {
   await expect(page.getByLabel('Leads em Respondeu').getByText(name)).toBeVisible();
 });
 
-test('Kanban: mudar o estado pelo menu ⇄ e saltar de coluna pelo índice', async ({ page }) => {
+test('Kanban: mudar o estado pelo menu ⇄ e mostrar/esconder colunas pelo índice', async ({ page }) => {
   const name = `Kanban Menu ${run}`;
   await page.request.post('/api/v1/leads', { data: { company_name: name } });
   await page.goto('/kanban');
@@ -166,8 +166,14 @@ test('Kanban: mudar o estado pelo menu ⇄ e saltar de coluna pelo índice', asy
   await expect(page.getByText(/→ Reunião\./)).toBeVisible();
   await expect(page.getByLabel('Leads em Reunião').getByText(name)).toBeVisible();
 
+  // No computador, o índice mostra/esconde colunas (fica guardado na conta).
   const nav = page.getByRole('navigation', { name: 'Colunas do Kanban' });
-  await nav.getByRole('button', { name: /^Em pausa/ }).click();
-  await expect(nav.getByRole('button', { name: /^Em pausa/ })).toHaveAttribute('aria-current', 'true');
-  await expect(page.getByLabel('Leads em Em pausa')).toBeInViewport();
+  const pausa = nav.getByRole('button', { name: /^Em pausa/ });
+  await expect(pausa).toHaveAttribute('aria-pressed', 'true');
+  await pausa.click();
+  await expect(pausa).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByLabel('Leads em Em pausa')).toHaveCount(0);
+  await pausa.click();
+  await expect(pausa).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel('Leads em Em pausa')).toBeVisible();
 });

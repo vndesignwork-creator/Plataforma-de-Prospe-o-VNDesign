@@ -199,6 +199,8 @@ test('calculadora de orçamento: extras, €/hora, valor estimado e proposta', a
 
   // Definições: a calculadora tem o seu cartão em Funcionalidades.
   await page.goto('/definicoes/funcionalidades');
-  await expect(page.getByLabel('Objetivo por hora (€)')).toHaveValue('40');
+  // O mesmo valor por hora no cartão "Valor por hora" e na calculadora.
+  await expect(page.getByLabel('Valor por hora (€)')).toHaveValue('40');
+  await expect(page.getByLabel('€ por hora')).toHaveValue('40');
   await expect(page.getByLabel('Nome do extra 1')).toHaveValue('Página extra');
 });

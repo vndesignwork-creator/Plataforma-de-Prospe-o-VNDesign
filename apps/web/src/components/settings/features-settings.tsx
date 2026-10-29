@@ -173,6 +173,41 @@ const FEATURES: { key: keyof Features; label: string; description: string; icon:
   },
 ];
 
+const FEATURE_BY_KEY = new Map(FEATURES.map((f) => [f.key, f]));
+
+/** Funcionalidades que dependem de outra (ficam por baixo dela, mais à direita). */
+const FEATURE_PARENT: Partial<Record<keyof Features, keyof Features>> = {
+  time_value: 'time_tracking',
+  pomodoro: 'time_tracking',
+  client_approvals: 'client_page',
+};
+
+/** Por grupos: o que serve para quê. "Projetos" liga/desliga tudo o que está dentro. */
+const FEATURE_GROUPS: { title: string; description: string; master?: keyof Features; parts: { title?: string; keys: (keyof Features)[] }[] }[] = [
+  {
+    title: 'Leads e prospeção',
+    description: 'Encontrar, analisar e contactar leads.',
+    parts: [{ keys: ['prospecting_session', 'email_tracking', 'whatsapp_templates', 'meetings', 'diagnosis_report', 'site_screenshots'] }],
+  },
+  {
+    title: 'Vendas e faturação',
+    description: 'Do orçamento ao dinheiro recebido.',
+    parts: [{ keys: ['quote_calculator', 'contracts', 'payments'] }],
+  },
+  {
+    title: 'Projetos',
+    description: 'Depois do sim do cliente. Com “Projetos” desligado, nada disto aparece.',
+    master: 'projects',
+    parts: [
+      { keys: ['projects'] },
+      { title: 'Arranque', keys: ['project_kickoff', 'briefing'] },
+      { title: 'Tempo', keys: ['time_tracking', 'time_value', 'pomodoro'] },
+      { title: 'Trabalho e entregas', keys: ['revisions', 'deliverables', 'launch_checklist', 'expenses'] },
+      { title: 'Cliente e equipa', keys: ['client_page', 'client_approvals', 'collaborators', 'brand_kit'] },
+    ],
+  },
+];
+
 export function FeaturesSettings() {
   const qc = useQueryClient();
   const { data: settings, isLoading } = useSettings();
@@ -261,18 +296,50 @@ export function FeaturesSettings() {
     <div className="flex flex-col gap-5">
       <Card>
         <CardHeader title="Funcionalidades" description="Desliga o que não usas: sai do menu e da ficha. Os dados ficam guardados." />
-        <ul className="divide-y divide-border" aria-label="Funcionalidades">
-          {FEATURES.map(({ key, label, description, icon: Icon, sub }) => (
-            <li key={key} className={cn('flex items-start gap-3 px-4 py-3', sub && 'pl-10', sub && !settings.features.projects && 'opacity-60')}>
-              <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden />
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium">{label}</span>
-                <span className="block text-sm text-muted">{description}</span>
-              </span>
-              <Switch checked={settings.features[key]} onCheckedChange={(on) => void toggle(key, on)} label={`${label}: ${settings.features[key] ? 'desligar' : 'ligar'}`} />
-            </li>
+        <div className="flex flex-col gap-5 p-4" aria-label="Funcionalidades" role="group">
+          {FEATURE_GROUPS.map((group) => (
+            <section key={group.title} aria-labelledby={`func-${group.title}`} className="overflow-hidden rounded-xl border border-border">
+              <header className="flex items-start gap-3 border-b border-border bg-surface-2 px-4 py-3">
+                <span className="min-w-0 flex-1">
+                  <h3 id={`func-${group.title}`} className="text-sm font-semibold">
+                    {group.title}
+                  </h3>
+                  <p className="text-xs text-muted">{group.description}</p>
+                </span>
+              </header>
+              {group.parts.map((part) => (
+                <div key={part.title ?? 'main'}>
+                  {part.title ? (
+                    <p className="border-b border-border px-4 pt-3 pb-1.5 text-xs font-semibold tracking-wide text-muted uppercase">{part.title}</p>
+                  ) : null}
+                  <ul className="divide-y divide-border border-b border-border last:border-b-0">
+                    {part.keys.map((key) => {
+                      const f = FEATURE_BY_KEY.get(key)!;
+                      const Icon = f.icon;
+                      // Depende de outra (ex.: o Pomodoro precisa do registo de horas): fica mais à direita e esbatida se essa estiver desligada.
+                      const parent = FEATURE_PARENT[key];
+                      const off = (group.master && key !== group.master && !settings.features[group.master]) || (parent && !settings.features[parent]);
+                      return (
+                        <li key={key} className={cn('flex items-start gap-3 px-4 py-3', parent && 'pl-10', off && 'opacity-60')}>
+                          <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden />
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-medium">{f.label}</span>
+                            <span className="block text-sm text-muted">{f.description}</span>
+                          </span>
+                          <Switch
+                            checked={settings.features[key]}
+                            onCheckedChange={(on) => void toggle(key, on)}
+                            label={`${f.label}: ${settings.features[key] ? 'desligar' : 'ligar'}`}
+                          />
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </section>
           ))}
-        </ul>
+        </div>
       </Card>
 
       {settings.features.projects && settings.features.project_kickoff ? <KickoffCard settings={settings} /> : null}
