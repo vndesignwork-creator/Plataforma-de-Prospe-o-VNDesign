@@ -60,11 +60,21 @@ export function DropdownContent({
   align?: 'start' | 'end';
   onCloseAutoFocus?: (event: Event) => void;
 }) {
+  // Fechado com um clique/toque fora: o foco não volta ao botão (senão o browser
+  // desenha-lhe o contorno de foco). Com o teclado (Esc) volta, como deve ser.
+  const closedByPointer = useRef(false);
   return (
     <Menu.Portal>
       <Menu.Content
         align={align}
-        onCloseAutoFocus={onCloseAutoFocus}
+        onPointerDownOutside={() => {
+          closedByPointer.current = true;
+        }}
+        onCloseAutoFocus={(event) => {
+          onCloseAutoFocus?.(event);
+          if (closedByPointer.current) event.preventDefault();
+          closedByPointer.current = false;
+        }}
         sideOffset={6}
         collisionPadding={12}
         className={cn(
