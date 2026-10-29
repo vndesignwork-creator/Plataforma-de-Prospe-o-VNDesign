@@ -28,7 +28,7 @@ import { Archive, ArchiveRestore, ArrowDown, ArrowDownUp, ArrowUp, ArrowUpDown, 
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Badge, EmptyState, Skeleton } from '@/components/ui/card';
@@ -410,7 +410,17 @@ function LeadsTableView() {
   const [city, setCity] = useState(get('city'));
   const debouncedSearch = useDebouncedValue(search);
   const debouncedCity = useDebouncedValue(city);
+  // Ao abrir uma vista ou limpar os filtros, o endereço muda primeiro: até lá, a pesquisa não o reescreve
+  // (senão, com a navegação lenta, voltava a pôr os filtros antigos ou tirava os novos).
+  const pendingUrl = useRef<string | null>(null);
   useEffect(() => {
+    if (pendingUrl.current === searchParams.toString()) pendingUrl.current = null;
+  }, [searchParams]);
+  useEffect(() => {
+    if (pendingUrl.current !== null) {
+      if (searchParams.toString() !== pendingUrl.current) return;
+      pendingUrl.current = null;
+    }
     if (debouncedSearch !== get('q') || debouncedCity !== get('city')) {
       setParams({ q: debouncedSearch.trim() || null, city: debouncedCity.trim() || null });
     }
@@ -632,6 +642,7 @@ function LeadsTableView() {
   }
 
   function clearFilters() {
+    pendingUrl.current = '';
     setSearch('');
     setCity('');
     router.replace(pathname, { scroll: false });
@@ -687,6 +698,7 @@ function LeadsTableView() {
           params={new URLSearchParams(searchParams.toString())}
           onApply={(qs) => {
             const next = new URLSearchParams(qs);
+            pendingUrl.current = next.toString();
             setSearch(next.get('q') ?? '');
             setCity(next.get('city') ?? '');
             router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });

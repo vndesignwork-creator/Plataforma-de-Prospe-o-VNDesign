@@ -158,6 +158,8 @@ test('Kanban: arrastar com o rato para outra coluna', async ({ page }) => {
 test('Kanban: mudar o estado pelo menu ⇄ e mostrar/esconder colunas pelo índice', async ({ page }) => {
   const name = `Kanban Menu ${run}`;
   await page.request.post('/api/v1/leads', { data: { company_name: name } });
+  // Todas as colunas à vista (o índice guarda as escondidas na conta).
+  await page.request.put('/api/v1/preferences/kanban.hidden', { data: { value: [] } });
   await page.goto('/kanban');
   await page.getByLabel('Filtrar leads no Kanban').fill(name);
   await expect(page.getByRole('button', { name: /, Identificado$/ })).toHaveCount(1);

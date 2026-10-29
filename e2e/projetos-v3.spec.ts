@@ -80,6 +80,8 @@ test('calendário subscrito: link .ics sem sessão com as reuniões; desligar', 
   });
   expect(meeting.status()).toBe(201);
   await page.goto('/definicoes/funcionalidades');
+  // Espera pelo estado real (ligado ou não) antes de decidir o que carregar.
+  await page.waitForLoadState('networkidle');
   const card = page.locator('div.rounded-xl').filter({ has: page.getByRole('heading', { name: 'Calendário no telemóvel' }) });
   if (await card.getByRole('button', { name: 'Desligar' }).count()) await card.getByRole('button', { name: 'Desligar' }).click();
   await card.getByRole('button', { name: 'Criar link' }).click();
