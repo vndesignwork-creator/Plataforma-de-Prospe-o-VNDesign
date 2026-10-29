@@ -30,6 +30,7 @@ import { errorMessage } from '@/lib/api-client';
 import { playChime, unlockSound } from '@/lib/pomodoro-sound';
 import { useLeadTasks, usePomodoro, usePomodoroAction, useSettings } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+import { TimeMoney } from './hourly-rate';
 
 /** Pomodoro ligado (precisa dos projetos e do registo de horas). */
 export function usePomodoroSettings(): PomodoroSettings | null {
@@ -295,6 +296,8 @@ export function PomodoroBox({ lead, compact, className }: { lead: Lead; compact?
             </Button>
             {breakButton}
           </div>
+          {/* Quanto vale um pomodoro ao teu valor por hora. */}
+          <TimeMoney seconds={settings.work_minutes * 60} prefix={`${settings.work_minutes} min = `} className="block text-center text-xs text-muted" />
           <p className={cn('text-center text-xs text-muted', compact && 'sr-only')}>
             {settings.work_minutes} min de trabalho, {settings.short_break_minutes} de pausa; a cada {settings.long_every}, pausa de {settings.long_break_minutes}. O trabalho fica nas horas do
             projeto.

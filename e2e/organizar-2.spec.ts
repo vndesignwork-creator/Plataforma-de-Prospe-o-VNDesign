@@ -187,6 +187,8 @@ test('campos personalizados: criar, preencher na ficha, filtrar, exportar e apag
   expect((await getLead(page.request, b.id)).custom).toEqual({});
 
   await page.goto(`/leads?q=${run}`);
+  // Os campos personalizados estão em "Mais filtros".
+  await page.getByRole('button', { name: /^Mais filtros/ }).click();
   await page.getByRole('button', { name: new RegExp(`^${label}`) }).click();
   await page.getByRole('menuitemcheckbox', { name: 'Moloni' }).click();
   await page.keyboard.press('Escape');

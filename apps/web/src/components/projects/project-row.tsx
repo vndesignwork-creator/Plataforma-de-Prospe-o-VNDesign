@@ -19,6 +19,7 @@ import { Button, buttonClasses } from '@/components/ui/button';
 import { Badge } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { TimeMoney } from './hourly-rate';
 import { PlanForm } from './payments-card';
 import { DueBadge, ProgressBar, StageMenu, SummaryStat } from './project-bits';
 import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
@@ -215,7 +216,8 @@ export function ProjectRow({
                   time.logged_seconds > 0 ? (
                     <>
                       {formatDuration(time.logged_seconds)}
-                      {rate ? <span className="font-normal text-muted"> · {euros(rate)}/hora</span> : null}
+                      <TimeMoney seconds={time.logged_seconds} prefix=" · vale " className="font-normal text-muted" />
+                      {rate ? <span className="block text-xs font-normal text-muted">o projeto rende {euros(rate)}/hora</span> : null}
                     </>
                   ) : (
                     <span className="font-normal text-muted">Sem registos</span>

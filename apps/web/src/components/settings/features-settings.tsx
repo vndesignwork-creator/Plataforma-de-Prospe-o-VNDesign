@@ -18,7 +18,7 @@ import { Switch } from '@/components/ui/switch';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useMe, useSettings, type SettingsWithMail } from '@/lib/queries';
 import { cn } from '@/lib/utils';
-import { BriefingQuestionsCard, CalendarFeedCard, ContractSettingsCard, KickoffCard, PomodoroSettingsCard, QuoteSettingsCard } from './project-settings-cards';
+import { BriefingQuestionsCard, CalendarFeedCard, ContractSettingsCard, HourlyRateCard, KickoffCard, PomodoroSettingsCard, QuoteSettingsCard } from './project-settings-cards';
 
 const FEATURES: { key: keyof Features; label: string; description: string; icon: LucideIcon; sub?: boolean }[] = [
   {
@@ -271,6 +271,7 @@ export function FeaturesSettings() {
       {settings.features.projects && settings.features.project_kickoff ? <KickoffCard settings={settings} /> : null}
       {settings.features.projects && settings.features.briefing ? <BriefingQuestionsCard settings={settings} /> : null}
       {settings.features.contracts ? <ContractSettingsCard settings={settings} /> : null}
+      {settings.features.projects && settings.features.time_tracking ? <HourlyRateCard settings={settings} /> : null}
       {settings.features.quote_calculator ? <QuoteSettingsCard settings={settings} /> : null}
       {settings.features.projects && settings.features.time_tracking && settings.features.pomodoro ? <PomodoroSettingsCard settings={settings} /> : null}
       <CalendarFeedCard />

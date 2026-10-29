@@ -319,10 +319,10 @@ export function QuoteSettingsCard({ settings }: { settings: SettingsWithMail }) 
     <Card>
       <CardHeader
         title="Calculadora de orçamento"
-        description="Os extras que podes juntar aos pacotes (na ficha: Propostas → Calcular) e quanto queres ganhar por hora."
+        description="Os extras que podes juntar aos pacotes (na ficha: Propostas → Calcular) e o teu valor por hora."
       />
       <form onSubmit={save} className="flex flex-col gap-4 p-4" noValidate>
-        <Field label="Objetivo por hora (€)" hint="Vazio = sem comparação." className="w-48">
+        <Field label="Valor por hora (€)" hint="O mesmo das Horas (converte o tempo em dinheiro). Vazio = sem comparação." className="w-64">
           <Input inputMode="decimal" placeholder="35" value={targetValue} onChange={(e) => setTarget(e.target.value)} />
         </Field>
         <div className="relative overflow-x-auto">
@@ -537,6 +537,55 @@ export function PomodoroSettingsCard({ settings }: { settings: SettingsWithMail 
             Guardar tempos
           </Button>
         </div>
+      </form>
+    </Card>
+  );
+}
+
+/** O teu valor por hora: converte as horas registadas, o cronómetro e o Pomodoro em dinheiro. */
+export function HourlyRateCard({ settings }: { settings: SettingsWithMail }) {
+  const patch = usePatchSettings();
+  const current = settings.quote.hourly_target === null ? '' : num(settings.quote.hourly_target);
+  const [value, setValue] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    const text = (value ?? current).trim();
+    const parsed = text ? parseEuroAmount(text) : null;
+    if (text && (parsed === null || parsed < 0 || parsed > 1000)) {
+      setError('Indica um valor entre 0 e 1000 €.');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await patch({ quote: { ...settings.quote, hourly_target: parsed } });
+      setValue(null);
+      toast.success(parsed ? 'Valor por hora guardado.' : 'Valor por hora apagado.');
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <form onSubmit={save} className="flex flex-wrap items-end gap-x-4 gap-y-3 px-4 py-3" noValidate>
+        <div className="min-w-0 flex-[1_1_18rem]">
+          <h2 className="text-base font-semibold">Valor por hora</h2>
+          <p className="text-sm text-muted">Converte o tempo registado (horas, cronómetro e Pomodoro) em dinheiro. Também é o objetivo da calculadora de orçamento.</p>
+        </div>
+        <Field label="€ por hora" error={error ?? undefined} className="w-32">
+          <Input inputMode="decimal" placeholder="35" value={value ?? current} onChange={(e) => setValue(e.target.value)} />
+        </Field>
+        {value !== null && value !== current ? (
+          <Button type="submit" size="sm" loading={saving}>
+            Guardar
+          </Button>
+        ) : null}
       </form>
     </Card>
   );

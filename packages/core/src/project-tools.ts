@@ -249,6 +249,12 @@ export function formatClock(seconds: number): string {
   return `${h}:${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
+/** Quanto vale o tempo ao teu valor por hora (em €, ao cêntimo); null sem valor por hora. */
+export function timeValue(seconds: number, ratePerHour: number | null | undefined): number | null {
+  if (!ratePerHour || ratePerHour <= 0) return null;
+  return Math.round((Math.max(0, seconds) / 3600) * ratePerHour * 100) / 100;
+}
+
 /** Valor ganho por hora (só com 15 minutos ou mais registados). */
 export function hourlyRate(value: number | null | undefined, minutes: number): number | null {
   if (!value || value <= 0 || minutes < 15) return null;

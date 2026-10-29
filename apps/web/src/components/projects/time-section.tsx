@@ -18,6 +18,7 @@ import { Input, Select } from '@/components/ui/input';
 import { ApiClientError, errorMessage } from '@/lib/api-client';
 import { useAddTime, useClearTime, useCollaborators, useDeleteTime, useLeadTasks, useProjectTime, useTimer, useUpdateTime } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+import { HourlyRateButton, TimeMoney } from './hourly-rate';
 import { SectionHeader } from './section-header';
 
 /** Segundos desde `since`, atualizados a cada segundo (null = parado). */
@@ -254,6 +255,7 @@ function EntryRow({ lead, entry, person, tasks }: { lead: Lead; entry: TimeEntry
     <li className="flex items-center gap-2 text-sm">
       <span className="w-12 shrink-0 text-xs text-muted tabular">{day}</span>
       <span className="w-24 shrink-0 font-medium tabular">{formatDuration(entry.seconds)}</span>
+      <TimeMoney seconds={entry.seconds} className="w-16 shrink-0 text-right text-xs text-muted" />
       <span className="min-w-0 flex-1 truncate text-muted">
         {person ? <span className="mr-1.5 rounded bg-surface-2 px-1.5 py-0.5 text-xs text-fg">{person}</span> : null}
         {task ? <span className="mr-1.5 rounded bg-accent-soft px-1.5 py-0.5 text-xs text-accent-text">{task.title}</span> : null}
@@ -307,7 +309,13 @@ export function TimeSection({ lead, className }: { lead: Lead; className?: strin
           time ? (
             <>
               {formatDuration(total)} registadas
-              {time.hourly_rate ? <> · <strong className="font-semibold text-fg">{formatCurrency(time.hourly_rate, { decimals: false })}/hora</strong></> : null}
+              <TimeMoney seconds={total} prefix=" · vale " className="font-semibold text-fg" /> <HourlyRateButton />
+              {time.hourly_rate ? (
+                <span title="Valor do projeto a dividir pelas horas registadas">
+                  {' '}
+                  · o projeto rende <strong className="font-semibold text-fg">{formatCurrency(time.hourly_rate, { decimals: false })}/hora</strong>
+                </span>
+              ) : null}
             </>
           ) : null
         }
@@ -326,7 +334,8 @@ export function TimeSection({ lead, className }: { lead: Lead; className?: strin
         }
       />
       {running ? (
-        <p className="mt-1 text-xs text-accent-text">A contar desde as {new Date(running.started_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Lisbon' })} · esta sessão: {formatClock(elapsed)}</p>
+        <p className="mt-1 text-xs text-accent-text">A contar desde as {new Date(running.started_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Lisbon' })} · esta sessão: {formatClock(elapsed)}
+          <TimeMoney seconds={elapsed} prefix=" · " /></p>
       ) : null}
       {time && !time.value && total >= 15 * 60 ? (
         <p className="mt-1 text-xs text-muted">Para ver quanto ganhas por hora, indica o valor (proposta aceite, pagamentos ou valor estimado).</p>

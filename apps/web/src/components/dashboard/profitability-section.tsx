@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { BarList } from '@/components/charts/bar-list';
 import { ColumnChart } from '@/components/charts/column-chart';
 import { StatTile } from '@/components/charts/stat-tile';
+import { HourlyRateButton, TimeMoney } from '@/components/projects/hourly-rate';
 import { ServiceIcon, useServiceCatalog } from '@/components/services/services';
 import { Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { useProfitability, useSettings } from '@/lib/queries';
@@ -49,7 +50,16 @@ export function ProfitabilitySection() {
           value={t.rate ? `${euros(t.rate)}/h` : '—'}
           hint={!timeOn ? 'Liga o registo de horas' : t.expenses && t.net_rate !== null ? `${euros(t.net_rate)}/h depois das despesas` : 'Projetos com horas e valor'}
         />
-        <StatTile label="Horas registadas" value={hours(t.minutes)} hint={`${t.projects} projeto${t.projects === 1 ? '' : 's'}`} />
+        <StatTile
+          label="Horas registadas"
+          value={hours(t.minutes)}
+          hint={
+            <>
+              {t.projects} projeto{t.projects === 1 ? '' : 's'}
+              <TimeMoney seconds={t.minutes * 60} prefix=" · valem " /> <HourlyRateButton />
+            </>
+          }
+        />
         <StatTile
           label="Duração média"
           value={t.avg_days !== null ? `${Math.round(t.avg_days)} dias` : '—'}

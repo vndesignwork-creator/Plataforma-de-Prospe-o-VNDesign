@@ -73,3 +73,14 @@ describe('calendário', () => {
     expect(CalendarQuerySchema.safeParse({ from: '2026-01-01', to: '2026-06-01' }).success).toBe(false);
   });
 });
+
+describe('valor do tempo ao valor por hora', () => {
+  it('converte segundos em euros (ao cêntimo) e não converte sem valor por hora', async () => {
+    const { timeValue } = await import('../src/project-tools');
+    expect(timeValue(14 * 60 + 4, 35)).toBe(8.21);
+    expect(timeValue(3600, 40)).toBe(40);
+    expect(timeValue(0, 35)).toBe(0);
+    expect(timeValue(3600, null)).toBeNull();
+    expect(timeValue(3600, 0)).toBeNull();
+  });
+});
