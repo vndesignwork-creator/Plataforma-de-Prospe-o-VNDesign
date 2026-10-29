@@ -6,6 +6,8 @@
 import { randomBytes } from 'node:crypto';
 import {
   isAdminRole,
+  TEAM_ACTIVITY_GROUPS,
+  TEAM_ACTIVITY_PAGE,
   plainTextToHtml,
   todayIso,
   type InviteRole,
@@ -17,6 +19,7 @@ import {
   type TeamInviteInfo,
   type TeamMember,
   type TeamActivity,
+  type TeamActivityGroup,
   type TeamStats,
 } from '@vndesign/core';
 import type { ApiContext } from '../context';
@@ -379,7 +382,10 @@ export async function teamStats(ctx: ApiContext, days = 30): Promise<TeamStats> 
 // -----------------------------------------------------------------------------
 
 /** O que cada pessoa fez nos leads nos últimos dias (dono ou administrador). */
-export async function teamActivity(ctx: ApiContext, query: { user?: string; days: number }): Promise<TeamActivity[]> {
+export async function teamActivity(
+  ctx: ApiContext,
+  query: { user?: string; days: number; group?: TeamActivityGroup; before?: string },
+): Promise<TeamActivity[]> {
   assertAdmin(ctx);
   let q = ctx.supabase
     .from('lead_activities')
@@ -388,8 +394,10 @@ export async function teamActivity(ctx: ApiContext, query: { user?: string; days
     .not('actor_user_id', 'is', null)
     .gte('created_at', new Date(Date.now() - query.days * 86_400_000).toISOString())
     .order('created_at', { ascending: false })
-    .limit(200);
+    .limit(TEAM_ACTIVITY_PAGE);
   if (query.user) q = q.eq('actor_user_id', query.user);
+  if (query.group) q = q.in('type', [...TEAM_ACTIVITY_GROUPS[query.group].types]);
+  if (query.before) q = q.lt('created_at', query.before);
   const [{ data, error }, names] = await Promise.all([q, teamNames(ctx)]);
   if (error) throw fromPostgrest(error);
   const byId = new Map(names.map((n) => [n.user_id, n.name]));

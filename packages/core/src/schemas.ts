@@ -670,6 +670,8 @@ export const WorkspaceSettingsSchema = z
     follow_up_sequence: FollowUpSequenceSchema.default(DEFAULT_FOLLOW_UP_SEQUENCE),
     /** Arquivar sozinhos os leads em "Sem interesse" há mais de N dias (null = desligado). */
     auto_archive_days: z.int().min(7).max(365).nullable().default(null),
+    /** Apagar sozinhos os registos "Lead editado" com mais de N meses (null = desligado; o resto fica sempre). */
+    activity_cleanup_months: z.int().min(6).max(60).nullable().default(null),
     opt_out_line: z.string().default(''),
     daily_digest: z
       .object({
@@ -733,6 +735,11 @@ export const WorkspaceSettingsUpdateSchema = z
       .int({ error: 'Indica um número de dias.' })
       .min(7, { error: 'Mínimo 7 dias.' })
       .max(365, { error: 'Máximo 365 dias.' })
+      .nullable(),
+    activity_cleanup_months: z
+      .int({ error: 'Indica um número de meses.' })
+      .min(6, { error: 'Mínimo 6 meses.' })
+      .max(60, { error: 'Máximo 60 meses.' })
       .nullable(),
     opt_out_line: z.string().trim().max(300),
     daily_digest: z.object({

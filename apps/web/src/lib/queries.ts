@@ -6,6 +6,7 @@
  */
 import {
   keepPreviousData,
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -100,7 +101,9 @@ import type {
   PomodoroAction,
   PomodoroStats,
 } from '@vndesign/core';
-import { chunkReschedule } from '@vndesign/core';
+import { chunkReschedule,
+  TEAM_ACTIVITY_PAGE,
+} from '@vndesign/core';
 import { api } from './api-client';
 
 export const qk = {
@@ -1370,11 +1373,14 @@ export function useTeamAction() {
   });
 }
 
-/** Equipa → Atividade: o que cada pessoa fez nos leads. */
-export function useTeamActivity(query: { user?: string; days: number }, enabled = true) {
-  return useQuery({
+/** Equipa → Atividade, por páginas: "Carregar mais" pede os anteriores ao último registo. */
+export function useTeamActivity(query: { user?: string; days: number; group?: string }, enabled = true) {
+  return useInfiniteQuery({
     queryKey: ['team-activity', query],
-    queryFn: () => api<{ data: TeamActivity[] }>('/team/activity', { query }).then((r) => r.data),
+    queryFn: ({ pageParam }) =>
+      api<{ data: TeamActivity[] }>('/team/activity', { query: { ...query, before: pageParam } }).then((r) => r.data),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => (last.length >= TEAM_ACTIVITY_PAGE ? last[last.length - 1]!.created_at : undefined),
     enabled,
   });
 }

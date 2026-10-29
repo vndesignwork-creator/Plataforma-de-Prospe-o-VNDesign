@@ -126,7 +126,33 @@ export const TeamActivitySchema = z
   .meta({ id: 'TeamActivity' });
 export type TeamActivity = z.infer<typeof TeamActivitySchema>;
 
+/** Filtro por tipo na Equipa → Atividade (os registos do lead sem pessoa, como aberturas, não aparecem aqui). */
+export const TEAM_ACTIVITY_GROUPS = {
+  contactos: {
+    label: 'Contactos',
+    types: ['email_sent', 'email_mailto', 'email_copied', 'call_logged', 'template_used', 'follow_up_done', 'follow_up_scheduled', 'meeting_scheduled', 'meeting_canceled'],
+  },
+  leads: { label: 'Estado e leads', types: ['created', 'status_changed', 'imported', 'merged', 'archived', 'unarchived', 'anonymized'] },
+  edicoes: { label: 'Edições', types: ['updated'] },
+  tarefas: { label: 'Tarefas e notas', types: ['task_completed', 'tasks_added', 'note', 'comment'] },
+  ia: { label: 'IA e análises', types: ['ai_email_generated', 'audit_run', 'proposal_generated'] },
+  projetos: {
+    label: 'Projetos e pagamentos',
+    types: [
+      'payment_received', 'project_completed', 'project_reopened', 'project_stage_changed', 'revision_requested',
+      'deliverable_sent', 'deliverable_approved', 'project_started', 'contract_sent', 'contract_accepted', 'briefing_received',
+    ],
+  },
+} as const satisfies Record<string, { label: string; types: readonly (typeof ACTIVITY_TYPES)[number][] }>;
+export type TeamActivityGroup = keyof typeof TEAM_ACTIVITY_GROUPS;
+
+/** Registos por página na Equipa → Atividade ("Carregar mais" pede a seguinte). */
+export const TEAM_ACTIVITY_PAGE = 100;
+
 export const TeamActivityQuerySchema = z.object({
   user: z.uuid().optional(),
   days: z.coerce.number().int().min(1).max(90).default(7),
+  group: z.enum(Object.keys(TEAM_ACTIVITY_GROUPS) as [TeamActivityGroup, ...TeamActivityGroup[]]).optional(),
+  /** Só os registos anteriores a esta data (o created_at do último da página anterior). */
+  before: z.iso.datetime({ offset: true }).optional(),
 });

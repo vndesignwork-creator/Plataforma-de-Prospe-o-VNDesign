@@ -111,10 +111,15 @@ test('equipa → atividade: quem fez o quê, com filtro por período', async ({ 
   await page.request.post(`/api/v1/leads/${lead.id}/activities`, { data: { type: 'note', body: `Nota da equipa ${run}` } });
   await page.goto('/equipa?ver=atividade');
   await expect(page.getByRole('tab', { name: /Atividade/ })).toHaveAttribute('aria-selected', 'true');
-  const list = page.getByRole('list', { name: 'Atividade da equipa' });
-  const row = list.getByRole('listitem').filter({ hasText: `Nota da equipa ${run}` });
-  await expect(row).toContainText('Tu');
+  // Por dia ("Hoje"), com o nome de quem fez quando a equipa tem mais de uma pessoa.
+  const today = page.getByRole('region', { name: 'Atividade da equipa' }).getByRole('region', { name: 'Hoje' });
+  const row = today.getByRole('listitem').filter({ hasText: `Nota da equipa ${run}` });
   await expect(row.getByRole('link', { name: `Atividade ${run}` })).toBeVisible();
+  // Filtro por tipo: a nota está em "Tarefas e notas", não nos "Contactos".
+  await page.getByRole('button', { name: 'Contactos', exact: true }).click();
+  await expect(row).toHaveCount(0);
+  await page.getByRole('button', { name: 'Tarefas e notas' }).click();
+  await expect(row).toBeVisible();
   await page.getByLabel('Período').selectOption('30');
   await expect(row).toBeVisible();
 });

@@ -131,7 +131,20 @@ function OpenStatus({ tracking }: { tracking: EmailTracking | undefined }) {
   );
 }
 
-const fieldLabel = (f: string) => (LEAD_FIELD_LABELS as Record<string, string>)[f] ?? f;
+/** Campos que a plataforma muda sozinha (não aparecem em "o que mudou", mas têm nome em português). */
+const SYSTEM_FIELD_LABELS: Record<string, string> = {
+  email_bounced_at: 'Email devolvido',
+  replies_handled_at: 'Respostas tratadas',
+  project_completed_at: 'Projeto concluído',
+  latitude: 'Localização no mapa',
+  longitude: 'Localização no mapa',
+  geocode_status: 'Localização no mapa',
+  geocoded_at: 'Localização no mapa',
+  created_by: 'Criado por',
+  client_of: 'Cliente de',
+  anonymized_at: 'Dados anonimizados',
+};
+const fieldLabel = (f: string) => (LEAD_FIELD_LABELS as Record<string, string>)[f] ?? SYSTEM_FIELD_LABELS[f] ?? 'Outros dados';
 const statusLabel = (s: unknown) => LEAD_STATUS_META[s as LeadStatus]?.label ?? String(s);
 
 export function describe(a: Activity): string | null {
@@ -140,7 +153,8 @@ export function describe(a: Activity): string | null {
     case 'status_changed':
       return `${statusLabel(p.from)} → ${statusLabel(p.to)}${p.reason ? ` · Motivo: ${LOST_REASON_LABELS[p.reason as LostReason] ?? String(p.reason)}` : ''}`;
     case 'updated':
-      return Array.isArray(p.fields) ? p.fields.map((f) => changeLabel(String(f)) ?? fieldLabel(String(f))).join(', ') : null;
+      // Sem repetir (latitude e longitude são as duas "Localização no mapa").
+      return Array.isArray(p.fields) ? [...new Set(p.fields.map((f) => changeLabel(String(f)) ?? fieldLabel(String(f))))].join(', ') : null;
     case 'follow_up_scheduled':
       return `${p.snoozed ? 'Adiado: ' : ''}${p.text ?? 'Follow-up'} para ${formatDate(String(p.on))}`;
     case 'merged': {

@@ -29,6 +29,8 @@ export function PreferencesSettings() {
   const [optOut, setOptOut] = useState('');
   const [autoArchive, setAutoArchive] = useState(false);
   const [autoArchiveDays, setAutoArchiveDays] = useState('60');
+  const [cleanup, setCleanup] = useState(false);
+  const [cleanupMonths, setCleanupMonths] = useState('12');
   const [digestEnabled, setDigestEnabled] = useState(false);
   const [recipient, setRecipient] = useState('');
   const [saving, setSaving] = useState(false);
@@ -42,6 +44,8 @@ export function PreferencesSettings() {
     setOptOut(from.opt_out_line);
     setAutoArchive(from.auto_archive_days !== null);
     setAutoArchiveDays(String(from.auto_archive_days ?? 60));
+    setCleanup(from.activity_cleanup_months !== null);
+    setCleanupMonths(String(from.activity_cleanup_months ?? 12));
     setDigestEnabled(from.daily_digest.enabled);
     setRecipient(from.daily_digest.recipient ?? '');
   }
@@ -60,6 +64,7 @@ export function PreferencesSettings() {
       steps: steps.map((s) => ({ days: Number(s.days), template_id: s.template_id || null })),
     },
     auto_archive_days: autoArchive ? Number(autoArchiveDays) : null,
+    activity_cleanup_months: cleanup ? Number(cleanupMonths) : null,
     opt_out_line: optOut,
     daily_digest: { enabled: digestEnabled, recipient },
   };
@@ -74,6 +79,7 @@ export function PreferencesSettings() {
           steps: settings.follow_up_sequence.steps.map((s) => ({ days: s.days, template_id: s.template_id ?? null })),
         },
         auto_archive_days: settings.auto_archive_days,
+        activity_cleanup_months: settings.activity_cleanup_months,
         opt_out_line: settings.opt_out_line,
         daily_digest: { enabled: settings.daily_digest.enabled, recipient: settings.daily_digest.recipient ?? '' },
       });
@@ -225,6 +231,18 @@ export function PreferencesSettings() {
                 onChange={(e) => setAutoArchiveDays(e.target.value)}
                 className="max-w-32"
               />
+            </Field>
+          ) : null}
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={cleanup} onChange={(e) => setCleanup(e.target.checked)} />
+            Apagar os registos “Lead editado” antigos
+          </label>
+          <p className="-mt-1 text-xs text-muted">
+            Só as edições: os emails, respostas, mudanças de estado, notas e tarefas ficam sempre (contam para as estatísticas e os follow-ups).
+          </p>
+          {cleanup ? (
+            <Field label="Com mais de quantos meses" hint="Entre 6 e 60 meses. Corre uma vez por dia.">
+              <Input type="number" min={6} max={60} value={cleanupMonths} onChange={(e) => setCleanupMonths(e.target.value)} className="max-w-32" />
             </Field>
           ) : null}
         </fieldset>
