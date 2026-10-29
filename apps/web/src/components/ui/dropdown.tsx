@@ -88,17 +88,21 @@ export function DropdownItem({
   danger,
   disabled,
   className,
+  'aria-label': ariaLabel,
 }: {
   children: ReactNode;
-  onSelect?: () => void;
+  /** event.preventDefault() mantém o menu aberto. */
+  onSelect?: (event: Event) => void;
   danger?: boolean;
   disabled?: boolean;
   className?: string;
+  'aria-label'?: string;
 }) {
   return (
     <Menu.Item
       onSelect={onSelect}
       disabled={disabled}
+      aria-label={ariaLabel}
       className={cn(itemClass, danger && 'text-danger data-[highlighted]:bg-danger-soft', className)}
     >
       {children}

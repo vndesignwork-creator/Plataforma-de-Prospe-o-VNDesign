@@ -153,6 +153,11 @@ export const NotificationReadSchema = z
   .meta({ id: 'NotificationRead' });
 export type NotificationRead = z.infer<typeof NotificationReadSchema>;
 
+export const NotificationClearQuerySchema = z
+  .object({ which: z.enum(['read', 'all']).default('read').meta({ description: '"read" = só os lidos; "all" = todos' }) })
+  .meta({ id: 'NotificationClearQuery' });
+export type NotificationClearQuery = z.output<typeof NotificationClearQuerySchema>;
+
 /** "Rui deu-te uma tarefa: …" / "Rui mencionou-te: …" */
 export function notificationTitle(n: Pick<Notification, 'kind'> & { title?: string | null }, actor: string | null): string {
   if (n.title) return n.title;

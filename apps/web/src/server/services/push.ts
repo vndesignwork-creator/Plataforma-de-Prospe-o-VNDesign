@@ -322,7 +322,8 @@ async function saveReminderAlert(
   const { count } = await admin.from('notifications').select('id', { count: 'exact', head: true }).eq('task_id', task.id).eq('kind', 'reminder');
   if (count) return;
   const push = buildReminderPush(task);
-  await saveAlert(task.workspace_id, userId, { kind: 'reminder', title: push.title, body: push.body, url: push.url ?? '/tarefas', tag: push.tag ?? 'reminder', leadId: task.lead?.id ?? null, taskId: task.id });
+  // No sino o lead já aparece por baixo: o texto é só o tipo de aviso.
+  await saveAlert(task.workspace_id, userId, { kind: 'reminder', title: push.title, body: task.lead ? 'Lembrete da tarefa' : push.body, url: push.url ?? '/tarefas', tag: push.tag ?? 'reminder', leadId: task.lead?.id ?? null, taskId: task.id });
 }
 
 /** Envia as notificações dos lembretes que já chegaram à hora e marca-os como enviados. */

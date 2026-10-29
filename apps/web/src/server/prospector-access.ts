@@ -63,6 +63,8 @@ const RULES: Rule[] = [
   ['PATCH DELETE', new RegExp(`^/tasks/${ID}$`)],
   ['GET', /^\/notifications$/],
   ['POST', /^\/notifications\/read$/],
+  ['DELETE', /^\/notifications$/],
+  ['DELETE', new RegExp(`^/notifications/${ID}$`)],
   ['POST', /^\/reschedule$/],
   ['GET', /^\/stats\/team$/],
   ['GET', /^\/team\/names$/],

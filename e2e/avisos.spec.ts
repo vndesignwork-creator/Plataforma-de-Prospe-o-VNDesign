@@ -37,12 +37,12 @@ test('lembrete no sino: abre a ficha nas tarefas; desligar "Lembretes" nas Defin
 
   await remindNow(page.request, lead.id, `Ligar ao Sino ${run}`);
   const item = (await bell(page.request)).find((n) => n.title === `⏰ Ligar ao Sino ${run}`);
-  expect(item).toMatchObject({ kind: 'reminder', text: `Lembrete · #${lead.number} Aviso Sino ${run}` });
+  expect(item).toMatchObject({ kind: 'reminder', text: 'Lembrete da tarefa' });
   expect(item?.url).toMatch(/^\/leads\/.+#tarefas$/);
 
   await page.goto('/dashboard');
   await page.getByRole('button', { name: /^Avisos/ }).first().click();
-  await page.getByRole('menuitem', { name: new RegExp(`Ligar ao Sino ${run}`) }).click();
+  await page.getByRole('menuitem', { name: new RegExp(`^⏰ Ligar ao Sino ${run}`) }).click();
   await expect(page).toHaveURL(/\/leads\/.+#tarefas$/, { timeout: 30_000 });
 
   // Desligar os lembretes: o próximo já não vai para o sino.
@@ -55,4 +55,39 @@ test('lembrete no sino: abre a ficha nas tarefas; desligar "Lembretes" nas Defin
     .toEqual({ off: ['reminder'] });
   await remindNow(page.request, lead.id, `Sem Sino ${run}`);
   expect((await bell(page.request)).some((n) => n.title === `⏰ Sem Sino ${run}`)).toBe(false);
+});
+
+test('sino: por ler e lidos separados, apagar um aviso, apagar os lidos e limpar todos', async ({ page }) => {
+  await page.request.put('/api/v1/preferences/notifications.alerts', { data: { value: { off: [] } } });
+  const lead = (await (await page.request.post('/api/v1/leads', { data: { company_name: `Limpar Sino ${run}` } })).json()).data as { id: string };
+  for (const t of ['Um', 'Dois', 'Tres']) await remindNow(page.request, lead.id, `${t} Sino ${run}`);
+  const titles = async () => (await bell(page.request)).map((n) => n.title ?? '');
+
+  await page.goto('/dashboard');
+  const button = page.getByRole('button', { name: /^Avisos/ }).first();
+  await button.click();
+  const menu = page.getByRole('menu');
+  await expect(menu.getByText(/^Por ler \(\d+\)$/)).toBeVisible();
+  await expect(menu.getByRole('menuitem', { name: new RegExp(`Um Sino ${run} \\(por ler\\)`) })).toBeVisible();
+  await page.screenshot({ path: 'test-results/sino.png' });
+
+  // Apagar um (o menu fica aberto).
+  await menu.getByRole('menuitem', { name: `Apagar aviso: ⏰ Dois Sino ${run}` }).click();
+  await expect(menu.getByRole('menuitem', { name: new RegExp(`Dois Sino ${run}`) })).toHaveCount(0);
+  await expect.poll(async () => (await titles()).includes(`⏰ Dois Sino ${run}`)).toBe(false);
+
+  // Marcar todos como lidos → passam para "Lidos"; "Apagar os lidos" limpa-os.
+  await menu.getByRole('menuitem', { name: 'Marcar todos como lidos' }).click();
+  await button.click();
+  await expect(menu.getByText('Nada por ler')).toBeVisible();
+  await expect(menu.getByRole('menuitem', { name: new RegExp(`Um Sino ${run}$`) })).toBeVisible();
+  await menu.getByRole('menuitem', { name: 'Apagar os lidos' }).click();
+  await expect.poll(async () => (await titles()).some((t) => t.includes(`Sino ${run}`))).toBe(false);
+
+  // Limpar todos (também os por ler).
+  await remindNow(page.request, lead.id, `Quatro Sino ${run}`);
+  await page.reload();
+  await button.click();
+  await menu.getByRole('menuitem', { name: 'Limpar todos' }).click();
+  await expect.poll(async () => (await bell(page.request)).length).toBe(0);
 });

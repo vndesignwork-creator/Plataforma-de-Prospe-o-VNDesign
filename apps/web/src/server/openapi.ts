@@ -136,6 +136,7 @@ import {
   TaskSearchQuerySchema,
   TaskListQuerySchema,
   TaskListItemSchema,
+  NotificationClearQuerySchema,
   NotificationListSchema,
   NotificationReadSchema,
   CommentCreateSchema,
@@ -1160,8 +1161,22 @@ export function getOpenApiDocument() {
       '/notifications': {
         get: op({
           tags: ['Equipa'],
-          summary: 'Os meus avisos (tarefas que me deram e @menções) e quantos estão por ler',
+          summary: 'Os meus avisos (tarefas, @menções, lembretes, respostas, emails abertos…) e quantos estão por ler',
           responses: { '200': ok(NotificationListSchema), ...common },
+        }),
+        delete: op({
+          tags: ['Equipa'],
+          summary: 'Limpar o sino: ?which=read (só os lidos, por omissão) ou ?which=all (todos)',
+          requestParams: { query: NotificationClearQuerySchema },
+          responses: { '200': ok(data(z.object({ deleted: z.int() }))), ...common },
+        }),
+      },
+      '/notifications/{id}': {
+        delete: op({
+          tags: ['Equipa'],
+          summary: 'Apagar um aviso',
+          requestParams: { path: idParam },
+          responses: { '204': { description: 'Apagado' }, ...withNotFound },
         }),
       },
       '/notifications/read': {

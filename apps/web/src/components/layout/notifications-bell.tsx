@@ -20,12 +20,15 @@ import {
   MessageSquareReply,
   Settings2,
   Sparkles,
+  Trash2,
   UserCheck,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownSeparator, DropdownTrigger } from '@/components/ui/dropdown';
-import { api } from '@/lib/api-client';
+import { api, errorMessage } from '@/lib/api-client';
 import { useTeamNames } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
@@ -71,13 +74,35 @@ function useMarkRead() {
   });
 }
 
+/** Apagar um aviso ({ id }) ou limpar o sino ({ which: 'read' | 'all' }); sai logo da lista. */
+function useDeleteNotifications() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { id: string } | { which: 'read' | 'all' }) =>
+      'id' in body ? api(`/notifications/${body.id}`, { method: 'DELETE' }) : api('/notifications', { method: 'DELETE', query: { which: body.which } }),
+    onMutate: (body) => {
+      qc.setQueryData<NotificationList>(KEY, (old) => {
+        if (!old) return old;
+        const gone = (n: Notification) => ('id' in body ? n.id === body.id : body.which === 'all' || !!n.read_at);
+        const data = old.data.filter((n) => !gone(n));
+        return { data, unread: data.filter((n) => !n.read_at).length };
+      });
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+    onSettled: () => void qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
 export function NotificationsBell({ className }: { className?: string }) {
   const { data } = useNotifications();
   const { data: team } = useTeamNames();
   const markRead = useMarkRead();
+  const remove = useDeleteNotifications();
   const router = useRouter();
   const unread = data?.unread ?? 0;
   const items = data?.data ?? [];
+  const fresh = items.filter((n) => !n.read_at);
+  const seen = items.filter((n) => n.read_at);
   const nameOf = (id: string | null) => (id ? (team?.find((m) => m.user_id === id)?.name ?? null) : null);
 
   function open(n: Notification) {
@@ -85,6 +110,41 @@ export function NotificationsBell({ className }: { className?: string }) {
     if (n.url) router.push(n.url);
     else if (n.lead) router.push(`${leadPath(n.lead)}${n.kind === 'task_assigned' ? '#tarefas' : '#atividade'}`);
   }
+
+  const row = (n: Notification) => {
+    const Icon = ICONS[n.kind] ?? Bell;
+    const title = notificationTitle(n, nameOf(n.actor_user_id));
+    const isNew = !n.read_at;
+    return (
+      <div key={n.id} className={cn('group/aviso relative flex items-start rounded-lg', isNew && 'bg-accent-soft/60')}>
+        {isNew ? <span className="absolute top-3 left-1 h-2 w-2 rounded-full bg-accent" aria-hidden /> : null}
+        <DropdownItem onSelect={() => open(n)} className="min-w-0 flex-1 items-start pl-4">
+          <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', isNew ? 'text-accent-text' : 'text-muted')} aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className={cn('block text-sm', isNew ? 'font-semibold text-fg' : 'text-muted')}>
+              {title}
+              {isNew ? <span className="sr-only"> (por ler)</span> : null}
+            </span>
+            <span className={cn('line-clamp-2 text-sm', isNew ? 'text-fg/80' : 'text-muted')}>{QUOTED.has(n.kind) ? `“${n.text}”` : n.text}</span>
+            <span className="block text-xs text-muted">
+              {n.lead ? `#${n.lead.number} ${n.lead.company_name} · ` : ''}
+              {formatDateTime(n.created_at)}
+            </span>
+          </span>
+        </DropdownItem>
+        <DropdownItem
+          onSelect={(e) => {
+            e.preventDefault();
+            remove.mutate({ id: n.id });
+          }}
+          aria-label={`Apagar aviso: ${title}`}
+          className="mt-1 shrink-0 px-2 text-muted opacity-60 group-hover/aviso:opacity-100 data-[highlighted]:opacity-100"
+        >
+          <X className="h-4 w-4" aria-hidden />
+        </DropdownItem>
+      </div>
+    );
+  };
 
   return (
     <DropdownRoot>
@@ -99,38 +159,42 @@ export function NotificationsBell({ className }: { className?: string }) {
           </span>
         ) : null}
       </DropdownTrigger>
-      <DropdownContent align="end" className="max-h-[70vh] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto">
-        <DropdownLabel>Avisos</DropdownLabel>
+      <DropdownContent align="end" className="max-h-[70vh] w-96 max-w-[calc(100vw-2rem)] overflow-y-auto">
         {items.length ? (
-          items.map((n) => {
-            const Icon = ICONS[n.kind] ?? Bell;
-            return (
-              <DropdownItem key={n.id} onSelect={() => open(n)} className="items-start">
-                <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', n.read_at ? 'text-muted' : 'text-accent-text')} aria-hidden />
-                <span className="min-w-0 flex-1">
-                  <span className={cn('block text-sm', !n.read_at && 'font-semibold')}>
-                    {notificationTitle(n, nameOf(n.actor_user_id))}
-                    {n.read_at ? null : <span className="sr-only"> (por ler)</span>}
-                  </span>
-                  <span className="line-clamp-2 text-sm text-muted">{QUOTED.has(n.kind) ? `“${n.text}”` : n.text}</span>
-                  <span className="block text-xs text-muted">
-                    {n.lead ? `#${n.lead.number} ${n.lead.company_name} · ` : ''}
-                    {formatDateTime(n.created_at)}
-                  </span>
-                </span>
-              </DropdownItem>
-            );
-          })
+          <>
+            <DropdownLabel>{fresh.length ? `Por ler (${fresh.length})` : 'Nada por ler'}</DropdownLabel>
+            {fresh.map(row)}
+            {seen.length ? (
+              <>
+                <DropdownSeparator />
+                <DropdownLabel>Lidos</DropdownLabel>
+                {seen.map(row)}
+              </>
+            ) : null}
+          </>
         ) : (
-          <p className="px-2 py-3 text-sm text-muted">
-            Sem avisos. Aparecem aqui os lembretes, os atrasados do dia, as respostas aos emails, os pedidos pelo site, as tarefas que te
-            derem e as menções.
-          </p>
+          <>
+            <DropdownLabel>Avisos</DropdownLabel>
+            <p className="px-2 py-3 text-sm text-muted">
+              Sem avisos. Aparecem aqui os lembretes, os atrasados do dia, as respostas aos emails, os pedidos pelo site, as tarefas que te
+              derem e as menções.
+            </p>
+          </>
         )}
         <DropdownSeparator />
         {unread ? (
           <DropdownItem onSelect={() => markRead.mutate({ all: true })}>
             <CheckCheck className="h-4 w-4 text-muted" aria-hidden /> Marcar todos como lidos
+          </DropdownItem>
+        ) : null}
+        {seen.length ? (
+          <DropdownItem onSelect={() => remove.mutate({ which: 'read' })}>
+            <Trash2 className="h-4 w-4 text-muted" aria-hidden /> Apagar os lidos
+          </DropdownItem>
+        ) : null}
+        {fresh.length ? (
+          <DropdownItem danger onSelect={() => remove.mutate({ which: 'all' })}>
+            <Trash2 className="h-4 w-4" aria-hidden /> Limpar todos
           </DropdownItem>
         ) : null}
         <DropdownItem onSelect={() => router.push('/definicoes/lembretes#avisos')}>

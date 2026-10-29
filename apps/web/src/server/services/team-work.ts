@@ -12,11 +12,12 @@ import {
   type CommentCreate,
   type LeadTask,
   type Notification,
+  type NotificationClearQuery,
   type NotificationList,
   type NotificationRead,
 } from '@vndesign/core';
 import type { ApiContext } from '../context';
-import { fromPostgrest, unwrap } from '../http';
+import { ApiError, fromPostgrest, unwrap } from '../http';
 import { getLead } from './leads';
 import { isMailConfigured, sendMail } from '../mailer';
 import { createSupabaseAdminClient } from '../supabase-admin';
@@ -57,6 +58,27 @@ export async function markNotificationsRead(ctx: ApiContext, input: Notification
   const { error, count } = await q;
   if (error) throw fromPostgrest(error);
   return { updated: count ?? 0 };
+}
+
+/** Apagar um aviso meu. */
+export async function deleteNotification(ctx: ApiContext, id: string): Promise<void> {
+  const { error, count } = await ctx.supabase
+    .from('notifications')
+    .delete({ count: 'exact' })
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('user_id', ctx.user.id)
+    .eq('id', id);
+  if (error) throw fromPostgrest(error);
+  if (!count) throw new ApiError(404, 'Aviso não encontrado');
+}
+
+/** Limpar o sino: só os avisos lidos ou todos. */
+export async function clearNotifications(ctx: ApiContext, input: NotificationClearQuery): Promise<{ deleted: number }> {
+  let q = ctx.supabase.from('notifications').delete({ count: 'exact' }).eq('workspace_id', ctx.workspaceId).eq('user_id', ctx.user.id);
+  if (input.which === 'read') q = q.not('read_at', 'is', null);
+  const { error, count } = await q;
+  if (error) throw fromPostgrest(error);
+  return { deleted: count ?? 0 };
 }
 
 /** Nome de quem fez a ação (para o texto da notificação push). */
