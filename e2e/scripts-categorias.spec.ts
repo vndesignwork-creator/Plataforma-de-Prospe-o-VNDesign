@@ -9,7 +9,7 @@ test('lead de Design Gráfico: modelo da categoria com {{servicos}} e {{benefici
   const semServicos = await post({ company_name: `Sem serviços ${run}` });
 
   await page.goto(`/leads/${grafico.id}`);
-  await expect(page.getByRole('heading', { name: 'Scripts de contacto' })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('heading', { name: 'Contactar' })).toBeVisible({ timeout: 20_000 });
   await expect(page.locator('#script-template option:checked')).toHaveText('Email de prospeção — Design Gráfico');
   const message = page.getByRole('textbox', { name: 'Mensagem' });
   await expect(message).toHaveValue(/Trabalho em identidade visual e flyers e cartazes para negócios/);
