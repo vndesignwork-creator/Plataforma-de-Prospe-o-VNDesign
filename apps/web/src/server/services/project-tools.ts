@@ -39,7 +39,7 @@ import { selectInBatches } from '../batch';
 import { ApiError, fromPostgrest } from '../http';
 import { createSupabaseAdminClient } from '../supabase-admin';
 import { getLead } from './leads';
-import { sendUserPush } from './push';
+import { alertUser } from './push';
 
 async function logActivity(ctx: ApiContext, leadId: string, type: string, body: string | null, payload: Record<string, unknown> = {}) {
   await ctx.supabase.from('lead_activities').insert({
@@ -651,7 +651,9 @@ export async function clientDeliverableAction(
 
   const { data: lead } = await admin.from('leads').select('created_by, number, company_name').eq('id', leadId).maybeSingle();
   if (lead?.created_by) {
-    await sendUserPush(ws, lead.created_by as string, {
+    await alertUser(ws, lead.created_by as string, {
+      kind: 'client',
+      leadId,
       title: input.action === 'approve' ? `✅ Entrega aprovada · ${lead.company_name}` : `✏️ Pedido de alterações · ${lead.company_name}`,
       body: input.action === 'approve' ? `${who} aprovou "${target.title}".` : `${who}: ${input.comment}`,
       url: `/leads/${leadId}#projeto`,

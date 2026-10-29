@@ -2,12 +2,27 @@
 
 /**
  * Sino dos avisos (barra lateral e barra do telemóvel): tarefas que alguém te
- * deu e @menções nos comentários. Tocar num aviso abre o lead no sítio certo e
- * marca-o como lido. Atualiza sozinho a cada minuto.
+ * deu, @menções, lembretes, atrasados do dia, respostas, emails abertos, pedidos
+ * pelo site, clientes… Tocar num aviso abre o sítio certo e marca-o como lido.
+ * Atualiza sozinho a cada minuto. Os tipos escolhem-se em Definições.
  */
 import { formatDateTime, leadPath, notificationTitle, type Notification, type NotificationList } from '@vndesign/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AtSign, Bell, CheckCheck, ListChecks } from 'lucide-react';
+import {
+  AlarmClock,
+  AtSign,
+  Bell,
+  CalendarClock,
+  CheckCheck,
+  Inbox,
+  ListChecks,
+  MailOpen,
+  MessageSquareReply,
+  Settings2,
+  Sparkles,
+  UserCheck,
+  type LucideIcon,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownSeparator, DropdownTrigger } from '@/components/ui/dropdown';
 import { api } from '@/lib/api-client';
@@ -15,6 +30,20 @@ import { useTeamNames } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
 const KEY = ['notifications'];
+
+const ICONS: Record<Notification['kind'], LucideIcon> = {
+  task_assigned: ListChecks,
+  mention: AtSign,
+  reminder: AlarmClock,
+  daily: CalendarClock,
+  reply: MessageSquareReply,
+  email_open: MailOpen,
+  site_form: Inbox,
+  client: UserCheck,
+  system: Sparkles,
+};
+/** Tarefas e menções mostram o texto entre aspas (título da tarefa, início do comentário). */
+const QUOTED = new Set<Notification['kind']>(['task_assigned', 'mention']);
 
 export function useNotifications() {
   return useQuery({
@@ -53,7 +82,8 @@ export function NotificationsBell({ className }: { className?: string }) {
 
   function open(n: Notification) {
     if (!n.read_at) markRead.mutate({ ids: [n.id] });
-    if (n.lead) router.push(`${leadPath(n.lead)}${n.kind === 'task_assigned' ? '#tarefas' : '#atividade'}`);
+    if (n.url) router.push(n.url);
+    else if (n.lead) router.push(`${leadPath(n.lead)}${n.kind === 'task_assigned' ? '#tarefas' : '#atividade'}`);
   }
 
   return (
@@ -73,7 +103,7 @@ export function NotificationsBell({ className }: { className?: string }) {
         <DropdownLabel>Avisos</DropdownLabel>
         {items.length ? (
           items.map((n) => {
-            const Icon = n.kind === 'task_assigned' ? ListChecks : AtSign;
+            const Icon = ICONS[n.kind] ?? Bell;
             return (
               <DropdownItem key={n.id} onSelect={() => open(n)} className="items-start">
                 <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', n.read_at ? 'text-muted' : 'text-accent-text')} aria-hidden />
@@ -82,7 +112,7 @@ export function NotificationsBell({ className }: { className?: string }) {
                     {notificationTitle(n, nameOf(n.actor_user_id))}
                     {n.read_at ? null : <span className="sr-only"> (por ler)</span>}
                   </span>
-                  <span className="block truncate text-sm text-muted">“{n.text}”</span>
+                  <span className="line-clamp-2 text-sm text-muted">{QUOTED.has(n.kind) ? `“${n.text}”` : n.text}</span>
                   <span className="block text-xs text-muted">
                     {n.lead ? `#${n.lead.number} ${n.lead.company_name} · ` : ''}
                     {formatDateTime(n.created_at)}
@@ -92,16 +122,20 @@ export function NotificationsBell({ className }: { className?: string }) {
             );
           })
         ) : (
-          <p className="px-2 py-3 text-sm text-muted">Sem avisos. Aparecem aqui as tarefas que te derem e quando te mencionarem num comentário.</p>
+          <p className="px-2 py-3 text-sm text-muted">
+            Sem avisos. Aparecem aqui os lembretes, os atrasados do dia, as respostas aos emails, os pedidos pelo site, as tarefas que te
+            derem e as menções.
+          </p>
         )}
+        <DropdownSeparator />
         {unread ? (
-          <>
-            <DropdownSeparator />
-            <DropdownItem onSelect={() => markRead.mutate({ all: true })}>
-              <CheckCheck className="h-4 w-4 text-muted" aria-hidden /> Marcar todos como lidos
-            </DropdownItem>
-          </>
+          <DropdownItem onSelect={() => markRead.mutate({ all: true })}>
+            <CheckCheck className="h-4 w-4 text-muted" aria-hidden /> Marcar todos como lidos
+          </DropdownItem>
         ) : null}
+        <DropdownItem onSelect={() => router.push('/definicoes/lembretes#avisos')}>
+          <Settings2 className="h-4 w-4 text-muted" aria-hidden /> Escolher os avisos
+        </DropdownItem>
       </DropdownContent>
     </DropdownRoot>
   );

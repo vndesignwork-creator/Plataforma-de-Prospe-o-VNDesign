@@ -37,7 +37,7 @@ import { getBriefing } from './briefing';
 import { mainClientId } from './client-projects';
 import { loadSmtpAccount } from './mail-account';
 import { addTimeEntry, createDeliverable, getProjectTime, startTimer } from './project-tools';
-import { sendUserPush } from './push';
+import { alertUser } from './push';
 import { createTask, listTasks, updateTask } from './tasks';
 import { getLead } from './leads';
 import { getSettings, getSignature } from './workspace';
@@ -298,7 +298,9 @@ export async function claimInvite(user: CollabUser, token: string): Promise<void
 async function notifyOwner(row: Row & { workspace_id?: string; created_by?: string | null }, body: string) {
   if (!row.created_by || !row.workspace_id) return;
   const { data: lead } = await createSupabaseAdminClient().from('leads').select('company_name').eq('id', row.lead_id).maybeSingle();
-  await sendUserPush(row.workspace_id, row.created_by, {
+  await alertUser(row.workspace_id, row.created_by, {
+    kind: 'client',
+    leadId: row.lead_id,
     title: `👥 ${(lead as { company_name: string } | null)?.company_name ?? 'Projeto'}`,
     body,
     url: `/leads/${row.lead_id}#projeto`,

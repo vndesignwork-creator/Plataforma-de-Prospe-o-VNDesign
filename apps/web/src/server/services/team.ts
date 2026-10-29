@@ -26,7 +26,7 @@ import { requestOrigin } from '../request-origin';
 import { createSupabaseAdminClient } from '../supabase-admin';
 import { loadSmtpAccount } from './mail-account';
 import { avatarUrl, teamProfiles } from './profile';
-import { sendUserPush } from './push';
+import { alertUser } from './push';
 import { getSettings, getSignature } from './workspace';
 
 const INVITE_SELECT = 'id, email, name, role, invited_at, token';
@@ -219,7 +219,7 @@ async function join(row: InviteRow, userId: string, name: string, email: string)
   else await admin.from('signatures').insert({ workspace_id: row.workspace_id, user_id: userId, ...signature });
   await admin.from('workspace_invites').update({ accepted_at: new Date().toISOString(), accepted_by: userId }).eq('id', row.id);
   if (row.invited_by) {
-    await sendUserPush(row.workspace_id, row.invited_by, { title: '👥 Equipa', body: `${name} aceitou o convite para a equipa.`, url: '/equipa', tag: `team-${row.id}` }).catch(
+    await alertUser(row.workspace_id, row.invited_by, { kind: 'system', title: '👥 Equipa', body: `${name} aceitou o convite para a equipa.`, url: '/equipa', tag: `team-${row.id}` }).catch(
       () => undefined,
     );
   }

@@ -12,7 +12,7 @@ import { createSupabaseAdminClient } from '../supabase-admin';
 import { systemContext } from '../system-context';
 import { createActivity } from './activities';
 import { createLead, updateLead } from './leads';
-import { sendUserPush } from './push';
+import { alertUser } from './push';
 import { createTask } from './tasks';
 import { getSettings } from './workspace';
 
@@ -99,7 +99,8 @@ export async function submitSiteForm(token: string, fields: Record<string, strin
   } catch (error) {
     const extra = (error instanceof ApiError ? error.extra : null) as { do_not_contact?: unknown[] } | null;
     if (error instanceof ApiError && extra?.do_not_contact) {
-      await sendUserPush(ctx.workspaceId, ctx.user.id, {
+      await alertUser(ctx.workspaceId, ctx.user.id, {
+        kind: 'site_form',
         title: '📥 Pedido pelo site (lista "não contactar")',
         body: `${company} enviou um pedido, mas está na lista "não contactar". Vê nas Definições.`,
         url: '/definicoes/nao-contactar',
@@ -122,7 +123,9 @@ export async function submitSiteForm(token: string, fields: Record<string, strin
   );
 
   const { data: lead } = await admin.from('leads').select('id, number, company_name').eq('id', leadId).maybeSingle();
-  await sendUserPush(ctx.workspaceId, ctx.user.id, {
+  await alertUser(ctx.workspaceId, ctx.user.id, {
+    kind: 'site_form',
+    leadId,
     title: created ? '📥 Novo pedido pelo site' : '📥 Novo pedido pelo site (lead que já existia)',
     body: `${f.name ?? company}${f.message ? `: ${f.message.slice(0, 120)}` : ''}`,
     url: lead ? leadPath(lead as { id: string; number: number; company_name: string }) : '/leads',

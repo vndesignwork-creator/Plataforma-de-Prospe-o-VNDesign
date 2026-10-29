@@ -20,6 +20,7 @@ import { sendWithAccount } from '../mailer';
 import { isPushConfigured, sendPush, type StoredSubscription } from '../push';
 import { createSupabaseAdminClient } from '../supabase-admin';
 import { getLead } from './leads';
+import { saveAlert } from './push';
 import { loadSmtpAccount, smtpError } from './mail-account';
 import { getSignature } from './workspace';
 
@@ -238,7 +239,7 @@ export async function sendMeetingReminders(options: { dryRun?: boolean; now?: Da
   const now = options.now ?? new Date();
   const { data, error } = await admin
     .from('lead_meetings')
-    .select('id, workspace_id, starts_at, location, lead:leads(number, company_name)')
+    .select('id, workspace_id, starts_at, location, created_by, lead:leads(id, number, company_name)')
     .is('canceled_at', null)
     .is('reminder_sent_at', null)
     .gt('starts_at', now.toISOString())
@@ -246,7 +247,14 @@ export async function sendMeetingReminders(options: { dryRun?: boolean; now?: Da
     .limit(100);
   if (error?.code === '42P01' || error?.code === 'PGRST205') return [];
   if (error) throw new Error(error.message);
-  const meetings = (data ?? []) as unknown as { id: string; workspace_id: string; starts_at: string; location: string | null; lead: { number: number; company_name: string } }[];
+  const meetings = (data ?? []) as unknown as {
+    id: string;
+    workspace_id: string;
+    starts_at: string;
+    location: string | null;
+    created_by: string | null;
+    lead: { id: string; number: number; company_name: string };
+  }[];
   const results: { meeting_id: string; devices: number }[] = [];
   for (const m of meetings) {
     if (options.dryRun) {
@@ -268,6 +276,17 @@ export async function sendMeetingReminders(options: { dryRun?: boolean; now?: Da
           }),
         ),
       );
+    }
+    // No sino de quem marcou a reunião.
+    if (m.created_by) {
+      await saveAlert(m.workspace_id, m.created_by, {
+        kind: 'reminder',
+        title: `📅 Reunião às ${timeFmt.format(new Date(m.starts_at))}`,
+        body: [m.lead.company_name, m.location].filter(Boolean).join(' · '),
+        url: leadPath(m.lead),
+        tag: `meeting-${m.id}`,
+        leadId: m.lead.id,
+      });
     }
     await admin.from('lead_meetings').update({ reminder_sent_at: now.toISOString() }).eq('id', m.id);
     results.push({ meeting_id: m.id, devices });

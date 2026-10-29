@@ -21,7 +21,7 @@ import { createSupabaseAdminClient } from '../supabase-admin';
 import { systemContext } from '../system-context';
 import { detachedContext, startLeadGeneration } from './lead-generation';
 import { loadSmtpAccount } from './mail-account';
-import { sendUserPush } from './push';
+import { alertUser } from './push';
 
 const SELECT =
   'id, enabled, query, city, sector_id, services, max_results, weekday, hour, auto_add, audit, next_run_at, last_run_at, last_run_id, last_error, checked_at, created_at';
@@ -177,7 +177,7 @@ export function summarizeRun(run: LeadGenerationRun): { title: string; body: str
 async function notifyFinished(ctx: ApiContext, schedule: LeadGenerationSchedule, run: LeadGenerationRun, appUrl: string) {
   const { title, body } = summarizeRun(run);
   const path = `/gerar-leads?pesquisa=${run.id}`;
-  await sendUserPush(ctx.workspaceId, ctx.user.id, { title, body, url: path, tag: `leadgen-${schedule.id}` }).catch((error) =>
+  await alertUser(ctx.workspaceId, ctx.user.id, { kind: 'system', title, body, url: path, tag: `leadgen-${schedule.id}` }).catch((error) =>
     console.warn('[gerador] notificação falhou', error instanceof Error ? error.message : error),
   );
 

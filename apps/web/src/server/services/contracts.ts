@@ -19,7 +19,7 @@ import { getLead } from './leads';
 import { listPayments } from './payments';
 import { getProjectInfo } from './project-tools';
 import { listProposals } from './proposals';
-import { sendUserPush } from './push';
+import { alertUser } from './push';
 import { loadServiceCatalog } from './service-catalog';
 import { loadServiceCategories } from './service-categories';
 import { getSettings, getSignature } from './workspace';
@@ -200,7 +200,9 @@ export async function acceptContract(token: string, name: string, ip: string | n
     payload: { title: contract.title, number: contract.number, name },
   });
   if (contract.created_by) {
-    await sendUserPush(contract.workspace_id, contract.created_by, {
+    await alertUser(contract.workspace_id, contract.created_by, {
+      kind: 'client',
+      leadId: contract.lead_id,
       title: '✍️ Contrato aceite',
       body: `${name} aceitou "${contract.title}".`,
       url: `/leads/${contract.lead_id}#contratos`,

@@ -23,7 +23,7 @@ import { createSupabaseAdminClient } from '../supabase-admin';
 import { sendUserPush } from './push';
 import { teamNames } from './team';
 
-const NOTIFICATION_SELECT = 'id, kind, lead_id, task_id, activity_id, actor_user_id, text, read_at, created_at, lead:leads(id, number, company_name)';
+const NOTIFICATION_SELECT = 'id, kind, lead_id, task_id, activity_id, actor_user_id, title, text, url, read_at, created_at, lead:leads(id, number, company_name)';
 
 export async function listNotifications(ctx: ApiContext): Promise<NotificationList> {
   const [list, unread] = await Promise.all([
@@ -135,6 +135,8 @@ export async function sendNotificationEmails(options: { appUrl: string; dryRun?:
     .select('id, workspace_id, user_id, kind, text, created_at, actor_user_id, lead:leads(number, company_name)')
     .is('read_at', null)
     .is('emailed_at', null)
+    // Por email só as tarefas e as menções (os outros avisos já têm o seu email ou são do dia).
+    .in('kind', ['task_assigned', 'mention'])
     .gte('created_at', since)
     .order('created_at', { ascending: true })
     .limit(2000);

@@ -3,7 +3,17 @@
  * diário de follow-ups enviado pelo cron. Quem tem horário de silêncio não
  * recebe push nesse período (os lembretes das tarefas esperam pelo fim).
  */
-import { isQuietTime, leadPath, parseQuietHours, QUIET_HOURS_PREFERENCE, type PushSubscriptionCreate, type Today } from '@vndesign/core';
+import {
+  ALERTS_PREFERENCE,
+  isQuietTime,
+  leadPath,
+  parseAlertsPreference,
+  parseQuietHours,
+  QUIET_HOURS_PREFERENCE,
+  type AlertKind,
+  type PushSubscriptionCreate,
+  type Today,
+} from '@vndesign/core';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
 import { isPushConfigured, sendPush, vapidPublicKey, type PushPayload, type StoredSubscription } from '../push';
@@ -108,6 +118,57 @@ export async function sendUserPush(workspaceId: string, userId: string, payload:
   return data?.length ? deliver(data as StoredSubscription[], payload) : { sent: 0, removed: 0, failed: 0 };
 }
 
+export interface Alert {
+  kind: AlertKind;
+  title: string;
+  body: string;
+  /** Página da plataforma (começa por /). */
+  url: string;
+  tag: string;
+  leadId?: string | null;
+  taskId?: string | null;
+}
+
+/** Tipos de aviso que esta pessoa desligou (Definições → Notificações). */
+async function alertsOff(workspaceId: string, userId: string): Promise<AlertKind[]> {
+  const { data } = await createSupabaseAdminClient()
+    .from('user_preferences')
+    .select('value')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .eq('key', ALERTS_PREFERENCE)
+    .maybeSingle();
+  return parseAlertsPreference((data as { value: unknown } | null)?.value).off;
+}
+
+/** Guarda o aviso no sino desta pessoa (sem push). Uma falha só fica no registo. */
+export async function saveAlert(workspaceId: string, userId: string, alert: Alert): Promise<boolean> {
+  if ((await alertsOff(workspaceId, userId)).includes(alert.kind)) return false;
+  const { error } = await createSupabaseAdminClient()
+    .from('notifications')
+    .insert({
+      workspace_id: workspaceId,
+      user_id: userId,
+      kind: alert.kind,
+      lead_id: alert.leadId ?? null,
+      task_id: alert.taskId ?? null,
+      title: alert.title.slice(0, 200),
+      text: (alert.body.trim() || alert.title).slice(0, 300),
+      url: alert.url.startsWith('/') ? alert.url.slice(0, 500) : null,
+    });
+  if (error) console.warn('[avisos] não foi possível guardar o aviso', error.message);
+  return true;
+}
+
+/**
+ * Aviso para uma pessoa: fica no sino e vai por push (se a pessoa o ligou e não
+ * está no horário de silêncio). Quem desligou este tipo de aviso não recebe nenhum dos dois.
+ */
+export async function alertUser(workspaceId: string, userId: string, alert: Alert, options: { ignoreQuiet?: boolean } = {}) {
+  if (!(await saveAlert(workspaceId, userId, alert))) return { sent: 0, removed: 0, failed: 0 };
+  return sendUserPush(workspaceId, userId, { title: alert.title, body: alert.body, url: alert.url, tag: alert.tag }, options);
+}
+
 /** Notificação de teste para todos os dispositivos do utilizador. */
 export async function sendTestPush(ctx: ApiContext) {
   if (!isPushConfigured()) throw new ApiError(503, 'Push não configurado', 'Faltam as chaves VAPID no servidor.');
@@ -193,6 +254,36 @@ export async function sendDailyPushes(options: { dryRun?: boolean } = {}): Promi
   return results;
 }
 
+/**
+ * Resumo do dia no sino (cron diário) de quem gere o workspace (dono e administradores):
+ * follow-ups e tarefas em atraso ou para hoje. No máximo um por dia.
+ */
+export async function saveDailyAlerts(options: { dryRun?: boolean } = {}): Promise<{ workspaces: number; saved: number }> {
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin.from('workspace_members').select('workspace_id, user_id').in('role', ['owner', 'admin']);
+  if (error) throw new Error(error.message);
+  const byWorkspace = new Map<string, string[]>();
+  for (const m of (data ?? []) as { workspace_id: string; user_id: string }[]) byWorkspace.set(m.workspace_id, [...(byWorkspace.get(m.workspace_id) ?? []), m.user_id]);
+  const since = new Date(Date.now() - 20 * 3_600_000).toISOString();
+  let saved = 0;
+  for (const [workspaceId, users] of byWorkspace) {
+    const payload = buildDailyPush(await fetchToday(admin, workspaceId));
+    if (!payload || options.dryRun) continue;
+    for (const userId of users) {
+      const { count } = await admin
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('workspace_id', workspaceId)
+        .eq('user_id', userId)
+        .eq('kind', 'daily')
+        .gte('created_at', since);
+      if (count) continue;
+      if (await saveAlert(workspaceId, userId, { kind: 'daily', title: payload.title, body: payload.body, url: payload.url ?? '/dashboard', tag: payload.tag ?? 'daily' })) saved++;
+    }
+  }
+  return { workspaces: byWorkspace.size, saved };
+}
+
 // -----------------------------------------------------------------------------
 // Lembretes das tarefas (cron /api/v1/cron/reminders, de 5 em 5 minutos)
 // -----------------------------------------------------------------------------
@@ -221,13 +312,26 @@ export function buildReminderPush(task: {
   };
 }
 
+/** Lembrete no sino de quem tem a tarefa (ou de quem a criou), se ainda lá não estiver. */
+async function saveReminderAlert(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  task: { id: string; workspace_id: string; title: string; assigned_to: string | null; created_by: string | null; lead: { id: string; number: number; company_name: string } | null },
+) {
+  const userId = task.assigned_to ?? task.created_by;
+  if (!userId) return;
+  const { count } = await admin.from('notifications').select('id', { count: 'exact', head: true }).eq('task_id', task.id).eq('kind', 'reminder');
+  if (count) return;
+  const push = buildReminderPush(task);
+  await saveAlert(task.workspace_id, userId, { kind: 'reminder', title: push.title, body: push.body, url: push.url ?? '/tarefas', tag: push.tag ?? 'reminder', leadId: task.lead?.id ?? null, taskId: task.id });
+}
+
 /** Envia as notificações dos lembretes que já chegaram à hora e marca-os como enviados. */
 export async function sendTaskReminders(options: { dryRun?: boolean; now?: Date } = {}): Promise<ReminderResult[]> {
   const admin = createSupabaseAdminClient();
   const now = options.now ?? new Date();
   const { data, error } = await admin
     .from('lead_tasks')
-    .select('id, workspace_id, title, remind_at, lead:leads(number, company_name)')
+    .select('id, workspace_id, title, remind_at, assigned_to, created_by, lead:leads(id, number, company_name)')
     .is('reminded_at', null)
     .is('done_at', null)
     .not('remind_at', 'is', null)
@@ -240,7 +344,9 @@ export async function sendTaskReminders(options: { dryRun?: boolean; now?: Date 
     workspace_id: string;
     title: string;
     remind_at: string;
-    lead: { number: number; company_name: string } | null;
+    assigned_to: string | null;
+    created_by: string | null;
+    lead: { id: string; number: number; company_name: string } | null;
   }[];
   if (!tasks.length) return [];
 
@@ -275,6 +381,8 @@ export async function sendTaskReminders(options: { dryRun?: boolean; now?: Date 
             ? 'quiet'
             : 'no_devices';
     if (status === 'sent') await deliver(subs, buildReminderPush(task));
+    // No sino de quem tem a tarefa (uma vez, mesmo que o push espere pelo fim do silêncio).
+    if (!options.dryRun && !expired) await saveReminderAlert(admin, task);
     // Todos em silêncio: fica por marcar e vai no primeiro cron depois do silêncio.
     if (status === 'quiet') {
       results.push({ task_id: task.id, workspace_id: task.workspace_id, devices: all.length, status });

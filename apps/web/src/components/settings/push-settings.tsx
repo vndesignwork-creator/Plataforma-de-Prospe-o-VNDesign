@@ -1,10 +1,20 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, Download, Moon, Smartphone } from 'lucide-react';
+import { Bell, BellRing, Download, Moon, Smartphone } from 'lucide-react';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
-import { parseQuietHours, QUIET_HOURS_PREFERENCE, type QuietHours } from '@vndesign/core';
+import {
+  ALERT_KIND_LABELS,
+  ALERT_KINDS,
+  ALERTS_PREFERENCE,
+  parseAlertsPreference,
+  parseQuietHours,
+  QUIET_HOURS_PREFERENCE,
+  type AlertKind,
+  type AlertsPreference,
+  type QuietHours,
+} from '@vndesign/core';
 import { Badge } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
@@ -176,6 +186,46 @@ function QuietHoursSettings() {
   );
 }
 
+/** Que avisos aparecem no sino (e vão por push): cada pessoa escolhe os seus. */
+function AlertKindsSettings() {
+  const { data, isPending } = usePreference<AlertsPreference>(ALERTS_PREFERENCE);
+  const save = useSetPreference<AlertsPreference>(ALERTS_PREFERENCE);
+  const [draft, setDraft] = useState<AlertKind[] | null>(null);
+  const off = draft ?? parseAlertsPreference(data).off;
+  const toggle = (kind: AlertKind, on: boolean) => {
+    const next = on ? off.filter((k) => k !== kind) : [...off, kind];
+    setDraft(next);
+    save.mutate({ off: next }, { onError: (error) => toast.error(errorMessage(error)) });
+  };
+
+  return (
+    <div id="avisos" className="flex scroll-mt-20 flex-col gap-2 border-t border-border pt-3" data-testid="alert-kinds">
+      <h4 className="flex items-center gap-2 text-sm font-semibold">
+        <BellRing className="h-4 w-4" aria-hidden /> Avisos no sino
+      </h4>
+      <p className="text-sm text-muted">
+        O que aparece no sino (e no telemóvel, com as notificações ligadas). As tarefas que te derem e as menções aparecem sempre.
+      </p>
+      <ul className="flex flex-col gap-1">
+        {ALERT_KINDS.map((kind) => (
+          <li key={kind} className="flex items-center justify-between gap-3 py-1">
+            <span className="min-w-0">
+              <span className="block text-sm font-medium">{ALERT_KIND_LABELS[kind].label}</span>
+              <span className="block text-xs text-muted">{ALERT_KIND_LABELS[kind].hint}</span>
+            </span>
+            <Switch
+              checked={!off.includes(kind)}
+              onCheckedChange={(on) => toggle(kind, on)}
+              label={`${off.includes(kind) ? 'Ligar' : 'Desligar'} os avisos: ${ALERT_KIND_LABELS[kind].label}`}
+              disabled={isPending}
+            />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function PushSettings() {
   const qc = useQueryClient();
   const { data: status } = useQuery({
@@ -306,6 +356,7 @@ export function PushSettings() {
       )}
 
       <QuietHoursSettings />
+      <AlertKindsSettings />
 
       <div className="flex flex-col gap-1.5 border-t border-border pt-3">
         <h4 className="flex items-center gap-2 text-sm font-semibold">

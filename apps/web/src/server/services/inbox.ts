@@ -31,7 +31,7 @@ import { createSupabaseAdminClient } from '../supabase-admin';
 import { systemContext } from '../system-context';
 import { addDoNotContact } from './do-not-contact';
 import { loadImapAccount, saveImapState } from './mail-account';
-import { sendUserPush } from './push';
+import { alertUser } from './push';
 import { getSettings } from './workspace';
 
 /** Na primeira leitura, olha só para os últimos dias. */
@@ -152,8 +152,8 @@ export async function checkReplies(ctx: ApiContext): Promise<ReplyCheckResult> {
   const changed = new Set<string>();
   const settings = await getSettings(ctx);
   const today = todayIso();
-  const notify = (payload: Parameters<typeof sendUserPush>[2]) =>
-    sendUserPush(ctx.workspaceId, ctx.user.id, payload).catch((e) => console.warn('[respostas] notificação falhou', e instanceof Error ? e.message : e));
+  const notify = (alert: Omit<Parameters<typeof alertUser>[2], 'kind'>) =>
+    alertUser(ctx.workspaceId, ctx.user.id, { kind: 'reply', ...alert }).catch((e) => console.warn('[respostas] notificação falhou', e instanceof Error ? e.message : e));
 
   // Devoluções: o email do lead fica marcado e a sequência de follow-ups para.
   for (const { message, lead, recipient } of bounces) {
@@ -176,7 +176,7 @@ export async function checkReplies(ctx: ApiContext): Promise<ReplyCheckResult> {
     }
     const { error: updateError } = await ctx.supabase.from('leads').update(patch).eq('workspace_id', ctx.workspaceId).eq('id', lead.id);
     if (updateError) throw fromPostgrest(updateError);
-    await notify({ title: `📭 Email devolvido · ${lead.company_name}`, body: `${recipient} não existe ou não aceita emails.`, url: leadPath(lead), tag: `bounce-${lead.id}` });
+    await notify({ title: `📭 Email devolvido · ${lead.company_name}`, body: `${recipient} não existe ou não aceita emails.`, url: leadPath(lead), tag: `bounce-${lead.id}`, leadId: lead.id });
     result.bounces.push({ lead_id: lead.id, company_name: lead.company_name, email: recipient });
   }
 
@@ -260,6 +260,7 @@ export async function checkReplies(ctx: ApiContext): Promise<ReplyCheckResult> {
       body: message.subject || `Email de ${message.from}`,
       url: leadPath(lead),
       tag: `reply-${lead.id}`,
+      leadId: lead.id,
     });
     result.replies.push({ lead_id: lead.id, company_name: lead.company_name, from: message.from, subject: message.subject, status_changed: statusChanged, intent });
   }

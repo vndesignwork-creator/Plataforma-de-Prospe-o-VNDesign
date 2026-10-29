@@ -16,7 +16,7 @@ import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
 import { createSupabaseAdminClient } from '../supabase-admin';
 import { getLead } from './leads';
-import { sendUserPush } from './push';
+import { alertUser } from './push';
 import { getSettings } from './workspace';
 
 const SELECT = 'id, lead_id, token, questions, answers, files, status, submitted_at, created_at';
@@ -179,7 +179,9 @@ export async function submitBriefing(token: string, form: FormData): Promise<{ f
   });
   const notify = (lead.created_by as string | null) ?? briefing.created_by;
   if (notify) {
-    await sendUserPush(briefing.workspace_id, notify, {
+    await alertUser(briefing.workspace_id, notify, {
+      kind: 'client',
+      leadId: briefing.lead_id,
       title: `📝 Briefing recebido · ${lead.company_name}`,
       body: `${answers.filter(Boolean).length} resposta(s)${added.length ? ` e ${added.length} ficheiro(s)` : ''}.`,
       url: `/leads/${briefing.lead_id}#projeto`,

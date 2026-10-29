@@ -15,7 +15,7 @@ import type { ApiContext } from '../context';
 import { fromPostgrest } from '../http';
 import { requestOrigin } from '../request-origin';
 import { createSupabaseAdminClient } from '../supabase-admin';
-import { sendUserPush } from './push';
+import { alertUser } from './push';
 import { getSettings } from './workspace';
 
 /**
@@ -130,7 +130,9 @@ async function announce(row: TrackingRow, kind: 'opened' | 'clicked', now: Date,
       : first
         ? `Abriu o email “${row.subject}”. Bom momento para ligar!`
         : `Voltou a abrir o email “${row.subject}”.`;
-  await sendUserPush(row.workspace_id, row.created_by, {
+  await alertUser(row.workspace_id, row.created_by, {
+    kind: 'email_open',
+    leadId: row.lead_id,
     title: `📬 ${lead.company_name}`,
     body,
     url: `/leads/${row.lead_id}`,

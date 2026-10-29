@@ -97,8 +97,29 @@ export type CommentCreate = z.output<typeof CommentCreateSchema>;
 // -----------------------------------------------------------------------------
 // Avisos
 // -----------------------------------------------------------------------------
-export const NOTIFICATION_KINDS = ['task_assigned', 'mention'] as const;
+export const NOTIFICATION_KINDS = ['task_assigned', 'mention', 'reminder', 'daily', 'reply', 'email_open', 'site_form', 'client', 'system'] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
+
+/** Avisos que cada pessoa pode desligar (sino e push), com o nome nas Definições. */
+export const ALERT_KINDS = ['reminder', 'daily', 'reply', 'email_open', 'site_form', 'client', 'system'] as const;
+export type AlertKind = (typeof ALERT_KINDS)[number];
+export const ALERT_KIND_LABELS: Record<AlertKind, { label: string; hint: string }> = {
+  reminder: { label: 'Lembretes', hint: 'Tarefas com lembrete e reuniões daqui a 1 hora' },
+  daily: { label: 'Atrasados e para hoje', hint: 'Um resumo por dia dos follow-ups e tarefas em atraso ou para hoje' },
+  reply: { label: 'Respostas aos emails', hint: 'Respostas dos leads, ausências e emails devolvidos' },
+  email_open: { label: 'Emails abertos', hint: 'Quando um lead abre o email ou carrega num link' },
+  site_form: { label: 'Pedidos pelo site', hint: 'Formulário do site' },
+  client: { label: 'Clientes e colaboradores', hint: 'Briefings, aprovações, pedidos de alterações e contratos aceites' },
+  system: { label: 'Gerador de leads e equipa', hint: 'Pesquisas semanais terminadas e convites aceites' },
+};
+/** Preferência (de cada pessoa): os tipos de aviso desligados. */
+export const ALERTS_PREFERENCE = 'notifications.alerts';
+export const AlertsPreferenceSchema = z.object({ off: z.array(z.enum(ALERT_KINDS)).default([]) });
+export type AlertsPreference = z.infer<typeof AlertsPreferenceSchema>;
+export function parseAlertsPreference(value: unknown): AlertsPreference {
+  const parsed = AlertsPreferenceSchema.safeParse(value ?? {});
+  return parsed.success ? parsed.data : { off: [] };
+}
 
 export const NotificationSchema = z
   .object({
@@ -108,7 +129,9 @@ export const NotificationSchema = z
     task_id: z.uuid().nullable(),
     activity_id: z.uuid().nullable(),
     actor_user_id: z.uuid().nullable(),
-    text: z.string().meta({ description: 'Título da tarefa ou início do comentário' }),
+    title: z.string().nullable().meta({ description: 'Título do aviso (os de tarefas e menções usam o nome de quem fez)' }),
+    text: z.string().meta({ description: 'Título da tarefa, início do comentário ou detalhe do aviso' }),
+    url: z.string().nullable().meta({ description: 'Página para onde o aviso leva (null = a ficha do lead)' }),
     read_at: z.string().nullable(),
     created_at: z.string(),
     lead: z.object({ id: z.uuid(), number: z.int(), company_name: z.string() }).nullable(),
@@ -131,7 +154,8 @@ export const NotificationReadSchema = z
 export type NotificationRead = z.infer<typeof NotificationReadSchema>;
 
 /** "Rui deu-te uma tarefa: …" / "Rui mencionou-te: …" */
-export function notificationTitle(n: Pick<Notification, 'kind'>, actor: string | null): string {
+export function notificationTitle(n: Pick<Notification, 'kind'> & { title?: string | null }, actor: string | null): string {
+  if (n.title) return n.title;
   const who = actor ?? 'Alguém';
   return n.kind === 'task_assigned' ? `${who} deu-te uma tarefa` : `${who} mencionou-te`;
 }
