@@ -24,11 +24,18 @@ export function UpdateWatcher() {
   useEffect(() => {
     if (!CLIENT_BUILD) return;
     let stopped = false;
+    // Vários pedidos falhados ao mesmo tempo (ex.: os cancelados ao sair da página) = uma só verificação.
+    let checking = false;
+    let leaving = false;
 
     async function check() {
+      if (checking || stopped || leaving) return;
+      checking = true;
       window.clearTimeout(timer.current);
-      const state = await checkServer();
-      if (stopped) return;
+      const state = await checkServer().finally(() => {
+        checking = false;
+      });
+      if (stopped || leaving) return;
       let next: Notice = 'none';
       if (state.status === 'down') {
         // Uma falha isolada não chega: só à segunda seguida se mostra o aviso.
@@ -46,16 +53,31 @@ export function UpdateWatcher() {
     const onVisible = () => document.visibilityState === 'visible' && void check();
     // Um pedido falhou (ver lib/api-client): talvez seja uma publicação em curso.
     const onApiFailure = () => void check();
+    // Ao sair ou recarregar a página, o browser cancela os pedidos em curso — não são falhas.
+    const onPageHide = () => {
+      leaving = true;
+      window.clearTimeout(timer.current);
+    };
+    // Voltar à página pela cache do browser (botão Retroceder): retomar.
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (!e.persisted) return;
+      leaving = false;
+      void check();
+    };
     timer.current = window.setTimeout(check, 30_000);
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('online', onVisible);
     window.addEventListener('vnd:api-failure', onApiFailure);
+    window.addEventListener('pagehide', onPageHide);
+    window.addEventListener('pageshow', onPageShow);
     return () => {
       stopped = true;
       window.clearTimeout(timer.current);
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('online', onVisible);
       window.removeEventListener('vnd:api-failure', onApiFailure);
+      window.removeEventListener('pagehide', onPageHide);
+      window.removeEventListener('pageshow', onPageShow);
     };
   }, []);
 
