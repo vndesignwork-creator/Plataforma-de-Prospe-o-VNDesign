@@ -21,17 +21,19 @@ test('ficha: acrescentar, reordenar com o teclado, concluir e editar tarefas', a
   }
   const pending = card.getByRole('list', { name: 'Tarefas por fazer' }).getByRole('listitem');
   await expect(pending).toHaveCount(3);
-
-  // "Publicar site" sobe para o topo com o teclado.
-  await card.getByRole('button', { name: 'Mover a tarefa: Publicar site' }).focus();
-  await page.keyboard.press('Space');
-  await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('Space');
+  // A mais recente fica em cima.
   await expect(pending.first()).toContainText('Publicar site');
+
+  // "Pedir fotos" (a primeira escrita, agora em baixo) sobe para o topo com o teclado.
+  await card.getByRole('button', { name: 'Mover a tarefa: Pedir fotos' }).focus();
+  await page.keyboard.press('Space');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('Space');
+  await expect(pending.first()).toContainText('Pedir fotos');
   await expect
     .poll(async () => (await (await page.request.get(`/api/v1/leads/${lead.id}/tasks`)).json()).data.map((t: { title: string }) => t.title))
-    .toEqual(['Publicar site', 'Pedir fotos', 'Fazer maquete']);
+    .toEqual(['Pedir fotos', 'Publicar site', 'Fazer maquete']);
 
   // Concluir: passa para "Concluídas" e fica na linha do tempo.
   await card.getByLabel('Concluir: Pedir fotos').click();

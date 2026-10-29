@@ -174,12 +174,13 @@ test('duplicar uma tarefa (logo a seguir à original, com Anular)', async ({ pag
   const card = page.locator('#tarefas');
   await card.getByRole('button', { name: 'Duplicar: Pedir fotos' }).click();
   await expect(page.getByText('Tarefa duplicada.')).toBeVisible();
-  await expect.poll(async () => (await titles()).map((t) => t.title)).toEqual(['Pedir fotos', 'Pedir fotos', 'Publicar site']);
-  expect((await titles())[1]!.due_on).toBe('2030-01-15');
+  // As novas ficam em cima ("Publicar site" foi a última); a cópia fica logo a seguir à original.
+  await expect.poll(async () => (await titles()).map((t) => t.title)).toEqual(['Publicar site', 'Pedir fotos', 'Pedir fotos']);
+  expect((await titles())[2]!.due_on).toBe('2030-01-15');
   await expect(card.getByRole('list', { name: 'Tarefas por fazer' }).getByRole('listitem')).toHaveCount(3);
 
   await page.locator('[data-sonner-toast]').filter({ hasText: 'Tarefa duplicada.' }).getByRole('button', { name: 'Anular' }).click();
-  await expect.poll(async () => (await titles()).map((t) => t.title)).toEqual(['Pedir fotos', 'Publicar site']);
+  await expect.poll(async () => (await titles()).map((t) => t.title)).toEqual(['Publicar site', 'Pedir fotos']);
 });
 
 test('notas: recolher (fica o início à vista) e Notas com IA no cartão', async ({ page }) => {

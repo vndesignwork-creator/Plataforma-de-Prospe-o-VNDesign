@@ -76,7 +76,7 @@ export async function searchTasks(ctx: ApiContext, query: TaskSearchQuery): Prom
   }));
 }
 
-/** Posição a seguir à última tarefa do lead (as novas ficam no fim da lista). */
+/** Posição a seguir à última tarefa do lead (listas prontas: entram no fim, pela ordem). */
 async function nextPosition(ctx: ApiContext, leadId: string): Promise<number> {
   const { data, error } = await ctx.supabase
     .from('lead_tasks')
@@ -89,6 +89,19 @@ async function nextPosition(ctx: ApiContext, leadId: string): Promise<number> {
   return ((data?.[0]?.position as number | undefined) ?? 0) + 1;
 }
 
+/** Posição antes da primeira tarefa do lead (uma tarefa nova fica em cima da lista). */
+async function firstPosition(ctx: ApiContext, leadId: string): Promise<number> {
+  const { data, error } = await ctx.supabase
+    .from('lead_tasks')
+    .select('position')
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('lead_id', leadId)
+    .order('position', { ascending: true })
+    .limit(1);
+  if (error) throw fromPostgrest(error);
+  return ((data?.[0]?.position as number | undefined) ?? 1) - 1;
+}
+
 export async function createTask(ctx: ApiContext, leadId: string, input: LeadTaskCreate): Promise<LeadTask> {
   await getLead(ctx, leadId);
   const result = await ctx.supabase
@@ -99,7 +112,8 @@ export async function createTask(ctx: ApiContext, leadId: string, input: LeadTas
       due_on: input.due_on ?? (input.remind_at ? todayIso(new Date(input.remind_at)) : null),
       workspace_id: ctx.workspaceId,
       lead_id: leadId,
-      position: await nextPosition(ctx, leadId),
+      // As novas ficam em cima (as listas prontas entram no fim, pela ordem da lista).
+      position: await firstPosition(ctx, leadId),
     })
     .select(TASK_SELECT)
     .single();

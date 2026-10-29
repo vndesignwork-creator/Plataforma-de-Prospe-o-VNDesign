@@ -26,7 +26,7 @@ import {
   type TaskTemplate,
 } from '@vndesign/core';
 import { Bell, CalendarDays, Check, ChevronRight, Clock, Copy, CopyPlus, GripVertical, ListPlus, MoreVertical, Pencil, Plus, UserRound, X } from 'lucide-react';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
@@ -317,7 +317,7 @@ function TaskRow({
   today: string;
   editing: boolean;
   sortable: boolean;
-  onToggle: (done: boolean) => void;
+  onToggle: (done: boolean) => Promise<boolean>;
   onEdit: () => void;
   onSave: (patch: TaskPatch) => Promise<void>;
   onCancelEdit: () => void;
@@ -329,17 +329,8 @@ function TaskRow({
     disabled: !sortable || editing,
   });
   const done = Boolean(task.done_at);
-  // Ao concluir: o visto e o risco veem-se meio segundo antes de a tarefa ir para "Concluídas".
+  // Ao concluir: grava logo; o visto e o risco veem-se enquanto a tarefa não passa para "Concluídas".
   const [completing, setCompleting] = useState(false);
-  const toggleRef = useRef(onToggle);
-  useEffect(() => {
-    toggleRef.current = onToggle;
-  });
-  useEffect(() => {
-    if (!completing) return;
-    const timer = setTimeout(() => toggleRef.current(true), 450);
-    return () => clearTimeout(timer);
-  }, [completing]);
   const shownDone = done || completing;
   return (
     <li
@@ -368,7 +359,13 @@ function TaskRow({
         type="checkbox"
         checked={shownDone}
         disabled={completing}
-        onChange={(e) => (e.target.checked && !done ? setCompleting(true) : onToggle(e.target.checked))}
+        onChange={(e) => {
+          if (e.target.checked && !done) setCompleting(true);
+          // Se não gravar (ex.: sem internet), o visto volta atrás.
+          void onToggle(e.target.checked).then((ok) => {
+            if (!ok) setCompleting(false);
+          });
+        }}
         aria-label={done ? `Reabrir: ${task.title}` : `Concluir: ${task.title}`}
         className="mt-1 h-4 w-4 shrink-0 cursor-pointer transition-transform checked:scale-110"
       />
@@ -594,18 +591,26 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
     }
   }
 
-  async function toggle(task: LeadTask, isDone: boolean) {
-    setLocal((list) => list.map((t) => (t.id === task.id ? { ...t, done_at: isDone ? new Date().toISOString() : null } : t)));
-    if (isDone && pending.length === 1 && pending[0]!.id === task.id && total > 1) toast.success('Todas as tarefas concluídas. 🎉');
-    else if (isDone) {
-      toast.success(`Concluída: ${task.title.length > 60 ? `${task.title.slice(0, 60)}…` : task.title}`, {
-        action: { label: 'Anular', onClick: () => void toggle(task, false) },
-      });
-    }
+  /** Concluir/reabrir. Concluir: grava já e a tarefa só muda de lugar depois de se ver o visto (meio segundo). */
+  async function toggle(task: LeadTask, isDone: boolean): Promise<boolean> {
+    const move = () => setLocal((list) => list.map((t) => (t.id === task.id ? { ...t, done_at: isDone ? new Date().toISOString() : null } : t)));
+    if (!isDone) move();
+    const request = api(`/tasks/${task.id}`, { method: 'PATCH', body: { done: isDone } });
     try {
-      await api(`/tasks/${task.id}`, { method: 'PATCH', body: { done: isDone } });
+      if (isDone) {
+        await Promise.all([request, new Promise((r) => setTimeout(r, 450))]);
+        move();
+        if (pending.length === 1 && pending[0]!.id === task.id && total > 1) toast.success('Todas as tarefas concluídas. 🎉');
+        else {
+          toast.success(`Concluída: ${task.title.length > 60 ? `${task.title.slice(0, 60)}…` : task.title}`, {
+            action: { label: 'Anular', onClick: () => void toggle(task, false) },
+          });
+        }
+      } else await request;
+      return true;
     } catch (error) {
       toast.error(errorMessage(error));
+      return false;
     } finally {
       invalidate(lead.id);
     }
@@ -641,8 +646,9 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
         method: 'POST',
         body: { title: task.title, due_on: task.due_on, assigned_to: task.assigned_to ?? null },
       });
+      // As novas entram em cima: a cópia passa para logo a seguir à original.
       const at = pending.findIndex((t) => t.id === task.id);
-      if (at >= 0 && at < pending.length - 1) {
+      if (at >= 0) {
         const ids = pending.map((t) => t.id);
         ids.splice(at + 1, 0, copy.id);
         await api(`/leads/${lead.id}/tasks/reorder`, { method: 'POST', body: { ids } });
@@ -702,7 +708,7 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
     today,
     sortable,
     editing: editingId === task.id,
-    onToggle: (isDone: boolean) => void toggle(task, isDone),
+    onToggle: (isDone: boolean) => toggle(task, isDone),
     onEdit: () => setEditingId(task.id),
     onSave: (patch: TaskPatch) => save(task, patch),
     onCancelEdit: () => setEditingId(null),
