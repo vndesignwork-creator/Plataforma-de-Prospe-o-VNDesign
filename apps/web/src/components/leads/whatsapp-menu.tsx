@@ -5,7 +5,7 @@
  * (primeiro contacto, follow-up, lembrete de reunião…). As mensagens são os
  * modelos do tipo "WhatsApp" em Scripts, preenchidos com os dados do lead.
  */
-import { leadServiceCategory, rankTemplatesForLead, renderTemplate, templateVariablesIn, type Lead } from '@vndesign/core';
+import { leadServiceCategory, rankTemplatesForLead, renderTemplate, templateVariablesIn, type Lead, toPlainText } from '@vndesign/core';
 import { ChevronDown, MessageCircle, MessageCircleMore, Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -74,7 +74,7 @@ function WhatsAppMessages({ lead }: { lead: Lead }) {
   }
 
   function open(template: { id: string; name: string; body: string }) {
-    const text = renderTemplate(template.body, context).text;
+    const text = toPlainText(renderTemplate(template.body, context).text);
     window.open(whatsappUrl(lead.phone, text) ?? plain, '_blank', 'noopener,noreferrer');
     log.mutate({ type: 'template_used', payload: { template: template.name, template_id: template.id, via: 'whatsapp' } });
     if (lead.status === 'identificado') {

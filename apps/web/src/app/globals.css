@@ -164,3 +164,9 @@
 .leaflet-control-attribution a {
   color: #0b5d82;
 }
+
+/* Variáveis dos modelos ({{empresa}}…) destacadas no editor formatado (CSS Custom Highlight API). */
+::highlight(tpl-var) {
+  background-color: var(--accent-soft);
+  color: var(--accent-text);
+}

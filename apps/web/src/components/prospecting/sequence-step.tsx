@@ -13,6 +13,7 @@ import {
   type ContactTemplate,
   type Lead,
   type ProspectingItem,
+  toPlainText,
 } from '@vndesign/core';
 import { Copy, Mail, MessageCircle, MessagesSquare, Phone, Route } from 'lucide-react';
 import { toast } from 'sonner';
@@ -47,12 +48,14 @@ export function SequenceStep({ lead, step }: { lead: Lead; step: NonNullable<Pro
   const template = templates ? pickTemplate(templates, step, category) : null;
   const subject = template?.subject ? renderTemplate(template.subject, context).text : '';
   const body = template ? renderTemplate(template.body, context).text : '';
+  // O email vai formatado; WhatsApp, a cópia e o que se mostra aqui vão em texto simples.
+  const plain = toPlainText(body);
   const Icon = ICONS[step.channel];
-  const wa = whatsappUrl(lead.phone, body || null);
+  const wa = whatsappUrl(lead.phone, plain || null);
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(subject ? `${subject}\n\n${body}` : body);
+      await navigator.clipboard.writeText(subject ? `${subject}\n\n${plain}` : plain);
       toast.success('Mensagem copiada.');
     } catch {
       toast.error('Não foi possível copiar.');
@@ -72,7 +75,7 @@ export function SequenceStep({ lead, step }: { lead: Lead; step: NonNullable<Pro
       {body ? (
         <pre className="max-h-48 overflow-auto rounded-md bg-surface p-2.5 font-sans text-sm break-words whitespace-pre-wrap">
           {subject ? `${subject}\n\n` : ''}
-          {body}
+          {plain}
         </pre>
       ) : (
         <p className="text-sm text-muted">Sem modelo para este canal: cria um em Scripts ou escolhe-o em Definições → Follow-up e lembretes.</p>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emailBodyHtml, isRichHtml, richToPlainText, sanitizeRichHtml, textToRichHtml, toPlainText, toRichHtml } from '../src';
+import { emailBodyHtml, isRichHtml, richToPlainText, sanitizeRichHtml, textToRichHtml, renderTemplate, toPlainText, toRichHtml } from '../src';
 
 describe('texto formatado dos emails', () => {
   it('limpa o HTML: só as etiquetas do editor, sem scripts nem atributos perigosos', () => {
@@ -26,5 +26,25 @@ describe('texto formatado dos emails', () => {
   it('HTML do email enviado: espaçamento como nos emails em texto', () => {
     expect(emailBodyHtml('<p>Olá</p><ul><li>a</li></ul>')).toBe('<p style="margin:0 0 1em">Olá</p><ul style="margin:0 0 1em;padding-left:24px"><li>a</li></ul>');
     expect(emailBodyHtml('Olá\n\nAdeus')).toBe('<p style="margin:0 0 1em">Olá</p>\n<p style="margin:0 0 1em">Adeus</p>');
+  });
+});
+
+describe('modelos formatados (renderTemplate com HTML do editor)', () => {
+  it('escapa os valores, mantém as quebras de linha e os links, e tira parágrafos vazios', () => {
+    const r = renderTemplate('<p>Olá {{contacto}},</p><p>{{problema}}</p><p><b>{{empresa}}</b>: {{website}}</p><p>{{assinatura}}</p>', {
+      contacto: null,
+      problema: null,
+      empresa: 'Café <Sol> & Mar',
+      website: 'https://sol.pt',
+      assinatura: 'Ana\nVNDesign',
+    } as never);
+    expect(r.text).toBe(
+      '<p>Olá,</p><p><b>Café &lt;Sol&gt; &amp; Mar</b>: <a href="https://sol.pt">https://sol.pt</a></p><p>Ana<br>VNDesign</p>',
+    );
+    expect(toPlainText(r.text)).toBe('Olá,\n\nCafé <Sol> & Mar: https://sol.pt\n\nAna\nVNDesign');
+  });
+
+  it('texto simples continua igual', () => {
+    expect(renderTemplate('Olá {{empresa}}', { empresa: 'A & B' } as never).text).toBe('Olá A & B');
   });
 });

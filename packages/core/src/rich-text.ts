@@ -50,12 +50,18 @@ export function sanitizeRichHtml(html: string): string {
     .join('');
 }
 
+/** Um pedaço de texto simples dentro de HTML do editor: escapado, com links e quebras de linha. */
+export function richInline(text: string): string {
+  return escapeHtml(text)
+    .replace(/\bhttps?:\/\/[^\s<]+[^\s<.,;:!?)]/g, (url) => `<a href="${url}">${url}</a>`)
+    .replace(/\r?\n/g, '<br>');
+}
+
 /** Texto simples → HTML do editor (parágrafos, quebras de linha e links). */
 export function textToRichHtml(text: string): string {
-  const linkify = (s: string) => s.replace(/\bhttps?:\/\/[^\s<]+[^\s<.,;:!?)]/g, (url) => `<a href="${url}">${url}</a>`);
   const paragraphs = text.replace(/\r\n/g, '\n').trim().split(/\n{2,}/);
   if (!paragraphs[0]) return '<p><br></p>';
-  return paragraphs.map((p) => `<p>${linkify(escapeHtml(p)).replace(/\n/g, '<br>')}</p>`).join('');
+  return paragraphs.map((p) => `<p>${richInline(p)}</p>`).join('');
 }
 
 /** Qualquer mensagem (texto ou HTML) → HTML seguro para o editor. */

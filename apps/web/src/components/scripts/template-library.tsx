@@ -1,59 +1,74 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ContactTemplateCreateSchema,
   TEMPLATE_KIND_LABELS,
   TEMPLATE_KINDS,
-  TEMPLATE_VARIABLES,
+  isRichHtml,
   renderTemplate,
+  richInline,
+  sanitizeRichHtml,
+  textToRichHtml,
+  toPlainText,
   type ContactTemplate,
   type ContactTemplateCreateInput,
+  type EmailStats,
+  type TemplateContext,
   type TemplateKind,
 } from '@vndesign/core';
-import { ChevronRight, Copy, Plus, Trash2 } from 'lucide-react';
+import { ChevronRight, Copy, Plus, Search, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import type { z } from 'zod';
 import { Button } from '@/components/ui/button';
-import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
+import { Card, Skeleton } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
-import { Input, Select, Textarea } from '@/components/ui/input';
+import { FormSaveBar } from '@/components/ui/form-save-bar';
+import { Input, Select } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
-import { useLeads, useSectors, useTemplates } from '@/lib/queries';
+import { useLeads, useSectors, useSignature, useTemplates } from '@/lib/queries';
 import { EMAIL_KINDS, useTemplateContext } from '@/lib/template-context';
 import { cn } from '@/lib/utils';
 import { SectorIconView } from '@/components/icons/lead-icons';
 import { SingleSelectFilter } from '@/components/leads/multi-select';
 import { useServiceCatalog } from '@/components/services/services';
-
-/** Variáveis agrupadas pelo que preenchem (no editor de modelos). */
-const VARIABLE_GROUPS = [
-  { label: 'Do lead', keys: ['empresa', 'contacto', 'setor', 'cidade', 'problema', 'angulo', 'website', 'argumentos'] },
-  { label: 'Dos serviços do lead', keys: ['servicos', 'categoria', 'beneficio'] },
-  { label: 'Datas', keys: ['data', 'hoje'] },
-  {
-    label: 'Os teus dados',
-    keys: ['meu_nome', 'meu_cargo', 'meu_telefone', 'meu_email', 'meu_site', 'portfolio', 'portfolio_design', 'projetos', 'assinatura', 'opt_out'],
-  },
-] as const;
-
+import { TemplateBodyEditor } from './template-body-editor';
 
 type FormOutput = z.output<typeof ContactTemplateCreateSchema>;
 
 const EMPTY: ContactTemplateCreateInput = { kind: 'cold_email', name: '', subject: '', body: '', sector_id: null, category: null };
+const CHAT_KINDS = new Set<string>(['whatsapp', 'short_message', 'social_dm', 'linkedin']);
+const LEAVE = 'Tens alterações por guardar neste modelo. Sair sem guardar?';
 
 function toForm(t: ContactTemplate | null): ContactTemplateCreateInput {
   if (!t) return EMPTY;
   return { kind: t.kind, name: t.name, subject: t.subject ?? '', body: t.body, sector_id: t.sector_id, category: t.category };
 }
 
-/** Pré-visualização com um lead real (ou só com a assinatura, sem lead). */
-function Preview({ subject, body, isEmail }: { subject: string; body: string; isEmail: boolean }) {
+const PLACEHOLDER = /\{\{\s*([a-z_]+)\s*(?:\|([^}]*))?\}\}/gi;
+
+/**
+ * O modelo em HTML com cada variável marcada: o que veio do lead fica sublinhado
+ * e o que falta aparece como etiqueta amarela (os valores entram escapados).
+ */
+function previewHtml(template: string, context: TemplateContext): string {
+  const html = isRichHtml(template) ? sanitizeRichHtml(template) : textToRichHtml(template);
+  return html.replace(PLACEHOLDER, (token: string, key: string) => {
+    const r = renderTemplate(token.replace(/&amp;/g, '&'), context);
+    if (r.unknown.length) return `<mark class="tpl-unknown">${token}</mark>`;
+    if (!r.text) return `<mark class="tpl-missing">${key.toLowerCase()}</mark>`;
+    return `<mark class="tpl-filled">${richInline(r.text)}</mark>`;
+  });
+}
+
+/** Pré-visualização com um lead real: como um email, como uma conversa ou como um guião. */
+function Preview({ subject, body, kind }: { subject: string; body: string; kind: TemplateKind }) {
   const { data: leads } = useLeads({ limit: 50, sort: 'updated_at', order: 'desc' });
+  const { data: signature } = useSignature();
   const [leadId, setLeadId] = useState('');
   const lead = leads?.data.find((l) => l.id === leadId) ?? leads?.data[0] ?? null;
   const context = useTemplateContext(lead);
@@ -61,6 +76,22 @@ function Preview({ subject, body, isEmail }: { subject: string; body: string; is
   const b = renderTemplate(body, context);
   const missing = [...new Set([...s.missing, ...b.missing])];
   const unknown = [...new Set([...s.unknown, ...b.unknown])];
+  const html = body.trim() ? previewHtml(body, context) : '';
+  const isEmail = EMAIL_KINDS.has(kind);
+  const content = html ? (
+    <div
+      className={cn(
+        'text-sm leading-relaxed break-words [&_a]:text-accent-text [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-6',
+        '[&_.tpl-filled]:bg-transparent [&_.tpl-filled]:text-inherit [&_.tpl-filled]:underline [&_.tpl-filled]:decoration-accent/60 [&_.tpl-filled]:decoration-dotted [&_.tpl-filled]:underline-offset-4',
+        '[&_.tpl-missing]:rounded [&_.tpl-missing]:bg-warning-soft [&_.tpl-missing]:px-1 [&_.tpl-missing]:text-xs [&_.tpl-missing]:text-warning',
+        '[&_.tpl-unknown]:rounded [&_.tpl-unknown]:bg-danger-soft [&_.tpl-unknown]:px-1 [&_.tpl-unknown]:text-danger',
+      )}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  ) : (
+    <p className="text-sm text-muted">(vazio)</p>
+  );
+
   return (
     <section aria-label="Pré-visualização" className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
@@ -79,28 +110,53 @@ function Preview({ subject, body, isEmail }: { subject: string; body: string; is
           {!leads?.data.length ? <option value="">(sem leads)</option> : null}
         </Select>
       </div>
-      {unknown.length ? (
-        <p className="text-xs text-danger">Variáveis desconhecidas: {unknown.map((u) => `{{${u}}}`).join(', ')}</p>
-      ) : null}
+      {unknown.length ? <p className="text-xs text-danger">Variáveis desconhecidas: {unknown.map((u) => `{{${u}}}`).join(', ')}</p> : null}
       {missing.length ? <p className="text-xs text-warning">Sem valor neste lead: {missing.join(', ')}</p> : null}
-      <div className="rounded-lg border border-border bg-surface-2 p-3 text-sm">
-        {isEmail && s.text ? (
-          <p className="mb-2 border-b border-border pb-2">
-            <span className="text-muted">Assunto: </span>
-            <strong>{s.text}</strong>
-          </p>
-        ) : null}
-        <p className="break-words whitespace-pre-wrap">{b.text || <span className="text-muted">(vazio)</span>}</p>
-      </div>
+
+      {isEmail ? (
+        <div className="overflow-hidden rounded-lg border border-border bg-surface-2">
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 border-b border-border px-3 py-2 text-xs">
+            <dt className="text-muted">De</dt>
+            <dd className="truncate">
+              {signature?.full_name || '—'}
+              {signature?.email ? <span className="text-muted"> &lt;{signature.email}&gt;</span> : null}
+            </dd>
+            <dt className="text-muted">Para</dt>
+            <dd className="truncate">{lead ? (lead.email ?? <span className="text-warning">{lead.company_name} (sem email)</span>) : '—'}</dd>
+            <dt className="text-muted">Assunto</dt>
+            <dd className="font-semibold break-words">{s.text || <span className="font-normal text-muted">(sem assunto)</span>}</dd>
+          </dl>
+          <div className="p-3">{content}</div>
+        </div>
+      ) : CHAT_KINDS.has(kind) ? (
+        <div className="rounded-lg border border-border bg-surface-2 p-3">
+          <div className="ml-auto max-w-[85%] rounded-2xl rounded-br-sm bg-success/15 px-3 py-2">{content}</div>
+          <p className="mt-1 text-right text-[11px] text-muted">Como aparece na conversa</p>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-border bg-surface-2 p-3">{content}</div>
+      )}
+      <p className="text-xs text-muted">
+        <span className="underline decoration-accent/60 decoration-dotted underline-offset-4">Sublinhado</span>: veio do lead ou dos teus dados.
+      </p>
     </section>
   );
 }
 
-function Editor({ template, onSaved, onDeleted }: { template: ContactTemplate | null; onSaved: (t: ContactTemplate) => void; onDeleted: () => void }) {
+function Editor({
+  template,
+  onSaved,
+  onDeleted,
+  onDirty,
+}: {
+  template: ContactTemplate | null;
+  onSaved: (t: ContactTemplate) => void;
+  onDeleted: () => void;
+  onDirty: (dirty: boolean) => void;
+}) {
   const qc = useQueryClient();
   const { data: sectors } = useSectors();
   const catalog = useServiceCatalog();
-  const bodyRef = useRef<HTMLTextAreaElement | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const {
     register,
@@ -115,23 +171,20 @@ function Editor({ template, onSaved, onDeleted }: { template: ContactTemplate | 
     defaultValues: toForm(template),
   });
   useEffect(() => reset(toForm(template)), [template, reset]);
-
+  useEffect(() => {
+    onDirty(isDirty);
+  }, [isDirty, onDirty]);
   const [kind, subject, body] = useWatch({ control, name: ['kind', 'subject', 'body'] });
   const isEmail = EMAIL_KINDS.has(kind);
-  const bodyField = register('body');
 
-  function insertVariable(key: string) {
-    const el = bodyRef.current;
-    const token = `{{${key}}}`;
+  // Email → WhatsApp/chamada: a formatação sai (estas mensagens são só texto).
+  const lastKind = useRef(kind);
+  useEffect(() => {
+    if (lastKind.current === kind) return;
+    lastKind.current = kind;
     const current = getValues('body') ?? '';
-    const start = el?.selectionStart ?? current.length;
-    const end = el?.selectionEnd ?? current.length;
-    setValue('body', current.slice(0, start) + token + current.slice(end), { shouldDirty: true });
-    requestAnimationFrame(() => {
-      el?.focus();
-      el?.setSelectionRange(start + token.length, start + token.length);
-    });
-  }
+    if (!EMAIL_KINDS.has(kind) && isRichHtml(current)) setValue('body', toPlainText(current), { shouldDirty: true });
+  }, [kind, getValues, setValue]);
 
   const save = handleSubmit(async (values) => {
     try {
@@ -141,6 +194,7 @@ function Editor({ template, onSaved, onDeleted }: { template: ContactTemplate | 
         : await api<{ data: ContactTemplate }>('/templates', { method: 'POST', body: payload });
       await qc.invalidateQueries({ queryKey: ['templates'] });
       toast.success(template ? 'Modelo guardado.' : 'Modelo criado.');
+      reset(toForm(data));
       onSaved(data);
     } catch (e) {
       toast.error(errorMessage(e));
@@ -149,6 +203,7 @@ function Editor({ template, onSaved, onDeleted }: { template: ContactTemplate | 
 
   async function duplicate() {
     if (!template) return;
+    if (isDirty && !window.confirm(LEAVE)) return;
     try {
       const { data } = await api<{ data: ContactTemplate }>('/templates', {
         method: 'POST',
@@ -156,6 +211,7 @@ function Editor({ template, onSaved, onDeleted }: { template: ContactTemplate | 
       });
       await qc.invalidateQueries({ queryKey: ['templates'] });
       toast.success('Modelo duplicado.');
+      reset(toForm(template));
       onSaved(data);
     } catch (e) {
       toast.error(errorMessage(e));
@@ -169,6 +225,7 @@ function Editor({ template, onSaved, onDeleted }: { template: ContactTemplate | 
       await qc.invalidateQueries({ queryKey: ['templates'] });
       toast.success('Modelo apagado.');
       setConfirmDelete(false);
+      reset(toForm(null));
       onDeleted();
     } catch (e) {
       toast.error(errorMessage(e));
@@ -177,115 +234,102 @@ function Editor({ template, onSaved, onDeleted }: { template: ContactTemplate | 
 
   return (
     <Card className="@container">
-      <CardHeader
-        title={template ? template.name : 'Novo modelo'}
-        actions={
-          template ? (
-            <>
-              <Button size="sm" variant="ghost" onClick={duplicate}>
+      <form onSubmit={save} noValidate>
+        {/* Cabeçalho: o nome edita-se no próprio título. */}
+        <div className="flex flex-wrap items-start gap-2 border-b border-border px-4 py-3">
+          <div className="min-w-0 flex-[1_1_16rem]">
+            <input
+              {...register('name')}
+              aria-label="Nome"
+              aria-invalid={errors.name ? true : undefined}
+              placeholder={template ? 'Nome do modelo' : 'Nome do novo modelo'}
+              className="w-full rounded-md border border-transparent bg-transparent px-1.5 py-0.5 font-display text-lg font-semibold outline-none hover:border-border focus:border-accent aria-[invalid=true]:border-danger"
+            />
+            {errors.name?.message ? (
+              <p role="alert" className="px-1.5 text-xs font-medium text-danger">
+                {errors.name.message}
+              </p>
+            ) : null}
+          </div>
+          {template ? (
+            <div className="ml-auto flex items-center gap-1">
+              <Button type="button" size="sm" variant="ghost" onClick={duplicate}>
                 <Copy className="h-3.5 w-3.5" aria-hidden /> Duplicar
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(true)} aria-label="Apagar modelo">
+              <Button type="button" size="sm" variant="ghost" onClick={() => setConfirmDelete(true)} aria-label="Apagar modelo">
                 <Trash2 className="h-3.5 w-3.5" aria-hidden />
               </Button>
-            </>
-          ) : null
-        }
-      />
-      {/* Lado a lado só quando o cartão é largo (container query); senão, a pré-visualização fica por baixo. */}
-      <form onSubmit={save} className="grid grid-cols-[minmax(0,1fr)] gap-4 p-4 @3xl:grid-cols-2 @3xl:gap-6" noValidate>
-        <div className="flex min-w-0 flex-col gap-4">
-          <div className="grid grid-cols-[minmax(0,1fr)] gap-3 @md:grid-cols-2">
-            <Field label="Nome" error={errors.name?.message} required className="@md:col-span-2">
-              <Input {...register('name')} />
-            </Field>
-            <Field label="Tipo" error={errors.kind?.message}>
-              <Select {...register('kind')}>
-                {TEMPLATE_KINDS.map((k) => (
-                  <option key={k} value={k}>
-                    {TEMPLATE_KIND_LABELS[k]}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Categoria de serviço" hint="Sugerido primeiro aos leads com serviços desta categoria">
-              <Select {...register('category', { setValueAs: (v) => (v === '' ? null : v) })}>
-                <option value="">Todas as categorias</option>
-                {catalog.categories.map((c) => (
-                  <option key={c.key} value={c.key}>
-                    {c.label}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Setor (opcional)" hint="Sugerido primeiro para leads deste setor" className="@md:col-span-2">
-              <Select {...register('sector_id', { setValueAs: (v) => (v === '' ? null : v) })}>
-                <option value="">Todos os setores</option>
-                {(sectors ?? []).map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          {isEmail ? (
-            <Field label="Assunto" error={errors.subject?.message}>
-              <Input {...register('subject')} />
-            </Field>
-          ) : null}
-          <Field label="Texto" error={errors.body?.message} required>
-            <Textarea
-              rows={14}
-              {...bodyField}
-              ref={(el) => {
-                bodyField.ref(el);
-                bodyRef.current = el;
-              }}
-              className="font-mono text-[13px] leading-relaxed"
-            />
-          </Field>
-          {/* Variáveis recolhidas: abrem-se só quando são precisas, agrupadas pelo que preenchem. */}
-          <details className="group rounded-lg border border-border">
-            <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 px-3 py-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
-              <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" aria-hidden />
-              Inserir variável
-              <span className="font-normal text-muted">no sítio do cursor</span>
-            </summary>
-            <div className="flex flex-col gap-3 border-t border-border p-3">
-              {VARIABLE_GROUPS.map((group) => (
-                <div key={group.label}>
-                  <p className="mb-1.5 text-xs font-semibold tracking-wide text-muted uppercase">{group.label}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {TEMPLATE_VARIABLES.filter((v) => (group.keys as readonly string[]).includes(v.key)).map((v) => (
-                      <button
-                        key={v.key}
-                        type="button"
-                        onClick={() => insertVariable(v.key)}
-                        title={v.label}
-                        className="rounded-md border border-border bg-surface-2 px-2 py-0.5 font-mono text-xs hover:border-accent hover:text-accent-text"
-                      >
-                        {`{{${v.key}}}`}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-              <p className="text-xs text-muted">
-                Dica: <code className="font-mono">{'{{contacto|equipa}}'}</code> usa “equipa” quando o lead não tem contacto.{' '}
-                <code className="font-mono">{'{{beneficio}}'}</code> é a frase de valor do serviço (Definições → Serviços).
-              </p>
             </div>
-          </details>
+          ) : null}
         </div>
-        <div className="flex min-w-0 flex-col gap-4">
-          <Preview subject={subject ?? ''} body={body ?? ''} isEmail={isEmail} />
+
+        {/* Lado a lado só quando o cartão é largo (container query); senão, a pré-visualização fica por baixo. */}
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 p-4 @3xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] @3xl:gap-6">
+          <div className="flex min-w-0 flex-col gap-4">
+            <div className="grid grid-cols-[minmax(0,1fr)] items-end gap-3 @md:grid-cols-3">
+              <Field label="Tipo" error={errors.kind?.message}>
+                <Select {...register('kind')} className="h-9">
+                  {TEMPLATE_KINDS.map((k) => (
+                    <option key={k} value={k}>
+                      {TEMPLATE_KIND_LABELS[k]}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Categoria de serviço">
+                <Select {...register('category', { setValueAs: (v) => (v === '' ? null : v) })} className="h-9">
+                  <option value="">Todas as categorias</option>
+                  {catalog.categories.map((c) => (
+                    <option key={c.key} value={c.key}>
+                      {c.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Setor (opcional)">
+                <Select {...register('sector_id', { setValueAs: (v) => (v === '' ? null : v) })} className="h-9">
+                  <option value="">Todos os setores</option>
+                  {(sectors ?? []).map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <p className="-mt-1 text-xs text-muted @md:col-span-3">A categoria e o setor decidem que modelo é sugerido primeiro em cada lead.</p>
+            </div>
+            {isEmail ? (
+              <Field label="Assunto" error={errors.subject?.message}>
+                <Input {...register('subject')} placeholder="Uma ideia para a {{empresa}}" />
+              </Field>
+            ) : null}
+            <div className="flex flex-col gap-1.5">
+              <p className="text-sm font-medium">
+                Texto <span className="text-accent-text" aria-hidden>*</span>
+                {isEmail ? <span className="ml-1 text-xs font-normal text-muted">com formatação (o email sai assim)</span> : null}
+              </p>
+              <Controller
+                control={control}
+                name="body"
+                render={({ field }) => (
+                  <TemplateBodyEditor rich={isEmail} value={field.value ?? ''} onChange={field.onChange} invalid={!!errors.body} />
+                )}
+              />
+              {errors.body?.message ? (
+                <p role="alert" className="text-xs font-medium text-danger">
+                  {errors.body.message}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <div className="min-w-0 @3xl:sticky @3xl:top-4 @3xl:self-start">
+            <Preview subject={subject ?? ''} body={body ?? ''} kind={kind} />
+          </div>
         </div>
-        <div className="flex items-center justify-end gap-2 @3xl:col-span-2">
-          {isDirty ? <span className="mr-auto text-sm text-muted">Alterações por guardar</span> : null}
-          <Button type="submit" loading={isSubmitting}>
+        <div className="px-4 pb-4">
+          <FormSaveBar dirty={isDirty} saving={isSubmitting} onDiscard={() => reset(toForm(template))}>
             {template ? 'Guardar modelo' : 'Criar modelo'}
-          </Button>
+          </FormSaveBar>
         </div>
       </form>
       <Dialog
@@ -308,20 +352,48 @@ function Editor({ template, onSaved, onDeleted }: { template: ContactTemplate | 
   );
 }
 
+const norm = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+
+/** Envios, aberturas e respostas por modelo (últimos 90 dias), para escolher o que resulta. */
+function useTemplateStats() {
+  const { data } = useQuery({
+    queryKey: ['stats-emails', 90],
+    queryFn: () => api<{ data: EmailStats }>('/stats/emails', { query: { days: 90 } }).then((r) => r.data),
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
+  return useMemo(() => new Map((data?.templates ?? []).flatMap((t) => (t.template ? [[t.template, t] as const] : []))), [data]);
+}
+
 export function TemplateLibrary() {
   const { data: templates, isLoading } = useTemplates();
   const { data: sectors } = useSectors(true);
   const catalog = useServiceCatalog();
+  const stats = useTemplateStats();
   const [category, setCategory] = useState('');
+  const [query, setQuery] = useState('');
+  const [closed, setClosed] = useState<Record<string, boolean>>({});
   const [selected, setSelected] = useState<string | 'new' | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
-  // No telemóvel/tablet o editor fica por baixo da lista: ao escolher, desce até ele.
+  const dirty = useRef(false);
+  const onDirty = useMemo(
+    () => (d: boolean) => {
+      dirty.current = d;
+    },
+    [],
+  );
+
+  // Mudar de modelo com alterações por guardar pergunta antes (o editor recomeça do zero).
   function choose(id: string | 'new') {
+    if (dirty.current && !window.confirm(LEAVE)) return;
+    dirty.current = false;
     setSelected(id);
+    // No telemóvel/tablet o editor fica por baixo da lista: ao escolher, desce até ele.
     if (window.matchMedia('(max-width: 1023px)').matches) {
       requestAnimationFrame(() => editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
     }
   }
+
   const current = useMemo(
     () => (selected === 'new' ? null : (templates?.find((t) => t.id === selected) ?? templates?.[0] ?? null)),
     [templates, selected],
@@ -329,12 +401,17 @@ export function TemplateLibrary() {
 
   if (isLoading) return <Skeleton className="h-96" />;
 
+  const q = norm(query.trim());
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
-      <nav aria-label="Modelos" className="flex flex-col gap-4">
+      <nav aria-label="Modelos" className="flex flex-col gap-3">
         <Button onClick={() => choose('new')} variant={selected === 'new' ? 'primary' : 'outline'}>
           <Plus className="h-4 w-4" aria-hidden /> Novo modelo
         </Button>
+        <div className="relative">
+          <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
+          <Input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Procurar modelo…" aria-label="Procurar modelo" className="pl-9" />
+        </div>
         {/* Uma categoria mostra os seus modelos e os de todas as categorias (que também lhe servem). */}
         <SingleSelectFilter
           label="Categoria dos modelos"
@@ -344,49 +421,83 @@ export function TemplateLibrary() {
           className="w-full"
         />
         {TEMPLATE_KINDS.map((kind: TemplateKind) => {
-          const group = (templates ?? []).filter((t) => t.kind === kind && (!category || !t.category || t.category === category));
+          const group = (templates ?? []).filter(
+            (t) => t.kind === kind && (!category || !t.category || t.category === category) && (!q || norm(t.name).includes(q)),
+          );
           if (!group.length) return null;
+          // Ao procurar, os grupos abrem-se todos.
+          const open = !!q || !closed[kind];
           return (
-            <div key={kind}>
-              <h2 className="mb-1 px-2 font-sans text-xs font-semibold tracking-wide text-muted uppercase">{TEMPLATE_KIND_LABELS[kind]}</h2>
-              <ul className="flex flex-col gap-0.5">
-                {group.map((t) => {
-                  const active = selected !== 'new' && current?.id === t.id;
-                  const sector = sectors?.find((s) => s.id === t.sector_id);
-                  return (
-                    <li key={t.id}>
-                      <button
-                        type="button"
-                        onClick={() => choose(t.id)}
-                        aria-current={active ? 'true' : undefined}
-                        className={cn(
-                          'w-full rounded-lg px-2 py-1.5 text-left text-sm',
-                          active ? 'bg-accent-soft text-accent-text' : 'hover:bg-surface-2',
-                        )}
-                      >
-                        {t.name}
-                        {t.category ? <Badge className="ml-1.5">{catalog.categoryLabel(t.category)}</Badge> : null}
-                        {sector ? (
-                          <Badge className="ml-1.5">
-                            <SectorIconView sector={sector} className="h-3 w-3" />
-                            {sector.name}
-                          </Badge>
-                        ) : null}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
+            <section key={kind} aria-label={TEMPLATE_KIND_LABELS[kind]}>
+              <button
+                type="button"
+                onClick={() => setClosed((c) => ({ ...c, [kind]: open }))}
+                aria-expanded={open}
+                className="flex w-full items-center gap-1 rounded-md px-2 py-1 text-left font-sans text-xs font-semibold tracking-wide text-muted uppercase hover:text-fg"
+              >
+                <ChevronRight className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-90')} aria-hidden />
+                {TEMPLATE_KIND_LABELS[kind]}
+                <span className="ml-auto font-normal tabular-nums">{group.length}</span>
+              </button>
+              {open ? (
+                <ul className="mt-0.5 flex flex-col gap-0.5">
+                  {group.map((t) => {
+                    const active = selected !== 'new' && current?.id === t.id;
+                    const sector = sectors?.find((s) => s.id === t.sector_id);
+                    const stat = stats.get(t.name);
+                    const meta = [
+                      !category && t.category ? catalog.categoryLabel(t.category) : null,
+                      stat?.sent ? `${stat.sent} ${stat.sent === 1 ? 'enviado' : 'enviados'}` : null,
+                      stat?.sent ? `${Math.round((stat.replied / stat.sent) * 100)}% respostas` : null,
+                    ].filter(Boolean);
+                    return (
+                      <li key={t.id}>
+                        <button
+                          type="button"
+                          onClick={() => choose(t.id)}
+                          aria-current={active ? 'true' : undefined}
+                          className={cn(
+                            'flex w-full flex-col gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-sm',
+                            active ? 'bg-accent-soft text-accent-text' : 'hover:bg-surface-2',
+                          )}
+                        >
+                          <span className="leading-snug">{t.name}</span>
+                          {meta.length || sector ? (
+                            <span className={cn('flex flex-wrap items-center gap-x-1.5 text-xs', active ? 'text-accent-text/80' : 'text-muted')}>
+                              {meta.join(' · ')}
+                              {sector ? (
+                                <span className="inline-flex items-center gap-1">
+                                  {meta.length ? '· ' : ''}
+                                  <SectorIconView sector={sector} className="h-3 w-3" />
+                                  {sector.name}
+                                </span>
+                              ) : null}
+                            </span>
+                          ) : null}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : null}
+            </section>
           );
         })}
+        {q && !(templates ?? []).some((t) => norm(t.name).includes(q)) ? <p className="px-2 text-sm text-muted">Nenhum modelo com esse nome.</p> : null}
       </nav>
       <div ref={editorRef} className="min-w-0 scroll-mt-20">
         <Editor
           key={current?.id ?? 'new'}
           template={selected === 'new' ? null : current}
-          onSaved={(t) => setSelected(t.id)}
-          onDeleted={() => setSelected(null)}
+          onSaved={(t) => {
+            dirty.current = false;
+            setSelected(t.id);
+          }}
+          onDeleted={() => {
+            dirty.current = false;
+            setSelected(null);
+          }}
+          onDirty={onDirty}
         />
       </div>
     </div>

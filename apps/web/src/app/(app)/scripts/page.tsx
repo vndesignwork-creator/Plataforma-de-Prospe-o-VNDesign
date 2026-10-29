@@ -9,7 +9,7 @@ export default function ScriptsPage() {
     <>
       <PageHeader
         title="Scripts de contacto"
-        description="Modelos com variáveis ({{empresa}}, {{contacto}}, {{assinatura}}…). Na ficha de cada lead aparecem já preenchidos."
+        description="Mensagens prontas que se preenchem com os dados de cada lead."
       />
       <TemplateLibrary />
     </>

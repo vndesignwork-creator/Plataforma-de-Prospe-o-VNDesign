@@ -7,7 +7,7 @@
  * (mensagem pronta por WhatsApp ou email).
  */
 import { useQueryClient } from '@tanstack/react-query';
-import { UPSELL_MONTHS, renderTemplate, templateVariablesIn, type Lead } from '@vndesign/core';
+import { UPSELL_MONTHS, renderTemplate, templateVariablesIn, type Lead, toPlainText } from '@vndesign/core';
 import { CheckCircle2, MessageCircle, RotateCcw, Star } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -74,7 +74,7 @@ function ReviewRequest({ lead }: { lead: Lead }) {
     );
   }
 
-  const waText = waTemplate ? renderTemplate(waTemplate.body, context).text : null;
+  const waText = waTemplate ? toPlainText(renderTemplate(waTemplate.body, context).text) : null;
   const wa = waText ? whatsappUrl(lead.phone, waText) : null;
   return (
     <div className="flex flex-wrap gap-2">

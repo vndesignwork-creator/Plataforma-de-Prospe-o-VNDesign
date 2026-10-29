@@ -229,7 +229,9 @@ export function ContactCard({ lead }: { lead: Lead }) {
     if (!template) return null;
     const subject = renderTemplate(template.subject, context);
     const body = renderTemplate(template.body, context);
-    return { subject: subject.text, body: body.text, missing: [...new Set([...subject.missing, ...body.missing])] };
+    // WhatsApp e chamada: sempre texto simples (um modelo pode ter mudado de tipo depois de formatado).
+    const text = EMAIL_KINDS.has(template.kind) ? body.text : toPlainText(body.text);
+    return { subject: subject.text, body: text, missing: [...new Set([...subject.missing, ...body.missing])] };
   }, [current, template, context, aiEmail, lead.email_subject, lead.email_body]);
 
   if (lead.anonymized_at || !templates) return null;

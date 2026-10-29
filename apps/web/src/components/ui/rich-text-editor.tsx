@@ -25,8 +25,39 @@ import {
   Undo2,
   type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
+import { useEffect, useImperativeHandle, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode, type Ref } from 'react';
 import { cn } from '@/lib/utils';
+
+/** Para quem usa o editor por fora (ex.: inserir uma variável no sítio do cursor). */
+export type RichTextEditorHandle = {
+  /** Insere texto onde estava o cursor; `replaceBefore` apaga antes N caracteres (o "{{emp" já escrito). */
+  insertText: (text: string, replaceBefore?: number) => void;
+  focus: () => void;
+};
+
+// Variáveis destacadas ({{empresa}}): um só Highlight para todos os editores da página.
+const VARIABLE = /\{\{[^{}]*\}\}/g;
+const highlighted = new Map<HTMLElement, Range[]>();
+function refreshHighlights() {
+  if (typeof CSS === 'undefined' || !('highlights' in CSS)) return;
+  const ranges = [...highlighted.values()].flat();
+  if (ranges.length) CSS.highlights.set('tpl-var', new Highlight(...ranges));
+  else CSS.highlights.delete('tpl-var');
+}
+function highlightVariablesIn(el: HTMLElement) {
+  const ranges: Range[] = [];
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    for (const m of (node.textContent ?? '').matchAll(VARIABLE)) {
+      const range = document.createRange();
+      range.setStart(node, m.index);
+      range.setEnd(node, m.index + m[0].length);
+      ranges.push(range);
+    }
+  }
+  highlighted.set(el, ranges);
+  refreshHighlights();
+}
 
 type Command = { cmd: string; icon: LucideIcon; label: string; value?: string; state?: boolean };
 
@@ -67,6 +98,11 @@ export function RichTextEditor({
   className,
   'aria-describedby': describedBy,
   'aria-invalid': invalid,
+  handleRef,
+  highlightVariables = false,
+  toolbarEnd,
+  onEditorKeyDown,
+  onCaret,
 }: {
   value: string;
   onChange: (html: string) => void;
@@ -77,18 +113,66 @@ export function RichTextEditor({
   className?: string;
   'aria-describedby'?: string;
   'aria-invalid'?: boolean;
+  handleRef?: Ref<RichTextEditorHandle>;
+  /** Destaca as variáveis dos modelos ({{empresa}}…). */
+  highlightVariables?: boolean;
+  /** Botões extra no fim da barra (ex.: "Variável"). */
+  toolbarEnd?: ReactNode;
+  /** Teclas antes do editor (ex.: setas e Enter numa lista aberta); preventDefault para as tratar. */
+  onEditorKeyDown?: (e: KeyboardEvent<HTMLDivElement>) => void;
+  /** Texto do parágrafo antes do cursor, a cada tecla (ex.: abrir a lista de variáveis com "{{"). */
+  onCaret?: (before: string) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   // O último HTML que saiu daqui: um valor novo vindo de fora (outro modelo, a IA) substitui o conteúdo.
   const emitted = useRef<string | null>(null);
   const [active, setActive] = useState<Record<string, boolean>>({});
+  // Onde estava o cursor (para inserir depois de clicar num botão ou numa lista fora do editor).
+  const saved = useRef<Range | null>(null);
 
   useEffect(() => {
     const el = ref.current;
     if (!el || value === emitted.current) return;
     el.innerHTML = toRichHtml(value);
     emitted.current = value;
-  }, [value]);
+    if (highlightVariables) highlightVariablesIn(el);
+  }, [value, highlightVariables]);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !highlightVariables) return;
+    highlightVariablesIn(el);
+    return () => {
+      highlighted.delete(el);
+      refreshHighlights();
+    };
+  }, [highlightVariables]);
+
+  useEffect(() => {
+    const onSelection = () => {
+      const sel = window.getSelection();
+      if (sel?.rangeCount && ref.current?.contains(sel.anchorNode)) saved.current = sel.getRangeAt(0).cloneRange();
+    };
+    document.addEventListener('selectionchange', onSelection);
+    return () => document.removeEventListener('selectionchange', onSelection);
+  }, []);
+
+  useImperativeHandle(handleRef, () => ({
+    focus: () => ref.current?.focus(),
+    insertText(text, replaceBefore = 0) {
+      const el = ref.current;
+      if (!el) return;
+      el.focus();
+      const sel = window.getSelection();
+      if (sel && saved.current && !el.contains(sel.anchorNode)) {
+        sel.removeAllRanges();
+        sel.addRange(saved.current);
+      }
+      for (let i = 0; i < replaceBefore; i++) sel?.modify('extend', 'backward', 'character');
+      document.execCommand('insertText', false, text);
+      emit();
+    },
+  }));
 
   function emit() {
     const el = ref.current;
@@ -96,6 +180,15 @@ export function RichTextEditor({
     const html = el.innerHTML;
     emitted.current = html;
     onChange(html);
+    if (highlightVariables) highlightVariablesIn(el);
+  }
+
+  function caret() {
+    if (!onCaret) return;
+    const sel = window.getSelection();
+    const node = sel?.anchorNode;
+    if (!sel?.isCollapsed || !node || node.nodeType !== Node.TEXT_NODE || !ref.current?.contains(node)) return onCaret('');
+    onCaret((node.textContent ?? '').slice(0, sel.anchorOffset));
   }
 
   function refreshState() {
@@ -134,6 +227,8 @@ export function RichTextEditor({
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    onEditorKeyDown?.(e);
+    if (e.defaultPrevented) return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
       run(GROUPS[4]![0]!);
@@ -174,6 +269,7 @@ export function RichTextEditor({
             })}
           </div>
         ))}
+        {toolbarEnd ? <div className="ml-auto flex items-center gap-0.5 border-l border-border pl-1">{toolbarEnd}</div> : null}
       </div>
       <div
         ref={ref}
@@ -185,11 +281,21 @@ export function RichTextEditor({
         aria-invalid={invalid || undefined}
         contentEditable
         suppressContentEditableWarning
-        onInput={emit}
+        onInput={() => {
+          emit();
+          caret();
+        }}
         onPaste={onPaste}
         onKeyDown={onKeyDown}
-        onKeyUp={refreshState}
-        onMouseUp={refreshState}
+        onKeyUp={(e) => {
+          refreshState();
+          // Setas e Home/End mudam o sítio do cursor (a escrita já passa por onInput).
+          if (e.key.startsWith('Arrow') || e.key === 'Home' || e.key === 'End') caret();
+        }}
+        onMouseUp={() => {
+          refreshState();
+          caret();
+        }}
         onFocus={() => document.execCommand('defaultParagraphSeparator', false, 'p')}
         style={{ minHeight }}
         className={cn(

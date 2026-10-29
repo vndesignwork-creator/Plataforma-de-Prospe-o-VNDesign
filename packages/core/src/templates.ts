@@ -10,6 +10,7 @@
  * arrumada ("Olá {{contacto}}," → "Olá,").
  */
 import { TIME_ZONE, addDays, formatDate } from './format';
+import { isRichHtml, richInline } from './rich-text';
 import {
   DEFAULT_SERVICE_CATEGORIES,
   DEFAULT_SERVICES,
@@ -204,6 +205,16 @@ export interface RenderResult {
   unknown: string[];
 }
 
+/** O mesmo em HTML: e os parágrafos que só tinham uma variável vazia desaparecem. */
+function tidyHtml(html: string): string {
+  return html
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\s+([,.;:!?])/g, '$1')
+    .replace(/\(\s*\)/g, '')
+    .replace(/<(p|div|li)>\s*<\/\1>/g, '')
+    .trim();
+}
+
 /** Arruma o que fica de variáveis vazias: espaços duplos, " ," e linhas vazias a mais. */
 function tidy(text: string): string {
   return text
@@ -223,6 +234,8 @@ function tidy(text: string): string {
 export function renderTemplate(template: string | null | undefined, context: TemplateContext): RenderResult {
   const missing = new Set<TemplateVariable>();
   const unknown = new Set<string>();
+  // Modelo com formatação (HTML do editor): os valores entram escapados, com links e quebras de linha.
+  const rich = isRichHtml(template);
   const text = (template ?? '').replace(PLACEHOLDER, (match, rawKey: string, fallback?: string) => {
     const key = rawKey.toLowerCase();
     if (!VARIABLE_KEYS.has(key)) {
@@ -230,12 +243,12 @@ export function renderTemplate(template: string | null | undefined, context: Tem
       return match;
     }
     const value = context[key as TemplateVariable];
-    if (value && value.trim()) return value.trim();
+    if (value && value.trim()) return rich ? richInline(value.trim()) : value.trim();
     if (fallback !== undefined) return fallback.trim();
     missing.add(key as TemplateVariable);
     return '';
   });
-  return { text: tidy(text), missing: [...missing], unknown: [...unknown] };
+  return { text: rich ? tidyHtml(text) : tidy(text), missing: [...missing], unknown: [...unknown] };
 }
 
 /** Variáveis usadas num texto (para mostrar no editor). */
