@@ -317,6 +317,15 @@ test('lista Respostas no Dashboard: por responder, Responder na conversa, Já tr
   await expect(rowA).toBeVisible();
   await expect(card.getByRole('listitem', { name: new RegExp(`Resposta C ${run}`) })).toHaveCount(0);
 
+  // Uma resposta acabada de chegar: "Verificar agora" lê a caixa sem esperar pelos 10 minutos.
+  await expect(page.getByText(/Caixa de entrada lida .+ · lê-se sozinha de 10 em 10 minutos/)).toBeVisible();
+  const d = await createLead(page.request, { company_name: `Resposta D ${run}`, email: `geral@resp-d-${run}.pt`, status: 'contactado' });
+  await deliverToInbox(`Diana <geral@resp-d-${run}.pt>`, `Re: Orçamento ${run}`, 'Sim, tenho interesse.');
+  await page.getByRole('button', { name: 'Verificar agora' }).click();
+  await expect(page.getByText(new RegExp(`1 resposta nova: Resposta D ${run}`))).toBeVisible();
+  await expect(card.getByRole('listitem', { name: new RegExp(`Resposta D ${run}`) })).toBeVisible();
+  expect(d.id).toBeTruthy();
+
   // Responder na mesma conversa (Re: e In-Reply-To): deixa de estar por responder.
   await rowA.getByRole('button', { name: 'Responder' }).click();
   const dialog = page.getByRole('dialog', { name: new RegExp(`Responder a Resposta A ${run}`) });

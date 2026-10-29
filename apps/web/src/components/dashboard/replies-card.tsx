@@ -10,10 +10,11 @@ import {
   timeAgo,
   webmailLink,
   type MailAccount,
+  type ReplyCheckResult,
   type ReplyItem,
 } from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { Check, ChevronDown, ExternalLink, MailOpen } from 'lucide-react';
+import { Check, ChevronDown, ExternalLink, MailOpen, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -21,8 +22,8 @@ import { SendEmailButton } from '@/components/email/send-email-dialog';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
-import { errorMessage } from '@/lib/api-client';
-import { useMailAccount, useMarkRepliesHandled, usePreference, useReplies } from '@/lib/queries';
+import { api, errorMessage } from '@/lib/api-client';
+import { useMailAccount, useMarkRepliesHandled, usePreference, useReplies, useRole } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
 const DAYS = 14;
@@ -119,6 +120,57 @@ function ReplyRow({
 }
 
 /** Cartão "Respostas": quem respondeu nos últimos 14 dias e o que ainda falta responder. */
+/**
+ * Quando a caixa de entrada foi lida (sozinha, de 10 em 10 minutos) e o botão
+ * "Verificar agora" (a resposta acabou de chegar e não queres esperar).
+ */
+function InboxStatus({ account }: { account: MailAccount }) {
+  const qc = useQueryClient();
+  const prospector = useRole() === 'prospector';
+  const [checking, setChecking] = useState(false);
+
+  async function check() {
+    setChecking(true);
+    try {
+      const { data } = await api<{ data: ReplyCheckResult }>('/mail-account/check-replies', { method: 'POST' });
+      const found = data.replies.length + (data.bounces?.length ?? 0);
+      toast.success(
+        data.replies.length
+          ? `${data.replies.length === 1 ? '1 resposta nova' : `${data.replies.length} respostas novas`}: ${data.replies.map((r) => r.company_name).join(', ')}.`
+          : found
+            ? 'Caixa de entrada lida: há emails devolvidos (vê a ficha dos leads).'
+            : 'Caixa de entrada lida. Nenhuma resposta nova de leads.',
+      );
+      if (found || data.out_of_office) {
+        void qc.invalidateQueries({ queryKey: ['leads'] });
+        void qc.invalidateQueries({ queryKey: ['today'] });
+      }
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      await Promise.all([qc.invalidateQueries({ queryKey: ['mail-account'] }), qc.invalidateQueries({ queryKey: ['replies'] })]);
+      setChecking(false);
+    }
+  }
+
+  return (
+    <div className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border px-4 py-2 text-xs text-muted">
+      <span className={cn(account.imap_error && 'text-danger')}>
+        {account.imap_error
+          ? `Não foi possível ler a caixa de entrada: ${account.imap_error}`
+          : account.imap_checked_at
+            ? `Caixa de entrada lida ${timeAgo(account.imap_checked_at)} · lê-se sozinha de 10 em 10 minutos`
+            : 'A caixa de entrada ainda não foi lida · lê-se sozinha de 10 em 10 minutos'}
+      </span>
+      {prospector ? null : (
+        <Button size="sm" variant="ghost" onClick={() => void check()} loading={checking}>
+          <RefreshCw className="h-3.5 w-3.5" aria-hidden /> Verificar agora
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export function RepliesCard({ className }: { className?: string }) {
   const { data, isLoading, error, refetch, isFetching } = useReplies(DAYS);
   const [limit, setLimit] = useState(PAGE);
@@ -216,6 +268,7 @@ export function RepliesCard({ className }: { className?: string }) {
               </Button>
             </div>
           ) : null}
+          {account && detection ? <InboxStatus account={account} /> : null}
         </>
       )}
     </Card>
