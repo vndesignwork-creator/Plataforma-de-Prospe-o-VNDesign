@@ -4,9 +4,13 @@
  * do tempo e chegam como notificação; uma nova abertura volta a avisar ao fim
  * de 6 horas. Os pedidos do lead não têm sessão: usam a chave de serviço.
  *
+ * Não contam: quem é da equipa e tem sessão iniciada (ex.: carregar num link do
+ * email nos teus "Enviados"), e os emails para um endereço que devolveu o email
+ * (não chegaram ao lead: a abertura só pode ter sido de quem o enviou).
+ *
  * Limites conhecidos: alguns programas de email (ex.: Apple Mail com proteção
- * de privacidade) abrem as imagens sozinhos, e quem bloqueia imagens nunca
- * conta como aberto.
+ * de privacidade) abrem as imagens sozinhos; ver o email nos "Enviados" do
+ * Gmail também carrega a imagem; e quem bloqueia imagens nunca conta como aberto.
  */
 import { randomBytes } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -116,8 +120,6 @@ async function announce(row: TrackingRow, kind: 'opened' | 'clicked', now: Date,
       body: row.subject,
       payload: { tracking_id: row.id, ...(url ? { url } : {}) },
     });
-    // Abriu o email: o endereço funciona (um aviso de devolução antigo deixa de valer).
-    await admin.from('leads').update({ email_bounced_at: null }).eq('id', row.lead_id).not('email_bounced_at', 'is', null);
   }
   const due = first || !row.notified_at || now.getTime() - new Date(row.notified_at).getTime() >= RENOTIFY_MS;
   if (!due || !row.created_by) return;
@@ -140,11 +142,29 @@ async function announce(row: TrackingRow, kind: 'opened' | 'clicked', now: Date,
   }).catch(() => undefined);
 }
 
+/**
+ * Aberturas e cliques que não são do lead: de alguém da equipa com sessão iniciada
+ * (`viewerId`), ou de um email enviado antes de o endereço o ter devolvido.
+ */
+async function notFromLead(row: TrackingRow, viewerId: string | null): Promise<boolean> {
+  const admin = createSupabaseAdminClient();
+  const [member, lead] = await Promise.all([
+    viewerId
+      ? admin.from('workspace_members').select('user_id').eq('workspace_id', row.workspace_id).eq('user_id', viewerId).maybeSingle()
+      : Promise.resolve({ data: null }),
+    admin.from('leads').select('email_bounced_at').eq('id', row.lead_id).maybeSingle(),
+  ]);
+  if (member.data) return true;
+  const bounced = (lead.data as { email_bounced_at: string | null } | null)?.email_bounced_at;
+  return !!bounced && row.sent_at <= bounced;
+}
+
 /** Pedido da imagem de 1×1: conta uma abertura. */
-export async function recordOpen(token: string, userAgent: string | null, now = new Date()): Promise<void> {
+export async function recordOpen(token: string, userAgent: string | null, now = new Date(), viewerId: string | null = null): Promise<void> {
   const row = await loadByToken(token);
   if (!row || now.getTime() - new Date(row.sent_at).getTime() < graceMs()) return;
   if (userAgent && SCANNER_UA.test(userAgent) && !/GoogleImageProxy/i.test(userAgent)) return;
+  if (await notFromLead(row, viewerId)) return;
   await createSupabaseAdminClient()
     .from('email_tracking')
     .update({ opens: row.opens + 1, first_opened_at: row.first_opened_at ?? now.toISOString(), last_opened_at: now.toISOString() })
@@ -153,11 +173,18 @@ export async function recordOpen(token: string, userAgent: string | null, now = 
 }
 
 /** Clique num link: conta e devolve o endereço original (null = link desconhecido). */
-export async function recordClick(token: string, index: number, userAgent: string | null, now = new Date()): Promise<string | null> {
+export async function recordClick(
+  token: string,
+  index: number,
+  userAgent: string | null,
+  now = new Date(),
+  viewerId: string | null = null,
+): Promise<string | null> {
   const row = await loadByToken(token);
   const url = row?.links[index];
   if (!row || typeof url !== 'string' || !/^https?:\/\//i.test(url)) return null;
   if ((userAgent && SCANNER_UA.test(userAgent)) || now.getTime() - new Date(row.sent_at).getTime() < graceMs()) return url;
+  if (await notFromLead(row, viewerId)) return url;
   // Um clique também prova que o email foi aberto (mesmo com as imagens bloqueadas).
   await createSupabaseAdminClient()
     .from('email_tracking')
@@ -170,6 +197,38 @@ export async function recordClick(token: string, index: number, userAgent: strin
     .eq('id', row.id);
   await announce(row, 'clicked', now, url);
   return url;
+}
+
+/**
+ * O endereço devolveu o email: as aberturas e cliques dos emails enviados antes
+ * (para esse endereço) não foram do lead — saem da ficha, da linha do tempo, de
+ * "Abriram o email" e do sino.
+ */
+export async function forgetOpensBeforeBounce(workspaceId: string, leadId: string, bouncedAt: string): Promise<number> {
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin
+    .from('email_tracking')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .eq('lead_id', leadId)
+    .lte('sent_at', bouncedAt)
+    .or('opens.gt.0,clicks.gt.0');
+  if (error) throw fromPostgrest(error);
+  const ids = ((data ?? []) as { id: string }[]).map((r) => r.id);
+  if (!ids.length) return 0;
+  await admin
+    .from('email_tracking')
+    .update({ opens: 0, first_opened_at: null, last_opened_at: null, clicks: 0, first_clicked_at: null, last_clicked_at: null, notified_at: null })
+    .in('id', ids);
+  await admin
+    .from('lead_activities')
+    .delete()
+    .eq('workspace_id', workspaceId)
+    .eq('lead_id', leadId)
+    .in('type', ['email_opened', 'email_clicked'])
+    .in('payload->>tracking_id', ids);
+  await admin.from('notifications').delete().eq('workspace_id', workspaceId).eq('lead_id', leadId).eq('kind', 'email_open');
+  return ids.length;
 }
 
 /** Emails do lead com as aberturas (para a ficha). */

@@ -131,11 +131,20 @@ test('aberturas do email: imagem de 1×1, clique no link, linha do tempo, Hoje e
   expect(link).toBeTruthy();
   expect(html).not.toContain('href="https://vndesign.pt/portefolio"');
 
-  const gif = await page.request.get(pixel!, { headers: { 'user-agent': 'Mozilla/5.0 (iPhone)' } });
+  // Quem é da equipa (com sessão iniciada, ex.: o email nos "Enviados") não conta.
+  await page.request.get(pixel!, { headers: { 'user-agent': 'Mozilla/5.0 (Windows)' } });
+  const own = await page.request.get(link!, { maxRedirects: 0, headers: { 'user-agent': 'Mozilla/5.0 (Windows)' } });
+  expect(own.headers().location).toBe('https://vndesign.pt/portefolio');
+  expect((await (await page.request.get(`/api/v1/leads/${lead.id}/email-tracking`)).json()).data[0]).toMatchObject({ opens: 0, clicks: 0 });
+
+  // O lead (sem sessão na plataforma).
+  const outsider = await playwrightRequest.newContext({ storageState: { cookies: [], origins: [] } });
+  const gif = await outsider.get(pixel!, { headers: { 'user-agent': 'Mozilla/5.0 (iPhone)' } });
   expect(gif.headers()['content-type']).toBe('image/gif');
-  const click = await page.request.get(link!, { maxRedirects: 0, headers: { 'user-agent': 'Mozilla/5.0 (iPhone)' } });
+  const click = await outsider.get(link!, { maxRedirects: 0, headers: { 'user-agent': 'Mozilla/5.0 (iPhone)' } });
   expect(click.status()).toBe(302);
   expect(click.headers().location).toBe('https://vndesign.pt/portefolio');
+  await outsider.dispose();
 
   const tracking = (await (await page.request.get(`/api/v1/leads/${lead.id}/email-tracking`)).json()).data;
   expect(tracking[0]).toMatchObject({ subject, opens: 1, clicks: 1 });
@@ -176,6 +185,29 @@ test('aberturas do email: imagem de 1×1, clique no link, linha do tempo, Hoje e
   expect(after.status).toBe('respondeu');
   const activities = (await (await page.request.get(`/api/v1/leads/${lead.id}/activities`)).json()).data as { body: string | null }[];
   expect(activities.some((a) => a.body === 'Interessado: Pediu para ligar às 15h')).toBe(true);
+});
+
+test('email devolvido: as aberturas desse email não contam (o email não chegou ao lead)', async ({ page }) => {
+  await connectAccount(page);
+  const to = `devolvido-${run}@cliente.pt`;
+  const lead = await createLead(page.request, { company_name: `Devolvido ${run}`, email: to });
+  const subject = `Proposta devolvida ${run}`;
+  const sent = await page.request.post(`/api/v1/leads/${lead.id}/email`, { data: { to, subject, body: 'Olá,\n\nVeja: https://vndesign.pt/portefolio' } });
+  expect(sent.status(), await sent.text()).toBe(200);
+  const html = await mailHtml(page.request, to, subject);
+  const pixel = /<img src="([^"]+\/o\.gif)"/.exec(html)?.[1];
+  // O endereço devolveu o email (como faz a verificação das respostas).
+  const url = localEnv('NEXT_PUBLIC_SUPABASE_URL')!;
+  const key = localEnv('SUPABASE_SECRET_KEY')!;
+  const patched = await page.request.patch(`${url}/rest/v1/leads?id=eq.${lead.id}`, {
+    headers: { apikey: key, Authorization: `Bearer ${key}`, Prefer: 'return=minimal' },
+    data: { email_bounced_at: new Date().toISOString() },
+  });
+  expect(patched.status(), await patched.text()).toBe(204);
+  const outsider = await playwrightRequest.newContext({ storageState: { cookies: [], origins: [] } });
+  await outsider.get(pixel!, { headers: { 'user-agent': 'Mozilla/5.0 (Windows NT 10.0) GoogleImageProxy' } });
+  await outsider.dispose();
+  expect((await (await page.request.get(`/api/v1/leads/${lead.id}/email-tracking`)).json()).data[0]).toMatchObject({ subject, opens: 0 });
 });
 
 test('sessão de prospeção pela API: não atendeu, contactado e mais tarde', async ({ request }) => {

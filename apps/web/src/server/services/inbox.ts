@@ -31,6 +31,7 @@ import { createSupabaseAdminClient } from '../supabase-admin';
 import { systemContext } from '../system-context';
 import { addDoNotContact } from './do-not-contact';
 import { loadImapAccount, saveImapState } from './mail-account';
+import { forgetOpensBeforeBounce } from './email-tracking';
 import { alertUser } from './push';
 import { getSettings } from './workspace';
 
@@ -169,13 +170,18 @@ export async function checkReplies(ctx: ApiContext): Promise<ReplyCheckResult> {
       actor_user_id: ctx.user.id,
     });
     if (error) throw fromPostgrest(error);
-    const patch: Record<string, unknown> = { email_bounced_at: new Date().toISOString() };
+    const bouncedAt = new Date().toISOString();
+    const patch: Record<string, unknown> = { email_bounced_at: bouncedAt };
     if (lead.status === 'contactado') {
       patch.next_action_on = today;
       patch.next_action_text = 'Email devolvido: procurar outro email ou contactar por telefone';
     }
     const { error: updateError } = await ctx.supabase.from('leads').update(patch).eq('workspace_id', ctx.workspaceId).eq('id', lead.id);
     if (updateError) throw fromPostgrest(updateError);
+    // O email não chegou ao lead: as "aberturas" foram de quem o enviou (ex.: nos Enviados do Gmail).
+    await forgetOpensBeforeBounce(ctx.workspaceId, lead.id, bouncedAt).catch((e) =>
+      console.warn('[respostas] aberturas por limpar', e instanceof Error ? e.message : e),
+    );
     await notify({ title: `📭 Email devolvido · ${lead.company_name}`, body: `${recipient} não existe ou não aceita emails.`, url: leadPath(lead), tag: `bounce-${lead.id}`, leadId: lead.id });
     result.bounces.push({ lead_id: lead.id, company_name: lead.company_name, email: recipient });
   }
