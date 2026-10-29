@@ -35,6 +35,7 @@ import {
   projectProfit,
 } from '@vndesign/core';
 import type { ApiContext } from '../context';
+import { selectInBatches } from '../batch';
 import { ApiError, fromPostgrest } from '../http';
 import { createSupabaseAdminClient } from '../supabase-admin';
 import { getLead } from './leads';
@@ -64,9 +65,10 @@ const toInfo = (row: InfoRow | null | undefined): ProjectInfo =>
 export async function projectInfoMap(ctx: ApiContext, leadIds: string[]): Promise<Map<string, ProjectInfo>> {
   const map = new Map<string, ProjectInfo>();
   if (!leadIds.length) return map;
-  const { data, error } = await ctx.supabase.from('lead_projects').select(INFO_SELECT).eq('workspace_id', ctx.workspaceId).in('lead_id', leadIds);
-  if (error) throw fromPostgrest(error);
-  for (const row of (data ?? []) as InfoRow[]) map.set(row.lead_id, toInfo(row));
+  const rows = await selectInBatches<InfoRow>(leadIds, (batch) =>
+    ctx.supabase.from('lead_projects').select(INFO_SELECT).eq('workspace_id', ctx.workspaceId).in('lead_id', batch),
+  );
+  for (const row of rows) map.set(row.lead_id, toInfo(row));
   return map;
 }
 
@@ -178,13 +180,16 @@ export async function projectValues(ctx: ApiContext, leads: { id: string; estima
   const map = new Map<string, number | null>();
   if (!ids.length) return map;
   const [proposals, payments] = await Promise.all([
-    ctx.supabase.from('proposals').select('lead_id, total').eq('workspace_id', ctx.workspaceId).eq('status', 'aceite').in('lead_id', ids),
-    ctx.supabase.from('lead_payments').select('lead_id, amount').eq('workspace_id', ctx.workspaceId).in('lead_id', ids),
+    selectInBatches<{ lead_id: string; total: number | string }>(ids, (batch) =>
+      ctx.supabase.from('proposals').select('lead_id, total').eq('workspace_id', ctx.workspaceId).eq('status', 'aceite').in('lead_id', batch),
+    ),
+    selectInBatches<{ lead_id: string; amount: number | string }>(ids, (batch) =>
+      ctx.supabase.from('lead_payments').select('lead_id, amount').eq('workspace_id', ctx.workspaceId).in('lead_id', batch),
+    ),
   ]);
-  for (const r of [proposals, payments]) if (r.error) throw fromPostgrest(r.error);
   for (const lead of leads) {
-    const accepted = ((proposals.data ?? []) as { lead_id: string; total: number | string }[]).filter((p) => p.lead_id === lead.id);
-    const paid = ((payments.data ?? []) as { lead_id: string; amount: number | string }[]).filter((p) => p.lead_id === lead.id);
+    const accepted = proposals.filter((p) => p.lead_id === lead.id);
+    const paid = payments.filter((p) => p.lead_id === lead.id);
     const value = accepted.length
       ? Math.max(...accepted.map((p) => Number(p.total)))
       : paid.length
@@ -421,9 +426,10 @@ export async function deleteExpense(ctx: ApiContext, id: string): Promise<void> 
 export async function expenseTotals(ctx: ApiContext, leadIds: string[]): Promise<Map<string, number>> {
   const map = new Map<string, number>();
   if (!leadIds.length) return map;
-  const { data, error } = await ctx.supabase.from('project_expenses').select('lead_id, amount').eq('workspace_id', ctx.workspaceId).in('lead_id', leadIds);
-  if (error) throw fromPostgrest(error);
-  for (const r of (data ?? []) as { lead_id: string; amount: number | string }[]) map.set(r.lead_id, Math.round(((map.get(r.lead_id) ?? 0) + Number(r.amount)) * 100) / 100);
+  const rows = await selectInBatches<{ lead_id: string; amount: number | string }>(leadIds, (batch) =>
+    ctx.supabase.from('project_expenses').select('lead_id, amount').eq('workspace_id', ctx.workspaceId).in('lead_id', batch),
+  );
+  for (const r of rows) map.set(r.lead_id, Math.round(((map.get(r.lead_id) ?? 0) + Number(r.amount)) * 100) / 100);
   return map;
 }
 

@@ -6,6 +6,7 @@
  */
 import { replyKind, needsAnswer, type Lead, type ReplyItem, type Replies } from '@vndesign/core';
 import type { ApiContext } from '../context';
+import { selectInBatches } from '../batch';
 import { fromPostgrest } from '../http';
 import { LEAD_SELECT, getLead } from './leads';
 
@@ -36,32 +37,33 @@ export async function getReplies(ctx: ApiContext, days: number): Promise<Replies
   const leadIds = [...new Set(rows.map((r) => r.lead_id))];
   if (!leadIds.length) return { days, items: [], pending: 0 };
 
-  // A equipa de prospeção vê só os leads de que é responsável.
-  let leadsQuery = ctx.supabase
-    .from('leads')
-    .select(`${LEAD_SELECT}, replies_handled_at`)
-    .eq('workspace_id', ctx.workspaceId)
-    .is('anonymized_at', null)
-    .in('id', leadIds);
-  if (ctx.role === 'prospector') leadsQuery = leadsQuery.eq('assigned_to', ctx.user.id);
-  const [leadsRes, answersRes] = await Promise.all([
-    leadsQuery,
-    ctx.supabase
-      .from('lead_activities')
-      .select('lead_id, created_at')
-      .eq('workspace_id', ctx.workspaceId)
-      .in('type', ANSWER_TYPES)
-      .in('lead_id', leadIds)
-      .gte('created_at', since)
-      .order('created_at', { ascending: false })
-      .limit(2000),
+  const [leadRows, answers] = await Promise.all([
+    selectInBatches<Lead & { replies_handled_at: string | null }>(leadIds, (batch) => {
+      const q = ctx.supabase
+        .from('leads')
+        .select(`${LEAD_SELECT}, replies_handled_at`)
+        .eq('workspace_id', ctx.workspaceId)
+        .is('anonymized_at', null)
+        .in('id', batch);
+      // A equipa de prospeção vê só os leads de que é responsável.
+      return ctx.role === 'prospector' ? q.eq('assigned_to', ctx.user.id) : q;
+    }),
+    selectInBatches<{ lead_id: string; created_at: string }>(leadIds, (batch) =>
+      ctx.supabase
+        .from('lead_activities')
+        .select('lead_id, created_at')
+        .eq('workspace_id', ctx.workspaceId)
+        .in('type', ANSWER_TYPES)
+        .in('lead_id', batch)
+        .gte('created_at', since)
+        .order('created_at', { ascending: false })
+        .limit(2000),
+    ),
   ]);
-  if (leadsRes.error) throw fromPostgrest(leadsRes.error);
-  if (answersRes.error) throw fromPostgrest(answersRes.error);
-  const leads = new Map(((leadsRes.data ?? []) as unknown as (Lead & { replies_handled_at: string | null })[]).map((l) => [l.id, l]));
+  const leads = new Map(leadRows.map((l) => [l.id, l]));
   // A última resposta nossa em cada lead (email enviado ou chamada).
   const lastAnswer = new Map<string, string>();
-  for (const a of (answersRes.data ?? []) as { lead_id: string; created_at: string }[]) {
+  for (const a of answers) {
     if (!lastAnswer.has(a.lead_id)) lastAnswer.set(a.lead_id, a.created_at);
   }
 

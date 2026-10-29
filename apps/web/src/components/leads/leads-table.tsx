@@ -44,7 +44,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { DateInput } from '@/components/ui/date-input';
 import { errorMessage, toQueryString } from '@/lib/api-client';
-import { useDebouncedValue } from '@/lib/hooks';
+import { useDebouncedValue, useHydrated } from '@/lib/hooks';
 import { bulkResultMessage, useBulkLeadAction, usePreference, useLeads, useRole, useSectors, useSetPreference, useTeamNames } from '@/lib/queries';
 import { cn, displayHost } from '@/lib/utils';
 import { ChannelLabel, MobileLabel, PageSpeedScore, StatusBadge } from './badges';
@@ -264,7 +264,20 @@ const MOBILE_SORTS = [
   { value: 'number:asc', label: 'Mais antigos' },
 ];
 
+/** A tabela só se desenha no browser (os filtros e colunas dependem de dados em cache). */
 export function LeadsTable() {
+  return useHydrated() ? (
+    <LeadsTableView />
+  ) : (
+    <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4" aria-busy="true">
+      {Array.from({ length: 8 }, (_, i) => (
+        <Skeleton key={i} className="h-9 w-full" />
+      ))}
+    </div>
+  );
+}
+
+function LeadsTableView() {
   const router = useRouter();
   const serviceOptions = useServiceFilterOptions();
   const pathname = usePathname();

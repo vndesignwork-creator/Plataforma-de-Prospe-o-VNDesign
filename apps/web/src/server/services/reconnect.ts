@@ -6,6 +6,7 @@
  */
 import { RECONNECT_TEMPLATE, UPSELL_TASK_PREFIX, addMonths, todayIso, type ReconnectClient, type ReconnectQuery } from '@vndesign/core';
 import type { ApiContext } from '../context';
+import { selectInBatches } from '../batch';
 import { fromPostgrest } from '../http';
 import { lisbonMidnight } from './prospecting';
 
@@ -53,25 +54,27 @@ export async function listReconnectClients(ctx: ApiContext, query: ReconnectQuer
 
   const ids = candidates.flatMap((c) => c.ids);
   const [tasks, contacted] = await Promise.all([
-    ctx.supabase
-      .from('lead_tasks')
-      .select('lead_id')
-      .eq('workspace_id', ctx.workspaceId)
-      .in('lead_id', ids)
-      .is('done_at', null)
-      .ilike('title', `${UPSELL_TASK_PREFIX}%`),
-    ctx.supabase
-      .from('lead_activities')
-      .select('lead_id, type, payload')
-      .eq('workspace_id', ctx.workspaceId)
-      .in('lead_id', ids)
-      .gte('created_at', cutoff)
-      .in('type', ['email_sent', 'email_copied', 'note']),
+    selectInBatches<{ lead_id: string }>(ids, (batch) =>
+      ctx.supabase
+        .from('lead_tasks')
+        .select('lead_id')
+        .eq('workspace_id', ctx.workspaceId)
+        .in('lead_id', batch)
+        .is('done_at', null)
+        .ilike('title', `${UPSELL_TASK_PREFIX}%`),
+    ),
+    selectInBatches<{ lead_id: string; type: string; payload: Record<string, unknown> | null }>(ids, (batch) =>
+      ctx.supabase
+        .from('lead_activities')
+        .select('lead_id, type, payload')
+        .eq('workspace_id', ctx.workspaceId)
+        .in('lead_id', batch)
+        .gte('created_at', cutoff)
+        .in('type', ['email_sent', 'email_copied', 'note']),
+    ),
   ]);
-  if (tasks.error) throw fromPostgrest(tasks.error);
-  if (contacted.error) throw fromPostgrest(contacted.error);
-  const skip = new Set(((tasks.data ?? []) as { lead_id: string }[]).map((t) => t.lead_id));
-  for (const a of (contacted.data ?? []) as { lead_id: string; type: string; payload: Record<string, unknown> | null }[]) {
+  const skip = new Set(tasks.map((t) => t.lead_id));
+  for (const a of contacted) {
     const p = a.payload ?? {};
     if (p.template === RECONNECT_TEMPLATE || p.via === 'reconnect') skip.add(a.lead_id);
   }
