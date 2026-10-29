@@ -92,6 +92,13 @@ const FEATURES: { key: keyof Features; label: string; description: string; icon:
     sub: true,
   },
   {
+    key: 'time_value',
+    label: 'Tempo em dinheiro',
+    description: 'Mostra quanto vale o tempo registado (horas, cronómetro e Pomodoro) ao teu valor por hora.',
+    icon: Wallet,
+    sub: true,
+  },
+  {
     key: 'pomodoro',
     label: 'Pomodoro',
     description: 'Blocos de trabalho com pausas em cada projeto; o trabalho fica no registo de horas (tempos abaixo).',
@@ -271,7 +278,7 @@ export function FeaturesSettings() {
       {settings.features.projects && settings.features.project_kickoff ? <KickoffCard settings={settings} /> : null}
       {settings.features.projects && settings.features.briefing ? <BriefingQuestionsCard settings={settings} /> : null}
       {settings.features.contracts ? <ContractSettingsCard settings={settings} /> : null}
-      {settings.features.projects && settings.features.time_tracking ? <HourlyRateCard settings={settings} /> : null}
+      {settings.features.projects && settings.features.time_tracking && settings.features.time_value ? <HourlyRateCard settings={settings} /> : null}
       {settings.features.quote_calculator ? <QuoteSettingsCard settings={settings} /> : null}
       {settings.features.projects && settings.features.time_tracking && settings.features.pomodoro ? <PomodoroSettingsCard settings={settings} /> : null}
       <CalendarFeedCard />

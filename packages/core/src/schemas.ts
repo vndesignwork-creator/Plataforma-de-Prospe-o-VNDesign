@@ -591,6 +591,7 @@ export const FeaturesSchema = z.object({
   brand_kit: z.boolean().default(true).meta({ description: 'Kit da marca do cliente (logótipos, cores, tipos de letra, acessos)' }),
   quote_calculator: z.boolean().default(true).meta({ description: 'Calculadora de orçamento' }),
   pomodoro: z.boolean().default(true).meta({ description: 'Projetos: Pomodoro (blocos de trabalho com pausas, no registo de horas)' }),
+  time_value: z.boolean().default(true).meta({ description: 'Projetos: valor do tempo em dinheiro (horas × valor por hora)' }),
 });
 export type Features = z.infer<typeof FeaturesSchema>;
 export const DEFAULT_FEATURES: Features = {
@@ -616,6 +617,7 @@ export const DEFAULT_FEATURES: Features = {
   brand_kit: true,
   quote_calculator: true,
   pomodoro: true,
+  time_value: true,
 };
 
 /** Arranque do projeto: plano de pagamentos criado ao passar a Cliente ([] = sem plano). */

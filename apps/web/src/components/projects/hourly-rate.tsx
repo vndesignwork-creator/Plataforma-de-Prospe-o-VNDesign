@@ -18,10 +18,11 @@ import { api, errorMessage } from '@/lib/api-client';
 import { useRole, useSettings, type SettingsWithMail } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
-/** null = sem valor por hora (ou quem está a ver não vê valores). */
+/** null = sem valor por hora, funcionalidade desligada ou quem está a ver não vê valores. */
 export function useHourlyRate(): { rate: number | null; canSee: boolean } {
   const { data: settings } = useSettings();
-  const canSee = useRole() !== 'prospector';
+  // Desligado em Definições → Funcionalidades → Tempo em dinheiro (ou o prospetor, que não vê valores).
+  const canSee = useRole() !== 'prospector' && settings?.features.time_value !== false;
   return { rate: canSee ? (settings?.quote.hourly_target ?? null) : null, canSee };
 }
 
