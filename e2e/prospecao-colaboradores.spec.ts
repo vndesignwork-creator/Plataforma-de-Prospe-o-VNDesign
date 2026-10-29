@@ -183,10 +183,12 @@ test('sessão de prospeção pela API: não atendeu, contactado e mais tarde', a
   const tomorrow = workday(lisbonDay(1));
   let res = await request.post(`/api/v1/leads/${lead.id}/prospecting`, { data: { outcome: 'no_answer' } });
   expect(res.status(), await res.text()).toBe(200);
-  expect((await res.json()).data.lead).toMatchObject({ status: 'identificado', next_action_on: tomorrow });
+  // Ainda não houve contacto: a próxima ação é o primeiro contacto, não um follow-up.
+  expect((await res.json()).data.lead).toMatchObject({ status: 'identificado', next_action_on: tomorrow, next_action_text: 'Primeiro contacto' });
   res = await request.post(`/api/v1/leads/${lead.id}/prospecting`, { data: { outcome: 'contacted' } });
   const body = (await res.json()).data;
   expect(body.lead.status).toBe('contactado');
+  expect(body.lead.next_action_text).not.toBe('Primeiro contacto');
   expect(body.done_today).toBeGreaterThanOrEqual(2);
   res = await request.post(`/api/v1/leads/${lead.id}/prospecting`, { data: { outcome: 'later', days: 7 } });
   expect((await res.json()).data.lead.next_action_on).toBe(workday(lisbonDay(7)));
