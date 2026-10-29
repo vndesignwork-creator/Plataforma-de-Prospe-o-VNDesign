@@ -31,6 +31,7 @@ import type {
   AiVisibilityCheck,
   GeoBusiness,
   GeoFaqItem,
+  GoogleConfirm,
   LeadGeo,
   EmailTracking,
   BrandKit,
@@ -432,7 +433,7 @@ export function useLeadGeo(leadId: string, enabled = true) {
 export function useLeadGeoAction(leadId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { save: { business?: GeoBusiness; faq?: GeoFaqItem[] } } | { generate: 'faq' | 'google' }) =>
+    mutationFn: (input: { save: { business?: GeoBusiness; faq?: GeoFaqItem[]; google_confirm?: GoogleConfirm } } | { generate: 'faq' | 'google' }) =>
       ('save' in input
         ? api<{ data: LeadGeo }>(`/leads/${leadId}/geo`, { method: 'PATCH', body: input.save })
         : api<{ data: LeadGeo }>(`/leads/${leadId}/geo/${input.generate}`, { method: 'POST' })

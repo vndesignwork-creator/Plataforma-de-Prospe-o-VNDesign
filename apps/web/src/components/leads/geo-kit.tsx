@@ -12,6 +12,7 @@ import {
   buildFaqHtml,
   buildFaqJsonLd,
   buildLlmsTxt,
+  formatDate,
   formatDateTime,
   googleComparison,
   googleMapsSearchUrl,
@@ -19,15 +20,17 @@ import {
   jsonLdScript,
   type GeoBusiness,
   type GeoFaqItem,
+  type GoogleCheck,
   type GoogleProfile,
   type Lead,
   type LeadGeo,
   type SchemaBusinessType,
 } from '@vndesign/core';
-import { Code2, Copy, Download, ExternalLink, FileText, MapPin, MessageCircleQuestion, Plus, Sparkles, Star, Trash2, Wand2 } from 'lucide-react';
+import { CheckCircle2, Code2, Copy, Download, FileText, Info, MapPin, MessageCircleQuestion, Plus, Sparkles, Star, Trash2, Wand2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { Button, buttonClasses } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
 import { CollapseButton, useProspectingCollapsed } from '@/components/ui/collapse';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
@@ -129,12 +132,12 @@ export function GeoKitCard({ lead }: { lead: Lead }) {
 
 // -----------------------------------------------------------------------------
 
-function Stars({ p, unconfirmed }: { p: GoogleProfile; unconfirmed: boolean }) {
+function Status({ p, check }: { p: GoogleProfile; check: GoogleCheck }) {
   // A pesquisa da IA não vê o Google Maps: não encontrar não prova que não exista.
-  if (unconfirmed) return <span className="text-sm text-warning">Não confirmado</span>;
-  if (!p.found) return <span className="text-sm text-danger">Sem perfil no Google</span>;
+  if (googleProfileUnconfirmed(check, p)) return <Badge tone="warning">Não confirmado</Badge>;
+  if (!p.found) return <Badge tone="danger">Sem perfil no Google</Badge>;
   return (
-    <span className="inline-flex items-center gap-1 text-sm tabular">
+    <span className="inline-flex items-center gap-1 text-sm whitespace-nowrap tabular">
       <Star className="h-3.5 w-3.5 fill-warning text-warning" aria-hidden />
       {p.rating !== null ? p.rating.toLocaleString('pt-PT', { maximumFractionDigits: 1 }) : '—'}
       <span className="text-muted">· {p.reviews ?? 0} avaliações</span>
@@ -142,10 +145,116 @@ function Stars({ p, unconfirmed }: { p: GoogleProfile; unconfirmed: boolean }) {
   );
 }
 
+/** Confirmar à mão (depois de ver no Google Maps): tem perfil, com a nota e as avaliações, ou não tem. */
+function ConfirmDialog({
+  leadId,
+  index,
+  profile,
+  mapsUrl,
+  onClose,
+}: {
+  leadId: string;
+  index: number;
+  profile: GoogleProfile;
+  mapsUrl: string;
+  onClose: () => void;
+}) {
+  const action = useLeadGeoAction(leadId);
+  // Por omissão "Tem perfil": quem vem confirmar normalmente encontrou-o no Maps.
+  const [found, setFound] = useState(profile.found || !profile.confirmed_at);
+  const [rating, setRating] = useState(profile.rating !== null ? String(profile.rating).replace('.', ',') : '');
+  const [reviews, setReviews] = useState(profile.reviews !== null ? String(profile.reviews) : '');
+  const [link, setLink] = useState(profile.maps_url ?? '');
+  const num = (v: string) => (v.trim() ? Number(v.replace(',', '.')) : null);
+
+  async function save() {
+    const r = num(rating);
+    const n = num(reviews);
+    try {
+      await action.mutateAsync({
+        save: {
+          google_confirm: found
+            ? { index, found, rating: r, reviews: n === null ? null : Math.round(n), maps_url: link.trim() || null }
+            : { index, found },
+        },
+      });
+      toast.success(found ? `Perfil de ${profile.name} confirmado.` : `${profile.name}: sem perfil no Google.`);
+      onClose();
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => (open ? undefined : onClose())}
+      title={`Perfil do Google · ${profile.name}`}
+      description={
+        <>
+          Vê no{' '}
+          <a href={mapsUrl} target="_blank" rel="noreferrer noopener" className="text-accent-text hover:underline">
+            Google Maps
+          </a>{' '}
+          e confirma o que lá está. Fica guardado e vale mais do que a pesquisa da IA.
+        </>
+      }
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={() => void save()} loading={action.isPending}>
+            Confirmar
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        <div role="radiogroup" aria-label="Tem perfil no Google?" className="grid grid-cols-2 gap-2">
+          {[true, false].map((v) => (
+            <button
+              key={String(v)}
+              type="button"
+              role="radio"
+              aria-checked={found === v}
+              onClick={() => setFound(v)}
+              className={cn(
+                'rounded-lg border px-3 py-2 text-sm font-medium',
+                found === v ? 'border-accent bg-accent-soft text-accent-text' : 'border-border text-muted hover:text-fg',
+              )}
+            >
+              {v ? 'Tem perfil' : 'Não tem perfil'}
+            </button>
+          ))}
+        </div>
+        {found ? (
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Nota (1 a 5)">
+              <Input inputMode="decimal" placeholder="4,6" value={rating} onChange={(e) => setRating(e.target.value)} />
+            </Field>
+            <Field label="N.º de avaliações">
+              <Input inputMode="numeric" placeholder="87" value={reviews} onChange={(e) => setReviews(e.target.value)} />
+            </Field>
+            <Field label="Link do Google Maps (opcional)" className="col-span-2">
+              <Input type="url" placeholder="https://maps.app.goo.gl/…" value={link} onChange={(e) => setLink(e.target.value)} />
+            </Field>
+          </div>
+        ) : null}
+      </div>
+    </Dialog>
+  );
+}
+
 function GoogleTab({ leadId, geo, city }: { leadId: string; geo: LeadGeo; city: string | null }) {
   const action = useLeadGeoAction(leadId);
   const g = geo.google;
   const sentence = g ? googleComparison(g) : null;
+  const [confirming, setConfirming] = useState<number | null>(null);
+  const profiles = g ? [g.lead, ...g.competitors] : [];
+  const unconfirmed = g ? profiles.some((p) => googleProfileUnconfirmed(g, p)) : false;
+  const mapsUrl = (p: GoogleProfile) => p.maps_url ?? googleMapsSearchUrl(p.name, city);
+  const open = confirming !== null ? profiles[confirming] : undefined;
 
   async function check() {
     try {
@@ -166,41 +275,67 @@ function GoogleTab({ leadId, geo, city }: { leadId: string; geo: LeadGeo; city: 
       ) : (
         <>
           <ul className="flex flex-col divide-y divide-border rounded-lg border border-border" aria-label="Perfis do Google">
-            {[g.lead, ...g.competitors].map((p, i) => (
+            {profiles.map((p, i) => (
               <li key={`${p.name}-${i}`} className={cn('flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2', i === 0 && 'bg-surface-2')}>
-                <span className="min-w-0 flex-1 text-sm font-medium">
-                  {p.name} {i === 0 ? <Badge tone="accent">este lead</Badge> : null}
+                {/* Telemóvel: o nome numa linha e a nota e os ícones por baixo. */}
+                <span className="min-w-0 basis-full sm:basis-0 sm:flex-1">
+                  <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm font-medium">
+                    <span className="min-w-0 break-words">{p.name}</span>
+                    {i === 0 ? <Badge tone="accent">este lead</Badge> : null}
+                  </span>
+                  {p.confirmed_at ? (
+                    <span className="flex items-center gap-1 text-xs text-muted">
+                      <CheckCircle2 className="h-3 w-3 text-success" aria-hidden /> Confirmado por ti a {formatDate(p.confirmed_at.slice(0, 10))}
+                    </span>
+                  ) : null}
                 </span>
-                <Stars p={p} unconfirmed={googleProfileUnconfirmed(g, p)} />
-                <a
-                  href={p.maps_url ?? googleMapsSearchUrl(p.name, city)}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="inline-flex items-center gap-0.5 text-xs text-accent-text hover:underline"
-                  aria-label={`${p.maps_url ? 'Abrir' : 'Procurar'} ${p.name} no Google Maps`}
-                >
-                  {p.maps_url ? 'Maps' : 'Procurar no Maps'} <ExternalLink className="h-3 w-3" aria-hidden />
-                </a>
+                <span className="ml-auto flex items-center gap-1">
+                  <Status p={p} check={g} />
+                  <a
+                    href={mapsUrl(p)}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className={buttonClasses('ghost', 'icon', 'h-8 w-8 text-muted hover:text-fg')}
+                    title={p.maps_url ? 'Abrir no Google Maps' : 'Procurar no Google Maps'}
+                    aria-label={`${p.maps_url ? 'Abrir' : 'Procurar'} ${p.name} no Google Maps`}
+                  >
+                    <MapPin className="h-4 w-4" aria-hidden />
+                  </a>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-muted hover:text-fg"
+                    onClick={() => setConfirming(i)}
+                    title="Confirmar o perfil (depois de ver no Maps)"
+                    aria-label={`Confirmar o perfil de ${p.name}`}
+                  >
+                    <CheckCircle2 className="h-4 w-4" aria-hidden />
+                  </Button>
+                </span>
               </li>
             ))}
           </ul>
-          {g.source !== 'places' && !g.lead.found ? (
-            <p className="rounded-lg border border-warning/40 bg-warning-soft p-3 text-sm">
-              A pesquisa da IA não encontrou o perfil, mas ela não vê o Google Maps — confirma em “Procurar no Maps”. Com a chave da Google
-              Places API (GOOGLE_PLACES_API_KEY) a nota e as avaliações vêm diretamente do Google.
-            </p>
-          ) : null}
           {sentence ? (
             <div className="flex items-start gap-2 rounded-lg border border-border bg-surface-2 p-3 text-sm">
               <p className="flex-1">{sentence}</p>
-              <Button size="sm" variant="ghost" onClick={() => void copy(sentence, 'Frase')} aria-label="Copiar a frase para o cliente">
+              <Button size="sm" variant="ghost" onClick={() => void copy(sentence, 'Frase')} aria-label="Copiar a frase para o cliente" title="Copiar a frase">
                 <Copy className="h-3.5 w-3.5" aria-hidden />
               </Button>
             </div>
           ) : null}
-          <p className="text-xs text-muted">
-            {formatDateTime(g.checked_at)} ·{' '}
-            {g.source === 'places' ? 'Google Places (dados do Google)' : 'Pesquisa da IA: valores aproximados — confirma no Google Maps antes de mostrar ao cliente'}
+          {unconfirmed ? (
+            <p className="text-xs text-muted">
+              “Não confirmado” não quer dizer que não tenha perfil: abre no Maps <MapPin className="inline h-3 w-3 align-[-2px]" aria-hidden /> e confirma{' '}
+              <CheckCircle2 className="inline h-3 w-3 align-[-2px]" aria-hidden />.
+            </p>
+          ) : null}
+          <p className="flex flex-wrap items-center gap-1 text-xs text-muted">
+            {formatDateTime(g.checked_at)} · {g.source === 'places' ? 'dados do Google (Places API)' : 'pesquisa da IA (aproximada)'}
+            {g.source === 'places' ? null : (
+              <span title="Com a chave GOOGLE_PLACES_API_KEY no servidor, a nota e as avaliações vêm diretamente do Google." className="inline-flex cursor-help">
+                <Info className="h-3 w-3" aria-label="Com a chave GOOGLE_PLACES_API_KEY no servidor, a nota e as avaliações vêm diretamente do Google." />
+              </span>
+            )}
             {!g.competitors.length ? ' · faz “Aparece nas IAs?” para comparar com os concorrentes' : ''}
           </p>
         </>
@@ -211,6 +346,9 @@ function GoogleTab({ leadId, geo, city }: { leadId: string; geo: LeadGeo; city: 
         </Button>
         {action.isPending ? <span className="ml-2 text-xs text-muted">A procurar… (até 1 minuto)</span> : null}
       </div>
+      {confirming !== null && open ? (
+        <ConfirmDialog leadId={leadId} index={confirming} profile={open} mapsUrl={mapsUrl(open)} onClose={() => setConfirming(null)} />
+      ) : null}
     </div>
   );
 }

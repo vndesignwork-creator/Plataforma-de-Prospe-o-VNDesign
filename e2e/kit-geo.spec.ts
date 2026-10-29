@@ -42,7 +42,23 @@ test('kit GEO: perfil do Google com concorrentes, dados estruturados, perguntas 
   await expect(profiles.getByRole('listitem').first()).toContainText('12 avaliações');
   await expect(profiles.getByText('Forno Concorrente')).toBeVisible();
   await expect(kit.getByText('No Google Maps, a sua empresa tem 4,1★ com 12 avaliações; os concorrentes que as IAs recomendam têm em média 4,7★ e 150 avaliações.')).toBeVisible();
-  await expect(kit.getByText(/Pesquisa da IA: valores aproximados/)).toBeVisible();
+  await expect(kit.getByText(/pesquisa da IA \(aproximada\)/)).toBeVisible();
+
+  // Confirmar à mão depois de ver no Maps: fica guardado e não se perde ao atualizar.
+  await expect(profiles.getByRole('link', { name: new RegExp(`Abrir ${name} no Google Maps|Procurar ${name} no Google Maps`) })).toBeVisible();
+  await profiles.getByRole('button', { name: `Confirmar o perfil de ${name}` }).click();
+  const confirm = page.getByRole('dialog', { name: `Perfil do Google · ${name}` });
+  await confirm.getByRole('radio', { name: 'Tem perfil', exact: true }).click();
+  await confirm.getByLabel('Nota (1 a 5)').fill('4,8');
+  await confirm.getByLabel('N.º de avaliações').fill('30');
+  await confirm.getByRole('button', { name: 'Confirmar' }).click();
+  await expect(page.getByText(`Perfil de ${name} confirmado.`)).toBeVisible();
+  await expect(profiles.getByRole('listitem').first()).toContainText('4,8');
+  await expect(profiles.getByRole('listitem').first()).toContainText('30 avaliações');
+  await expect(profiles.getByRole('listitem').first()).toContainText('Confirmado por ti');
+  await kit.getByRole('button', { name: 'Atualizar' }).click();
+  await expect(page.getByText('Perfil do Google atualizado.')).toBeVisible({ timeout: 60_000 });
+  await expect(profiles.getByRole('listitem').first()).toContainText('4,8');
 
   // Dados estruturados: sugestões da ficha, editar e guardar.
   await kit.getByRole('tab', { name: 'Dados estruturados' }).click();

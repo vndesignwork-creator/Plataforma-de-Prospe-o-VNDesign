@@ -248,8 +248,22 @@ export const GoogleProfileSchema = z.object({
   reviews: z.int().nullable(),
   maps_url: z.string().nullable(),
   address: z.string().nullable(),
+  /** Confirmado à mão (depois de ver no Google Maps): vale mais do que a pesquisa da IA. */
+  confirmed_at: z.string().nullable().optional(),
 });
 export type GoogleProfile = z.infer<typeof GoogleProfileSchema>;
+
+/** Confirmar à mão o perfil de uma empresa da lista (0 = o lead). */
+export const GoogleConfirmSchema = z
+  .object({
+    index: z.int().min(0).max(10),
+    found: z.boolean(),
+    rating: z.number().min(1, { error: 'A nota vai de 1 a 5.' }).max(5, { error: 'A nota vai de 1 a 5.' }).nullable().optional(),
+    reviews: z.int().min(0).max(1_000_000).nullable().optional(),
+    maps_url: z.url({ error: 'Link do Maps inválido.' }).max(500).nullable().optional(),
+  })
+  .meta({ id: 'GoogleConfirm' });
+export type GoogleConfirm = z.infer<typeof GoogleConfirmSchema>;
 
 export const GoogleCheckSchema = z
   .object({
@@ -272,7 +286,7 @@ export function googleMapsSearchUrl(name: string, city?: string | null): string 
  * pesquisa da IA não vê o Google Maps — "não encontrado" quer dizer "por confirmar".
  */
 export function googleProfileUnconfirmed(check: Pick<GoogleCheck, 'source'>, p: GoogleProfile): boolean {
-  return !p.found && check.source !== 'places';
+  return !p.found && check.source !== 'places' && !p.confirmed_at;
 }
 
 const NAME_FILLERS = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'soc', 'sociedade', 'lda', 'unipessoal', 'sa', 'o', 'a', 'os', 'as', 'the']);
@@ -299,7 +313,7 @@ export function googleComparison(check: Pick<GoogleCheck, 'lead' | 'competitors'
   const fmt = (n: number) => n.toLocaleString('pt-PT', { maximumFractionDigits: 1 });
   const rated = check.competitors.filter((c) => c.found && c.rating !== null);
   // Pela pesquisa da IA, "não encontrado" não chega para dizer ao cliente que não tem perfil.
-  if (!check.lead.found && check.source !== 'places') return null;
+  if (!check.lead.found && check.source !== 'places' && !check.lead.confirmed_at) return null;
   if (!check.lead.found) {
     return rated.length
       ? `A sua empresa não aparece no Google Maps; os concorrentes têm em média ${fmt(avg(rated.map((c) => c.rating!)))}★ e ${Math.round(avg(rated.map((c) => c.reviews ?? 0)))} avaliações.`
@@ -410,5 +424,5 @@ export const LeadGeoSchema = z
 export type LeadGeo = z.infer<typeof LeadGeoSchema>;
 
 export const LeadGeoUpdateSchema = z
-  .object({ business: GeoBusinessSchema.optional(), faq: GeoFaqSchema.optional() })
+  .object({ business: GeoBusinessSchema.optional(), faq: GeoFaqSchema.optional(), google_confirm: GoogleConfirmSchema.optional() })
   .meta({ id: 'LeadGeoUpdate' });

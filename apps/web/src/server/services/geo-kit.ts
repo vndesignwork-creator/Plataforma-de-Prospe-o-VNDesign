@@ -22,6 +22,7 @@ import {
   type GeoBusiness,
   type GeoFaqItem,
   type GoogleCheck,
+  type GoogleConfirm,
   type GoogleProfile,
   type LeadGeo,
 } from '@vndesign/core';
@@ -69,11 +70,35 @@ export async function getLeadGeo(ctx: ApiContext, leadId: string): Promise<LeadG
   };
 }
 
-export async function updateLeadGeo(ctx: ApiContext, leadId: string, patch: { business?: GeoBusiness; faq?: GeoFaqItem[] }): Promise<LeadGeo> {
+export async function updateLeadGeo(
+  ctx: ApiContext,
+  leadId: string,
+  patch: { business?: GeoBusiness; faq?: GeoFaqItem[]; google_confirm?: GoogleConfirm },
+): Promise<LeadGeo> {
   await getLead(ctx, leadId);
+  let google: GoogleCheck | undefined;
+  if (patch.google_confirm) {
+    const current = (await loadRow(ctx, leadId))?.google;
+    const c = patch.google_confirm;
+    const list = current ? [current.lead, ...current.competitors] : [];
+    const before = list[c.index];
+    if (!current || !before) throw new ApiError(422, 'Perfil por procurar', 'Carrega primeiro em “Ver no Google”.');
+    // Confirmado à mão depois de ver no Google Maps.
+    list[c.index] = {
+      ...before,
+      found: c.found,
+      rating: c.found ? (c.rating ?? null) : null,
+      reviews: c.found ? (c.reviews ?? null) : null,
+      maps_url: c.found ? (c.maps_url ?? before.maps_url) : null,
+      address: c.found ? before.address : null,
+      confirmed_at: new Date().toISOString(),
+    };
+    google = { ...current, lead: list[0]!, competitors: list.slice(1) };
+  }
   await saveRow(ctx, leadId, {
     ...(patch.business ? { business: patch.business } : {}),
     ...(patch.faq ? { faq: patch.faq } : {}),
+    ...(google ? { google } : {}),
   });
   return getLeadGeo(ctx, leadId);
 }
@@ -195,7 +220,14 @@ export async function checkGoogleProfile(ctx: ApiContext, leadId: string): Promi
   const competitors: Target[] = (latest?.competitors ?? []).slice(0, 3).map((c) => ({ name: c.name, city: lead.city, website: c.website }));
   const targets: Target[] = [{ name: lead.company_name, city: lead.city, website: lead.website, phone: lead.phone, address: lead.address }, ...competitors];
   const key = process.env.GOOGLE_PLACES_API_KEY;
-  const profiles = key ? await Promise.all(targets.map((t) => placesLookup(key, t))) : await aiLookup(ctx, targets, lead.city);
+  const found = key ? await Promise.all(targets.map((t) => placesLookup(key, t))) : await aiLookup(ctx, targets, lead.city);
+  // O que foi confirmado à mão fica, a não ser que a Google Places API encontre o perfil.
+  const before = (await loadRow(ctx, leadId))?.google;
+  const previous = before ? [before.lead, ...before.competitors] : [];
+  const profiles = found.map((p) => {
+    const manual = previous.find((q) => q.confirmed_at && q.name === p.name);
+    return manual && !(key && p.found) ? manual : p;
+  });
   const google: GoogleCheck = {
     source: key ? 'places' : 'ia',
     checked_at: new Date().toISOString(),
