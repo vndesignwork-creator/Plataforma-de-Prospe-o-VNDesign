@@ -16,15 +16,18 @@ import { cn } from '@/lib/utils';
 const DAYS = 14;
 const PAGE = 8;
 
-function KindBadge({ item }: { item: ReplyItem }) {
-  if (item.kind === 'reply') return item.handled ? <Badge tone="success">Respondida</Badge> : <Badge tone="accent">Por responder</Badge>;
+function KindBadge({ item, showPending }: { item: ReplyItem; showPending: boolean }) {
+  if (item.kind === 'reply') {
+    if (item.handled) return <Badge tone="success">Respondida</Badge>;
+    return showPending ? <Badge tone="accent">Por responder</Badge> : null;
+  }
   if (item.kind === 'auto') {
     return <Badge>{item.return_on ? `Ausente até ${formatDate(item.return_on)}` : REPLY_KIND_LABELS.auto}</Badge>;
   }
   return <Badge tone="danger">{REPLY_KIND_LABELS[item.kind]}</Badge>;
 }
 
-function ReplyRow({ item, gmail }: { item: ReplyItem; gmail: boolean }) {
+function ReplyRow({ item, gmail, showPending }: { item: ReplyItem; gmail: boolean; showPending: boolean }) {
   const qc = useQueryClient();
   const handled = useMarkRepliesHandled();
   const open = gmail ? gmailSearchUrl(item.message_id) : null;
@@ -37,7 +40,7 @@ function ReplyRow({ item, gmail }: { item: ReplyItem; gmail: boolean }) {
           <Link href={leadPath(item.lead)} className="font-medium hover:underline">
             <span className="text-muted tabular">#{item.lead.number}</span> {item.lead.company_name}
           </Link>
-          <KindBadge item={item} />
+          <KindBadge item={item} showPending={showPending} />
         </p>
         <p className="mt-0.5 truncate text-sm" title={item.subject}>
           “{item.subject}”
@@ -56,6 +59,7 @@ function ReplyRow({ item, gmail }: { item: ReplyItem; gmail: boolean }) {
             inReplyTo={item.message_id?.includes('@') ? item.message_id : null}
             title={`Responder a ${item.lead.company_name}`}
             label="Responder"
+            variant="soft"
             onSent={() => void qc.invalidateQueries({ queryKey: ['replies'] })}
           />
         ) : null}
@@ -148,7 +152,7 @@ export function RepliesCard({ className }: { className?: string }) {
       {items.length ? (
         <ul className="flex flex-col divide-y divide-border" aria-label={view === 'pending' ? 'Respostas por responder' : 'Todas as respostas'}>
           {items.slice(0, limit).map((item) => (
-            <ReplyRow key={item.id} item={item} gmail={gmail} />
+            <ReplyRow key={item.id} item={item} gmail={gmail} showPending={view === 'all'} />
           ))}
         </ul>
       ) : null}
