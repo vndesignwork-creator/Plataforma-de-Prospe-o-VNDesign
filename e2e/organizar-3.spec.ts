@@ -104,6 +104,7 @@ test('tempo na fase: na ficha, no Kanban e filtro "Na fase há"', async ({ page 
   expect((await page.request.get(`/api/v1/leads?stale=0`)).status()).toBe(400);
 
   await page.goto(`/leads?${q}`);
+  await page.getByRole('button', { name: /^Mais filtros/ }).click();
   await page.getByRole('button', { name: /^Na fase há:/ }).click();
   await page.getByRole('menuitemradio', { name: 'Na fase há mais de 7 dias' }).click();
   await expect(page).toHaveURL(/parado=7/);

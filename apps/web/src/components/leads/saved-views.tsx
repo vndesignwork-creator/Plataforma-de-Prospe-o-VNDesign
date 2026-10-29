@@ -33,7 +33,7 @@ export function SavedViewsMenu({ params, onApply }: { params: URLSearchParams; o
     const clean = name.trim();
     if (!clean) return;
     save.mutate(upsertView(views, clean, current, crypto.randomUUID()), {
-      onSuccess: () => toast.success(`Filtros guardados como “${clean}”.`),
+      onSuccess: () => toast.success(`Vista guardada como “${clean}”.`),
       onError: () => toast.error('Não foi possível guardar.'),
     });
     setNaming(false);
@@ -49,12 +49,12 @@ export function SavedViewsMenu({ params, onApply }: { params: URLSearchParams; o
   return (
     <>
       <DropdownRoot>
-        <DropdownTrigger className={buttonClasses(active ? 'secondary' : 'outline', 'md', 'max-sm:w-10 max-sm:px-0')} aria-label="Filtros guardados">
+        <DropdownTrigger className={buttonClasses(active ? 'secondary' : 'outline', 'md', 'max-sm:w-10 max-sm:px-0')} aria-label="Vistas guardadas">
           <Bookmark className="h-4 w-4" aria-hidden />
-          <span className="hidden max-w-40 truncate sm:inline">{active ? active.name : 'Guardados'}</span>
+          <span className="hidden max-w-40 truncate sm:inline">{active ? active.name : 'Vistas'}</span>
         </DropdownTrigger>
         <DropdownContent className="max-h-96 overflow-y-auto">
-          <DropdownLabel>Filtros guardados</DropdownLabel>
+          <DropdownLabel>Vistas guardadas</DropdownLabel>
           {views.length ? (
             views.map((v) => (
               <DropdownItem key={v.id} onSelect={() => onApply(v.query)}>
@@ -74,7 +74,7 @@ export function SavedViewsMenu({ params, onApply }: { params: URLSearchParams; o
             }}
           >
             <BookmarkPlus className="h-4 w-4 text-muted" aria-hidden />
-            Guardar estes filtros…
+            Guardar esta vista…
           </DropdownItem>
           {views.length ? (
             <>
@@ -94,8 +94,8 @@ export function SavedViewsMenu({ params, onApply }: { params: URLSearchParams; o
         <Dialog
           open
           onOpenChange={(o) => (!o ? setNaming(false) : undefined)}
-          title="Guardar estes filtros"
-          description="Voltas a eles com um toque em “Guardados” (ou no Ctrl+K)."
+          title="Guardar esta vista"
+          description="Os filtros ficam guardados: voltas a eles com um toque em “Vistas” (ou no Ctrl+K)."
           className="max-w-sm"
           footer={
             <>

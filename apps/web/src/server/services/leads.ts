@@ -25,6 +25,7 @@ import {
   type LeadStatus,
   type LostReason,
   type LostReasonCount,
+  type LeadCityCount,
   type LeadTagCount,
   type LeadUpdate,
 } from '@vndesign/core';
@@ -479,6 +480,37 @@ export async function leadTagCounts(ctx: ApiContext): Promise<LeadTagCount[]> {
   const { data, error } = await ctx.supabase.rpc('lead_tag_counts', { p_workspace_id: ctx.workspaceId });
   if (error) throw fromPostgrest(error);
   return ((data ?? []) as { tag: string; count: number | string }[]).map((r) => ({ tag: r.tag, count: Number(r.count) }));
+}
+
+/** Cidades dos leads (sem os anonimizados), mais usadas primeiro; a grafia mais comum de cada uma. */
+export async function leadCityCounts(ctx: ApiContext): Promise<LeadCityCount[]> {
+  const cities: string[] = [];
+  // Em páginas de 1000 (o máximo de linhas por pedido da API), até 10 000 leads.
+  for (let from = 0; from < 10_000; from += 1000) {
+    const { data, error } = await ctx.supabase
+      .from('leads')
+      .select('city')
+      .eq('workspace_id', ctx.workspaceId)
+      .is('anonymized_at', null)
+      .not('city', 'is', null)
+      .range(from, from + 999);
+    if (error) throw fromPostgrest(error);
+    cities.push(...((data ?? []) as { city: string }[]).map((r) => r.city.trim()).filter(Boolean));
+    if ((data?.length ?? 0) < 1000) break;
+  }
+  const groups = new Map<string, Map<string, number>>();
+  for (const c of cities) {
+    const key = c.toLocaleLowerCase('pt-PT');
+    const spellings = groups.get(key) ?? new Map<string, number>();
+    spellings.set(c, (spellings.get(c) ?? 0) + 1);
+    groups.set(key, spellings);
+  }
+  return [...groups.values()]
+    .map((spellings) => {
+      const [city] = [...spellings.entries()].sort((a, b) => b[1] - a[1])[0]!;
+      return { city, count: [...spellings.values()].reduce((a, b) => a + b, 0) };
+    })
+    .sort((a, b) => b.count - a.count || a.city.localeCompare(b.city, 'pt-PT'));
 }
 
 /** Leads em "Sem interesse" por motivo (Estatísticas → Porque perdes leads). */

@@ -14,6 +14,7 @@ import {
   LEAD_STATUSES,
   LOST_REASONS,
   LOST_REASON_LABELS,
+  addDays,
   formatCurrency,
   formatDate,
   todayIso,
@@ -23,7 +24,7 @@ import {
   type LeadSortField,
   leadPath,
 } from '@vndesign/core';
-import { Archive, ArchiveRestore, ArrowDown, ArrowDownUp, ArrowUp, ArrowUpDown, Columns3, CopyX, Download, Map as MapIcon, Search, SlidersHorizontal, Trash2, Upload, UserCheck, X } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowDown, ArrowDownUp, ArrowUp, ArrowUpDown, Columns3, CopyX, Download, Map as MapIcon, Rows3, Search, SlidersHorizontal, Trash2, Upload, UserCheck, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
@@ -45,7 +46,7 @@ import { Input } from '@/components/ui/input';
 import { DateInput } from '@/components/ui/date-input';
 import { errorMessage, toQueryString } from '@/lib/api-client';
 import { useDebouncedValue, useHydrated } from '@/lib/hooks';
-import { bulkResultMessage, useBulkLeadAction, usePreference, useLeads, useRole, useSectors, useSetPreference, useTeamNames } from '@/lib/queries';
+import { bulkResultMessage, useBulkLeadAction, usePreference, useLeadCities, useLeads, useRole, useSectors, useSetPreference, useTeamNames } from '@/lib/queries';
 import { cn, displayHost } from '@/lib/utils';
 import { ChannelLabel, MobileLabel, PageSpeedScore, StatusBadge } from './badges';
 import { LeadScoreBadge } from './lead-score';
@@ -264,6 +265,108 @@ const MOBILE_SORTS = [
   { value: 'number:asc', label: 'Mais antigos' },
 ];
 
+/** Os filtros da lista a partir do endereço (?status=…&city=…); também para exportar. */
+export function leadFiltersFromParams(params: { get(name: string): string | null }) {
+  const get = (k: string) => params.get(k) ?? '';
+  const getList = (k: string) => get(k).split(',').filter(Boolean);
+  return {
+    q: get('q') || undefined,
+    sector: getList('sector'),
+    status: getList('status'),
+    channel: getList('channel'),
+    service: getList('servico'),
+    tag: getList('etiqueta'),
+    cf: getList('cf'),
+    lost: getList('motivo'),
+    stale: get('parado') ? Number(get('parado')) : undefined,
+    city: get('city') || undefined,
+    due: get('due') || undefined,
+    suggested_from: get('de') || undefined,
+    suggested_to: get('ate') || undefined,
+    archived: (get('arquivo') || undefined) as LeadArchiveFilter | undefined,
+    assigned: get('resp') || undefined,
+  };
+}
+
+/** Topo da página: quantos leads há e quantos estão por contactar. */
+export function LeadsSummary() {
+  const { data: all } = useLeads({ limit: 1 });
+  const { data: fresh } = useLeads({ status: ['identificado'], limit: 1 });
+  if (!all) return <>Os teus leads de prospeção.</>;
+  const n = all.meta.total;
+  return (
+    <>
+      {n} lead{n === 1 ? '' : 's'}
+      {fresh ? ` · ${fresh.meta.total} por contactar` : ''}
+    </>
+  );
+}
+
+/** Ações da lista (ao lado de "Novo lead"): importar, exportar (com os filtros atuais) e arrumar. */
+export function LeadsPageActions() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const prospector = useRole() === 'prospector';
+  if (prospector) return null;
+  const filters = leadFiltersFromParams(searchParams);
+  const filtered = Object.values(filters).some((v) => (Array.isArray(v) ? v.length : v));
+  /** Descarrega o ficheiro com os filtros atuais (a API devolve-o como anexo). */
+  function download(format: 'csv' | 'xlsx') {
+    const a = document.createElement('a');
+    a.href = `/api/v1/leads/export${toQueryString({ ...filters, format })}`;
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  return (
+    <DropdownRoot>
+      {/* Importar e exportar juntos (usa-se pouco: não precisa de lugar no menu lateral). */}
+      <DropdownTrigger className={buttonClasses('outline', 'md', 'max-sm:w-10 max-sm:px-0')} aria-label="Importar ou exportar leads">
+        <ArrowDownUp className="h-4 w-4" aria-hidden />
+        <span className="hidden sm:inline">Importar / Exportar</span>
+      </DropdownTrigger>
+      <DropdownContent>
+        <DropdownLabel>Importar</DropdownLabel>
+        <DropdownItem onSelect={() => router.push('/importar')}>
+          <Upload className="h-4 w-4 text-muted" aria-hidden />
+          Folha CSV ou Excel…
+        </DropdownItem>
+        <DropdownSeparator />
+        <DropdownLabel>{filtered ? 'Exportar leads filtrados' : 'Exportar todos os leads'}</DropdownLabel>
+        <DropdownItem onSelect={() => download('xlsx')}>
+          <Download className="h-4 w-4 text-muted" aria-hidden />
+          Excel (.xlsx)
+        </DropdownItem>
+        <DropdownItem onSelect={() => download('csv')}>
+          <Download className="h-4 w-4 text-muted" aria-hidden />
+          CSV (Excel em português)
+        </DropdownItem>
+        <DropdownSeparator />
+        <DropdownLabel>Arrumar</DropdownLabel>
+        <DropdownItem onSelect={() => router.push('/leads/duplicados')}>
+          <CopyX className="h-4 w-4 text-muted" aria-hidden />
+          Limpar duplicados…
+        </DropdownItem>
+        <DropdownItem onSelect={() => router.push('/leads/apagados')}>
+          <Trash2 className="h-4 w-4 text-muted" aria-hidden />
+          Apagados (reciclagem)…
+        </DropdownItem>
+      </DropdownContent>
+    </DropdownRoot>
+  );
+}
+
+/** Atalhos de "Sugerido em" (de… a…), com a semana de segunda a domingo. */
+function suggestedPresets(today: string) {
+  const weekday = (new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7;
+  return [
+    { label: 'Esta semana', from: addDays(today, -weekday), to: today },
+    { label: 'Este mês', from: `${today.slice(0, 8)}01`, to: today },
+    { label: 'Últimos 30 dias', from: addDays(today, -29), to: today },
+  ];
+}
+
 /** A tabela só se desenha no browser (os filtros e colunas dependem de dados em cache). */
 export function LeadsTable() {
   return useHydrated() ? (
@@ -285,7 +388,6 @@ function LeadsTableView() {
   const today = todayIso();
 
   const get = (k: string) => searchParams.get(k) ?? '';
-  const getList = (k: string) => (searchParams.get(k) ?? '').split(',').filter(Boolean);
   const sort = (get('sort') || 'number') as LeadSortField;
   const order = get('order') === 'asc' ? 'asc' : 'desc';
   const page = Math.max(1, Number(get('page')) || 1);
@@ -315,21 +417,7 @@ function LeadsTableView() {
   }, [debouncedSearch, debouncedCity]);
 
   const query = {
-    q: get('q') || undefined,
-    sector: getList('sector'),
-    status: getList('status'),
-    channel: getList('channel'),
-    service: getList('servico'),
-    tag: getList('etiqueta'),
-    cf: getList('cf'),
-    lost: getList('motivo'),
-    stale: get('parado') ? Number(get('parado')) : undefined,
-    city: get('city') || undefined,
-    due: get('due') || undefined,
-    suggested_from: get('de') || undefined,
-    suggested_to: get('ate') || undefined,
-    archived: (get('arquivo') || undefined) as LeadArchiveFilter | undefined,
-    assigned: get('resp') || undefined,
+    ...leadFiltersFromParams(searchParams),
     sort,
     order,
     page,
@@ -372,6 +460,104 @@ function LeadsTableView() {
     query.sector.length + query.status.length + query.channel.length + query.service.length + query.tag.length + query.cf.length + query.lost.length +
     [query.q, query.city, query.due, query.stale, query.suggested_from, query.suggested_to, query.archived, query.assigned].filter(Boolean).length;
   const [showFilters, setShowFilters] = useState(false);
+  // Mais filtros: aberto quando um deles está ativo (ex.: ao abrir uma vista guardada).
+  const advancedActive =
+    query.sector.length + query.channel.length + query.cf.length + query.lost.length +
+    [query.city, query.due, query.stale, query.suggested_from, query.suggested_to, query.archived].filter(Boolean).length;
+  const [showMore, setShowMore] = useState<boolean | null>(null);
+  const moreOpen = showMore ?? advancedActive > 0;
+  const { data: cities } = useLeadCities();
+  const assignedOptions = [
+    { value: '', label: 'Todos os responsáveis' },
+    { value: 'me', label: 'Os meus' },
+    { value: 'none', label: 'Sem responsável' },
+    ...(prospector ? [] : (team ?? []).filter((m) => m.role !== 'owner').map((m) => ({ value: m.user_id, label: m.name }))),
+  ];
+
+  // Uma etiqueta por filtro ativo (nome e valor), para tirar só esse.
+  const optionLabel = (options: { value: string; label: string }[], v: string) => options.find((o) => o.value === v)?.label ?? v;
+  const without = (list: string[], v: string) => list.filter((x) => x !== v);
+  const chips: { key: string; name: string; value: string; remove: () => void }[] = [
+    ...(query.q
+      ? [
+          {
+            key: 'q',
+            name: 'Pesquisa',
+            value: query.q,
+            remove: () => {
+              setSearch('');
+              setParams({ q: null });
+            },
+          },
+        ]
+      : []),
+    ...query.status.map((v) => ({
+      key: `status-${v}`,
+      name: 'Estado',
+      value: LEAD_STATUS_META[v as keyof typeof LEAD_STATUS_META]?.label ?? v,
+      remove: () => setParams({ status: without(query.status, v) }),
+    })),
+    ...query.service.map((v) => ({ key: `svc-${v}`, name: 'Serviço', value: optionLabel(serviceOptions, v), remove: () => setParams({ servico: without(query.service, v) }) })),
+    ...query.tag.map((v) => ({ key: `tag-${v}`, name: 'Etiqueta', value: v, remove: () => setParams({ etiqueta: without(query.tag, v) }) })),
+    ...(query.assigned ? [{ key: 'resp', name: 'Responsável', value: optionLabel(assignedOptions, query.assigned), remove: () => setParams({ resp: null }) }] : []),
+    ...query.sector.map((v) => ({
+      key: `sector-${v}`,
+      name: 'Setor',
+      value: v === 'none' ? 'Sem setor' : (sectors?.find((x) => x.id === v)?.name ?? v),
+      remove: () => setParams({ sector: without(query.sector, v) }),
+    })),
+    ...query.channel.map((v) => ({
+      key: `ch-${v}`,
+      name: 'Canal',
+      value: v === 'none' ? 'Sem canal' : (LEAD_CHANNEL_META[v as keyof typeof LEAD_CHANNEL_META]?.label ?? v),
+      remove: () => setParams({ channel: without(query.channel, v) }),
+    })),
+    ...(query.city
+      ? [
+          {
+            key: 'city',
+            name: 'Cidade',
+            value: query.city,
+            remove: () => {
+              setCity('');
+              setParams({ city: null });
+            },
+          },
+        ]
+      : []),
+    ...query.cf.map((v) => {
+      const [key = '', ...rest] = v.split(':');
+      const field = customFields?.find((f) => f.key === key);
+      const value = rest.join(':');
+      return {
+        key: `cf-${v}`,
+        name: field?.label ?? key,
+        value: field ? optionLabel(customFilterOptions(field), value) : value,
+        remove: () => setParams({ cf: without(query.cf, v) }),
+      };
+    }),
+    ...query.lost.map((v) => ({
+      key: `lost-${v}`,
+      name: 'Motivo',
+      value: v === 'none' ? 'Sem motivo' : (LOST_REASON_LABELS[v as keyof typeof LOST_REASON_LABELS] ?? v),
+      remove: () => setParams({ motivo: without(query.lost, v) }),
+    })),
+    ...(query.due ? [{ key: 'due', name: 'Próxima ação', value: optionLabel(DUE_OPTIONS, query.due), remove: () => setParams({ due: null }) }] : []),
+    ...(query.stale ? [{ key: 'stale', name: 'Fase', value: optionLabel(STALE_OPTIONS, String(query.stale)), remove: () => setParams({ parado: null }) }] : []),
+    ...(query.suggested_from || query.suggested_to
+      ? [
+          {
+            key: 'sug',
+            name: 'Sugerido',
+            value: [query.suggested_from ? `de ${formatDate(query.suggested_from)}` : null, query.suggested_to ? `a ${formatDate(query.suggested_to)}` : null]
+              .filter(Boolean)
+              .join(' '),
+            remove: () => setParams({ de: null, ate: null }),
+          },
+        ]
+      : []),
+    ...(query.archived ? [{ key: 'arq', name: 'Arquivo', value: optionLabel(ARCHIVE_OPTIONS, query.archived), remove: () => setParams({ arquivo: null }) }] : []),
+  ];
 
   // Seleção para ações em conjunto. Fica presa aos filtros/página atuais:
   // mudar de página ou de filtro começa uma seleção nova (sem efeitos).
@@ -444,16 +630,6 @@ function LeadsTableView() {
     else setParams({ sort: field, order: field === 'company_name' || field === 'city' ? 'asc' : 'desc' });
   }
 
-  /** Descarrega o ficheiro com os filtros atuais (a API devolve-o como anexo). */
-  function download(format: 'csv' | 'xlsx') {
-    const a = document.createElement('a');
-    a.href = `/api/v1/leads/export${toQueryString({ ...query, page: undefined, limit: undefined, format })}`;
-    a.download = '';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  }
-
   function clearFilters() {
     setSearch('');
     setCity('');
@@ -467,9 +643,8 @@ function LeadsTableView() {
 
   return (
     <div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1 lg:[&>*]:shrink-0">
-      {/* Pesquisa e ações */}
+      {/* Pesquisa · Vistas · Tabela/Mapa (telemóvel: Filtros e Ordenar por baixo). */}
       <div className="flex flex-wrap items-center gap-2">
-        {/* Telemóvel: pesquisa numa linha; por baixo, Filtros · Ordenar · Exportar alinhados. */}
         <div className="relative min-w-0 flex-1 basis-full sm:basis-64">
           <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
           <Input
@@ -486,7 +661,7 @@ function LeadsTableView() {
           onClick={() => setShowFilters((v) => !v)}
           aria-expanded={showFilters}
           aria-controls="filtros-leads"
-          className="md:hidden"
+          className={cn('md:hidden', activeFilters && 'border-accent/60 text-accent-text')}
         >
           <SlidersHorizontal className="h-4 w-4" aria-hidden />
           Filtros{activeFilters ? ` (${activeFilters})` : ''}
@@ -516,13 +691,66 @@ function LeadsTableView() {
             router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
           }}
         />
+        {/* A mesma lista vista de outra forma. */}
+        <div role="group" aria-label="Vista" className="inline-flex h-10 items-center rounded-lg border border-border-input bg-surface-2 p-0.5">
+          <span aria-current="page" className="inline-flex h-full items-center gap-1.5 rounded-md bg-surface px-3 text-sm font-medium shadow-sm">
+            <Rows3 className="h-4 w-4" aria-hidden />
+            <span className="hidden sm:inline">Tabela</span>
+          </span>
+          <Link href="/mapa" className="inline-flex h-full items-center gap-1.5 rounded-md px-3 text-sm text-muted hover:text-fg" aria-label="Ver os leads no mapa">
+            <MapIcon className="h-4 w-4" aria-hidden />
+            <span className="hidden sm:inline">Mapa</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* Filtros principais (sempre à vista no computador) · Mais filtros · Colunas. */}
+      <div
+        id="filtros-leads"
+        role="group"
+        aria-label="Filtros"
+        className={cn('gap-2 md:flex md:flex-wrap md:items-center', showFilters ? 'grid grid-cols-2' : 'hidden')}
+      >
+        <MultiSelectFilter
+          label="Estado"
+          value={query.status}
+          onChange={(v) => setParams({ status: v })}
+          options={LEAD_STATUSES.map((s) => ({ value: s, label: LEAD_STATUS_META[s].label, icon: <StatusIcon status={s} /> }))}
+        />
+        <MultiSelectFilter label="Serviço" value={query.service} onChange={(v) => setParams({ servico: v })} options={serviceOptions} />
+        {tagOptions.length || query.tag.length ? (
+          <MultiSelectFilter
+            label="Etiqueta"
+            value={query.tag}
+            onChange={(v) => setParams({ etiqueta: v })}
+            options={[...tagOptions, ...query.tag.filter((t) => !tagOptions.some((o) => o.value === t)).map((t) => ({ value: t, label: t }))]}
+          />
+        ) : null}
+        {hasTeam ? (
+          <SingleSelectFilter
+            label="Responsável"
+            value={query.assigned ?? ''}
+            onChange={(v) => setParams({ resp: v || null })}
+            options={assignedOptions}
+          />
+        ) : null}
+        <Button
+          variant="outline"
+          onClick={() => setShowMore((v) => !v)}
+          aria-expanded={moreOpen}
+          aria-controls="mais-filtros"
+          className={cn('max-md:hidden', advancedActive && 'border-accent/60 bg-accent-soft text-fg')}
+        >
+          <SlidersHorizontal className="h-4 w-4" aria-hidden />
+          Mais filtros{advancedActive ? ` (${advancedActive})` : ''}
+        </Button>
         <DropdownRoot>
           {/* Só faz sentido com a tabela (no telemóvel a lista é em cartões). */}
-          <DropdownTrigger className={buttonClasses('outline', 'md', 'max-lg:hidden')} aria-label="Escolher colunas visíveis">
+          <DropdownTrigger className={buttonClasses('ghost', 'md', 'ml-auto max-lg:hidden')} aria-label="Escolher colunas visíveis">
             <Columns3 className="h-4 w-4" aria-hidden />
-            <span className="hidden sm:inline">Colunas</span>
+            Colunas
           </DropdownTrigger>
-          <DropdownContent>
+          <DropdownContent align="end">
             <DropdownLabel>Colunas visíveis</DropdownLabel>
             {columns
               .filter((c) => c.enableHiding !== false)
@@ -544,191 +772,163 @@ function LeadsTableView() {
             <DropdownItem onSelect={() => saveTablePref.mutate({ hidden: [] })}>Mostrar todas</DropdownItem>
           </DropdownContent>
         </DropdownRoot>
-        <Link href="/mapa" className={buttonClasses('outline', 'md', 'max-sm:w-10 max-sm:px-0')} aria-label="Ver os leads no mapa">
-          <MapIcon className="h-4 w-4" aria-hidden />
-          <span className="hidden sm:inline">Mapa</span>
-        </Link>
-        {prospector ? null : (
-        <DropdownRoot>
-          {/* Importar e exportar juntos (usa-se pouco: não precisa de lugar no menu lateral). */}
-          <DropdownTrigger className={buttonClasses('outline', 'md', 'max-sm:w-10 max-sm:px-0')} aria-label="Importar ou exportar leads">
-            <ArrowDownUp className="h-4 w-4" aria-hidden />
-            <span className="hidden sm:inline">Importar / Exportar</span>
-          </DropdownTrigger>
-          <DropdownContent>
-            <DropdownLabel>Importar</DropdownLabel>
-            <DropdownItem onSelect={() => router.push('/importar')}>
-              <Upload className="h-4 w-4 text-muted" aria-hidden />
-              Folha CSV ou Excel…
-            </DropdownItem>
-            <DropdownSeparator />
-            <DropdownLabel>{activeFilters ? 'Exportar leads filtrados' : 'Exportar todos os leads'}</DropdownLabel>
-            <DropdownItem onSelect={() => download('xlsx')}>
-              <Download className="h-4 w-4 text-muted" aria-hidden />
-              Excel (.xlsx)
-            </DropdownItem>
-            <DropdownItem onSelect={() => download('csv')}>
-              <Download className="h-4 w-4 text-muted" aria-hidden />
-              CSV (Excel em português)
-            </DropdownItem>
-            <DropdownSeparator />
-            <DropdownLabel>Arrumar</DropdownLabel>
-            <DropdownItem onSelect={() => router.push('/leads/duplicados')}>
-              <CopyX className="h-4 w-4 text-muted" aria-hidden />
-              Limpar duplicados…
-            </DropdownItem>
-            <DropdownItem onSelect={() => router.push('/leads/apagados')}>
-              <Trash2 className="h-4 w-4 text-muted" aria-hidden />
-              Apagados (reciclagem)…
-            </DropdownItem>
-          </DropdownContent>
-        </DropdownRoot>
-        )}
       </div>
 
-      {/* Filtros. Telemóvel: grelha de 2 colunas (sem buracos); a partir do tablet, em linha. */}
-      <div
-        id="filtros-leads"
-        role="group"
-        aria-label="Filtros"
-        className={cn('gap-2 md:flex md:flex-wrap md:items-end', showFilters ? 'grid grid-cols-2' : 'hidden')}
-      >
-        <MultiSelectFilter
-          label="Setor"
-          value={query.sector}
-          onChange={(v) => setParams({ sector: v })}
-          options={[
-            ...(sectors ?? []).map((s) => ({ value: s.id, label: s.name, icon: <SectorIconView sector={s} className="text-muted" /> })),
-            { value: 'none', label: 'Sem setor' },
-          ]}
-        />
-        <MultiSelectFilter
-          label="Estado"
-          value={query.status}
-          onChange={(v) => setParams({ status: v })}
-          options={LEAD_STATUSES.map((s) => ({ value: s, label: LEAD_STATUS_META[s].label, icon: <StatusIcon status={s} /> }))}
-        />
-        <MultiSelectFilter
-          label="Canal"
-          value={query.channel}
-          onChange={(v) => setParams({ channel: v })}
-          options={[
-            ...LEAD_CHANNELS.map((c) => ({ value: c, label: LEAD_CHANNEL_META[c].label, icon: <ChannelIcon channel={c} className="text-muted" /> })),
-            { value: 'none', label: 'Sem canal' },
-          ]}
-        />
-        <MultiSelectFilter
-          label="Serviço"
-          value={query.service}
-          onChange={(v) => setParams({ servico: v })}
-          options={serviceOptions}
-        />
-        {tagOptions.length || query.tag.length ? (
-          <MultiSelectFilter
-            label="Etiqueta"
-            value={query.tag}
-            onChange={(v) => setParams({ etiqueta: v })}
-            options={[...tagOptions, ...query.tag.filter((t) => !tagOptions.some((o) => o.value === t)).map((t) => ({ value: t, label: t }))]}
-          />
-        ) : null}
-        {(customFields ?? [])
-          .filter((f) => f.type === 'choice' || f.type === 'yes_no')
-          .map((f) => {
-            const prefix = `${f.key}:`;
-            return (
+      {/* Mais filtros, por grupos (no telemóvel aparecem com o botão Filtros). */}
+      {moreOpen || showFilters ? (
+        <div
+          id="mais-filtros"
+          role="group"
+          aria-label="Mais filtros"
+          className={cn('grid gap-4 rounded-xl border border-border bg-surface p-3 md:grid-cols-3', !moreOpen && 'md:hidden')}
+        >
+          <fieldset className="flex min-w-0 flex-col gap-2">
+            <legend className="mb-1 text-xs font-semibold tracking-wide text-muted uppercase">Lead</legend>
+            <MultiSelectFilter
+              label="Setor"
+              value={query.sector}
+              onChange={(v) => setParams({ sector: v })}
+              options={[
+                ...(sectors ?? []).map((s) => ({ value: s.id, label: s.name, icon: <SectorIconView sector={s} className="text-muted" /> })),
+                { value: 'none', label: 'Sem setor' },
+              ]}
+              className="w-full"
+            />
+            <MultiSelectFilter
+              label="Canal"
+              value={query.channel}
+              onChange={(v) => setParams({ channel: v })}
+              options={[
+                ...LEAD_CHANNELS.map((c) => ({ value: c, label: LEAD_CHANNEL_META[c].label, icon: <ChannelIcon channel={c} className="text-muted" /> })),
+                { value: 'none', label: 'Sem canal' },
+              ]}
+              className="w-full"
+            />
+            <Input
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="Cidade"
+              aria-label="Filtrar por cidade"
+              list="cidades-leads"
+              className={cn(city && 'border-accent/60 bg-accent-soft')}
+            />
+            <datalist id="cidades-leads">
+              {(cities ?? []).map((c) => (
+                <option key={c.city} value={c.city}>{`${c.count} lead${c.count === 1 ? '' : 's'}`}</option>
+              ))}
+            </datalist>
+            {(customFields ?? [])
+              .filter((f) => f.type === 'choice' || f.type === 'yes_no')
+              .map((f) => {
+                const prefix = `${f.key}:`;
+                return (
+                  <MultiSelectFilter
+                    key={f.id}
+                    label={f.label}
+                    value={query.cf.filter((c) => c.startsWith(prefix)).map((c) => c.slice(prefix.length))}
+                    onChange={(v) => setParams({ cf: [...query.cf.filter((c) => !c.startsWith(prefix)), ...v.map((x) => prefix + x)] })}
+                    options={customFilterOptions(f)}
+                    className="w-full"
+                  />
+                );
+              })}
+            {/* Motivo de "Sem interesse": só quando se veem esses leads (ou o filtro já está ativo). */}
+            {query.status.includes('sem_interesse') || query.lost.length ? (
               <MultiSelectFilter
-                key={f.id}
-                label={f.label}
-                value={query.cf.filter((c) => c.startsWith(prefix)).map((c) => c.slice(prefix.length))}
-                onChange={(v) => setParams({ cf: [...query.cf.filter((c) => !c.startsWith(prefix)), ...v.map((x) => prefix + x)] })}
-                options={customFilterOptions(f)}
+                label="Motivo"
+                value={query.lost}
+                onChange={(v) => setParams({ motivo: v })}
+                options={[...LOST_REASONS.map((r) => ({ value: r, label: LOST_REASON_LABELS[r] })), { value: 'none', label: 'Sem motivo' }]}
+                className="w-full"
               />
-            );
-          })}
-        <Input
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-          placeholder="Cidade"
-          aria-label="Filtrar por cidade"
-          className="max-md:col-span-2 md:w-36"
-        />
-        <SingleSelectFilter
-          label="Próxima ação"
-          value={query.due ?? ''}
-          onChange={(v) => setParams({ due: v || null })}
-          options={DUE_OPTIONS}
-          className="max-md:col-span-2"
-        />
-        <SingleSelectFilter
-          label="Na fase há"
-          value={query.stale ? String(query.stale) : ''}
-          onChange={(v) => setParams({ parado: v || null })}
-          options={STALE_OPTIONS}
-          className="max-md:col-span-2"
-        />
-        {/* Motivo de "Sem interesse": só quando se veem esses leads (ou o filtro já está ativo). */}
-        {query.status.includes('sem_interesse') || query.lost.length ? (
-          <MultiSelectFilter
-            label="Motivo"
-            value={query.lost}
-            onChange={(v) => setParams({ motivo: v })}
-            options={[...LOST_REASONS.map((r) => ({ value: r, label: LOST_REASON_LABELS[r] })), { value: 'none', label: 'Sem motivo' }]}
-          />
-        ) : null}
-        {hasTeam ? (
-          <SingleSelectFilter
-            label="Responsável"
-            value={query.assigned ?? ''}
-            onChange={(v) => setParams({ resp: v || null })}
-            options={[
-              { value: '', label: 'Todos os responsáveis' },
-              { value: 'me', label: 'Os meus' },
-              { value: 'none', label: 'Sem responsável' },
-              ...(prospector ? [] : (team ?? []).filter((m) => m.role !== 'owner').map((m) => ({ value: m.user_id, label: m.name }))),
-            ]}
-            className="max-md:col-span-2"
-          />
-        ) : null}
-        <SingleSelectFilter
-          label="Leads arquivados"
-          value={query.archived ?? ''}
-          onChange={(v) => setParams({ arquivo: v || null })}
-          options={ARCHIVE_OPTIONS}
-          className="max-md:col-span-2"
-        />
-        <fieldset className="flex flex-wrap items-center gap-1.5 max-md:col-span-2">
-          <legend className="sr-only">Sugerido em</legend>
-          <span className="text-sm text-muted max-md:basis-full" aria-hidden>
-            Sugerido em
+            ) : null}
+          </fieldset>
+          <fieldset className="flex min-w-0 flex-col gap-2">
+            <legend className="mb-1 text-xs font-semibold tracking-wide text-muted uppercase">Datas</legend>
+            <SingleSelectFilter label="Próxima ação" value={query.due ?? ''} onChange={(v) => setParams({ due: v || null })} options={DUE_OPTIONS} className="w-full" />
+            <SingleSelectFilter
+              label="Na fase há"
+              value={query.stale ? String(query.stale) : ''}
+              onChange={(v) => setParams({ parado: v || null })}
+              options={STALE_OPTIONS}
+              className="w-full"
+            />
+            <div className="flex flex-col gap-1.5">
+              <span className="text-sm text-muted">Sugerido em</span>
+              <div className="flex flex-wrap gap-1.5">
+                {suggestedPresets(today).map((p) => {
+                  const on = query.suggested_from === p.from && query.suggested_to === p.to;
+                  return (
+                    <button
+                      key={p.label}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => setParams(on ? { de: null, ate: null } : { de: p.from, ate: p.to })}
+                      className={cn(
+                        'rounded-full border px-2.5 py-1 text-xs font-medium',
+                        on ? 'border-accent bg-accent-soft text-accent-text' : 'border-border text-muted hover:text-fg',
+                      )}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <DateInput
+                  value={query.suggested_from ?? ''}
+                  onChange={(v) => setParams({ de: v || null })}
+                  aria-label="Sugerido desde"
+                  className="min-w-0 flex-1"
+                />
+                <span className="text-sm text-muted" aria-hidden>
+                  a
+                </span>
+                <DateInput value={query.suggested_to ?? ''} onChange={(v) => setParams({ ate: v || null })} aria-label="Sugerido até" className="min-w-0 flex-1" />
+              </div>
+            </div>
+          </fieldset>
+          <fieldset className="flex min-w-0 flex-col gap-2">
+            <legend className="mb-1 text-xs font-semibold tracking-wide text-muted uppercase">Arquivo</legend>
+            <SingleSelectFilter
+              label="Leads arquivados"
+              value={query.archived ?? ''}
+              onChange={(v) => setParams({ arquivo: v || null })}
+              options={ARCHIVE_OPTIONS}
+              className="w-full"
+            />
+            <p className="text-xs text-muted">Os arquivados saem da lista, do Kanban e da prospeção, mas não se perdem.</p>
+          </fieldset>
+        </div>
+      ) : null}
+
+      {/* O que está filtrado (cada um sai com ✕) e quantos leads há. */}
+      <div className="flex flex-wrap items-center gap-1.5 text-sm">
+        <p className="mr-1 text-muted" role="status" aria-live="polite">
+          {isLoading ? 'A carregar leads…' : `${total} lead${total === 1 ? '' : 's'}${activeFilters ? ' com estes filtros' : ''}`}
+          {isFetching && !isLoading ? ' · a atualizar…' : ''}
+        </p>
+        {chips.map((c) => (
+          <span key={c.key} className="inline-flex max-w-full items-center gap-1 rounded-full border border-accent/40 bg-accent-soft py-0.5 pr-1 pl-2.5 text-xs">
+            <span className="truncate">
+              <span className="text-muted">{c.name}:</span> {c.value}
+            </span>
+            <button
+              type="button"
+              onClick={c.remove}
+              aria-label={`Tirar o filtro ${c.name}: ${c.value}`}
+              className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-3 hover:text-fg"
+            >
+              <X className="h-3 w-3" aria-hidden />
+            </button>
           </span>
-          <DateInput
-            value={query.suggested_from ?? ''}
-            onChange={(v) => setParams({ de: v || null })}
-            aria-label="Sugerido desde"
-            className="w-auto min-w-0 flex-1 md:w-40 md:flex-none"
-          />
-          <span className="text-sm text-muted" aria-hidden>
-            a
-          </span>
-          <DateInput
-            value={query.suggested_to ?? ''}
-            onChange={(v) => setParams({ ate: v || null })}
-            aria-label="Sugerido até"
-            className="w-auto min-w-0 flex-1 md:w-40 md:flex-none"
-          />
-        </fieldset>
+        ))}
         {activeFilters ? (
-          <Button variant="ghost" onClick={clearFilters} className="max-md:col-span-2 max-md:justify-self-end">
-            <X className="h-4 w-4" aria-hidden />
+          <Button variant="ghost" size="sm" onClick={clearFilters}>
             Limpar filtros
           </Button>
         ) : null}
       </div>
-
-      <p className="text-sm text-muted" role="status" aria-live="polite">
-        {isLoading ? 'A carregar leads…' : `${total} lead${total === 1 ? '' : 's'}${activeFilters ? ' com estes filtros' : ''}`}
-        {isFetching && !isLoading ? ' · a atualizar…' : ''}
-      </p>
 
       {error ? (
         <p role="alert" className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">

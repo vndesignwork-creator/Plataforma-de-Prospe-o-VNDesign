@@ -59,7 +59,7 @@ import { cn } from '@/lib/utils';
 
 export type QuickPage = { href: string; label: string; icon: LucideIcon };
 
-type Group = 'Recentes' | 'Ações' | 'Páginas' | 'Filtros guardados' | 'Filtrar leads' | 'Leads e projetos' | 'Tarefas' | 'Notas e chamadas';
+type Group = 'Recentes' | 'Ações' | 'Páginas' | 'Vistas guardadas' | 'Filtrar leads' | 'Leads e projetos' | 'Tarefas' | 'Notas e chamadas';
 type Item = {
   key: string;
   group: Group;
@@ -315,11 +315,11 @@ function SearchBody({
               })),
           ]
         : [];
-    // Filtros guardados na lista de leads (sem escrever: todos; a escrever: os que coincidem).
+    // Vistas guardadas na lista de leads (sem escrever: todos; a escrever: os que coincidem).
     const views: Item[] = savedViews
       .filter((v) => !q || matches(v.name))
       .slice(0, q ? 4 : 5)
-      .map((v) => ({ key: `v:${v.id}`, group: 'Filtros guardados' as const, label: v.name, hint: 'Lista de leads', href: `/leads?${v.query}`, icon: Bookmark }));
+      .map((v) => ({ key: `v:${v.id}`, group: 'Vistas guardadas' as const, label: v.name, hint: 'Lista de leads', href: `/leads?${v.query}`, icon: Bookmark }));
     items = [
       ...(q ? [] : recent.slice(0, 5).map((l) => leadItem(l, 'Recentes'))),
       ...(q ? [] : views),

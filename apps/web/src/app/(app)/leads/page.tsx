@@ -3,7 +3,7 @@ import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
-import { LeadsTable } from '@/components/leads/leads-table';
+import { LeadsPageActions, LeadsSummary, LeadsTable } from '@/components/leads/leads-table';
 import { buttonClasses } from '@/components/ui/button';
 
 export const metadata: Metadata = { title: 'Leads' };
@@ -14,13 +14,19 @@ export default function LeadsPage() {
     <div className="lg:flex lg:h-[calc(100dvh-3.5rem)] lg:min-h-[32rem] lg:flex-col">
       <PageHeader
         title="Pipeline de leads"
-        description="Todos os leads de prospeção, com filtros e pesquisa."
+        description={<LeadsSummary />}
         actionsClassName="ml-auto"
         actions={
-          <Link href="/leads/novo" className={buttonClasses('primary')}>
-            <Plus className="h-4 w-4" aria-hidden />
-            Novo lead
-          </Link>
+          <>
+            {/* Importar/Exportar usa os filtros do endereço. */}
+            <Suspense>
+              <LeadsPageActions />
+            </Suspense>
+            <Link href="/leads/novo" className={buttonClasses('primary')}>
+              <Plus className="h-4 w-4" aria-hidden />
+              Novo lead
+            </Link>
+          </>
         }
       />
       <Suspense>

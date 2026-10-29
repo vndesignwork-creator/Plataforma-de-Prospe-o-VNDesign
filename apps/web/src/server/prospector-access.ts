@@ -31,7 +31,7 @@ const RULES: Rule[] = [
   ['GET POST', /^\/leads$/],
   ['POST', /^\/leads\/(check-duplicates|bulk|card-scan|from-text)$/],
   ['GET', /^\/custom-fields$/],
-  ['GET', /^\/leads\/tags$/],
+  ['GET', /^\/leads\/(tags|cities)$/],
   ['GET PATCH', new RegExp(`^/leads/${ID}$`)],
   ['GET POST', new RegExp(`^/leads/${ID}/(activities|ai-visibility|audits|meetings|tasks)$`)],
   ['POST', new RegExp(`^/leads/${ID}/comments$`)],

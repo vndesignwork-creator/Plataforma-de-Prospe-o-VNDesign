@@ -103,6 +103,7 @@ import type {
 } from '@vndesign/core';
 import { chunkReschedule,
   TEAM_ACTIVITY_PAGE,
+  type LeadCityCount,
 } from '@vndesign/core';
 import { api } from './api-client';
 
@@ -169,6 +170,15 @@ export function useLeads(query: Record<string, string | number | string[] | unde
     queryKey: qk.leads(query),
     queryFn: ({ signal }) => api<LeadListResponse>('/leads', { query, signal }),
     placeholderData: keepPreviousData,
+  });
+}
+
+/** Cidades dos leads (para sugerir no filtro "Cidade"). */
+export function useLeadCities() {
+  return useQuery({
+    queryKey: ['lead-cities'],
+    queryFn: () => api<{ data: LeadCityCount[] }>('/leads/cities').then((r) => r.data),
+    staleTime: 5 * 60_000,
   });
 }
 

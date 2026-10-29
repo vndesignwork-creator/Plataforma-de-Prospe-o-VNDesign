@@ -34,15 +34,15 @@ const undo = (page: Page, text: string | RegExp) =>
 test('filtros guardados: guardar, voltar a eles (também no Ctrl+K) e apagar', async ({ page }) => {
   const name = `Contactados ${run}`;
   await page.goto(`/leads?status=contactado&q=${run}`);
-  await page.getByRole('button', { name: 'Filtros guardados' }).click();
-  await page.getByRole('menuitem', { name: 'Guardar estes filtros…' }).click();
+  await page.getByRole('button', { name: 'Vistas guardadas' }).click();
+  await page.getByRole('menuitem', { name: 'Guardar esta vista…' }).click();
   await page.getByLabel('Nome').fill(name);
   await page.getByRole('button', { name: 'Guardar', exact: true }).click();
-  await expect(page.getByText(`Filtros guardados como “${name}”.`)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Filtros guardados' })).toContainText(name);
+  await expect(page.getByText(`Vista guardada como “${name}”.`)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Vistas guardadas' })).toContainText(name);
 
   await page.goto('/leads');
-  await page.getByRole('button', { name: 'Filtros guardados' }).click();
+  await page.getByRole('button', { name: 'Vistas guardadas' }).click();
   await page.getByRole('menuitem', { name, exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`q=${run}`));
   await expect(page).toHaveURL(/status=contactado/);
@@ -54,7 +54,7 @@ test('filtros guardados: guardar, voltar a eles (também no Ctrl+K) e apagar', a
   await page.getByRole('option', { name: new RegExp(name) }).click();
   await expect(page).toHaveURL(/\/leads\?.*status=contactado/);
 
-  await page.getByRole('button', { name: 'Filtros guardados' }).click();
+  await page.getByRole('button', { name: 'Vistas guardadas' }).click();
   await page.getByRole('menuitem', { name: `Apagar “${name}”` }).click();
   await expect(page.getByText(`“${name}” apagado.`)).toBeVisible();
 });

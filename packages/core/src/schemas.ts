@@ -974,6 +974,9 @@ export const FollowUpSchema = z
 export type FollowUpInput = z.infer<typeof FollowUpSchema>;
 
 export const LeadTagCountSchema = z.object({ tag: z.string(), count: z.int() }).meta({ id: 'LeadTagCount' });
+/** Cidades dos leads, com o número de leads (para sugerir no filtro). */
+export const LeadCityCountSchema = z.object({ city: z.string(), count: z.int() }).meta({ id: 'LeadCityCount' });
+export type LeadCityCount = z.infer<typeof LeadCityCountSchema>;
 export const LostReasonCountSchema = z
   .object({ reason: z.enum(LOST_REASONS).nullable(), count: z.int() })
   .meta({ id: 'LostReasonCount', description: 'Leads em "Sem interesse" por motivo (null = sem motivo)' });

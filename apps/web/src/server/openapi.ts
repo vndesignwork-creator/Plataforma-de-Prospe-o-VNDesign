@@ -173,6 +173,7 @@ import {
   DuplicateCheckSchema,
   DuplicateGroupSchema,
   DuplicateIgnoreSchema,
+  LeadCityCountSchema,
   LeadTagCountSchema,
   LeadTagRenameSchema,
   LeadSummarySchema,
@@ -382,6 +383,13 @@ export function getOpenApiDocument() {
           summary: 'Verificar duplicados e lista "não contactar" sem gravar',
           requestBody: body(DuplicateCheckSchema),
           responses: { '200': ok(data(DuplicateCheckResultSchema)), ...common },
+        }),
+      },
+      '/leads/cities': {
+        get: op({
+          tags: ['Leads'],
+          summary: 'Cidades dos leads, com o número de leads (mais usadas primeiro)',
+          responses: { '200': ok(data(z.array(LeadCityCountSchema))), ...common },
         }),
       },
       '/leads/tags': {
