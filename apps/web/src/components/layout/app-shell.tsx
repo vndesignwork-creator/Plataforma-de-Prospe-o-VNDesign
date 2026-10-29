@@ -192,11 +192,11 @@ export function AppShell({ email, children }: { email: string | null; children: 
       </aside>
 
       {/* Barra superior (telemóvel/tablet) */}
-      <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-1 border-b border-border bg-surface/95 px-4 backdrop-blur lg:hidden">
-        <Link href="/dashboard" className="shrink-0 whitespace-nowrap">
-          <Logo />
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-1 border-b border-border bg-surface/95 px-3 backdrop-blur min-[400px]:px-4 lg:hidden">
+        <Link href="/dashboard" className="shrink-0 whitespace-nowrap" aria-label="VNDesign Leads — Dashboard">
+          <Logo narrow />
         </Link>
-        {role === 'prospector' ? null : <RunningTimer compact className="ml-auto min-w-0 py-0.5" />}
+        {role === 'prospector' ? null : <RunningTimer compact className="ml-auto shrink-0" />}
         <NotificationsBell className={cn(role === 'prospector' && 'ml-auto')} />
         <button type="button" onClick={openSearch} className="rounded-lg p-2 text-fg hover:bg-surface-2" aria-label="Pesquisar">
           <Search className="h-5 w-5" aria-hidden />

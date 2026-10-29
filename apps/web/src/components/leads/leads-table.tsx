@@ -792,7 +792,14 @@ export function LeadsTable() {
       />
 
       {/* Computador: a caixa encolhe para caber no ecrã (a tabela tem o seu scroll). */}
-      <div className={cn('rounded-xl border border-border bg-surface transition-opacity lg:flex lg:min-h-0 lg:!shrink lg:flex-col', isFetching && !isLoading && 'opacity-70')}>
+      {/* Com leads: cada um no seu cartão (sem caixa à volta); a carregar ou vazio: uma caixa. */}
+      <div
+        className={cn(
+          'transition-opacity lg:flex lg:min-h-0 lg:!shrink lg:flex-col',
+          isLoading || table.getRowModel().rows.length === 0 ? 'rounded-xl border border-border bg-surface' : '',
+          isFetching && !isLoading && 'opacity-70',
+        )}
+      >
         {isLoading ? (
           <div className="flex flex-col gap-2 p-4">
             {Array.from({ length: 8 }, (_, i) => (
@@ -816,12 +823,13 @@ export function LeadsTable() {
             {/* Tabela (computador). "relative": os textos só para leitores de ecrã (posição absoluta)
                 ficam dentro desta caixa em vez de esticarem a página. */}
             <div className="relative hidden min-h-0 overflow-auto scroll-thin lg:block">
-              <table className="w-full border-collapse text-sm">
+              {/* Linhas separadas (como cartões): border-separate com espaço entre as linhas. */}
+              <table className="w-full border-separate border-spacing-x-0 border-spacing-y-2 text-sm">
                 <caption className="sr-only">Leads — clica no nome da empresa para abrir a ficha</caption>
-                <thead className="sticky top-0 z-10 bg-surface-2">
+                <thead className="sticky top-0 z-10 bg-bg">
                   {table.getHeaderGroups().map((hg) => (
                     <tr key={hg.id}>
-                      <th scope="col" className="w-10 border-b border-border py-2 pr-1 pl-3">
+                      <th scope="col" className="w-10 py-2 pr-1 pl-3">
                         <input
                           type="checkbox"
                           checked={allSelected}
@@ -839,7 +847,7 @@ export function LeadsTable() {
                             scope="col"
                             aria-sort={sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : undefined}
                             className={cn(
-                              'border-b border-border px-3 py-2 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-muted uppercase',
+                              'px-3 py-2 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-muted uppercase',
                               meta.className?.includes('text-right') && 'text-right',
                             )}
                           >
@@ -872,8 +880,11 @@ export function LeadsTable() {
                     <tr
                       key={row.id}
                       className={cn(
-                        'cursor-pointer border-b border-border last:border-0 hover:bg-surface-2',
-                        selected.has(row.id) && 'bg-accent-soft hover:bg-accent-soft',
+                        'group cursor-pointer',
+                        // Cada linha é um cartão: fundo e contorno nas células (bordas só por fora, cantos redondos nas pontas).
+                        '[&>td]:border-y [&>td]:border-border [&>td]:bg-surface [&>td]:transition-colors hover:[&>td]:bg-surface-2',
+                        '[&>td:first-child]:rounded-l-xl [&>td:first-child]:border-l [&>td:last-child]:rounded-r-xl [&>td:last-child]:border-r',
+                        selected.has(row.id) && '[&>td]:bg-accent-soft hover:[&>td]:bg-accent-soft',
                       )}
                       onClick={(e) => {
                         if ((e.target as HTMLElement).closest('a,button,input,label')) return;
@@ -904,9 +915,12 @@ export function LeadsTable() {
             </div>
 
             {/* Cartões (telemóvel e tablet: a tabela tem demasiadas colunas para caber) */}
-            <ul className="divide-y divide-border lg:hidden">
+            <ul className="flex flex-col gap-3 lg:hidden">
               {(data?.data ?? []).map((lead) => (
-                <li key={lead.id} className={cn('flex items-start', selected.has(lead.id) && 'bg-accent-soft')}>
+                <li
+                  key={lead.id}
+                  className={cn('flex items-start overflow-hidden rounded-xl border border-border bg-surface shadow-card', selected.has(lead.id) && 'bg-accent-soft')}
+                >
                   {/* Caixa fora do link: tocar nela seleciona, tocar no resto abre a ficha. */}
                   <label className="flex shrink-0 cursor-pointer items-center self-stretch py-3 pr-1 pl-4">
                     <input

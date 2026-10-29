@@ -341,9 +341,10 @@ export function ProspectingSession() {
         </Card>
       ) : null}
 
+      {/* Cada lead no seu cartão, com espaço entre eles (como nos Projetos). */}
       {pending.length ? (
-        <Card>
-          <ul aria-label={view === 'missing' ? 'Leads sem contacto' : 'Leads para contactar'} className="divide-y divide-border">
+        <div className="flex flex-col gap-3">
+          <ul aria-label={view === 'missing' ? 'Leads sem contacto' : 'Leads para contactar'} className="flex flex-col gap-3">
             {pending.slice(0, limit).map((item) => (
               <LeadRow
                 key={item.lead.id}
@@ -356,13 +357,13 @@ export function ProspectingSession() {
             ))}
           </ul>
           {pending.length > limit ? (
-            <div className="flex justify-center border-t border-border p-3">
-              <Button variant="ghost" size="sm" onClick={() => setLimit((n) => n + PAGE)}>
+            <div className="flex justify-center">
+              <Button variant="outline" size="sm" onClick={() => setLimit((n) => n + PAGE)}>
                 <ChevronDown className="h-4 w-4" aria-hidden /> Mostrar mais ({pending.length - limit})
               </Button>
             </div>
           ) : null}
-        </Card>
+        </div>
       ) : null}
 
       {data && counts && counts[view] > items.length ? (
@@ -389,8 +390,7 @@ export function ProspectingSession() {
             Feito nesta sessão ({done.length})
           </button>
           {doneOpen ? (
-            <Card>
-              <ul aria-label="Leads tratados nesta sessão" className="divide-y divide-border">
+            <ul aria-label="Leads tratados nesta sessão" className="flex flex-col gap-3">
                 {done.map(({ item, done: result }) => (
                   <LeadRow
                     key={item.lead.id}
@@ -402,8 +402,7 @@ export function ProspectingSession() {
                     onRecorded={(outcome, r) => recorded(item, outcome, r)}
                   />
                 ))}
-              </ul>
-            </Card>
+            </ul>
           ) : null}
         </section>
       ) : null}
@@ -475,7 +474,10 @@ function LeadRow({
   const noAnswer = () => (streak >= NO_ANSWER_LIMIT - 1 ? setAskGiveUp(true) : void record('no_answer'));
 
   return (
-    <li aria-labelledby={headingId} className={cn('flex flex-col gap-3 p-3 sm:p-4', done && 'bg-surface-2/30')}>
+    <li
+      aria-labelledby={headingId}
+      className={cn('flex flex-col gap-3 rounded-xl border border-border bg-surface p-3 shadow-card sm:p-4', done && 'bg-surface-2/60')}
+    >
       {/* Telemóvel: o nome com a largura toda (só a pontuação ao lado); estado e motivo por baixo. */}
       <div className="flex items-start justify-between gap-x-4 gap-y-2">
         <div className="min-w-0 flex-1">
@@ -599,8 +601,9 @@ function LeadRow({
               />
             ) : null}
             {!lead.phone || !lead.email || lead.email_bounced_at ? (
-              <Button size="sm" variant="ghost" aria-expanded={finder} onClick={() => setFinder(!finder)}>
-                <Search className="h-3.5 w-3.5" aria-hidden />{' '}
+              // Telemóvel: na sua própria linha (numa coluna estreita partia o texto e encolhia o ícone).
+              <Button size="sm" variant="ghost" aria-expanded={finder} onClick={() => setFinder(!finder)} className="col-span-full whitespace-nowrap sm:col-auto">
+                <Search className="h-3.5 w-3.5 shrink-0" aria-hidden />{' '}
                 {hasContact(lead) ? `Procurar ${lead.phone ? 'email' : 'telefone'}` : 'Procurar contacto'}
               </Button>
             ) : null}

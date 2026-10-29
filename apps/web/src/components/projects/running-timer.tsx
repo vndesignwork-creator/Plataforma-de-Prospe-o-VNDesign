@@ -48,7 +48,7 @@ export function RunningTimer({ compact, className }: { compact?: boolean; classN
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60 motion-reduce:animate-none" />
         <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
       </span>
-      <span className="min-w-0 flex-1 leading-tight">
+      <span className={cn('leading-tight', compact ? 'shrink-0 whitespace-nowrap' : 'min-w-0 flex-1')}>
         {!compact ? (
           <Link href={`${leadPath(running.lead)}#projeto`} className="block truncate text-xs text-muted hover:text-fg hover:underline">
             {running.lead.company_name}

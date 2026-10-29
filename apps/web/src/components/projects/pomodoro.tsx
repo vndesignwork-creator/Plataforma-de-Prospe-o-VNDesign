@@ -460,13 +460,19 @@ export function PomodoroIndicator({ pomodoro, compact, className }: { pomodoro: 
       role="status"
       aria-label={`Pomodoro: ${label}, ${pomodoro.lead.company_name}, faltam ${clock}`}
       className={cn(
-        'flex items-center gap-2 rounded-lg border px-2 py-1.5 text-sm',
+        'flex items-center rounded-lg border text-sm',
+        // Barra do telemóvel (compact): sem o ícone e mais justo, para o relógio nunca ficar tapado.
+        compact ? 'gap-1 px-1.5 py-1' : 'gap-2 px-2 py-1.5',
         onBreak ? 'border-success bg-success-soft' : 'border-accent bg-accent-soft',
         className,
       )}
     >
-      {onBreak ? <Coffee className="h-4 w-4 shrink-0 text-success" aria-hidden /> : <Timer className="h-4 w-4 shrink-0 text-accent-text" aria-hidden />}
-      <span className="min-w-0 flex-1 leading-tight">
+      {compact ? null : onBreak ? (
+        <Coffee className="h-4 w-4 shrink-0 text-success" aria-hidden />
+      ) : (
+        <Timer className="h-4 w-4 shrink-0 text-accent-text" aria-hidden />
+      )}
+      <span className={cn('leading-tight', compact ? 'shrink-0 whitespace-nowrap' : 'min-w-0 flex-1')}>
         {!compact ? (
           <Link href={`${leadPath(pomodoro.lead)}#projeto`} className="block truncate text-xs text-muted hover:text-fg hover:underline">
             {label} · {pomodoro.lead.company_name}
