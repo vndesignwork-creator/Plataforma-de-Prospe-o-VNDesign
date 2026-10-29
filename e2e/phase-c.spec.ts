@@ -23,7 +23,7 @@ test('modelo com variáveis → ficha do lead → marcar como enviado agenda o f
   await page.goto('/leads');
   await page.getByLabel('Pesquisar leads').fill(leadName);
   await page.getByRole('link', { name: leadName }).click();
-  await page.getByLabel('Modelo', { exact: true }).selectOption({ label: templateName });
+  await page.getByLabel('Partir de', { exact: true }).selectOption({ label: templateName });
   await expect(page.getByLabel('Assunto', { exact: true })).toHaveValue(`Uma ideia para a ${leadName}`);
   await expect(page.locator('#script-body')).toHaveValue(/^Olá Rita,\n\nReparei que o site não abre no telemóvel\./);
   await expect(page.locator('#script-body')).toHaveValue(/basta responder a este email\.$/);

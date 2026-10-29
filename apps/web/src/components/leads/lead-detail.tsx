@@ -8,7 +8,6 @@ import {
   formatDate,
   formatDateTime,
   isSocialUrl,
-  mailtoUrl,
   todayIso,
   type Lead,
   type LeadStatus,
@@ -23,7 +22,6 @@ import {
 import {
   Archive,
   ArchiveRestore,
-  Copy,
   Edit3,
   ExternalLink,
   FileText,
@@ -62,7 +60,6 @@ import {
   useLead,
   useLeads,
   useLeadTasks,
-  useLogActivity,
   useMe,
   useSettings,
   useTeamNames,
@@ -70,13 +67,12 @@ import {
 } from '@/lib/queries';
 import { cn, displayHost, telUrl, whatsappUrl } from '@/lib/utils';
 import { FollowUpActions } from '@/components/follow-up/follow-up-actions';
-import { ContactScriptsCard } from '@/components/scripts/contact-scripts-card';
 import { ActivityTimeline } from './activity-timeline';
 import { ChannelLabel, MobileLabel, PageSpeedScore } from './badges';
 import { SiteAuditPanel } from './site-audit';
 import { AiVisibilityCard } from './ai-visibility';
 import { GeoKitCard } from './geo-kit';
-import { AiEmailCard } from './ai-email-card';
+import { ContactCard } from './contact-card';
 import { LeadLocation } from './lead-location';
 import { ProposalsCard } from '@/components/proposals/proposals-card';
 import { ContactFinder } from './contact-finder';
@@ -116,15 +112,6 @@ function Row({ label, children, className }: { label: string; children: ReactNod
 }
 
 const dash = <span className="text-muted">—</span>;
-
-async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 function ExternalUrl({ url }: { url: string | null }) {
   if (!url) return dash;
@@ -245,11 +232,9 @@ export function LeadDetail({ id }: { id: string }) {
   const { data: tasks } = useLeadTasks(id);
   const update = useUpdateLead(id);
   const bulk = useBulkLeadAction();
-  const log = useLogActivity(id);
   const invalidate = useInvalidateLead();
   const [dialog, setDialog] = useState<null | 'delete' | 'anonymize' | 'merge'>(null);
   const [pinOpen, setPinOpen] = useState(false);
-  const [emailCollapsed, setEmailCollapsed] = useProspectingCollapsed('email-de-prospecao', lead?.status ?? '');
   // Pesquisa rápida: os leads abertos há pouco aparecem sem escrever nada.
   useEffect(() => {
     if (lead && !lead.anonymized_at) rememberLead(lead);
@@ -308,17 +293,6 @@ export function LeadDetail({ id }: { id: string }) {
     }
   }
 
-  async function copy(part: 'subject' | 'body' | 'all') {
-    const text =
-      part === 'subject' ? lead!.email_subject ?? '' : part === 'body' ? lead!.email_body ?? '' : `${lead!.email_subject ?? ''}\n\n${lead!.email_body ?? ''}`;
-    if (await copyText(text)) {
-      toast.success(part === 'subject' ? 'Assunto copiado.' : 'Email copiado.');
-      log.mutate({ type: 'email_copied', payload: { part } });
-    } else {
-      toast.error('Não foi possível copiar. Seleciona o texto e copia manualmente.');
-    }
-  }
-
   // Coluna lateral: pela ordem que esta pessoa escolheu (Organizar cartões), sem os que escondeu.
   const sideCards: Partial<Record<LeadCard, ReactNode>> = {
     tasks: !lead.anonymized_at ? <TasksCard lead={lead} /> : null,
@@ -359,12 +333,6 @@ export function LeadDetail({ id }: { id: string }) {
     } catch (err) {
       toast.error(errorMessage(err));
     }
-  }
-
-  function openMailto() {
-    log.mutate({ type: 'email_mailto' });
-    if (!lead!.email) toast.info('Este lead não tem email: escreve o destinatário no teu programa de email.');
-    window.location.href = mailtoUrl(lead!.email, lead!.email_subject, lead!.email_body);
   }
 
   return (
@@ -671,89 +639,7 @@ export function LeadDetail({ id }: { id: string }) {
 
           <GeoKitCard lead={lead} />
 
-          {!lead.anonymized_at ? <ContactScriptsCard lead={lead} /> : null}
-
-          <AiEmailCard lead={lead} />
-
-          <Card>
-            <CardHeader
-              title="Email de prospeção"
-              description={
-                emailCollapsed && lead.email_subject ? (
-                  <span className="line-clamp-1">Assunto: {lead.email_subject}</span>
-                ) : (
-                  'Pronto a enviar, copiar ou abrir no teu cliente de email.'
-                )
-              }
-              className={emailCollapsed ? 'border-b-0' : undefined}
-              actions={
-                <>
-                  {!lead.anonymized_at ? (
-                    <Link
-                      href={leadPath(lead, '/editar')}
-                      className={buttonClasses('ghost', 'sm')}
-                      aria-label="Editar email de prospeção"
-                    >
-                      <Edit3 className="h-3.5 w-3.5" aria-hidden />
-                      Editar
-                    </Link>
-                  ) : null}
-                  {lead.email_body || lead.email_subject ? (
-                    <>
-                      <Button size="sm" variant="outline" onClick={() => copy('all')}>
-                        <Copy className="h-3.5 w-3.5" aria-hidden />
-                        Copiar tudo
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={openMailto}>
-                        <Mail className="h-3.5 w-3.5" aria-hidden />
-                        Abrir no email
-                      </Button>
-                      <SendEmailButton
-                        lead={lead}
-                        subject={lead.email_subject ?? ''}
-                        body={lead.email_body ?? ''}
-                        template="Email de prospeção"
-                      />
-                    </>
-                  ) : null}
-                  <CollapseButton collapsed={emailCollapsed} onToggle={() => setEmailCollapsed(!emailCollapsed)} label="Email de prospeção" />
-                </>
-              }
-            />
-            {emailCollapsed ? null : lead.email_body || lead.email_subject ? (
-              <div className="flex flex-col gap-4 p-4">
-                {/* Cada parte tem a sua barra com o botão de copiar, para nunca tapar o texto. */}
-                <section aria-label="Assunto do email">
-                  <div className="mb-1.5 flex items-center justify-between gap-2">
-                    <h3 className="text-xs font-medium tracking-wide text-muted uppercase">Assunto</h3>
-                    {lead.email_subject ? (
-                      <Button size="sm" variant="ghost" onClick={() => copy('subject')} aria-label="Copiar assunto">
-                        <Copy className="h-3.5 w-3.5" aria-hidden />
-                        Copiar
-                      </Button>
-                    ) : null}
-                  </div>
-                  <p className="rounded-lg bg-surface-2 px-3 py-2 text-sm font-medium break-words">{lead.email_subject ?? '—'}</p>
-                </section>
-                <section aria-label="Mensagem do email">
-                  <div className="mb-1.5 flex items-center justify-between gap-2">
-                    <h3 className="text-xs font-medium tracking-wide text-muted uppercase">Mensagem</h3>
-                    {lead.email_body ? (
-                      <Button size="sm" variant="ghost" onClick={() => copy('body')} aria-label="Copiar mensagem">
-                        <Copy className="h-3.5 w-3.5" aria-hidden />
-                        Copiar
-                      </Button>
-                    ) : null}
-                  </div>
-                  <pre className="max-h-[28rem] overflow-auto rounded-lg bg-surface-2 p-3 font-sans text-sm leading-relaxed break-words whitespace-pre-wrap">
-                    {lead.email_body ?? ''}
-                  </pre>
-                </section>
-              </div>
-            ) : (
-              <p className="p-4 text-center text-sm text-muted">Ainda não há email de prospeção.</p>
-            )}
-          </Card>
+          <ContactCard lead={lead} />
 
           <p className="text-xs text-muted">
             Criado em {formatDateTime(lead.created_at)} · atualizado em {formatDateTime(lead.updated_at)}

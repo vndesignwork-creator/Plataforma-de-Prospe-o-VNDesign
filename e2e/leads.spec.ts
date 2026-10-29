@@ -28,8 +28,11 @@ test('criar lead, abrir a ficha e passar a "Contactado" agenda follow-up', async
   await expect(page.getByText(/Follow-up agendado para \d{2}\/\d{2}\/\d{4}/)).toBeVisible();
   await expect(page.getByText('Enviar follow-up ·')).toBeVisible();
 
-  // Copiar o email fica registado na linha do tempo.
-  await page.getByRole('button', { name: 'Copiar tudo' }).click();
+  // O cartão Contactar começa pelo email guardado; copiar fica registado na linha do tempo.
+  const contact = page.getByRole('region', { name: 'Contactar' });
+  await expect(contact.locator('#script-subject')).toHaveValue('Uma sugestão para o vosso site');
+  await expect(contact.getByText('Email guardado')).toBeVisible();
+  await contact.getByRole('button', { name: 'Copiar', exact: true }).click();
   await expect(page.getByLabel('Atividade do lead').getByText('Email copiado')).toBeVisible();
 
   // Registar uma chamada na linha do tempo (o formulário abre no botão "Registar"; o email vem escolhido).

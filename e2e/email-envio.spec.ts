@@ -84,9 +84,10 @@ test('enviar o email de prospeção da ficha: chega, fica na linha do tempo e o 
   });
 
   await page.goto(`/leads/${lead.id}`);
-  // Cabeçalho do cartão "Email de prospeção" (título + ações).
-  const header = page.getByRole('heading', { name: 'Email de prospeção' }).locator('xpath=../..');
-  await header.getByRole('button', { name: 'Enviar', exact: true }).click();
+  // O cartão Contactar começa pelo email guardado do lead.
+  const contact = page.getByRole('region', { name: 'Contactar' });
+  await expect(contact.locator('#script-subject')).toHaveValue(subject);
+  await contact.getByRole('button', { name: 'Enviar', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Enviar email' });
   await expect(dialog.getByText(`De: Va Teste <${FROM}>`)).toBeVisible();
   await expect(dialog.getByLabel('Para')).toHaveValue(to);

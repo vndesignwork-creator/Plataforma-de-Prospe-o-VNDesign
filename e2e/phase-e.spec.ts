@@ -61,7 +61,9 @@ test('email com IA: gera, junta assinatura e opt-out e guarda no lead', async ({
   const lead = (await res.json()).data;
 
   await page.goto(`/leads/${lead.id}`);
-  await page.getByRole('button', { name: 'Gerar email' }).click();
+  const contact = page.getByRole('region', { name: 'Contactar' });
+  await contact.getByRole('button', { name: 'Escrever com IA' }).click();
+  await contact.getByRole('button', { name: 'Gerar email' }).click();
   await expect(page.getByText('Email gerado. Revê e ajusta antes de enviar.')).toBeVisible();
   const subject = page.getByLabel('Assunto', { exact: true }).last();
   await expect(subject).toHaveValue(`Uma ideia rápida para o site da ${name}`);

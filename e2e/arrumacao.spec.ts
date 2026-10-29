@@ -22,7 +22,7 @@ test('ficha de cliente: cartões de prospeção recolhidos; num lead por contact
   test.setTimeout(90_000);
   const client = await createLead(page.request, { company_name: `Cliente Limpo ${run}`, status: 'cliente', services: ['landing_page'] });
   const prospect = await createLead(page.request, { company_name: `Por Contactar ${run}`, services: ['landing_page'] });
-  const cards = ['Diagnóstico do site', 'Aparece nas IAs?', 'Kit GEO', 'Scripts de contacto', 'Escrever com IA', 'Email de prospeção'];
+  const cards = ['Diagnóstico do site', 'Aparece nas IAs?', 'Kit GEO', 'Contactar'];
 
   await page.goto(`/leads/${client.id}`);
   await expect(page.locator('#projeto')).toBeVisible({ timeout: 60_000 });

@@ -61,7 +61,7 @@ import { ContactFinder } from '@/components/leads/contact-finder';
 import { LeadScoreBadge } from '@/components/leads/lead-score';
 import { LostReasonDialog } from '@/components/leads/lost-reason';
 import { WhatsAppMenu } from '@/components/leads/whatsapp-menu';
-import { ContactScriptsCard } from '@/components/scripts/contact-scripts-card';
+import { ContactCard } from '@/components/leads/contact-card';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Badge, Card, EmptyState, Skeleton } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
@@ -822,7 +822,7 @@ function LeadDetails({ item }: { item: ProspectingItem }) {
       >
         {scripts ? 'Esconder scripts' : 'Ver scripts'}
       </button>
-      {scripts ? <ContactScriptsCard lead={lead} /> : null}
+      {scripts ? <ContactCard lead={lead} /> : null}
     </div>
   );
 }
