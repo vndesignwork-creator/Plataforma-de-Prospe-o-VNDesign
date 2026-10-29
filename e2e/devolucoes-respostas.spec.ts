@@ -337,4 +337,27 @@ test('lista Respostas no Dashboard: por responder, Responder na conversa, Já tr
   const all = page.getByRole('list', { name: 'Todas as respostas' });
   await expect(all.getByRole('listitem', { name: new RegExp(`Resposta C ${run}`) }).getByText(/Ausente até \d{2}\/\d{2}\/\d{4}/)).toBeVisible();
   await expect(all.getByRole('listitem', { name: new RegExp(`Resposta A ${run}`) }).getByText('Respondida')).toBeVisible();
+
+  // Recolher o cartão: fica só o resumo (e lembra-se ao voltar).
+  await page.getByRole('button', { name: 'Recolher: Respostas' }).click();
+  await expect(page.getByRole('list', { name: 'Todas as respostas' })).toHaveCount(0);
+  await expect(page.getByText(/(\d+ por responder|Nenhuma por responder) · \d+ nos últimos 14 dias/)).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Expandir: Respostas' })).toBeVisible();
+  await page.getByRole('button', { name: 'Expandir: Respostas' }).click();
+
+  // Outro serviço de email: o endereço do webmail escolhido em Definições → Email.
+  await page.goto('/definicoes/email');
+  const webmail = page.getByLabel('Endereço do webmail (opcional)');
+  await webmail.fill('outlook');
+  await page.getByRole('button', { name: 'Guardar' }).click();
+  await expect(page.getByText('Escreve o endereço completo (ex.: https://outlook.live.com/mail/).')).toBeVisible();
+  await webmail.fill('https://webmail.empresa-teste.pt/');
+  await page.getByRole('button', { name: 'Guardar' }).click();
+  await expect(page.getByText(/Conta de email guardada/)).toBeVisible();
+  await page.goto('/dashboard');
+  await page.getByRole('tab', { name: /^Todas/ }).click();
+  const link = page.getByRole('list', { name: 'Todas as respostas' }).getByRole('listitem', { name: new RegExp(`Resposta C ${run}`) }).getByRole('link', { name: 'Abrir em webmail.empresa-teste.pt' });
+  await expect(link).toHaveAttribute('href', 'https://webmail.empresa-teste.pt/');
+  await page.request.put('/api/v1/preferences/mail.webmail', { data: { value: '' } });
 });

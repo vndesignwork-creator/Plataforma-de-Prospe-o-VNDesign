@@ -68,3 +68,23 @@ describe('lista Respostas', () => {
     expect(gmailSearchUrl(null)).toBeNull();
   });
 });
+
+describe('Respostas: abrir no webmail certo', () => {
+  it('Gmail abre a conversa; Hostinger e outros pelo servidor; o endereço escolhido manda', async () => {
+    const { webmailLink, parseWebmailUrl } = await import('../src');
+    const id = '<abc@mail.gmail.com>';
+    expect(webmailLink({ provider: 'gmail' }, '', id)).toEqual({ url: expect.stringContaining('rfc822msgid'), label: 'Abrir no Gmail' });
+    expect(webmailLink({ provider: 'hostinger' }, null, id)).toEqual({ url: 'https://mail.hostinger.com/', label: 'Abrir no Hostinger Mail' });
+    expect(webmailLink({ provider: 'custom', smtp_host: 'smtp.office365.com', imap_host: null }, null, id)?.label).toBe('Abrir no Outlook');
+    expect(webmailLink({ provider: 'custom', smtp_host: 'smtp.sapo.pt' }, null, id)?.label).toBe('Abrir no SAPO Mail');
+    expect(webmailLink({ provider: 'custom', smtp_host: 'mail.empresa.pt' }, null, id)).toBeNull();
+    expect(webmailLink({ provider: 'custom', smtp_host: 'mail.empresa.pt' }, 'https://webmail.empresa.pt/', id)).toEqual({
+      url: 'https://webmail.empresa.pt/',
+      label: 'Abrir em webmail.empresa.pt',
+    });
+    expect(webmailLink({ provider: 'gmail' }, 'https://outlook.live.com/mail/', id)?.label).toBe('Abrir no Outlook');
+    expect(webmailLink(null, null, id)).toBeNull();
+    expect(parseWebmailUrl('outlook')).toBeNull();
+    expect(parseWebmailUrl('javascript:alert(1)')).toBeNull();
+  });
+});

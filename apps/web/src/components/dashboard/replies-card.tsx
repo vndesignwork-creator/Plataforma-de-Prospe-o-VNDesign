@@ -1,6 +1,17 @@
 'use client';
 
-import { REPLY_KIND_LABELS, formatDate, gmailSearchUrl, leadPath, needsAnswer, replySubject, timeAgo, type ReplyItem } from '@vndesign/core';
+import {
+  REPLY_KIND_LABELS,
+  WEBMAIL_PREFERENCE,
+  formatDate,
+  leadPath,
+  needsAnswer,
+  replySubject,
+  timeAgo,
+  webmailLink,
+  type MailAccount,
+  type ReplyItem,
+} from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { Check, ChevronDown, ExternalLink, MailOpen } from 'lucide-react';
 import Link from 'next/link';
@@ -9,8 +20,9 @@ import { toast } from 'sonner';
 import { SendEmailButton } from '@/components/email/send-email-dialog';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
+import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { errorMessage } from '@/lib/api-client';
-import { useMailAccount, useMarkRepliesHandled, useReplies } from '@/lib/queries';
+import { useMailAccount, useMarkRepliesHandled, usePreference, useReplies } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
 const DAYS = 14;
@@ -27,14 +39,27 @@ function KindBadge({ item, showPending }: { item: ReplyItem; showPending: boolea
   return <Badge tone="danger">{REPLY_KIND_LABELS[item.kind]}</Badge>;
 }
 
-function ReplyRow({ item, gmail, showPending }: { item: ReplyItem; gmail: boolean; showPending: boolean }) {
+function ReplyRow({
+  item,
+  account,
+  webmail,
+  showPending,
+}: {
+  item: ReplyItem;
+  account: MailAccount | null | undefined;
+  webmail: unknown;
+  showPending: boolean;
+}) {
   const qc = useQueryClient();
   const handled = useMarkRepliesHandled();
-  const open = gmail ? gmailSearchUrl(item.message_id) : null;
+  const open = webmailLink(account, webmail, item.message_id);
   const pending = needsAnswer(item);
   const who = item.from_name || item.from || 'Lead';
   return (
-    <li className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-start sm:gap-3" aria-label={`${item.lead.company_name}: ${item.subject}`}>
+    <li
+      className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-start sm:gap-3"
+      aria-label={`${item.lead.company_name}: ${item.subject}`}
+    >
       <div className="min-w-0 flex-1">
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
           <Link href={leadPath(item.lead)} className="font-medium hover:underline">
@@ -64,8 +89,13 @@ function ReplyRow({ item, gmail, showPending }: { item: ReplyItem; gmail: boolea
           />
         ) : null}
         {open ? (
-          <a href={open} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm text-accent-text hover:bg-surface-2">
-            <ExternalLink className="h-3.5 w-3.5" aria-hidden /> Abrir no Gmail
+          <a
+            href={open.url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm text-accent-text hover:bg-surface-2"
+          >
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden /> {open.label}
           </a>
         ) : null}
         {pending ? (
@@ -95,74 +125,99 @@ export function RepliesCard({ className }: { className?: string }) {
   const { data: account } = useMailAccount();
   const [view, setView] = useState<'pending' | 'all'>('pending');
   const items = (data?.items ?? []).filter((i) => view === 'all' || needsAnswer(i));
-  const gmail = account?.provider === 'gmail';
+  const { data: webmail } = usePreference<string>(WEBMAIL_PREFERENCE);
   const detection = !!account?.reply_detection;
+  // Muitas respostas: o cartão recolhe-se (fica lembrado neste browser).
+  const [collapsed, setCollapsed] = useCollapsed('dashboard-replies');
 
   return (
     <Card className={cn('flex flex-col', className)}>
       <CardHeader
         title="Respostas"
-        description={`O que os leads te responderam (últimos ${DAYS} dias)`}
+        description={
+          collapsed && data
+            ? data.pending
+              ? `${data.pending} por responder · ${data.items.length} nos últimos ${DAYS} dias`
+              : `Nenhuma por responder · ${data.items.length} nos últimos ${DAYS} dias`
+            : `O que os leads te responderam (últimos ${DAYS} dias)`
+        }
         actions={
-          <div role="tablist" aria-label="Que respostas" className="flex gap-1 rounded-lg bg-surface-2 p-0.5 text-sm">
-            {(['pending', 'all'] as const).map((v) => (
-              <button
-                key={v}
-                type="button"
-                role="tab"
-                aria-selected={view === v}
-                onClick={() => {
-                  setView(v);
-                  setLimit(PAGE);
-                }}
-                className={cn('rounded-md px-2.5 py-1 font-medium', view === v ? 'bg-surface text-fg shadow-sm' : 'text-muted hover:text-fg')}
-              >
-                {v === 'pending' ? 'Por responder' : 'Todas'}
-                {data ? <span className="ml-1 text-xs text-muted tabular">{v === 'pending' ? data.pending : data.items.length}</span> : null}
-              </button>
-            ))}
+          <div className="flex items-center gap-1">
+            {collapsed ? null : (
+              <div role="tablist" aria-label="Que respostas" className="flex gap-1 rounded-lg bg-surface-2 p-0.5 text-sm">
+                {(['pending', 'all'] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    role="tab"
+                    aria-selected={view === v}
+                    onClick={() => {
+                      setView(v);
+                      setLimit(PAGE);
+                    }}
+                    className={cn(
+                      'rounded-md px-2.5 py-1 font-medium',
+                      view === v ? 'bg-surface text-fg shadow-sm' : 'text-muted hover:text-fg',
+                    )}
+                  >
+                    {v === 'pending' ? 'Por responder' : 'Todas'}
+                    {data ? (
+                      <span className="ml-1 text-xs text-muted tabular">{v === 'pending' ? data.pending : data.items.length}</span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            )}
+            <CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label="Respostas" />
           </div>
         }
       />
-      {isLoading ? <Skeleton className="m-3 h-24" /> : null}
-      {error && !data ? (
-        <div className="flex flex-col items-center gap-2 p-6 text-center text-sm">
-          <p className="text-danger">Não foi possível carregar as respostas: {errorMessage(error)}</p>
-          <Button size="sm" variant="outline" onClick={() => void refetch()} loading={isFetching}>
-            Tentar de novo
-          </Button>
-        </div>
-      ) : null}
-      {data && !items.length ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-1 p-6 text-center text-sm text-muted">
-          <MailOpen className="h-5 w-5" aria-hidden />
-          {account === null || (account && !detection) ? (
-            <p>
-              Liga a deteção de respostas em{' '}
-              <Link href="/definicoes/email" className="text-accent-text hover:underline">
-                Definições → Email
-              </Link>{' '}
-              para veres aqui quem te respondeu.
-            </p>
-          ) : (
-            <p>{view === 'pending' ? 'Nenhuma resposta à tua espera. 🎉' : `Nenhuma resposta nos últimos ${DAYS} dias.`}</p>
-          )}
-        </div>
-      ) : null}
-      {items.length ? (
-        <ul className="flex flex-col divide-y divide-border" aria-label={view === 'pending' ? 'Respostas por responder' : 'Todas as respostas'}>
-          {items.slice(0, limit).map((item) => (
-            <ReplyRow key={item.id} item={item} gmail={gmail} showPending={view === 'all'} />
-          ))}
-        </ul>
-      ) : null}
-      {items.length > limit ? (
-        <div className="flex justify-center border-t border-border p-2">
-          <Button size="sm" variant="ghost" onClick={() => setLimit((n) => n + PAGE * 2)}>
-            <ChevronDown className="h-4 w-4" aria-hidden /> Mostrar mais ({items.length - limit})
-          </Button>
-        </div>
-      ) : null}
+      {collapsed ? null : (
+        <>
+          {isLoading ? <Skeleton className="m-3 h-24" /> : null}
+          {error && !data ? (
+            <div className="flex flex-col items-center gap-2 p-6 text-center text-sm">
+              <p className="text-danger">Não foi possível carregar as respostas: {errorMessage(error)}</p>
+              <Button size="sm" variant="outline" onClick={() => void refetch()} loading={isFetching}>
+                Tentar de novo
+              </Button>
+            </div>
+          ) : null}
+          {data && !items.length ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-1 p-6 text-center text-sm text-muted">
+              <MailOpen className="h-5 w-5" aria-hidden />
+              {account === null || (account && !detection) ? (
+                <p>
+                  Liga a deteção de respostas em{' '}
+                  <Link href="/definicoes/email" className="text-accent-text hover:underline">
+                    Definições → Email
+                  </Link>{' '}
+                  para veres aqui quem te respondeu.
+                </p>
+              ) : (
+                <p>{view === 'pending' ? 'Nenhuma resposta à tua espera. 🎉' : `Nenhuma resposta nos últimos ${DAYS} dias.`}</p>
+              )}
+            </div>
+          ) : null}
+          {items.length ? (
+            <ul
+              className="flex flex-col divide-y divide-border"
+              aria-label={view === 'pending' ? 'Respostas por responder' : 'Todas as respostas'}
+            >
+              {items.slice(0, limit).map((item) => (
+                <ReplyRow key={item.id} item={item} account={account} webmail={webmail} showPending={view === 'all'} />
+              ))}
+            </ul>
+          ) : null}
+          {items.length > limit ? (
+            <div className="flex justify-center border-t border-border p-2">
+              <Button size="sm" variant="ghost" onClick={() => setLimit((n) => n + PAGE * 2)}>
+                <ChevronDown className="h-4 w-4" aria-hidden /> Mostrar mais ({items.length - limit})
+              </Button>
+            </div>
+          ) : null}
+        </>
+      )}
     </Card>
   );
 }

@@ -570,7 +570,8 @@ O cartão **Respostas** do Dashboard junta o que os leads te responderam nos úl
 
 - **Por responder**: as respostas a que ainda não respondeste. **Todas**: também as respondidas, as respostas automáticas ("Ausente até 10/11/2026"), "Sem interesse" e "Pediu para não contactar".
 - **Responder** abre o email já com "Re: …" e na mesma conversa (o cliente vê-o como resposta); ao enviar, sai de *Por responder*.
-- **Abrir no Gmail** (contas Gmail) abre a conversa no Gmail.
+- **Abrir no …** abre o teu email no browser: no Gmail, a própria conversa; na Hostinger, o Hostinger Mail; noutro serviço, o webmail conhecido pelo servidor (Outlook, SAPO, Zoho, Yahoo, iCloud). Para outro endereço, escreve-o em **Definições → Email → Endereço do webmail** (ex.: `https://webmail.empresa.pt/`).
+- Com muitas respostas, **⌄** recolhe o cartão (fica só "3 por responder · 12 nos últimos 14 dias"); a escolha fica lembrada neste browser.
 - **Já tratei** — respondeste noutro sítio (Gmail, telefone): deixa de estar por responder (para toda a equipa). Uma chamada registada ou um email enviado ao lead depois da resposta também conta como respondido.
 - A equipa de prospeção vê só as respostas dos seus leads. O cartão pode mudar de lugar ou esconder-se em **Organizar cartões**.
 - API: `GET /api/v1/replies?days=14` e `POST /api/v1/leads/{id}/replies/handled`.

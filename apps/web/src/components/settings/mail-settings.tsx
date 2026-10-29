@@ -9,7 +9,9 @@ import {
   MAIL_DEFAULT_DAILY_LIMIT,
   MAIL_PROVIDERS,
   MAIL_PROVIDER_PRESETS,
+  WEBMAIL_PREFERENCE,
   formatDateTime,
+  parseWebmailUrl,
   type MailAccount,
   type MailProvider,
   type ReplyCheckResult,
@@ -25,7 +27,7 @@ import { Field } from '@/components/ui/field';
 import { Input, Select } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
-import { useMailAccount, useSignature } from '@/lib/queries';
+import { useMailAccount, usePreference, useSetPreference, useSignature } from '@/lib/queries';
 
 function MailForm({ account, defaultName }: { account: MailAccount | null; defaultName: string }) {
   const qc = useQueryClient();
@@ -45,6 +47,11 @@ function MailForm({ account, defaultName }: { account: MailAccount | null; defau
     imap_port: String(account?.provider === 'custom' ? (account.imap_port ?? 993) : 993),
   });
   const [errors, setErrors] = useState<Record<string, string[]>>({});
+  // Endereço do webmail para "Abrir no …" (lista Respostas): preferência de cada pessoa.
+  const { data: savedWebmail } = usePreference<string>(WEBMAIL_PREFERENCE);
+  const saveWebmail = useSetPreference<string>(WEBMAIL_PREFERENCE);
+  const [webmail, setWebmail] = useState<string | null>(null);
+  const webmailValue = webmail ?? (typeof savedWebmail === 'string' ? savedWebmail : '');
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -53,9 +60,14 @@ function MailForm({ account, defaultName }: { account: MailAccount | null; defau
   const custom = form.provider === 'custom';
 
   async function save() {
+    if (webmailValue.trim() && !parseWebmailUrl(webmailValue)) {
+      setErrors({ webmail: ['Escreve o endereço completo (ex.: https://outlook.live.com/mail/).'] });
+      return;
+    }
     setSaving(true);
     setErrors({});
     try {
+      if (webmail !== null) await saveWebmail.mutateAsync(parseWebmailUrl(webmail) ?? '');
       await api('/mail-account', {
         method: 'PUT',
         body: {
@@ -266,6 +278,17 @@ function MailForm({ account, defaultName }: { account: MailAccount | null; defau
               <Input type="number" inputMode="numeric" value={form.imap_port} onChange={(e) => setForm({ ...form, imap_port: e.target.value })} />
             </Field>
           </div>
+        ) : null}
+        {form.reply_detection ? (
+          <Field
+            label="Endereço do webmail (opcional)"
+            error={errors.webmail?.[0]}
+            hint={`Para o botão “Abrir” na lista Respostas do Dashboard. Vazio = ${
+              form.provider === 'gmail' ? 'o Gmail (abre a própria conversa)' : form.provider === 'hostinger' ? 'o Hostinger Mail' : 'o do teu serviço, se for conhecido (Outlook, SAPO…)'
+            }. Ex.: https://outlook.live.com/mail/`}
+          >
+            <Input type="url" inputMode="url" placeholder="https://" value={webmailValue} onChange={(e) => setWebmail(e.target.value)} />
+          </Field>
         ) : null}
         {account?.reply_detection ? (
           <div className="flex flex-wrap items-center gap-3 text-sm">
