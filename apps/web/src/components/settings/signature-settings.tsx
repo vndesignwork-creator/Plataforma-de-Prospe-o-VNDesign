@@ -3,13 +3,13 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { SignatureUpdateSchema, formatSignature, type Signature } from '@vndesign/core';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { Button } from '@/components/ui/button';
 import { Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
+import { FormSaveBar } from '@/components/ui/form-save-bar';
 import { Input, Textarea } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
 import { useSignature } from '@/lib/queries';
@@ -74,52 +74,70 @@ export function SignatureSettings() {
 
   return (
     <Card id="assinatura">
-      <CardHeader
-        title="Assinatura"
-        description="Usada nas variáveis {{assinatura}}, {{meu_nome}}, {{meu_telefone}}, {{portfolio}} e {{projetos}}."
-      />
-      <form onSubmit={onSubmit} className="grid gap-4 p-4 md:grid-cols-2" noValidate>
-        <Field label="Nome" error={errors.full_name?.message} required>
-          <Input autoComplete="name" {...register('full_name')} />
-        </Field>
-        <Field label="Cargo" error={errors.role_title?.message}>
-          <Input {...register('role_title')} />
-        </Field>
-        <Field label="Empresa" error={errors.company?.message}>
-          <Input {...register('company')} />
-        </Field>
-        <Field label="Telefone" error={errors.phone?.message}>
-          <Input type="tel" autoComplete="tel" {...register('phone')} />
-        </Field>
-        <Field label="Email" error={errors.email?.message}>
-          <Input type="email" autoComplete="email" {...register('email')} />
-        </Field>
-        <Field label="Site" error={errors.website?.message}>
-          <Input type="url" {...register('website')} />
-        </Field>
-        <Field label="Link do portfólio" error={errors.portfolio_url?.message}>
-          <Input type="url" {...register('portfolio_url')} />
-        </Field>
-        <Field
-          label="Portfólio de design gráfico"
-          hint="Usado nos emails sobre logótipos, flyers e posts (variável {{portfolio_design}})."
-          error={errors.design_portfolio_url?.message}
-        >
-          <Input type="url" {...register('design_portfolio_url')} />
-        </Field>
-        <Field label="Projetos (um link por linha)" error={errors.projects?.message}>
-          <Textarea rows={4} {...register('projects')} />
-        </Field>
-        <div className="md:col-span-2">
-          <p className="mb-1 text-sm font-medium">Pré-visualização de {'{{assinatura}}'}</p>
-          <pre className="rounded-lg bg-surface-2 p-3 font-sans text-sm whitespace-pre-wrap">{preview || '—'}</pre>
+      <CardHeader title="Assinatura" description="Aparece no fim dos emails e preenche as variáveis dos modelos (ex.: {{assinatura}})." />
+      <form onSubmit={onSubmit} className="p-4" noValidate>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
+          <div className="flex flex-col gap-6">
+            <Group title="Sobre ti">
+              <Field label="Nome" hint="{{meu_nome}}" error={errors.full_name?.message} required>
+                <Input autoComplete="name" placeholder="Ana Silva" {...register('full_name')} />
+              </Field>
+              <Field label="Cargo" error={errors.role_title?.message}>
+                <Input placeholder="Web Designer" {...register('role_title')} />
+              </Field>
+              <Field label="Telefone" hint="{{meu_telefone}}" error={errors.phone?.message}>
+                <Input type="tel" autoComplete="tel" placeholder="+351 912 345 678" {...register('phone')} />
+              </Field>
+              <Field label="Email" error={errors.email?.message}>
+                <Input type="email" autoComplete="email" placeholder="ola@empresa.pt" {...register('email')} />
+              </Field>
+            </Group>
+            <Group title="Empresa">
+              <Field label="Empresa" error={errors.company?.message}>
+                <Input placeholder="VNDesign" {...register('company')} />
+              </Field>
+              <Field label="Site" error={errors.website?.message}>
+                <Input type="url" placeholder="https://empresa.pt" {...register('website')} />
+              </Field>
+            </Group>
+            <Group title="Portefólio">
+              <Field label="Link do portfólio" hint="{{portfolio}}" error={errors.portfolio_url?.message}>
+                <Input type="url" placeholder="https://empresa.pt/portfolio" {...register('portfolio_url')} />
+              </Field>
+              <Field
+                label="Portfólio de design gráfico"
+                hint="{{portfolio_design}} · nos emails sobre logótipos, flyers e posts."
+                error={errors.design_portfolio_url?.message}
+              >
+                <Input type="url" placeholder="https://behance.net/…" {...register('design_portfolio_url')} />
+              </Field>
+              <Field label="Projetos (um link por linha)" hint="{{projetos}}" error={errors.projects?.message} className="md:col-span-2">
+                <Textarea rows={4} placeholder={'https://cliente-um.pt\nhttps://cliente-dois.pt'} {...register('projects')} />
+              </Field>
+            </Group>
+          </div>
+          <aside aria-label="Pré-visualização da assinatura" className="self-start lg:sticky lg:top-6">
+            <p className="mb-1.5 text-sm font-medium">Pré-visualização</p>
+            <div className="rounded-lg border border-border bg-surface-2 p-3 text-sm">
+              <p className="text-muted">Cumprimentos,</p>
+              <pre className="mt-2 font-sans whitespace-pre-wrap">{preview || '—'}</pre>
+            </div>
+            <p className="mt-1.5 text-xs text-muted">É o que entra em {'{{assinatura}}'} no fim dos emails.</p>
+          </aside>
         </div>
-        <div className="flex justify-end md:col-span-2">
-          <Button type="submit" loading={isSubmitting} disabled={!isDirty}>
-            Guardar assinatura
-          </Button>
-        </div>
+        <FormSaveBar dirty={isDirty} saving={isSubmitting} onDiscard={() => reset(toForm(data))} disableWhenClean className="mt-6">
+          Guardar assinatura
+        </FormSaveBar>
       </form>
     </Card>
+  );
+}
+
+function Group({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <fieldset className="grid gap-4 md:grid-cols-2">
+      <legend className="mb-3 text-xs font-medium tracking-wide text-muted uppercase md:col-span-2">{title}</legend>
+      {children}
+    </fieldset>
   );
 }

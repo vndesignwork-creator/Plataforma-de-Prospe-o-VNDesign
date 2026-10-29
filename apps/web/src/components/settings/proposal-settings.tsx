@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
+import { FormSaveBar } from '@/components/ui/form-save-bar';
 import { Input, Select, Textarea } from '@/components/ui/input';
 import { ServiceGlyph, ServiceIcon, useServiceCatalog } from '@/components/services/services';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
@@ -187,15 +188,25 @@ export function ProposalSettings() {
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<PackageDraft | null>(null);
 
+  function load(from: SettingsWithMail) {
+    setValidity(String(from.proposal.validity_days));
+    setPayment(from.proposal.payment_terms);
+    setTax(from.proposal.tax_note);
+    setNextSteps(from.proposal.next_steps);
+  }
+
   useEffect(() => {
     if (!settings) return;
-    /* eslint-disable react-hooks/set-state-in-effect -- sincroniza o formulário com os dados carregados */
-    setValidity(String(settings.proposal.validity_days));
-    setPayment(settings.proposal.payment_terms);
-    setTax(settings.proposal.tax_note);
-    setNextSteps(settings.proposal.next_steps);
-    /* eslint-enable react-hooks/set-state-in-effect */
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza o formulário com os dados carregados
+    load(settings);
   }, [settings]);
+
+  const textsDirty =
+    !!settings &&
+    (validity !== String(settings.proposal.validity_days) ||
+      payment !== settings.proposal.payment_terms ||
+      tax !== settings.proposal.tax_note ||
+      nextSteps !== settings.proposal.next_steps);
 
   async function saveTexts(e: React.FormEvent) {
     e.preventDefault();
@@ -298,11 +309,9 @@ export function ProposalSettings() {
             <Textarea rows={3} value={nextSteps} onChange={(e) => setNextSteps(e.target.value)} />
           </Field>
         </div>
-        <div className="flex justify-end md:col-span-2">
-          <Button type="submit" loading={saving}>
-            Guardar textos
-          </Button>
-        </div>
+        <FormSaveBar dirty={textsDirty} saving={saving} onDiscard={() => load(settings)} className="rounded-none">
+          Guardar textos
+        </FormSaveBar>
       </form>
 
       <div className="flex items-start gap-2 border-t border-border p-4 text-sm">

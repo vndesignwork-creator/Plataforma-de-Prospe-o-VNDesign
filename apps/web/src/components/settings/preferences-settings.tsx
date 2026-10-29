@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
+import { FormSaveBar } from '@/components/ui/form-save-bar';
 import { Input, Select } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
 import { useMe, useSettings, useTemplates, type SettingsWithMail } from '@/lib/queries';
@@ -33,20 +34,49 @@ export function PreferencesSettings() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
 
+  function load(from: SettingsWithMail) {
+    setFollowUpDays(String(from.follow_up_days));
+    setWorkWeekends(from.work_weekends);
+    setSequenceEnabled(from.follow_up_sequence.enabled);
+    setSteps(from.follow_up_sequence.steps.map((s) => ({ days: String(s.days), template_id: s.template_id ?? '' })));
+    setOptOut(from.opt_out_line);
+    setAutoArchive(from.auto_archive_days !== null);
+    setAutoArchiveDays(String(from.auto_archive_days ?? 60));
+    setDigestEnabled(from.daily_digest.enabled);
+    setRecipient(from.daily_digest.recipient ?? '');
+  }
+
   useEffect(() => {
     if (!settings) return;
-    /* eslint-disable react-hooks/set-state-in-effect -- sincroniza o formulário com os dados carregados */
-    setFollowUpDays(String(settings.follow_up_days));
-    setWorkWeekends(settings.work_weekends);
-    setSequenceEnabled(settings.follow_up_sequence.enabled);
-    setSteps(settings.follow_up_sequence.steps.map((s) => ({ days: String(s.days), template_id: s.template_id ?? '' })));
-    setOptOut(settings.opt_out_line);
-    setAutoArchive(settings.auto_archive_days !== null);
-    setAutoArchiveDays(String(settings.auto_archive_days ?? 60));
-    setDigestEnabled(settings.daily_digest.enabled);
-    setRecipient(settings.daily_digest.recipient ?? '');
-    /* eslint-enable react-hooks/set-state-in-effect */
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza o formulário com os dados carregados
+    load(settings);
   }, [settings]);
+
+  const body = {
+    follow_up_days: Number(followUpDays),
+    work_weekends: workWeekends,
+    follow_up_sequence: {
+      enabled: sequenceEnabled,
+      steps: steps.map((s) => ({ days: Number(s.days), template_id: s.template_id || null })),
+    },
+    auto_archive_days: autoArchive ? Number(autoArchiveDays) : null,
+    opt_out_line: optOut,
+    daily_digest: { enabled: digestEnabled, recipient },
+  };
+  const dirty =
+    !!settings &&
+    JSON.stringify(body) !==
+      JSON.stringify({
+        follow_up_days: settings.follow_up_days,
+        work_weekends: settings.work_weekends,
+        follow_up_sequence: {
+          enabled: settings.follow_up_sequence.enabled,
+          steps: settings.follow_up_sequence.steps.map((s) => ({ days: s.days, template_id: s.template_id ?? null })),
+        },
+        auto_archive_days: settings.auto_archive_days,
+        opt_out_line: settings.opt_out_line,
+        daily_digest: { enabled: settings.daily_digest.enabled, recipient: settings.daily_digest.recipient ?? '' },
+      });
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -54,17 +84,7 @@ export function PreferencesSettings() {
     try {
       const { data } = await api<{ data: SettingsWithMail }>('/settings', {
         method: 'PATCH',
-        body: {
-          follow_up_days: Number(followUpDays),
-          work_weekends: workWeekends,
-          follow_up_sequence: {
-            enabled: sequenceEnabled,
-            steps: steps.map((s) => ({ days: Number(s.days), template_id: s.template_id || null })),
-          },
-          auto_archive_days: autoArchive ? Number(autoArchiveDays) : null,
-          opt_out_line: optOut,
-          daily_digest: { enabled: digestEnabled, recipient },
-        },
+        body,
       });
       qc.setQueryData(['settings'], data);
       toast.success('Definições guardadas.');
@@ -245,11 +265,9 @@ export function PreferencesSettings() {
           <PushSettings />
         </div>
 
-        <div className="flex justify-end md:col-span-2">
-          <Button type="submit" loading={saving}>
-            Guardar definições
-          </Button>
-        </div>
+        <FormSaveBar dirty={dirty} saving={saving} onDiscard={() => load(settings)}>
+          Guardar definições
+        </FormSaveBar>
       </form>
     </Card>
   );
