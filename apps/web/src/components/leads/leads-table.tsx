@@ -24,7 +24,7 @@ import {
   type LeadSortField,
   leadPath,
 } from '@vndesign/core';
-import { Archive, ArchiveRestore, ArrowDown, ArrowDownUp, ArrowUp, ArrowUpDown, Columns3, CopyX, Download, Map as MapIcon, Rows3, Search, SlidersHorizontal, Trash2, Upload, UserCheck, X } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowDown, ArrowDownUp, ArrowUp, ArrowUpDown, Columns3, CopyX, Download, Search, SlidersHorizontal, Trash2, Upload, UserCheck, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
@@ -55,6 +55,7 @@ import { BulkFollowUpMenu, BulkStatusMenu, BulkTagMenu } from './bulk-actions';
 import { customFilterOptions, useCustomFields } from './custom-fields';
 import { rememberLeadList } from './lead-pager';
 import { SavedViewsMenu } from './saved-views';
+import { ViewSwitch } from './view-switch';
 import { restoreDeletedLeads } from './trash-view';
 import { TagChips, useTagFilterOptions } from './tags';
 import { ChannelIcon, SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
@@ -691,17 +692,8 @@ function LeadsTableView() {
             router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
           }}
         />
-        {/* A mesma lista vista de outra forma. */}
-        <div role="group" aria-label="Vista" className="inline-flex h-10 items-center rounded-lg border border-border-input bg-surface-2 p-0.5">
-          <span aria-current="page" className="inline-flex h-full items-center gap-1.5 rounded-md bg-surface px-3 text-sm font-medium shadow-sm">
-            <Rows3 className="h-4 w-4" aria-hidden />
-            <span className="hidden sm:inline">Tabela</span>
-          </span>
-          <Link href="/mapa" className="inline-flex h-full items-center gap-1.5 rounded-md px-3 text-sm text-muted hover:text-fg" aria-label="Ver os leads no mapa">
-            <MapIcon className="h-4 w-4" aria-hidden />
-            <span className="hidden sm:inline">Mapa</span>
-          </Link>
-        </div>
+        {/* A mesma lista vista de outra forma (os filtros passam para o Kanban). */}
+        <ViewSwitch current="lista" />
       </div>
 
       {/* Filtros principais (sempre à vista no computador) · Mais filtros · Colunas. */}

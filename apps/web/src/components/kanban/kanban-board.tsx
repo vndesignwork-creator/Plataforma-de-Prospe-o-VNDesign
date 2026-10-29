@@ -31,12 +31,15 @@ import {
   type LostReason,
   leadPath,
 } from '@vndesign/core';
-import { ArrowLeftRight, GripVertical, Search } from 'lucide-react';
+import { ArrowLeftRight, Eye, EyeOff, GripVertical, HelpCircle, Plus, Search, X } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { MultiSelectFilter } from '@/components/leads/multi-select';
+import { MultiSelectFilter, SingleSelectFilter } from '@/components/leads/multi-select';
+import { ViewSwitch } from '@/components/leads/view-switch';
+import { PageHeader } from '@/components/layout/page-header';
+import { Button, buttonClasses } from '@/components/ui/button';
 import { TagChips, useTagFilterOptions } from '@/components/leads/tags';
 import { LostReasonDialog } from '@/components/leads/lost-reason';
 import { StageAge } from '@/components/leads/stage-age';
@@ -45,7 +48,7 @@ import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownTri
 import { Input } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
 import { useDebouncedValue } from '@/lib/hooks';
-import { useBoard, useInvalidateLead, useSectors } from '@/lib/queries';
+import { usePreference, useBoard, useInvalidateLead, useRole, useSectors, useSetPreference, useTeamNames } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 import { ChannelIcon, SectorIconView } from '@/components/icons/lead-icons';
 import { ServiceIcons, useServiceFilterOptions } from '@/components/services/services';
@@ -268,10 +271,15 @@ function ColumnNav({
   columns,
   active,
   onSelect,
+  hidden,
+  onToggle,
 }: {
   columns: Columns;
   active: LeadStatus | null;
   onSelect: (status: LeadStatus) => void;
+  /** Computador: as colunas escondidas (o índice serve para mostrar/esconder). */
+  hidden: LeadStatus[] | null;
+  onToggle: (status: LeadStatus) => void;
 }) {
   const listRef = useRef<HTMLUListElement>(null);
   const statuses = Object.keys(columns) as LeadStatus[];
@@ -296,6 +304,29 @@ function ColumnNav({
       <ul ref={listRef} className="relative flex gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {statuses.map((status) => {
           const meta = LEAD_STATUS_META[status];
+          if (hidden) {
+            const shown = !hidden.includes(status);
+            return (
+              <li key={status} className="shrink-0">
+                <button
+                  type="button"
+                  data-nav={status}
+                  onClick={() => onToggle(status)}
+                  aria-pressed={shown}
+                  title={shown ? `Esconder a coluna ${meta.label}` : `Mostrar a coluna ${meta.label}`}
+                  className={cn(
+                    'flex min-h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium whitespace-nowrap transition-colors',
+                    shown ? 'border-border bg-surface text-fg hover:border-muted' : 'border-dashed border-border text-muted opacity-60 hover:opacity-100',
+                  )}
+                >
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: meta.color }} aria-hidden />
+                  {meta.label}
+                  <span className="tabular opacity-80">{columns[status].length}</span>
+                  {shown ? <Eye className="h-3 w-3 text-muted" aria-hidden /> : <EyeOff className="h-3 w-3" aria-hidden />}
+                </button>
+              </li>
+            );
+          }
           const isCurrent = status === current;
           return (
             <li key={status} className="shrink-0">
@@ -327,14 +358,61 @@ export function KanbanBoard() {
   const qc = useQueryClient();
   const router = useRouter();
   const invalidate = useInvalidateLead();
-  const [search, setSearch] = useState('');
-  const [sector, setSector] = useState<string[]>([]);
-  const [channel, setChannel] = useState<string[]>([]);
-  const [service, setService] = useState<string[]>([]);
-  const [tag, setTag] = useState<string[]>([]);
-  const tagOptions = useTagFilterOptions();
+  // Filtros no endereço (?sector=…&servico=…): os mesmos nomes da Lista, passam de uma vista para a outra.
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const getList = (k: string) => (searchParams.get(k) ?? '').split(',').filter(Boolean);
+  function setParams(patch: Record<string, string | string[] | null>) {
+    const next = new URLSearchParams(searchParams);
+    for (const [key, value] of Object.entries(patch)) {
+      const v = Array.isArray(value) ? value.join(',') : value;
+      if (v) next.set(key, v);
+      else next.delete(key);
+    }
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
+  const sector = getList('sector');
+  const channel = getList('channel');
+  const service = getList('servico');
+  const tag = getList('etiqueta');
+  const assigned = searchParams.get('resp') ?? '';
+  const [search, setSearch] = useState(searchParams.get('q') ?? '');
   const q = useDebouncedValue(search.trim());
-  const query = { q: q || undefined, sector, channel, service, tag };
+  useEffect(() => {
+    if (q !== (searchParams.get('q') ?? '')) setParams({ q: q || null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
+  const tagOptions = useTagFilterOptions();
+  const query = { q: q || undefined, sector, channel, service, tag, assigned: assigned || undefined };
+  const prospector = useRole() === 'prospector';
+  const { data: team } = useTeamNames();
+  const assignedOptions = [
+    { value: '', label: 'Todos os responsáveis' },
+    { value: 'me', label: 'Os meus' },
+    { value: 'none', label: 'Sem responsável' },
+    ...(prospector ? [] : (team ?? []).filter((m) => m.role !== 'owner').map((m) => ({ value: m.user_id, label: m.name }))),
+  ];
+
+  // Computador: o índice das colunas serve para mostrar/esconder colunas (fica guardado na conta).
+  const [desktop, setDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const update = () => setDesktop(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  const { data: hiddenPref } = usePreference<LeadStatus[]>('kanban.hidden');
+  const saveHidden = useSetPreference<LeadStatus[]>('kanban.hidden');
+  const hiddenColumns = hiddenPref ?? [];
+  function toggleColumn(status: LeadStatus) {
+    const next = hiddenColumns.includes(status) ? hiddenColumns.filter((s) => s !== status) : [...hiddenColumns, status];
+    // Pelo menos uma coluna fica à vista.
+    if (next.length >= Object.keys(LEAD_STATUS_META).length) return;
+    saveHidden.mutate(next);
+  }
+
   const { data: board, isLoading } = useBoard(query);
   const { data: sectors } = useSectors();
 
@@ -519,11 +597,67 @@ export function KanbanBoard() {
     setVisible(status);
   }
 
+  // Uma etiqueta por filtro ativo, para tirar só esse.
+  const without = (list: string[], v: string) => list.filter((x) => x !== v);
+  const chips: { key: string; name: string; value: string; remove: () => void }[] = [
+    ...(query.q
+      ? [
+          {
+            key: 'q',
+            name: 'Pesquisa',
+            value: query.q,
+            remove: () => {
+              setSearch('');
+              setParams({ q: null });
+            },
+          },
+        ]
+      : []),
+    ...sector.map((v) => ({
+      key: `sector-${v}`,
+      name: 'Setor',
+      value: v === 'none' ? 'Sem setor' : (sectors?.find((x) => x.id === v)?.name ?? v),
+      remove: () => setParams({ sector: without(sector, v) }),
+    })),
+    ...service.map((v) => ({
+      key: `svc-${v}`,
+      name: 'Serviço',
+      value: serviceOptions.find((o) => o.value === v)?.label ?? v,
+      remove: () => setParams({ servico: without(service, v) }),
+    })),
+    ...channel.map((v) => ({
+      key: `ch-${v}`,
+      name: 'Canal',
+      value: v === 'none' ? 'Sem canal' : (LEAD_CHANNEL_META[v as keyof typeof LEAD_CHANNEL_META]?.label ?? v),
+      remove: () => setParams({ channel: without(channel, v) }),
+    })),
+    ...tag.map((v) => ({ key: `tag-${v}`, name: 'Etiqueta', value: v, remove: () => setParams({ etiqueta: without(tag, v) }) })),
+    ...(assigned
+      ? [{ key: 'resp', name: 'Responsável', value: assignedOptions.find((o) => o.value === assigned)?.label ?? assigned, remove: () => setParams({ resp: null }) }]
+      : []),
+  ];
+
   return (
     <div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1 lg:[&>*]:shrink-0">
-      {/* Pesquisa e filtros: numa linha quando cabe; senão, os filtros passam juntos para a linha de baixo e repartem a largura. */}
+      <PageHeader
+        title="Kanban"
+        description={board ? <BoardSummary board={board} showValue={!prospector} /> : 'Os teus leads por estado.'}
+        actionsClassName="ml-auto"
+        actions={
+          <>
+            <KanbanHelp />
+            <Link href="/leads/novo" className={buttonClasses('primary')}>
+              <Plus className="h-4 w-4" aria-hidden />
+              Novo lead
+            </Link>
+          </>
+        }
+      />
+      <FirstVisitHelp />
+
+      {/* Pesquisa · Lista | Kanban | Mapa; por baixo, os filtros numa linha (na largura do texto). */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-0 flex-[999_1_16rem]">
+        <div className="relative min-w-0 flex-1 basis-full sm:basis-64">
           <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
           <Input
             type="search"
@@ -534,34 +668,56 @@ export function KanbanBoard() {
             className="pl-9"
           />
         </div>
-        {/* Telemóvel: 3 por linha; com a Etiqueta, passa para baixo (nada sai do ecrã). */}
-        <div className="flex flex-[1_1_auto] flex-wrap gap-2 *:min-w-[28%] *:flex-1 *:justify-between">
-          <MultiSelectFilter
-            label="Setor"
-            value={sector}
-            onChange={setSector}
-            options={[...(sectors ?? []).map((s) => ({ value: s.id, label: s.name, icon: <SectorIconView sector={s} className="text-muted" /> })), { value: 'none', label: 'Sem setor' }]}
-          />
-          <MultiSelectFilter label="Serviço" value={service} onChange={setService} options={serviceOptions} />
-          <MultiSelectFilter
-            label="Canal"
-            value={channel}
-            onChange={setChannel}
-            options={[...LEAD_CHANNELS.map((c) => ({ value: c, label: LEAD_CHANNEL_META[c].label, icon: <ChannelIcon channel={c} className="text-muted" /> })), { value: 'none', label: 'Sem canal' }]}
-          />
-          {tagOptions.length ? <MultiSelectFilter label="Etiqueta" value={tag} onChange={setTag} options={tagOptions} /> : null}
-        </div>
+        <ViewSwitch current="kanban" />
       </div>
-      <p className="hidden text-sm text-muted pointer-fine:block">
-        Arrasta os cartões entre colunas para mudar o estado, ou usa o botão{' '}
-        <ArrowLeftRight className="inline h-3.5 w-3.5 align-[-2px]" role="img" aria-label="Mudar estado" />. Com o teclado: foca a
-        pega de um cartão, carrega em Espaço, usa as setas e Espaço para largar.
-      </p>
-      <p className="hidden text-sm text-muted pointer-coarse:block">
-        Desliza para o lado para mudar de coluna. Para mudar o estado, toca em{' '}
-        <ArrowLeftRight className="inline h-3.5 w-3.5 align-[-2px]" role="img" aria-label="Mudar estado" /> ou mantém o dedo num
-        cartão e arrasta-o.
-      </p>
+      <div role="group" aria-label="Filtros" className="flex flex-wrap items-center gap-2 max-sm:grid max-sm:grid-cols-2">
+        <MultiSelectFilter
+          label="Setor"
+          value={sector}
+          onChange={(v) => setParams({ sector: v })}
+          options={[...(sectors ?? []).map((s) => ({ value: s.id, label: s.name, icon: <SectorIconView sector={s} className="text-muted" /> })), { value: 'none', label: 'Sem setor' }]}
+        />
+        <MultiSelectFilter label="Serviço" value={service} onChange={(v) => setParams({ servico: v })} options={serviceOptions} />
+        <MultiSelectFilter
+          label="Canal"
+          value={channel}
+          onChange={(v) => setParams({ channel: v })}
+          options={[...LEAD_CHANNELS.map((c) => ({ value: c, label: LEAD_CHANNEL_META[c].label, icon: <ChannelIcon channel={c} className="text-muted" /> })), { value: 'none', label: 'Sem canal' }]}
+        />
+        {tagOptions.length || tag.length ? <MultiSelectFilter label="Etiqueta" value={tag} onChange={(v) => setParams({ etiqueta: v })} options={tagOptions} /> : null}
+        {(team?.length ?? 0) > 1 ? (
+          <SingleSelectFilter label="Responsável" value={assigned} onChange={(v) => setParams({ resp: v || null })} options={assignedOptions} />
+        ) : null}
+      </div>
+      {chips.length ? (
+        <div className="flex flex-wrap items-center gap-1.5 text-sm">
+          {chips.map((c) => (
+            <span key={c.key} className="inline-flex max-w-full items-center gap-1 rounded-full border border-accent/40 bg-accent-soft py-0.5 pr-1 pl-2.5 text-xs">
+              <span className="truncate">
+                <span className="text-muted">{c.name}:</span> {c.value}
+              </span>
+              <button
+                type="button"
+                onClick={c.remove}
+                aria-label={`Tirar o filtro ${c.name}: ${c.value}`}
+                className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-3 hover:text-fg"
+              >
+                <X className="h-3 w-3" aria-hidden />
+              </button>
+            </span>
+          ))}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearch('');
+              router.replace(pathname, { scroll: false });
+            }}
+          >
+            Limpar filtros
+          </Button>
+        </div>
+      ) : null}
 
       {isLoading || !columns ? (
         <div className="flex gap-3 overflow-hidden">
@@ -588,7 +744,7 @@ export function KanbanBoard() {
             },
           }}
         >
-          <ColumnNav columns={columns} active={visible} onSelect={scrollToColumn} />
+          <ColumnNav columns={columns} active={visible} onSelect={scrollToColumn} hidden={desktop ? hiddenColumns : null} onToggle={toggleColumn} />
           {/* Computador (lg): o quadro ocupa a altura que sobra do ecrã (tablet: altura fixa), alinhado com o resto da página (como a tabela de Leads); cada coluna tem o seu scroll e a barra horizontal fica à vista.
               Telemóvel: as colunas crescem (scroll vertical da página) e deslizam para o lado com encaixe. */}
           <div
@@ -599,7 +755,7 @@ export function KanbanBoard() {
               activeId ? 'snap-none' : 'snap-x snap-mandatory md:snap-none',
             )}
           >
-            {statuses.map((status) => (
+            {statuses.filter((st) => !desktop || !hiddenColumns.includes(st)).map((status) => (
               <Column key={status} status={status} leads={columns[status]} today={today} statuses={statuses} onMove={moveTo} />
             ))}
           </div>
@@ -614,6 +770,79 @@ export function KanbanBoard() {
           onCancel={() => setAskLost(null)}
         />
       ) : null}
+    </div>
+  );
+}
+
+/** Topo: leads em aberto, clientes e (para quem vê valores) o valor das propostas enviadas. */
+function BoardSummary({ board, showValue }: { board: BoardColumn[]; showValue: boolean }) {
+  const total = (status: LeadStatus) => board.find((c) => c.status === status)?.total ?? 0;
+  const open = (['identificado', 'contactado', 'respondeu', 'reuniao', 'proposta_enviada'] as LeadStatus[]).reduce((n, st) => n + total(st), 0);
+  const proposals = board.find((c) => c.status === 'proposta_enviada')?.value ?? 0;
+  const clients = total('cliente');
+  return (
+    <>
+      {open} lead{open === 1 ? '' : 's'} em aberto · {clients} cliente{clients === 1 ? '' : 's'}
+      {showValue && proposals > 0 ? ` · ${formatCurrency(proposals)} em propostas` : ''}
+    </>
+  );
+}
+
+const HELP_MOUSE = 'Arrasta os cartões entre colunas para mudar o estado, ou usa o botão ⇄ no cartão. Com o teclado: foca a pega de um cartão, carrega em Espaço, usa as setas e Espaço para largar.';
+const HELP_TOUCH = 'Desliza para o lado para mudar de coluna. Para mudar o estado, toca em ⇄ ou mantém o dedo num cartão e arrasta-o.';
+
+/** "Como mover": as instruções num menu (antes ocupavam uma linha da página). */
+function KanbanHelp() {
+  return (
+    <DropdownRoot>
+      <DropdownTrigger className={buttonClasses('ghost', 'md')} aria-label="Como mover os cartões">
+        <HelpCircle className="h-4 w-4" aria-hidden />
+        <span className="hidden sm:inline">Como mover</span>
+      </DropdownTrigger>
+      <DropdownContent className="max-w-xs">
+        <DropdownLabel>Como mover os cartões</DropdownLabel>
+        <p className="px-2 pb-2 text-sm text-muted pointer-coarse:hidden">{HELP_MOUSE}</p>
+        <p className="hidden px-2 pb-2 text-sm text-muted pointer-coarse:block">{HELP_TOUCH}</p>
+      </DropdownContent>
+    </DropdownRoot>
+  );
+}
+
+const HELP_SEEN = 'vnd.kanban.help';
+
+/** Na primeira visita, as instruções aparecem uma vez (com "Percebi" para fechar). */
+function FirstVisitHelp() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- só no browser (localStorage)
+      setShow(!window.localStorage.getItem(HELP_SEEN));
+    } catch {
+      setShow(false);
+    }
+  }, []);
+  if (!show) return null;
+  return (
+    <div role="note" className="flex items-start gap-3 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm">
+      <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-accent-text" aria-hidden />
+      <p className="flex-1 text-muted">
+        <span className="pointer-coarse:hidden">{HELP_MOUSE}</span>
+        <span className="hidden pointer-coarse:inline">{HELP_TOUCH}</span>
+      </p>
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => {
+          try {
+            window.localStorage.setItem(HELP_SEEN, '1');
+          } catch {
+            // Sem localStorage: fecha só desta vez.
+          }
+          setShow(false);
+        }}
+      >
+        Percebi
+      </Button>
     </div>
   );
 }
