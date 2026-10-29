@@ -17,6 +17,9 @@ export function FollowUpActions({ lead, compact }: { lead: Lead; compact?: boole
   const reschedule = useReschedule();
   const { data: settings } = useSettings();
   const days = settings?.follow_up_days ?? 3;
+  // Ainda não contactado: "Feito" = primeiro contacto feito (o lead passa a Contactado).
+  const first = lead.status === 'identificado';
+  const doneLabel = first ? 'Contactado' : 'Feito';
 
   async function run(action: 'done' | 'snooze', d: number | null) {
     const before = lead.next_action_on;
@@ -36,7 +39,8 @@ export function FollowUpActions({ lead, compact }: { lead: Lead; compact?: boole
           },
         });
       } else {
-        toast.success(updated.next_action_on ? `Feito. Próximo follow-up a ${formatDate(updated.next_action_on)}.` : 'Feito. Sem próxima ação.');
+        const what = first ? `#${lead.number} passou a Contactado.` : 'Feito.';
+        toast.success(updated.next_action_on ? `${what} Próximo follow-up a ${formatDate(updated.next_action_on)}.` : `${what} Sem próxima ação.`);
       }
     } catch (e) {
       toast.error(errorMessage(e));
@@ -52,8 +56,8 @@ export function FollowUpActions({ lead, compact }: { lead: Lead; compact?: boole
           className="h-8 w-8 pointer-coarse:h-10 pointer-coarse:w-10"
           onClick={() => run('done', null)}
           disabled={followUp.isPending}
-          aria-label={`Marcar como feito: #${lead.number} ${lead.company_name}`}
-          title="Feito"
+          aria-label={`${first ? 'Marcar como contactado' : 'Marcar como feito'}: #${lead.number} ${lead.company_name}`}
+          title={first ? 'Contactado (passa a Contactado)' : 'Feito'}
         >
           <Check className="h-4 w-4" aria-hidden />
         </Button>
@@ -75,13 +79,13 @@ export function FollowUpActions({ lead, compact }: { lead: Lead; compact?: boole
   return (
     <DropdownRoot>
       <DropdownTrigger className={buttonClasses('outline', 'sm')} disabled={followUp.isPending}>
-        <Check className="h-3.5 w-3.5" aria-hidden /> Follow-up <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+        <Check className="h-3.5 w-3.5" aria-hidden /> {first ? 'Primeiro contacto' : 'Follow-up'} <ChevronDown className="h-3.5 w-3.5" aria-hidden />
       </DropdownTrigger>
       <DropdownContent>
-        <DropdownLabel>Marcar como feito</DropdownLabel>
-        <DropdownItem onSelect={() => run('done', days)}>Feito — novo follow-up em {days} dias</DropdownItem>
-        <DropdownItem onSelect={() => run('done', 7)}>Feito — novo follow-up em 7 dias</DropdownItem>
-        <DropdownItem onSelect={() => run('done', null)}>Feito — sem próxima ação</DropdownItem>
+        <DropdownLabel>{first ? 'Já o contactei (passa a Contactado)' : 'Marcar como feito'}</DropdownLabel>
+        <DropdownItem onSelect={() => run('done', days)}>{doneLabel} — follow-up em {days} dias</DropdownItem>
+        <DropdownItem onSelect={() => run('done', 7)}>{doneLabel} — follow-up em 7 dias</DropdownItem>
+        {first ? null : <DropdownItem onSelect={() => run('done', null)}>Feito — sem próxima ação</DropdownItem>}
         <DropdownSeparator />
         <DropdownLabel>Adiar</DropdownLabel>
         <DropdownItem onSelect={() => run('snooze', 1)}>Para amanhã</DropdownItem>

@@ -35,7 +35,7 @@ import {
   CalendarClock,
   ChevronDown,
   Mail,
-  ExternalLink,
+  FileText,
   Eye,
   Flame,
   MessageCircle,
@@ -669,8 +669,8 @@ function LeadRow({
           <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', more && 'rotate-180')} aria-hidden />{' '}
           {more ? 'Ver menos' : 'Ver mais'}
         </button>
-        <Link href={leadPath(lead)} target="_blank" className="inline-flex items-center gap-1.5 text-muted hover:text-fg">
-          <ExternalLink className="h-3.5 w-3.5" aria-hidden /> Ficha
+        <Link href={leadPath(lead)} className="inline-flex items-center gap-1.5 text-muted hover:text-fg">
+          <FileText className="h-3.5 w-3.5" aria-hidden /> Ficha
           <span className="sr-only">(abre num novo separador)</span>
         </Link>
       </div>

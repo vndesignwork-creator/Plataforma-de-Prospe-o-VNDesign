@@ -53,9 +53,10 @@ test('follow-up feito e adiado a partir da ficha e do dashboard', async ({ page 
   await expect(page.getByText(new RegExp(`#${lead.number} adiado para \\d{2}/\\d{2}/\\d{4}`))).toBeVisible();
 
   await page.goto(`/leads/${lead.id}`);
-  await page.getByRole('button', { name: 'Follow-up' }).click();
-  await page.getByRole('menuitem', { name: 'Feito — sem próxima ação' }).click();
-  await expect(page.getByText('Feito. Sem próxima ação.')).toBeVisible();
+  // Ainda não contactado: "Feito" é o primeiro contacto e o lead passa a Contactado.
+  await page.getByRole('button', { name: 'Primeiro contacto' }).click();
+  await page.getByRole('menuitem', { name: /^Contactado — follow-up em \d+ dias$/ }).first().click();
+  await expect(page.getByText(new RegExp(`#${lead.number} passou a Contactado\\. Próximo follow-up a`))).toBeVisible();
   const timeline = page.getByLabel('Atividade do lead');
   await expect(timeline.getByText('Follow-up feito')).toBeVisible();
   await expect(timeline.getByText(/^Adiado: Ligar ao gerente para/)).toBeVisible();

@@ -196,6 +196,18 @@ test('sessão de prospeção pela API: não atendeu, contactado e mais tarde', a
   expect(queue.items.some((i: { lead: { id: string } }) => i.lead.id === lead.id)).toBe(false);
 });
 
+test('lead ainda não contactado: adiar fica "Primeiro contacto"; "Feito" passa a Contactado', async ({ request }) => {
+  const lead = await createLead(request, { company_name: `Primeiro ${run}`, phone: '912000222' });
+  let res = await request.post(`/api/v1/leads/${lead.id}/follow-up`, { data: { action: 'snooze', days: 2 } });
+  expect(res.status(), await res.text()).toBe(200);
+  expect((await res.json()).data).toMatchObject({ status: 'identificado', next_action_text: 'Primeiro contacto' });
+  res = await request.post(`/api/v1/leads/${lead.id}/follow-up`, { data: { action: 'done', days: 3 } });
+  expect(res.status(), await res.text()).toBe(200);
+  const done = (await res.json()).data;
+  expect(done).toMatchObject({ status: 'contactado', next_action_text: 'Enviar follow-up', first_contact_on: lisbonDay(0) });
+  expect(done.next_action_on).toBe(workday(lisbonDay(3)));
+});
+
 test('partilhar para a app: o Instagram preenche o lead novo', async ({ page }) => {
   const text = `Veja o perfil de Padaria Partilha ${run} (@padaria.partilha) no Instagram\nRua do Teste 1, 1000-001 Lisboa`;
   await page.goto(`/partilhar?text=${encodeURIComponent(text)}&url=${encodeURIComponent('https://www.instagram.com/padaria.partilha?igsh=abc')}`);
