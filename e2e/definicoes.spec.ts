@@ -36,7 +36,7 @@ test('assinatura: alterações por guardar, descartar e aviso ao sair', async ({
     expect(d.message()).toContain('alterações por guardar');
     void d.dismiss();
   });
-  await page.getByRole('navigation', { name: 'Secções das definições' }).getByRole('link', { name: 'Conta' }).click();
+  await page.getByRole('navigation', { name: 'Secções das definições' }).getByRole('link', { name: 'Conta', exact: true }).click();
   await expect(page).toHaveURL(/\/definicoes\/assinatura$/);
 
   await page.getByRole('button', { name: 'Descartar' }).click();
