@@ -58,6 +58,9 @@ test('serviço novo com frase de valor: o modelo genérico usa-a', async ({ page
 test('página Scripts: filtro por categoria e categoria no editor', async ({ page }) => {
   await page.goto('/scripts');
   const nav = page.getByRole('navigation', { name: 'Modelos' });
+  // Os grupos começam fechados.
+  await expect(nav.getByRole('button', { name: /Email de prospeção — Design Gráfico/ })).toHaveCount(0);
+  await nav.getByRole('button', { name: /^Email frio/ }).click();
   await expect(nav.getByRole('button', { name: /Email de prospeção — Design Gráfico/ })).toBeVisible();
   await nav.getByLabel(/Categoria dos modelos/).click();
   await page.getByRole('menuitemradio', { name: 'Design Gráfico' }).click();
@@ -65,6 +68,7 @@ test('página Scripts: filtro por categoria e categoria no editor', async ({ pag
   await expect(nav.getByRole('button', { name: /Email de prospeção — genérico/ })).toBeVisible();
   await expect(nav.getByRole('button', { name: /Email frio — diagnóstico/ })).toHaveCount(0);
 
+  await nav.getByRole('button', { name: /^Follow-up \(3 dias\)/ }).click();
   await nav.getByRole('button', { name: /Follow-up — Design Gráfico/ }).click();
   await expect(page.getByLabel('Categoria de serviço').locator('option:checked')).toHaveText('Design Gráfico');
 });

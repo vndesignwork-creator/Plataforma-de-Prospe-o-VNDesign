@@ -18,7 +18,22 @@ import {
   type TemplateContext,
   type TemplateKind,
 } from '@vndesign/core';
-import { ChevronRight, Copy, Plus, Search, Trash2 } from 'lucide-react';
+import {
+  Briefcase,
+  ChevronRight,
+  Copy,
+  FileText,
+  Mail,
+  MessageCircle,
+  MessageSquare,
+  MessageSquareText,
+  Phone,
+  Plus,
+  Repeat,
+  Search,
+  Trash2,
+  type LucideIcon,
+} from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -42,6 +57,17 @@ type FormOutput = z.output<typeof ContactTemplateCreateSchema>;
 
 const EMPTY: ContactTemplateCreateInput = { kind: 'cold_email', name: '', subject: '', body: '', sector_id: null, category: null };
 const CHAT_KINDS = new Set<string>(['whatsapp', 'short_message', 'social_dm', 'linkedin']);
+const KIND_ICONS: Record<TemplateKind, LucideIcon> = {
+  cold_email: Mail,
+  follow_up: Repeat,
+  call_script: Phone,
+  social_dm: MessageSquare,
+  linkedin: Briefcase,
+  short_message: MessageSquareText,
+  general_email: Mail,
+  proposal_structure: FileText,
+  whatsapp: MessageCircle,
+};
 const LEAVE = 'Tens alterações por guardar neste modelo. Sair sem guardar?';
 
 function toForm(t: ContactTemplate | null): ContactTemplateCreateInput {
@@ -372,7 +398,8 @@ export function TemplateLibrary() {
   const stats = useTemplateStats();
   const [category, setCategory] = useState('');
   const [query, setQuery] = useState('');
-  const [closed, setClosed] = useState<Record<string, boolean>>({});
+  // Grupos fechados por omissão (o do modelo aberto fica com o ícone a laranja).
+  const [opened, setOpened] = useState<Partial<Record<TemplateKind, boolean>>>({});
   const [selected, setSelected] = useState<string | 'new' | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const dirty = useRef(false);
@@ -404,7 +431,7 @@ export function TemplateLibrary() {
   const q = norm(query.trim());
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
-      <nav aria-label="Modelos" className="flex flex-col gap-3">
+      <nav aria-label="Modelos" className="flex flex-col gap-2.5">
         <Button onClick={() => choose('new')} variant={selected === 'new' ? 'primary' : 'outline'}>
           <Plus className="h-4 w-4" aria-hidden /> Novo modelo
         </Button>
@@ -426,21 +453,35 @@ export function TemplateLibrary() {
           );
           if (!group.length) return null;
           // Ao procurar, os grupos abrem-se todos.
-          const open = !!q || !closed[kind];
+          const hasCurrent = selected !== 'new' && group.some((t) => t.id === current?.id);
+          const open = !!q || !!opened[kind];
+          const Icon = KIND_ICONS[kind];
           return (
-            <section key={kind} aria-label={TEMPLATE_KIND_LABELS[kind]}>
+            <section
+              key={kind}
+              aria-label={TEMPLATE_KIND_LABELS[kind]}
+              className={cn('overflow-hidden rounded-xl border bg-surface', open ? 'border-border-strong' : 'border-border')}
+            >
               <button
                 type="button"
-                onClick={() => setClosed((c) => ({ ...c, [kind]: open }))}
+                onClick={() => setOpened((o) => ({ ...o, [kind]: !open }))}
                 aria-expanded={open}
-                className="flex w-full items-center gap-1 rounded-md px-2 py-1 text-left font-sans text-xs font-semibold tracking-wide text-muted uppercase hover:text-fg"
+                className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm font-medium hover:bg-surface-2"
               >
-                <ChevronRight className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-90')} aria-hidden />
-                {TEMPLATE_KIND_LABELS[kind]}
-                <span className="ml-auto font-normal tabular-nums">{group.length}</span>
+                <span
+                  className={cn(
+                    'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
+                    hasCurrent ? 'bg-accent-soft text-accent-text' : 'bg-surface-2 text-muted',
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1 truncate">{TEMPLATE_KIND_LABELS[kind]}</span>
+                <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs font-normal text-muted tabular-nums">{group.length}</span>
+                <ChevronRight className={cn('h-4 w-4 shrink-0 text-muted transition-transform', open && 'rotate-90')} aria-hidden />
               </button>
               {open ? (
-                <ul className="mt-0.5 flex flex-col gap-0.5">
+                <ul className="flex flex-col gap-0.5 border-t border-border p-1.5">
                   {group.map((t) => {
                     const active = selected !== 'new' && current?.id === t.id;
                     const sector = sectors?.find((s) => s.id === t.sector_id);
