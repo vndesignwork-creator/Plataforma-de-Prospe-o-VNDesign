@@ -21,6 +21,8 @@ import {
   rankTemplatesForLead,
   renderTemplate,
   serviceLabel,
+  toPlainText,
+  toRichHtml,
   type AiEmailKind,
   type AiEmailLength,
   type AiEmailTone,
@@ -38,6 +40,7 @@ import { Badge, Card, CardHeader } from '@/components/ui/card';
 import { CollapseButton, useProspectingCollapsed } from '@/components/ui/collapse';
 import { Field } from '@/components/ui/field';
 import { Input, Select, Textarea } from '@/components/ui/input';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { errorMessage } from '@/lib/api-client';
 import { useAiEmail, useLogActivity, useSettings, useTemplates, useUpdateLead } from '@/lib/queries';
 import { EMAIL_KINDS, useTemplateContext } from '@/lib/template-context';
@@ -78,12 +81,24 @@ function defaultAiKind(lead: Lead): AiEmailKind {
   return 'primeiro_contacto';
 }
 
-async function copyText(text: string) {
+/** Copia com a formatação (para colar no Gmail/Outlook) e em texto simples (para o resto). */
+async function copyText(text: string, html?: string) {
   try {
-    await navigator.clipboard.writeText(text);
+    if (html && typeof ClipboardItem !== 'undefined') {
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'text/plain': new Blob([text], { type: 'text/plain' }), 'text/html': new Blob([html], { type: 'text/html' }) }),
+      ]);
+    } else {
+      await navigator.clipboard.writeText(text);
+    }
     return true;
   } catch {
-    return false;
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
@@ -227,7 +242,8 @@ export function ContactCard({ lead }: { lead: Lead }) {
   const edited = draft !== null;
   const sourceName = current?.type === 'saved' ? 'Email de prospeção' : current?.type === 'ai' ? 'Email com IA' : (template?.name ?? '');
   const payload = current?.type === 'template' || (!current && template) ? { template: template!.name, template_id: template!.id } : { template: sourceName };
-  const savedNow = hasSaved && subject === (lead.email_subject ?? '') && body === (lead.email_body ?? '');
+  // Compara pelo HTML normalizado (o email guardado pode estar em texto simples).
+  const savedNow = hasSaved && subject === (lead.email_subject ?? '') && toRichHtml(body) === toRichHtml(lead.email_body);
   const selectValue = current?.type === 'saved' ? SAVED_VALUE : current?.type === 'ai' ? AI_VALUE : (template?.id ?? '');
 
   function choose(value: string) {
@@ -238,8 +254,9 @@ export function ContactCard({ lead }: { lead: Lead }) {
   }
 
   async function onCopy() {
-    const text = isEmail && subject ? `${subject}\n\n${body}` : body;
-    if (await copyText(text)) {
+    const plain = isEmail ? toPlainText(body) : body;
+    const text = isEmail && subject ? `${subject}\n\n${plain}` : plain;
+    if (await copyText(text, isEmail ? toRichHtml(body) : undefined)) {
       toast.success('Copiado.');
       log.mutate({ type: 'email_copied', payload: { ...payload, part: 'all' } });
     } else {
@@ -250,7 +267,7 @@ export function ContactCard({ lead }: { lead: Lead }) {
   function onMailto() {
     log.mutate({ type: 'email_mailto', payload });
     if (!lead.email) toast.info('Este lead não tem email: escreve o destinatário no teu programa de email.');
-    window.location.href = mailtoUrl(lead.email, subject, body);
+    window.location.href = mailtoUrl(lead.email, subject, toPlainText(body));
   }
 
   function onWhatsApp() {
@@ -390,7 +407,11 @@ export function ContactCard({ lead }: { lead: Lead }) {
               <label htmlFor="script-body" className="mb-1 block text-sm font-medium">
                 {isEmail ? 'Mensagem' : kind === 'call_script' ? 'Guião' : 'Texto'}
               </label>
-              <Textarea id="script-body" rows={12} value={body} onChange={(e) => setDraft({ subject, body: e.target.value })} className="leading-relaxed" />
+              {isEmail ? (
+                <RichTextEditor id="script-body" label="Mensagem" value={body} onChange={(html) => setDraft({ subject, body: html })} />
+              ) : (
+                <Textarea id="script-body" rows={12} value={body} onChange={(e) => setDraft({ subject, body: e.target.value })} className="leading-relaxed" />
+              )}
               {current?.type === 'ai' ? <p className="mt-1 text-xs text-muted">Revê sempre antes de enviar: a IA pode enganar-se.</p> : null}
             </div>
 

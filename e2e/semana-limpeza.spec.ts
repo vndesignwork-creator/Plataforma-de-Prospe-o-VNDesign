@@ -187,7 +187,7 @@ test('Dashboard: projetos a precisar de atenção levam aos Projetos já filtrad
   if (account) {
     const dialog = page.getByRole('dialog', { name: 'Ponto de situação' });
     await expect(dialog.getByLabel('Assunto')).toHaveValue(`Ponto de situação — ${name}`, { timeout: 30_000 });
-    body = await dialog.getByLabel('Mensagem').inputValue();
+    body = await dialog.getByLabel('Mensagem').innerText();
   } else {
     await expect(page.getByText(/Ponto de situação copiado/)).toBeVisible();
     body = await page.evaluate(() => navigator.clipboard.readText());

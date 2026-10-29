@@ -26,6 +26,7 @@ import { useRouter } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 import { EmailCheckHint } from '@/components/email/email-check-hint';
 import { Controller, useForm, useWatch, type Control, type FieldPath } from 'react-hook-form';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
@@ -393,7 +394,13 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
               <Input {...register('email_subject')} />
             </Field>
             <Field label="Email de prospeção" error={e('email_body')} className="md:col-span-2">
-              <Textarea rows={10} className="font-mono text-[13px]" {...register('email_body')} />
+              <Controller
+                control={control}
+                name="email_body"
+                render={({ field }) => (
+                  <RichTextEditor label="Email de prospeção" value={String(field.value ?? '')} onChange={(html) => field.onChange(html)} minHeight="12rem" />
+                )}
+              />
             </Field>
           </Section>
         </div>

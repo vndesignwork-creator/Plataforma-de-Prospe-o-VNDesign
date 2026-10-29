@@ -4,7 +4,7 @@
  * "Enviar" um email a um lead pela conta do utilizador (Definições → Email de envio).
  * Mostra o email pronto a rever (Para, Assunto, Mensagem) antes de sair.
  */
-import { formatDate, type FollowUpDraft, type Lead, type LeadEmailSendResult } from '@vndesign/core';
+import { formatDate, toPlainText, type FollowUpDraft, type Lead, type LeadEmailSendResult } from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { Paperclip, Reply, Send } from 'lucide-react';
 import Link from 'next/link';
@@ -13,7 +13,8 @@ import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
-import { Input, Textarea } from '@/components/ui/input';
+import { Input } from '@/components/ui/input';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { EmailCheckHint } from './email-check-hint';
 import { useAudits, useInvalidateLead, useMailAccount, useSettings } from '@/lib/queries';
@@ -66,6 +67,11 @@ function SendEmailDialog({
   const copy = bccSelf ?? account?.bcc_self ?? false;
 
   async function send() {
+    // O editor pode ter só um parágrafo vazio: conta como mensagem em branco.
+    if (!toPlainText(form.body).trim()) {
+      setErrors({ body: ['Escreve a mensagem.'] });
+      return;
+    }
     setSending(true);
     setErrors({});
     try {
@@ -167,7 +173,7 @@ function SendEmailDialog({
             <Input value={form.subject} maxLength={300} onChange={(e) => setForm({ ...form, subject: e.target.value })} />
           </Field>
           <Field label="Mensagem" required error={errors.body?.[0]}>
-            <Textarea rows={12} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} className="leading-relaxed" />
+            <RichTextEditor label="Mensagem" value={form.body} onChange={(body) => setForm((f) => ({ ...f, body }))} minHeight="14rem" />
           </Field>
           {proposal ? (
             <p className="flex items-center gap-1.5 text-sm text-muted">

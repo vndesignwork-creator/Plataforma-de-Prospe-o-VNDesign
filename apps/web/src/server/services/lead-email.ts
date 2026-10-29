@@ -7,7 +7,8 @@ import {
   LEAD_STATUSES,
   leadServiceCategory,
   planNextFollowUp,
-  plainTextToHtml,
+  emailBodyHtml,
+  toPlainText,
   rankTemplatesForLead,
   replySubject,
   slugify,
@@ -63,7 +64,10 @@ async function deliver(
     );
   }
   const wantsCopy = input.bcc_self ?? bccSelf;
-  const html = plainTextToHtml(input.body);
+  // A mensagem pode vir do editor (HTML) ou em texto simples (modelos, IA, API).
+  const text = toPlainText(input.body);
+  if (!text.trim()) throw new ApiError(422, 'Mensagem em branco', 'Escreve a mensagem.', { errors: { body: ['Escreve a mensagem.'] } });
+  const html = emailBodyHtml(input.body);
   // Com o rastreio, a cópia para o próprio vai à parte e sem ele (abri-la não conta como aberto).
   const tracking = await prepareTracking(ctx, lead.id, input.subject, html);
   const trackingId = tracking ? await tracking.save() : null;
@@ -73,7 +77,7 @@ async function deliver(
       to: input.to,
       bcc: wantsCopy && !tracking ? account.fromEmail : undefined,
       subject: input.subject,
-      text: input.body,
+      text,
       html: tracking?.html ?? html,
       attachments: extra.attachments,
       inReplyTo: input.in_reply_to,
@@ -87,7 +91,7 @@ async function deliver(
     await sendWithAccount(account, {
       to: account.fromEmail,
       subject: input.subject,
-      text: input.body,
+      text,
       html,
       attachments: extra.attachments,
       inReplyTo: input.in_reply_to,
@@ -103,7 +107,7 @@ async function deliver(
       via: 'platform',
       to: input.to,
       template: extra.template ?? input.template ?? null,
-      text: input.body.slice(0, 5000),
+      text: text.slice(0, 5000),
       attachments: extra.attachments?.map((a) => a.filename) ?? [],
       // Para reconhecer a resposta (In-Reply-To) na caixa de entrada.
       message_id: messageId,

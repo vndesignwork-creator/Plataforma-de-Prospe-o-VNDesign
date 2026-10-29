@@ -12,8 +12,8 @@ test('lead de Design Gráfico: modelo da categoria com {{servicos}} e {{benefici
   await expect(page.getByRole('heading', { name: 'Contactar' })).toBeVisible({ timeout: 20_000 });
   await expect(page.locator('#script-template option:checked')).toHaveText('Email de prospeção — Design Gráfico');
   const message = page.getByRole('textbox', { name: 'Mensagem' });
-  await expect(message).toHaveValue(/Trabalho em identidade visual e flyers e cartazes para negócios/);
-  await expect(message).toHaveValue(/há espaço para uma imagem coerente que os clientes reconhecem à primeira vista\./);
+  await expect(message).toContainText('Trabalho em identidade visual e flyers e cartazes para negócios');
+  await expect(message).toContainText('há espaço para uma imagem coerente que os clientes reconhecem à primeira vista.');
   await expect(page.getByRole('textbox', { name: 'Assunto' })).toHaveValue(`Uma ideia para a imagem da Pastelaria ${run}`);
 
   // Sem serviços: continua o modelo de origem.
@@ -44,8 +44,8 @@ test('serviço novo com frase de valor: o modelo genérico usa-a', async ({ page
   // "Outros serviços" não tem modelos próprios: os de todas as categorias vêm antes dos de Web Design.
   await expect(page.locator('#script-template option:checked')).not.toHaveText(/Web|modelo VNDesign|diagnóstico/);
   await page.locator('#script-template').selectOption({ label: 'Email de prospeção — genérico' });
-  await expect(page.getByRole('textbox', { name: 'Mensagem' })).toHaveValue(/ajudar a ter vídeos curtos que mostram o vosso espaço\./);
-  await expect(page.getByRole('textbox', { name: 'Mensagem' })).toHaveValue(new RegExp(`Trabalho em vídeo ${run} para negócios`));
+  await expect(page.getByRole('textbox', { name: 'Mensagem' })).toContainText('ajudar a ter vídeos curtos que mostram o vosso espaço.');
+  await expect(page.getByRole('textbox', { name: 'Mensagem' })).toContainText(`Trabalho em vídeo ${run} para negócios`);
 
   // A API de pré-visualização preenche as mesmas variáveis.
   const templates = (await (await page.request.get('/api/v1/templates')).json()).data as { id: string; name: string; category: string | null }[];

@@ -6,6 +6,7 @@ import { LEAD_CHANNEL_META, LEAD_STATUS_META, LOST_REASON_LABELS, MOBILE_STATUS_
 import type { Lead } from './schemas';
 import { serviceLabel, type ServiceInfo } from './services';
 import { formatCustomValue, type CustomField } from './custom-fields';
+import { toPlainText } from './rich-text';
 
 export type ExportValue = string | number | null;
 export type ExportKind = 'text' | 'number' | 'integer' | 'date' | 'currency' | 'url';
@@ -66,7 +67,7 @@ export function exportColumns(services?: readonly ServiceInfo[], fields: readonl
     { header: 'Fonte', kind: 'url', width: 30, value: (l) => l.source_url },
     { header: 'Sugerido em', kind: 'date', width: 12, value: (l) => l.suggested_on },
     { header: 'Assunto do email', kind: 'text', width: 34, value: (l) => l.email_subject },
-    { header: 'Email de prospeção', kind: 'text', width: 60, value: (l) => l.email_body },
+    { header: 'Email de prospeção', kind: 'text', width: 60, value: (l) => (l.email_body ? toPlainText(l.email_body) : l.email_body) },
     // Volta a ser lida pela importação (coluna "Serviços").
     {
       header: 'Serviços',

@@ -25,8 +25,9 @@ test('modelo com variáveis → ficha do lead → marcar como enviado agenda o f
   await page.getByRole('link', { name: leadName }).click();
   await page.getByLabel('Partir de', { exact: true }).selectOption({ label: templateName });
   await expect(page.getByLabel('Assunto', { exact: true })).toHaveValue(`Uma ideia para a ${leadName}`);
-  await expect(page.locator('#script-body')).toHaveValue(/^Olá Rita,\n\nReparei que o site não abre no telemóvel\./);
-  await expect(page.locator('#script-body')).toHaveValue(/basta responder a este email\.$/);
+  await expect(page.locator('#script-body')).toContainText('Olá Rita,');
+  await expect(page.locator('#script-body')).toContainText('Reparei que o site não abre no telemóvel.');
+  await expect(page.locator('#script-body')).toContainText('basta responder a este email.');
 
   // Editar antes de enviar e marcar como enviado
   await page.locator('#script-body').fill('Texto editado à mão');

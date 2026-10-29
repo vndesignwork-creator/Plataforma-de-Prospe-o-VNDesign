@@ -68,7 +68,9 @@ test('email com IA: gera, junta assinatura e opt-out e guarda no lead', async ({
   const subject = page.getByLabel('Assunto', { exact: true }).last();
   await expect(subject).toHaveValue(`Uma ideia rápida para o site da ${name}`);
   const body = page.getByLabel('Mensagem').last();
-  await expect(body).toHaveValue(/não usa HTTPS[\s\S]*Cumprimentos,\n\n[\s\S]+\n\nSe não quiser receber mais contactos/);
+  await expect(body).toContainText('não usa HTTPS');
+  await expect(body).toContainText('Cumprimentos,');
+  await expect(body).toContainText('Se não quiser receber mais contactos');
 
   await page.getByRole('button', { name: 'Guardar como email de prospeção' }).last().click();
   await expect(page.getByText('Guardado como email de prospeção do lead.')).toBeVisible();

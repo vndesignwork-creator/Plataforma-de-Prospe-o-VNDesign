@@ -56,3 +56,4 @@ export * from './team-work';
 export * from './reach-out';
 export * from './quiet-hours';
 export * from './replies';
+export * from './rich-text';
