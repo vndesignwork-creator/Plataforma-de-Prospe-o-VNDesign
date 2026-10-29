@@ -302,6 +302,11 @@ export function useUpdateLead(id: string) {
       api<{ data: Lead }>(`/leads/${id}`, { method: 'PATCH', body: patch }).then((r) => r.data),
     onSuccess: (lead) => {
       qc.setQueryData(qk.lead(id), lead);
+      // A lista da Prospeção não se recarrega a meio da sessão (a ordem fica), mas os dados
+      // do lead acompanham a ficha (ex.: o email de prospeção guardado lá é o que vai ser enviado).
+      qc.setQueriesData<ProspectingQueue>({ queryKey: ['prospecting'] }, (old) =>
+        old ? { ...old, items: old.items.map((item) => (item.lead.id === id ? { ...item, lead: { ...item.lead, ...lead } } : item)) } : old,
+      );
       invalidate(id);
     },
   });
