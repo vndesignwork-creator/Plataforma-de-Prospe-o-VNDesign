@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { expect, request, test, type APIRequestContext, type Page } from '@playwright/test';
 // Servidor IMAP de teste (em memória): faz de caixa de entrada do Gmail.
 import hoodiecrow from 'hoodiecrow-imap';
 import { ImapFlow } from 'imapflow';
@@ -164,8 +164,11 @@ test('estatísticas: aberto, clicado e respondido por modelo', async ({ page }) 
   const html = await mailHtml(page.request, to, subject);
   const pixel = /<img src="([^"]+\/o\.gif)"/.exec(html)?.[1];
   const link = /href="([^"]+\/api\/v1\/public\/t\/[^"]+\/0)"/.exec(html)?.[1];
-  await page.request.get(pixel!, { headers: { 'user-agent': 'Mozilla/5.0 (iPhone)' } });
-  await page.request.get(link!, { maxRedirects: 0, headers: { 'user-agent': 'Mozilla/5.0 (iPhone)' } });
+  // Abre o cliente (sem a sessão da plataforma: as aberturas de quem está ligado não contam).
+  const client = await request.newContext({ storageState: { cookies: [], origins: [] } });
+  await client.get(pixel!, { headers: { 'user-agent': 'Mozilla/5.0 (iPhone)' } });
+  await client.get(link!, { maxRedirects: 0, headers: { 'user-agent': 'Mozilla/5.0 (iPhone)' } });
+  await client.dispose();
   await deliverToInbox(`Cliente <${to}>`, `Re: ${subject}`, 'Olá! Podemos falar amanhã?');
   await page.request.post('/api/v1/mail-account/check-replies');
 
@@ -207,7 +210,9 @@ test('prospeção (email): quem abriu o email aparece em "Abriram o email", mesm
   expect(sent.status(), await sent.text()).toBe(200);
   const html = await mailHtml(page.request, to, subject);
   const link = /href="([^"]+\/api\/v1\/public\/t\/[^"]+\/0)"/.exec(html)?.[1];
-  await page.request.get(link!, { maxRedirects: 0, headers: { 'user-agent': 'Mozilla/5.0 (iPhone)' } });
+  const client = await request.newContext({ storageState: { cookies: [], origins: [] } });
+  await client.get(link!, { maxRedirects: 0, headers: { 'user-agent': 'Mozilla/5.0 (iPhone)' } });
+  await client.dispose();
 
   await page.request.put('/api/v1/preferences/prospecting.mode', { data: { value: 'email' } });
   await page.goto('/prospecao');
