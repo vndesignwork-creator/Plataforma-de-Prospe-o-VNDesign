@@ -26,7 +26,7 @@ import {
   type TaskTemplate,
 } from '@vndesign/core';
 import { Bell, CalendarDays, Check, ChevronRight, Clock, Copy, CopyPlus, GripVertical, ListPlus, MoreVertical, Pencil, Plus, UserRound, X } from 'lucide-react';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
@@ -329,11 +329,27 @@ function TaskRow({
     disabled: !sortable || editing,
   });
   const done = Boolean(task.done_at);
+  // Ao concluir: o visto e o risco veem-se meio segundo antes de a tarefa ir para "Concluídas".
+  const [completing, setCompleting] = useState(false);
+  const toggleRef = useRef(onToggle);
+  useEffect(() => {
+    toggleRef.current = onToggle;
+  });
+  useEffect(() => {
+    if (!completing) return;
+    const timer = setTimeout(() => toggleRef.current(true), 450);
+    return () => clearTimeout(timer);
+  }, [completing]);
+  const shownDone = done || completing;
   return (
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={cn('group relative flex items-start gap-1.5 px-2 py-2 hover:bg-surface-2 sm:gap-2 sm:px-3', isDragging && 'z-10 bg-surface-2 opacity-80 shadow-card')}
+      className={cn(
+        'group relative flex items-start gap-1.5 px-2 py-2 transition-opacity duration-300 hover:bg-surface-2 sm:gap-2 sm:px-3',
+        isDragging && 'z-10 bg-surface-2 opacity-80 shadow-card',
+        completing && 'opacity-50',
+      )}
     >
       {sortable ? (
         <button
@@ -350,10 +366,11 @@ function TaskRow({
       ) : null}
       <input
         type="checkbox"
-        checked={done}
-        onChange={(e) => onToggle(e.target.checked)}
+        checked={shownDone}
+        disabled={completing}
+        onChange={(e) => (e.target.checked && !done ? setCompleting(true) : onToggle(e.target.checked))}
         aria-label={done ? `Reabrir: ${task.title}` : `Concluir: ${task.title}`}
-        className="mt-1 h-4 w-4 shrink-0 cursor-pointer"
+        className="mt-1 h-4 w-4 shrink-0 cursor-pointer transition-transform checked:scale-110"
       />
       {editing ? <TaskEditor task={task} onSave={onSave} onCancel={onCancelEdit} /> : null}
       {/* Tocar no texto edita; os links do texto abrem (com o teclado: Tab até ao lápis). */}
@@ -361,7 +378,7 @@ function TaskRow({
         onClick={(e) => {
           if (!(e.target as HTMLElement).closest('a')) onEdit();
         }}
-        className={cn('min-w-0 flex-1 cursor-text text-sm break-words whitespace-pre-line', done && 'text-muted line-through')}
+        className={cn('min-w-0 flex-1 cursor-text text-sm break-words whitespace-pre-line transition-colors', shownDone && 'text-muted line-through')}
       >
         <Linkified text={task.title} />
         {task.due_on ? (
@@ -580,6 +597,11 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
   async function toggle(task: LeadTask, isDone: boolean) {
     setLocal((list) => list.map((t) => (t.id === task.id ? { ...t, done_at: isDone ? new Date().toISOString() : null } : t)));
     if (isDone && pending.length === 1 && pending[0]!.id === task.id && total > 1) toast.success('Todas as tarefas concluídas. 🎉');
+    else if (isDone) {
+      toast.success(`Concluída: ${task.title.length > 60 ? `${task.title.slice(0, 60)}…` : task.title}`, {
+        action: { label: 'Anular', onClick: () => void toggle(task, false) },
+      });
+    }
     try {
       await api(`/tasks/${task.id}`, { method: 'PATCH', body: { done: isDone } });
     } catch (error) {

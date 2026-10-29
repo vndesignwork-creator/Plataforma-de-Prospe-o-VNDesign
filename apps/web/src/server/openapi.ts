@@ -120,6 +120,8 @@ import {
   SharePayloadSchema,
   SharedLeadDraftSchema,
   ProspectingQuerySchema,
+  RepliesQuerySchema,
+  RepliesSchema,
   ProspectingOutcomeSchema,
   ProspectingQueueSchema,
   ProspectingResultSchema,
@@ -1513,6 +1515,22 @@ export function getOpenApiDocument() {
           tags: ['Dashboard'],
           summary: 'Leads em "Sem interesse" por motivo (preço, já tem site, agora não, não responde, respondeu que não, outro)',
           responses: { '200': ok(data(z.array(LostReasonCountSchema))), ...common },
+        }),
+      },
+      '/replies': {
+        get: op({
+          tags: ['Email'],
+          summary: 'Respostas dos leads (caixa de entrada) dos últimos N dias e se ainda falta responder',
+          requestParams: { query: RepliesQuerySchema },
+          responses: { '200': ok(data(RepliesSchema)), ...common },
+        }),
+      },
+      '/leads/{id}/replies/handled': {
+        post: op({
+          tags: ['Email'],
+          summary: '"Já tratei": as respostas recebidas até agora deixam de estar por responder (ex.: respondeu-se pelo Gmail)',
+          requestParams: { path: leadId },
+          responses: { '200': ok(data(z.object({ handled_at: z.string() }))), ...withNotFound },
         }),
       },
       '/stats/emails': {

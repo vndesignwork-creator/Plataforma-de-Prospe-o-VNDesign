@@ -325,3 +325,22 @@ test('copiar o texto da tarefa (no lugar do lápis; editar = tocar no texto)', a
   await expect(page.getByText('Texto copiado.')).toBeVisible();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(title);
 });
+
+test('concluir uma tarefa: o visto e o risco veem-se antes de passar para Concluídas, com Anular', async ({ page }) => {
+  const lead = (await (await page.request.post('/api/v1/leads', { data: { company_name: `Concluir ${run}` } })).json()).data;
+  for (const title of ['Primeira', 'Segunda']) {
+    expect((await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title } })).status()).toBe(201);
+  }
+  await page.goto(`/leads/${lead.id}`);
+  const card = page.locator('#tarefas');
+  const box = card.getByRole('checkbox', { name: 'Concluir: Segunda' });
+  await box.click();
+  // Logo a seguir ao clique: marcada, ainda na lista por fazer.
+  await expect(box).toBeChecked();
+  await expect(card.getByRole('list', { name: 'Tarefas por fazer' }).getByText('Segunda')).toHaveCSS('text-decoration-line', 'line-through');
+  await expect(page.getByText('Concluída: Segunda')).toBeVisible();
+  await expect(card.getByRole('list', { name: 'Tarefas por fazer' }).getByText('Segunda')).toHaveCount(0);
+  // Anular: volta para as por fazer.
+  await page.getByRole('button', { name: 'Anular' }).click();
+  await expect(card.getByRole('list', { name: 'Tarefas por fazer' }).getByText('Segunda')).toBeVisible();
+});

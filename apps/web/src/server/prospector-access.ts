@@ -14,6 +14,8 @@ const RULES: Rule[] = [
   ['GET', /^\/me\/sessions$/],
   ['GET PATCH', /^\/me\/profile$/],
   ['GET', /^\/email-check$/],
+  ['GET', /^\/replies$/],
+  ['POST', new RegExp(`^/leads/${ID}/replies/handled$`)],
   ['POST DELETE', /^\/me\/avatar$/],
   ['GET', new RegExp(`^/avatars/${ID}$`)],
   ['DELETE', new RegExp(`^/me/sessions/${ID}$`)],

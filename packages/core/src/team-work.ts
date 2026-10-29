@@ -225,12 +225,13 @@ export function isCardHidden(layout: Partial<LeadCardLayout> | null | undefined,
 // -----------------------------------------------------------------------------
 // Cartões do Dashboard (dono/administrador)
 // -----------------------------------------------------------------------------
-export const DASHBOARD_CARDS = ['summary', 'today', 'hot', 'pipeline', 'projects', 'reconnect'] as const;
+export const DASHBOARD_CARDS = ['summary', 'today', 'hot', 'replies', 'pipeline', 'projects', 'reconnect'] as const;
 export type DashboardCard = (typeof DASHBOARD_CARDS)[number];
 export const DASHBOARD_CARD_LABELS: Record<DashboardCard, string> = {
   summary: 'Resumo (4 números)',
   today: 'Hoje',
   hot: 'Leads mais quentes',
+  replies: 'Respostas',
   pipeline: 'Pipeline',
   projects: 'Projetos',
   reconnect: 'Clientes antigos',

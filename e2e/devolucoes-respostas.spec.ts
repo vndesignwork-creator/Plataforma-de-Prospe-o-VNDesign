@@ -291,3 +291,50 @@ test('prospeção: separadores com contagens e "Falta email" calculado no servid
   await page.getByRole('tab', { name: /^Follow-ups/ }).click();
   await expect(page.getByRole('list', { name: 'Leads para contactar' }).getByRole('listitem', { name: new RegExp(`Com Email FU ${run}`) })).toBeVisible();
 });
+
+test('lista Respostas no Dashboard: por responder, Responder na conversa, Já tratei e ausências', async ({ page }) => {
+  await connectAccount(page);
+  const a = await createLead(page.request, { company_name: `Resposta A ${run}`, email: `geral@resp-a-${run}.pt`, status: 'contactado' });
+  const b = await createLead(page.request, { company_name: `Resposta B ${run}`, email: `geral@resp-b-${run}.pt`, status: 'contactado' });
+  const c = await createLead(page.request, { company_name: `Resposta C ${run}`, email: `geral@resp-c-${run}.pt`, status: 'contactado' });
+  await deliverToInbox(`Ana <geral@resp-a-${run}.pt>`, `Re: Proposta ${run}`, 'Olá! Pode enviar mais detalhes sobre o preço?');
+  await deliverToInbox(`Bruno <geral@resp-b-${run}.pt>`, `Re: Ideia ${run}`, 'Boa tarde, ligo-lhe amanhã.');
+  await deliverToInbox(`Carla <geral@resp-c-${run}.pt>`, 'Ausência', `Estou de férias até ${(() => { const d = new Date(Date.now() + 10 * 86_400_000); return `${d.getDate()}/${d.getMonth() + 1}`; })()}.`, 'Auto-Submitted: auto-replied\r\n');
+  await page.request.post('/api/v1/mail-account/check-replies');
+
+  const replies = (await (await page.request.get('/api/v1/replies')).json()).data as {
+    pending: number;
+    items: { lead: { id: string }; kind: string; handled: boolean; message_id: string | null }[];
+  };
+  const of = (id: string) => replies.items.find((i) => i.lead.id === id)!;
+  expect(of(a.id)).toMatchObject({ kind: 'reply', handled: false });
+  expect(of(b.id)).toMatchObject({ kind: 'reply', handled: false });
+  expect(of(c.id)).toMatchObject({ kind: 'auto' });
+
+  await page.goto('/dashboard');
+  const card = page.getByRole('list', { name: 'Respostas por responder' });
+  const rowA = card.getByRole('listitem', { name: new RegExp(`Resposta A ${run}`) });
+  await expect(rowA).toBeVisible();
+  await expect(card.getByRole('listitem', { name: new RegExp(`Resposta C ${run}`) })).toHaveCount(0);
+
+  // Responder na mesma conversa (Re: e In-Reply-To): deixa de estar por responder.
+  await rowA.getByRole('button', { name: 'Responder' }).click();
+  const dialog = page.getByRole('dialog', { name: new RegExp(`Responder a Resposta A ${run}`) });
+  await expect(dialog.getByLabel('Assunto')).toHaveValue(`Re: Proposta ${run}`);
+  await dialog.getByLabel('Mensagem').fill('Olá Ana,\n\nSegue em anexo o preço.\n\nCumprimentos');
+  await dialog.getByRole('button', { name: 'Enviar', exact: true }).click();
+  await expect(rowA).toHaveCount(0);
+
+  // "Já tratei" (respondeu pelo Gmail).
+  const rowB = card.getByRole('listitem', { name: new RegExp(`Resposta B ${run}`) });
+  await rowB.getByRole('button', { name: 'Já tratei' }).click();
+  await expect(rowB).toHaveCount(0);
+  const after = (await (await page.request.get('/api/v1/replies')).json()).data as { items: { lead: { id: string }; handled: boolean }[] };
+  expect(after.items.find((i) => i.lead.id === b.id)?.handled).toBe(true);
+
+  // "Todas": a ausência com a data de regresso.
+  await page.getByRole('tab', { name: /^Todas/ }).click();
+  const all = page.getByRole('list', { name: 'Todas as respostas' });
+  await expect(all.getByRole('listitem', { name: new RegExp(`Resposta C ${run}`) }).getByText(/Ausente até \d{2}\/\d{2}\/\d{4}/)).toBeVisible();
+  await expect(all.getByRole('listitem', { name: new RegExp(`Resposta A ${run}`) }).getByText('Respondida')).toBeVisible();
+});

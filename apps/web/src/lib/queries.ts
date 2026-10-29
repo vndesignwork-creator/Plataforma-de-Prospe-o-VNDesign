@@ -41,6 +41,7 @@ import type {
   LaunchCheckKey,
   ProspectingMode,
   ProspectingView,
+  Replies,
   ProspectingOutcome,
   LostReason,
   ProspectingQueue,
@@ -693,6 +694,23 @@ export function useRunLeadGenerationSchedule() {
 // -----------------------------------------------------------------------------
 // Email de envio
 // -----------------------------------------------------------------------------
+
+/** Lista "Respostas" (Dashboard): respostas dos leads dos últimos 14 dias. */
+export function useReplies(days = 14) {
+  return useQuery({
+    queryKey: ['replies', days],
+    queryFn: () => api<{ data: Replies }>('/replies', { query: { days } }).then((r) => r.data),
+  });
+}
+
+/** "Já tratei" num lead: as respostas que chegaram até agora deixam de estar por responder. */
+export function useMarkRepliesHandled() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (leadId: string) => api(`/leads/${leadId}/replies/handled`, { method: 'POST' }),
+    onSettled: () => void qc.invalidateQueries({ queryKey: ['replies'] }),
+  });
+}
 
 export function useMailAccount() {
   return useQuery({

@@ -564,6 +564,17 @@ Com a opção **Detetar respostas na caixa de entrada** ligada (Definições →
 - Usa a mesma palavra-passe de aplicação do Gmail (IMAP: `imap.gmail.com:993`). Hostinger: `imap.hostinger.com:993`. Outro serviço: indica o servidor IMAP.
 - **Verificar agora** lê logo a caixa. Se a leitura falhar (ex.: palavra-passe mudada), o erro aparece nessa secção.
 
+### Lista Respostas (Dashboard)
+
+O cartão **Respostas** do Dashboard junta o que os leads te responderam nos últimos 14 dias (detetado na caixa de entrada; ver acima):
+
+- **Por responder**: as respostas a que ainda não respondeste. **Todas**: também as respondidas, as respostas automáticas ("Ausente até 10/11/2026"), "Sem interesse" e "Pediu para não contactar".
+- **Responder** abre o email já com "Re: …" e na mesma conversa (o cliente vê-o como resposta); ao enviar, sai de *Por responder*.
+- **Abrir no Gmail** (contas Gmail) abre a conversa no Gmail.
+- **Já tratei** — respondeste noutro sítio (Gmail, telefone): deixa de estar por responder (para toda a equipa). Uma chamada registada ou um email enviado ao lead depois da resposta também conta como respondido.
+- A equipa de prospeção vê só as respostas dos seus leads. O cartão pode mudar de lugar ou esconder-se em **Organizar cartões**.
+- API: `GET /api/v1/replies?days=14` e `POST /api/v1/leads/{id}/replies/handled`.
+
 ### Verificar o email antes de enviar
 
 Ao escrever o email de um lead (formulário do lead e janela **Enviar email**), a plataforma confirma se o domínio existe e recebe emails (registo MX), sem enviar nada. Se não, aparece "O domínio “…” não existe / não recebe emails: confirma o endereço." Gmail, Outlook, Sapo e afins não precisam de verificação. Se o servidor não conseguir confirmar (DNS em baixo), não mostra nada. API: `GET /api/v1/email-check?email=…` (`status`: `ok`, `no_mail`, `no_domain`, `invalid` ou `unknown`).

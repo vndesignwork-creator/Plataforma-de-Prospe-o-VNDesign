@@ -132,7 +132,7 @@ test('sequência: o 1.º email agenda o follow-up 1; “Enviar follow-up” resp
   expect(current).toMatchObject({
     status: 'contactado',
     next_action_text: 'Follow-up 1 de 3 por email',
-    next_action_on: plusDays(today(), 3),
+    next_action_on: workday(plusDays(today(), 3)),
     follow_up_count: 0,
   });
 

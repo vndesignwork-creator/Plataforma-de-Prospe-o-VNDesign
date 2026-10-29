@@ -38,6 +38,7 @@ import { Linkified } from '@/lib/linkify';
 import { useBilling, useDashboard, useProjects, useReschedule, useRole, useSettings, useToday } from '@/lib/queries';
 import { MyTeamTiles } from './team-stats';
 import { ReconnectCard } from './reconnect-card';
+import { RepliesCard } from './replies-card';
 import { CardLayoutButton, DASHBOARD_BOARD, useCardLayout, visibleCards } from '@/components/leads/card-layout';
 import { cn } from '@/lib/utils';
 import { DueBadge, ProgressBar, StageLabel } from '@/components/projects/project-bits';
@@ -541,6 +542,7 @@ function ProspectorDashboard() {
         <TodayCard />
         <HotLeadsCard />
       </div>
+      <RepliesCard />
     </div>
   );
 }
@@ -607,11 +609,12 @@ function OwnerDashboard() {
         <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
           <TodayCard className="lg:col-start-1 lg:row-start-1" />
           <HotLeadsCard className="lg:col-start-2 lg:row-start-1" />
+          <RepliesCard className="lg:col-span-2 lg:row-start-2" />
           <PipelineCard
             byStatus={data.by_status}
-            className={cn('max-lg:order-last lg:col-start-1 lg:row-start-2', !projectsOn && 'lg:col-span-2')}
+            className={cn('max-lg:order-last lg:col-start-1 lg:row-start-3', !projectsOn && 'lg:col-span-2')}
           />
-          <ProjectsCard className="lg:col-start-2 lg:row-start-2" />
+          <ProjectsCard className="lg:col-start-2 lg:row-start-3" />
         </div>
         {projectsOn ? <ReconnectCard /> : null}
         {organize}
@@ -624,11 +627,12 @@ function OwnerDashboard() {
     summary,
     today: <TodayCard />,
     hot: <HotLeadsCard />,
+    replies: <RepliesCard />,
     pipeline: <PipelineCard byStatus={data.by_status} />,
     projects: <ProjectsCard />,
     reconnect: <ReconnectCard />,
   };
-  const wide = new Set<DashboardCard>(['summary', 'reconnect']);
+  const wide = new Set<DashboardCard>(['summary', 'replies', 'reconnect']);
   const blocks: DashboardCard[][] = [];
   for (const key of visibleCards(DASHBOARD_BOARD, layout, (k) => available.includes(k))) {
     const last = blocks[blocks.length - 1];

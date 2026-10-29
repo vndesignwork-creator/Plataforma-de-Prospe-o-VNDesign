@@ -52,3 +52,19 @@ describe('prospeção: quem se pode contactar', () => {
     expect(prospectingReachable({ email: null, phone: '912345678', email_bounced_at: null }, 'email')).toBe(false);
   });
 });
+
+describe('lista Respostas', () => {
+  it('tipo de resposta, por responder e ligação ao Gmail', async () => {
+    const { replyKind, needsAnswer, gmailSearchUrl } = await import('../src');
+    expect(replyKind({})).toBe('reply');
+    expect(replyKind({ auto: true })).toBe('auto');
+    expect(replyKind({ intent: 'unsubscribe' })).toBe('unsubscribe');
+    expect(replyKind({ intent: 'not_interested' })).toBe('not_interested');
+    expect(needsAnswer({ kind: 'reply', handled: false })).toBe(true);
+    expect(needsAnswer({ kind: 'reply', handled: true })).toBe(false);
+    expect(needsAnswer({ kind: 'auto', handled: false })).toBe(false);
+    expect(gmailSearchUrl('<abc.123@mail.gmail.com>')).toBe('https://mail.google.com/mail/u/0/#search/rfc822msgid%3Aabc.123%40mail.gmail.com');
+    expect(gmailSearchUrl('ana@x.pt|2026-10-01')).toBeNull();
+    expect(gmailSearchUrl(null)).toBeNull();
+  });
+});

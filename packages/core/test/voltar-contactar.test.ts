@@ -101,9 +101,10 @@ describe('guardar contacto (vCard)', () => {
 
 describe('cartões do Dashboard', () => {
   it('ordem escolhida e os novos no sítio de sempre', () => {
-    // Ordem guardada antes de existir o cartão "Clientes antigos": entra a seguir aos Projetos.
+    // Ordem guardada antes de existirem "Respostas" e "Clientes antigos": entram a seguir aos Leads mais quentes e aos Projetos.
     expect(arrangeKeys(DASHBOARD_CARDS, { order: ['hot', 'today', 'summary', 'projects', 'pipeline'] })).toEqual([
       'hot',
+      'replies',
       'today',
       'summary',
       'projects',
