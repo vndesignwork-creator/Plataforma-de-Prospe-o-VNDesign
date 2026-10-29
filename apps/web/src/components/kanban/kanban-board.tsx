@@ -299,7 +299,7 @@ function ColumnNav({
   return (
     <nav
       aria-label="Colunas do Kanban"
-      className="sticky top-14 z-30 -mx-4 -mt-2 mb-1 border-b border-border bg-bg/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 lg:top-0 lg:-mx-8 lg:px-8"
+      className="sticky top-14 z-30 -mx-4 mt-2 mb-1 border-b border-border bg-bg/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 lg:top-0 lg:-mx-8 lg:px-8"
     >
       <ul ref={listRef} className="relative flex gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {statuses.map((status) => {
