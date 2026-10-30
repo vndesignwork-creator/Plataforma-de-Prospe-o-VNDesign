@@ -156,3 +156,20 @@ test('ficha: resumo, faixa "Próximo passo" (Feito), campos vazios recolhidos, o
   await page.getByRole('navigation', { name: 'Contactar' }).getByRole('link', { name: 'Email' }).click();
   await expect(page.getByRole('region', { name: 'Contactar' })).toBeInViewport();
 });
+
+test('ficha: "Contactado" num lead por contactar e "Anular" volta ao estado inicial', async ({ page }) => {
+  const post = async (data: object) => (await (await page.request.post('/api/v1/leads', { data })).json()).data;
+  const lead = await post({ company_name: `Desfazer ${run}` });
+  expect((await page.request.patch(`/api/v1/leads/${lead.id}`, { data: { next_action_on: '2026-10-26', next_action_text: 'Primeiro contacto' } })).status()).toBe(200);
+  await page.goto(`/leads/${lead.id}`);
+  const step = page.getByRole('region', { name: 'Próximo passo' });
+  await step.getByRole('button', { name: /^Marcar como contactado/ }).click();
+  const toastBox = page.locator('[data-sonner-toast]').filter({ hasText: 'passou a Contactado' });
+  await expect(toastBox).toBeVisible();
+  await expect(step.getByText(/Enviar follow-up/)).toBeVisible();
+  await toastBox.getByRole('button', { name: 'Anular' }).click();
+  await expect(page.getByText(new RegExp(`#${lead.number} voltou a Identificado\\.`))).toBeVisible();
+  await expect(step.getByText(/Primeiro contacto · \w{3} 26\/10\/2026/)).toBeVisible();
+  const after = (await (await page.request.get(`/api/v1/leads/${lead.id}`)).json()).data;
+  expect(after).toMatchObject({ status: 'identificado', next_action_text: 'Primeiro contacto', next_action_on: '2026-10-26', first_contact_on: null, last_follow_up_on: null });
+});

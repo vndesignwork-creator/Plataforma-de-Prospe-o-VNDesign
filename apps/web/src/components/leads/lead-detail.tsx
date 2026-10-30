@@ -238,8 +238,8 @@ function NextStepBar({ lead }: { lead: Lead }) {
     // Em conversa sem próximo passo: fica esquecido (o mesmo aviso do "Hoje").
     if (!(STALLED_STATUSES as readonly string[]).includes(lead.status)) return null;
     return (
-      <section aria-label="Próximo passo" className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-warning/50 px-4 py-3">
-        <CalendarClock className="h-5 w-5 shrink-0 text-warning" aria-hidden />
+      <section aria-label="Próximo passo" className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-border px-3 py-2">
+        <CalendarClock className="h-4 w-4 shrink-0 text-warning" aria-hidden />
         <p className="min-w-0 flex-1 basis-56 text-sm">
           <span className="font-medium text-warning">Sem próximo passo.</span>{' '}
           <span className="text-muted">Está em conversa: marca o follow-up para não ficar esquecido.</span>
@@ -272,23 +272,20 @@ function NextStepBar({ lead }: { lead: Lead }) {
   }
   const due = lead.next_action_on;
   const overdue = due !== null && due < today;
+  // Discreta: uma linha, sem fundo; só a data fica a vermelho quando está em atraso.
   return (
-    <section
-      aria-label="Próximo passo"
-      className={cn(
-        'mb-5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-4 py-3',
-        overdue ? 'border-danger/40 bg-danger-soft' : 'border-border bg-surface',
-      )}
-    >
-      <CalendarClock className={cn('h-5 w-5 shrink-0', overdue ? 'text-danger' : 'text-accent-text')} aria-hidden />
-      <div className="min-w-0 flex-1">
-        <p className="text-xs text-muted">Próximo passo</p>
-        <p className={cn('text-sm font-medium', overdue && 'text-danger')}>
-          {lead.next_action_text ?? 'Ação'}
-          {due ? ` · ${WEEKDAYS[new Date(`${due}T12:00:00Z`).getUTCDay()]} ${formatDate(due)}` : ''}
-          {due ? <span className={cn('font-normal', overdue ? 'text-danger' : 'text-muted')}> ({overdue ? `em atraso, ${relativeDay(due, today)}` : relativeDay(due, today)})</span> : null}
-        </p>
-      </div>
+    <section aria-label="Próximo passo" className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-border px-3 py-2">
+      <p className="flex min-w-0 flex-1 basis-56 items-center gap-2 text-sm">
+        <CalendarClock className={cn('h-4 w-4 shrink-0', overdue ? 'text-danger' : 'text-muted')} aria-hidden />
+        <span className="min-w-0">
+          <span className="text-muted">Próximo passo: </span>
+          <span className="font-medium">
+            {lead.next_action_text ?? 'Ação'}
+            {due ? ` · ${WEEKDAYS[new Date(`${due}T12:00:00Z`).getUTCDay()]} ${formatDate(due)}` : ''}
+          </span>
+          {due ? <span className={overdue ? 'text-danger' : 'text-muted'}> ({overdue ? `em atraso, ${relativeDay(due, today)}` : relativeDay(due, today)})</span> : null}
+        </span>
+      </p>
       <div className="flex flex-wrap items-center gap-2">
         <FollowUpEmailButton lead={lead} />
         <FollowUpActions lead={lead} quickDone />

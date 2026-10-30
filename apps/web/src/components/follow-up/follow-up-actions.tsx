@@ -1,12 +1,12 @@
 'use client';
 
-import { formatDate, type Lead } from '@vndesign/core';
+import { LEAD_STATUS_META, formatDate, type Lead } from '@vndesign/core';
 import { AlarmClock, Check, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownSeparator, DropdownTrigger } from '@/components/ui/dropdown';
-import { errorMessage } from '@/lib/api-client';
-import { useFollowUp, useReschedule, useSettings } from '@/lib/queries';
+import { api, errorMessage } from '@/lib/api-client';
+import { useFollowUp, useInvalidateLead, useReschedule, useSettings } from '@/lib/queries';
 
 /**
  * Concluir ou adiar a próxima ação de um lead.
@@ -16,6 +16,7 @@ import { useFollowUp, useReschedule, useSettings } from '@/lib/queries';
 export function FollowUpActions({ lead, compact, quickDone }: { lead: Lead; compact?: boolean; quickDone?: boolean }) {
   const followUp = useFollowUp(lead.id);
   const reschedule = useReschedule();
+  const invalidate = useInvalidateLead();
   const { data: settings } = useSettings();
   const days = settings?.follow_up_days ?? 3;
   // Ainda não contactado: "Feito" = primeiro contacto feito (o lead passa a Contactado).
@@ -41,7 +42,24 @@ export function FollowUpActions({ lead, compact, quickDone }: { lead: Lead; comp
         });
       } else {
         const what = first ? `#${lead.number} passou a Contactado.` : 'Feito.';
-        toast.success(updated.next_action_on ? `${what} Próximo follow-up a ${formatDate(updated.next_action_on)}.` : `${what} Sem próxima ação.`);
+        // "Anular": o lead volta exatamente como estava (estado, próximo passo e datas de contacto).
+        const previous = {
+          status: lead.status,
+          next_action_on: lead.next_action_on,
+          next_action_text: lead.next_action_text,
+          first_contact_on: lead.first_contact_on,
+          last_follow_up_on: lead.last_follow_up_on,
+        };
+        toast.success(updated.next_action_on ? `${what} Próximo follow-up a ${formatDate(updated.next_action_on)}.` : `${what} Sem próxima ação.`, {
+          action: {
+            label: 'Anular',
+            onClick: () =>
+              void api(`/leads/${lead.id}`, { method: 'PATCH', body: previous })
+                .then(() => toast.success(first ? `#${lead.number} voltou a ${LEAD_STATUS_META[lead.status].label}.` : 'Anulado: o próximo passo voltou ao que era.'))
+                .catch((e: unknown) => toast.error(errorMessage(e)))
+                .finally(() => invalidate(lead.id)),
+          },
+        });
       }
     } catch (e) {
       toast.error(errorMessage(e));
@@ -82,6 +100,7 @@ export function FollowUpActions({ lead, compact, quickDone }: { lead: Lead; comp
     {quickDone ? (
       <Button
         size="sm"
+        variant="outline"
         onClick={() => void run('done', days)}
         disabled={followUp.isPending}
         aria-label={`${first ? 'Marcar como contactado' : 'Marcar como feito'} — follow-up em ${days} dias`}
