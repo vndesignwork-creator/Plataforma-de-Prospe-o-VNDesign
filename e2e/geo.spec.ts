@@ -47,6 +47,7 @@ test('aparece nas IAs? perguntas editáveis, resultado, concorrentes e frase par
   const lead = await createLead(page.request, { company_name: name, city: 'Sintra' });
 
   await page.goto(`/leads/${lead.id}`);
+  await page.getByRole('tablist', { name: 'Site e presença online' }).getByRole('tab', { name: 'Aparece nas IAs', exact: true }).click();
   const card = page.getByRole('region', { name: 'Aparece nas IAs?' });
   await card.getByRole('button', { name: 'Testar' }).click();
   // Sugestões a partir da cidade (sem setor); editáveis.

@@ -35,6 +35,7 @@ test('kit GEO: perfil do Google com concorrentes, dados estruturados, perguntas 
     .toBe('done');
 
   await page.goto(`/leads/${lead.id}`);
+  await page.getByRole('tablist', { name: 'Site e presença online' }).getByRole('tab', { name: 'Kit GEO', exact: true }).click();
   const kit = page.getByRole('region', { name: 'Kit GEO' });
   await kit.getByRole('button', { name: 'Ver no Google' }).click();
   const profiles = kit.getByRole('list', { name: 'Perfis do Google' });

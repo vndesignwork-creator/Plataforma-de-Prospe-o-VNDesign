@@ -18,6 +18,12 @@ async function createLead(request: APIRequestContext, data: Record<string, unkno
   return (await res.json()).data as { id: string; number: number };
 }
 
+/** "Site e presença online": um cartão de cada vez (Diagnóstico | Aparece nas IAs | Kit GEO). */
+const SITE_TABS: Record<string, string> = { 'Diagnóstico do site': 'Diagnóstico', 'Aparece nas IAs?': 'Aparece nas IAs', 'Kit GEO': 'Kit GEO' };
+async function showSiteCard(page: import('@playwright/test').Page, label: string) {
+  if (SITE_TABS[label]) await page.getByRole('tablist', { name: 'Site e presença online' }).getByRole('tab', { name: SITE_TABS[label], exact: true }).click();
+}
+
 test('ficha de cliente: cartões de prospeção recolhidos; num lead por contactar, abertos', async ({ page }) => {
   test.setTimeout(90_000);
   const client = await createLead(page.request, { company_name: `Cliente Limpo ${run}`, status: 'cliente', services: ['landing_page'] });
@@ -26,17 +32,25 @@ test('ficha de cliente: cartões de prospeção recolhidos; num lead por contact
 
   await page.goto(`/leads/${client.id}`);
   await expect(page.locator('#projeto')).toBeVisible({ timeout: 60_000 });
-  for (const label of cards) await expect(page.getByRole('button', { name: `Expandir: ${label}` })).toBeVisible();
+  for (const label of cards) {
+    await showSiteCard(page, label);
+    await expect(page.getByRole('button', { name: `Expandir: ${label}` })).toBeVisible();
+  }
   await expect(page.getByRole('heading', { name: 'Análise automática do site' })).toHaveCount(0);
 
   await page.goto(`/leads/${prospect.id}`);
-  for (const label of cards) await expect(page.getByRole('button', { name: `Recolher: ${label}` })).toBeVisible();
+  for (const label of cards) {
+    await showSiteCard(page, label);
+    await expect(page.getByRole('button', { name: `Recolher: ${label}` })).toBeVisible();
+  }
 
   // Abrir um cartão num cliente não muda os leads por contactar (memória à parte).
   await page.goto(`/leads/${client.id}`);
+  await showSiteCard(page, 'Kit GEO');
   await page.getByRole('button', { name: 'Expandir: Kit GEO' }).click();
   await expect(page.getByRole('tab', { name: 'Perfil do Google' })).toBeVisible();
   await page.goto(`/leads/${prospect.id}`);
+  await showSiteCard(page, 'Diagnóstico do site');
   await expect(page.getByRole('button', { name: 'Recolher: Diagnóstico do site' })).toBeVisible();
 });
 

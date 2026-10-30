@@ -56,6 +56,12 @@ test('diagnóstico do site: recolhido quando o lead só tem serviços fora do We
   await expect(page.getByText('Não é relevante para os serviços escolhidos.')).toHaveCount(0);
 });
 
+/** "Site e presença online": um cartão de cada vez (Diagnóstico | Aparece nas IAs | Kit GEO). */
+const SITE_TABS: Record<string, string> = { 'Diagnóstico do site': 'Diagnóstico', 'Aparece nas IAs?': 'Aparece nas IAs', 'Kit GEO': 'Kit GEO' };
+async function showSiteCard(page: import('@playwright/test').Page, label: string) {
+  if (SITE_TABS[label]) await page.getByRole('tablist', { name: 'Site e presença online' }).getByRole('tab', { name: SITE_TABS[label], exact: true }).click();
+}
+
 test('cartões da ficha (diagnóstico, IAs, Kit GEO, Contactar, linha do tempo): recolher fica lembrado neste browser', async ({ page }) => {
   const post = async (data: object) => (await (await page.request.post('/api/v1/leads', { data })).json()).data;
   const a = await post({ company_name: `Recolher A ${run}`, services: ['landing_page'], pagespeed: 42, problems: 'Sem HTTPS' });
@@ -63,6 +69,7 @@ test('cartões da ficha (diagnóstico, IAs, Kit GEO, Contactar, linha do tempo):
 
   await page.goto(`/leads/${a.id}`);
   for (const label of ['Diagnóstico do site', 'Aparece nas IAs?', 'Kit GEO', 'Contactar', 'Linha do tempo']) {
+    await showSiteCard(page, label);
     await page.getByRole('button', { name: `Recolher: ${label}` }).click();
     await expect(page.getByRole('button', { name: `Expandir: ${label}` })).toHaveAttribute('aria-expanded', 'false');
   }
@@ -73,15 +80,21 @@ test('cartões da ficha (diagnóstico, IAs, Kit GEO, Contactar, linha do tempo):
   await expect(page.getByRole('list', { name: 'Atividade do lead' })).toHaveCount(0);
   await expect(page.getByText(/1 registo · último: Lead criado/)).toBeVisible();
   // Recolhido, o diagnóstico mostra o resumo.
+  await showSiteCard(page, 'Diagnóstico do site');
   await expect(page.getByText('PageSpeed 42 · Sem HTTPS')).toBeVisible();
 
   // Noutro lead continua recolhido; expandir volta a mostrar.
   await page.goto(`/leads/${b.id}`);
-  await expect(page.getByRole('button', { name: 'Expandir: Kit GEO' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Análise automática do site' })).toHaveCount(0);
-  for (const label of ['Diagnóstico do site', 'Aparece nas IAs?', 'Kit GEO', 'Contactar', 'Linha do tempo']) await page.getByRole('button', { name: `Expandir: ${label}` }).click();
-  await expect(page.getByRole('heading', { name: 'Análise automática do site' })).toBeVisible();
+  await showSiteCard(page, 'Kit GEO');
+  await expect(page.getByRole('button', { name: 'Expandir: Kit GEO' })).toBeVisible();
+  for (const label of ['Diagnóstico do site', 'Aparece nas IAs?', 'Kit GEO', 'Contactar', 'Linha do tempo']) {
+    await showSiteCard(page, label);
+    await page.getByRole('button', { name: `Expandir: ${label}` }).click();
+  }
   await expect(page.getByRole('tab', { name: 'Perfil do Google' })).toBeVisible();
+  await showSiteCard(page, 'Diagnóstico do site');
+  await expect(page.getByRole('heading', { name: 'Análise automática do site' })).toBeVisible();
   await expect(page.locator('#script-body')).toBeVisible();
   await expect(page.getByRole('list', { name: 'Atividade do lead' })).toBeVisible();
 });
@@ -117,4 +130,29 @@ test('dashboard: a página acaba nos cartões (sem espaço vazio por baixo, mesm
     main: Math.ceil((document.querySelector('main')?.getBoundingClientRect().bottom ?? 0) + window.scrollY),
   }));
   expect(doc).toBeLessThanOrEqual(Math.max(main, inner) + 2);
+});
+
+test('ficha: resumo, faixa "Próximo passo" (Feito), campos vazios recolhidos, o que falta e Email → Contactar', async ({ page }) => {
+  const post = async (data: object) => (await (await page.request.post('/api/v1/leads', { data })).json()).data;
+  const lead = await post({ company_name: `Ficha Nova ${run}`, city: 'Sintra', email: `geral@ficha-${run}.invalid`, status: 'contactado', services: ['landing_page'] });
+  await page.goto(`/leads/${lead.id}`);
+  await expect(page.getByText(/^Sintra · Landing/)).toBeVisible();
+
+  // Próximo passo: o follow-up automático, com "Feito" ali mesmo.
+  const step = page.getByRole('region', { name: 'Próximo passo' });
+  await expect(step.getByText(/Enviar follow-up · \w{3} \d{2}\/\d{2}\/\d{4}/)).toBeVisible();
+  await step.getByRole('button', { name: /^Marcar como feito — follow-up em \d+ dias$/ }).click();
+  await expect(page.getByText(/^Feito\. Próximo follow-up a \d{2}\/\d{2}\/\d{4}\.$/)).toBeVisible();
+
+  // Negócio: os vazios ficam recolhidos.
+  await expect(page.getByText('Sugerido em', { exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: /^Mostrar campos vazios \(\d+\)$/ }).click();
+  await expect(page.getByText('Sugerido em', { exact: true })).toBeVisible();
+
+  // Empresa e contacto: o que falta, com a pessoa de contacto em destaque.
+  await expect(page.getByRole('link', { name: 'Pessoa de contacto' })).toHaveAttribute('href', /\/editar$/);
+
+  // Email (topo) leva ao cartão Contactar.
+  await page.getByRole('navigation', { name: 'Contactar' }).getByRole('link', { name: 'Email' }).click();
+  await expect(page.getByRole('region', { name: 'Contactar' })).toBeInViewport();
 });

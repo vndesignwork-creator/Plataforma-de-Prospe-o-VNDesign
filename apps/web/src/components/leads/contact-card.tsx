@@ -314,7 +314,7 @@ export function ContactCard({ lead }: { lead: Lead }) {
     : 'Email, WhatsApp ou chamada com os dados deste lead: parte de um modelo, do email guardado ou da IA, ajusta e envia.';
 
   return (
-    <Card role="region" aria-label="Contactar">
+    <Card id="contactar" role="region" aria-label="Contactar" className="scroll-mt-20">
       <CardHeader
         title="Contactar"
         description={<span className={collapsed ? 'line-clamp-1' : undefined}>{description}</span>}

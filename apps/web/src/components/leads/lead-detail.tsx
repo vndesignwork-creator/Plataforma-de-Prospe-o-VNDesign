@@ -8,6 +8,8 @@ import {
   formatDate,
   formatDateTime,
   isSocialUrl,
+  serviceLabel,
+  STALLED_STATUSES,
   todayIso,
   type Lead,
   type LeadStatus,
@@ -22,6 +24,8 @@ import {
 import {
   Archive,
   ArchiveRestore,
+  BellRing,
+  CalendarClock,
   Edit3,
   ExternalLink,
   FileText,
@@ -34,6 +38,7 @@ import {
   MoreHorizontal,
   Pin,
   Phone,
+  Plus,
   UserPlus,
   ShieldOff,
   Trash2,
@@ -46,7 +51,8 @@ import { PageHeader } from '@/components/layout/page-header';
 import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
-import { CollapseButton, useProspectingCollapsed } from '@/components/ui/collapse';
+import { CollapseButton, setCollapsedKeys, useProspectingCollapsed } from '@/components/ui/collapse';
+import { DateMenu } from '@/components/ui/date-menu';
 import { Dialog } from '@/components/ui/dialog';
 import { DropdownContent, DropdownItem, DropdownRoot, DropdownSeparator, DropdownTrigger } from '@/components/ui/dropdown';
 import { Input, Select } from '@/components/ui/input';
@@ -61,6 +67,7 @@ import {
   useLeads,
   useLeadTasks,
   useMe,
+  useReschedule,
   useSettings,
   useTeamNames,
   useUpdateLead,
@@ -104,7 +111,7 @@ import { ProjectToggle } from '@/components/projects/project-toggle';
 
 function Row({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
-    <div className={cn('grid grid-cols-[9rem_minmax(0,1fr)] gap-3 py-1.5 text-sm sm:grid-cols-[11rem_minmax(0,1fr)]', className)}>
+    <div className={cn('grid grid-cols-[8.5rem_minmax(0,1fr)] gap-3 py-1.5 text-sm sm:grid-cols-[10rem_minmax(0,1fr)] md:grid-cols-[8.5rem_minmax(0,1fr)]', className)}>
       <dt className="text-muted">{label}</dt>
       <dd className="min-w-0 break-words">{children}</dd>
     </div>
@@ -153,7 +160,7 @@ function QuickContact({ lead, whatsappMessages }: { lead: Lead; whatsappMessages
     lead.email ? { key: 'email', href: `mailto:${lead.email}`, label: 'Email', icon: Mail, external: false } : null,
     lead.website ? { key: 'site', href: lead.website, label: 'Site', icon: Globe, external: true } : null,
   ].filter((l) => l !== null);
-  const classes = buttonClasses('outline', 'sm', 'w-full justify-center pointer-coarse:min-h-11');
+  const classes = buttonClasses('outline', 'sm', 'w-full justify-center whitespace-nowrap pointer-coarse:min-h-11');
   return (
     <nav aria-label="Contactar" className="mb-5 -mt-2">
       <ul className="grid grid-cols-[repeat(auto-fit,minmax(5.5rem,1fr))] gap-2 sm:flex sm:flex-wrap">
@@ -162,6 +169,25 @@ function QuickContact({ lead, whatsappMessages }: { lead: Lead; whatsappMessages
             {/* WhatsApp com mensagens prontas (desliga-se em Definições → Funcionalidades). */}
             {key === 'wa' && whatsappMessages ? (
               <WhatsAppMenu lead={lead} className={classes} />
+            ) : key === 'email' ? (
+              // Email: vai ao cartão "Contactar" (o email pronto a rever e enviar); sem ele, abre o programa de email.
+              <a
+                href={href}
+                onClick={(e) => {
+                  const card = document.getElementById('contactar');
+                  if (!card) return;
+                  e.preventDefault();
+                  setCollapsedKeys([lead.status === 'cliente' ? 'contactar:cliente' : 'contactar'], false);
+                  requestAnimationFrame(() => {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    card.querySelector<HTMLElement>('#script-subject, #script-template')?.focus({ preventScroll: true });
+                  });
+                }}
+                className={classes}
+              >
+                <Icon className="h-4 w-4 text-accent-text" aria-hidden />
+                {label}
+              </a>
             ) : (
               <a href={href} {...(external ? { target: '_blank', rel: 'noreferrer' } : {})} className={classes}>
                 <Icon className="h-4 w-4 text-accent-text" aria-hidden />
@@ -180,12 +206,172 @@ function QuickContact({ lead, whatsappMessages }: { lead: Lead; whatsappMessages
           <li>
             <button type="button" onClick={() => saveContact(lead)} className={classes} title="Guarda a empresa, o contacto, o telefone e o email nos contactos do telemóvel ou do computador">
               <UserPlus className="h-4 w-4 text-accent-text" aria-hidden />
-              Guardar contacto
+              {/* Telemóvel: "Guardar" (o botão fica numa linha). */}
+              <span className="sm:hidden">Guardar</span>
+              <span className="hidden sm:inline">Guardar contacto</span>
             </button>
           </li>
         ) : null}
       </ul>
     </nav>
+  );
+}
+
+const WEEKDAYS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+
+/** "hoje", "amanhã", "daqui a 3 dias", "há 2 dias". */
+function relativeDay(due: string, today: string): string {
+  const days = Math.round((Date.parse(`${due}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`)) / 86_400_000);
+  if (days === 0) return 'hoje';
+  if (days === 1) return 'amanhã';
+  if (days === -1) return 'ontem';
+  return days > 0 ? `daqui a ${days} dias` : `há ${-days} dias`;
+}
+
+/** Faixa no topo da ficha: o próximo passo, quando é, e Feito / Follow-up ▾ / Enviar follow-up ali mesmo. */
+function NextStepBar({ lead }: { lead: Lead }) {
+  const reschedule = useReschedule();
+  const invalidate = useInvalidateLead();
+  if (lead.anonymized_at) return null;
+  const today = todayIso();
+  if (!lead.next_action_on && !lead.next_action_text) {
+    // Em conversa sem próximo passo: fica esquecido (o mesmo aviso do "Hoje").
+    if (!(STALLED_STATUSES as readonly string[]).includes(lead.status)) return null;
+    return (
+      <section aria-label="Próximo passo" className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-warning/50 px-4 py-3">
+        <CalendarClock className="h-5 w-5 shrink-0 text-warning" aria-hidden />
+        <p className="min-w-0 flex-1 basis-56 text-sm">
+          <span className="font-medium text-warning">Sem próximo passo.</span>{' '}
+          <span className="text-muted">Está em conversa: marca o follow-up para não ficar esquecido.</span>
+        </p>
+        <DateMenu
+          today={today}
+          heading="Marcar o follow-up para"
+          triggerClassName={buttonClasses('outline', 'sm')}
+          label={
+            <>
+              <BellRing className="h-3.5 w-3.5" aria-hidden /> Marcar follow-up
+            </>
+          }
+          onPick={(date) => {
+            if (!date) return;
+            reschedule.mutate(
+              { leads: [{ id: lead.id, next_action_on: date }] },
+              {
+                onSuccess: () => {
+                  invalidate(lead.id);
+                  toast.success(`Follow-up marcado para ${formatDate(date)}.`);
+                },
+                onError: (e) => toast.error(errorMessage(e)),
+              },
+            );
+          }}
+        />
+      </section>
+    );
+  }
+  const due = lead.next_action_on;
+  const overdue = due !== null && due < today;
+  return (
+    <section
+      aria-label="Próximo passo"
+      className={cn(
+        'mb-5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-4 py-3',
+        overdue ? 'border-danger/40 bg-danger-soft' : 'border-border bg-surface',
+      )}
+    >
+      <CalendarClock className={cn('h-5 w-5 shrink-0', overdue ? 'text-danger' : 'text-accent-text')} aria-hidden />
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-muted">Próximo passo</p>
+        <p className={cn('text-sm font-medium', overdue && 'text-danger')}>
+          {lead.next_action_text ?? 'Ação'}
+          {due ? ` · ${WEEKDAYS[new Date(`${due}T12:00:00Z`).getUTCDay()]} ${formatDate(due)}` : ''}
+          {due ? <span className={cn('font-normal', overdue ? 'text-danger' : 'text-muted')}> ({overdue ? `em atraso, ${relativeDay(due, today)}` : relativeDay(due, today)})</span> : null}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <FollowUpEmailButton lead={lead} />
+        <FollowUpActions lead={lead} quickDone />
+      </div>
+    </section>
+  );
+}
+
+/** Campos em falta: atalhos para os acrescentar (na edição do lead). */
+function MissingFields({ lead, items }: { lead: Lead; items: { label: string; important?: boolean; hint?: string }[] }) {
+  if (!items.length || lead.anonymized_at) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3">
+      <span className="text-xs text-muted">Falta:</span>
+      {items.map((i) => (
+        <Link
+          key={i.label}
+          href={leadPath(lead, '/editar')}
+          title={i.hint}
+          className={cn(
+            'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs hover:border-accent hover:text-fg pointer-coarse:py-1.5',
+            i.important ? 'border-warning/50 bg-warning-soft text-warning' : 'border-border text-muted',
+          )}
+        >
+          <Plus className="h-3 w-3" aria-hidden /> {i.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+const SITE_TABS = [
+  { id: 'diagnostico', label: 'Diagnóstico' },
+  { id: 'ias', label: 'Aparece nas IAs' },
+  { id: 'geo', label: 'Kit GEO' },
+] as const;
+type SiteTab = (typeof SITE_TABS)[number]['id'];
+const SITE_TAB_KEY = 'vnd.ficha.site';
+
+/** Site e presença online: diagnóstico, "Aparece nas IAs?" e Kit GEO, um de cada vez (o separador fica lembrado). */
+function SitePresence({ lead }: { lead: Lead }) {
+  const [tab, setTab] = useState<SiteTab>('diagnostico');
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SITE_TAB_KEY) as SiteTab | null;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- só depois de montar (localStorage)
+      if (saved && SITE_TABS.some((t) => t.id === saved)) setTab(saved);
+    } catch {
+      // sem localStorage: começa no Diagnóstico
+    }
+  }, []);
+  function choose(next: SiteTab) {
+    setTab(next);
+    try {
+      localStorage.setItem(SITE_TAB_KEY, next);
+    } catch {
+      // ignora
+    }
+  }
+  if (lead.anonymized_at) return <SiteDiagnosisCard lead={lead} />;
+  return (
+    <section aria-labelledby="site-presenca" className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="site-presenca" className="text-xs font-medium tracking-wide text-muted uppercase">
+          Site e presença online
+        </h2>
+        <div role="tablist" aria-label="Site e presença online" className="inline-flex h-9 max-w-full items-center overflow-x-auto rounded-lg border border-border-input bg-surface-2 p-0.5 [scrollbar-width:none]">
+          {SITE_TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              onClick={() => choose(t.id)}
+              className={cn('inline-flex h-full shrink-0 items-center rounded-md px-3 text-sm whitespace-nowrap', tab === t.id ? 'bg-surface font-medium shadow-sm' : 'text-muted hover:text-fg')}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {tab === 'diagnostico' ? <SiteDiagnosisCard lead={lead} /> : tab === 'ias' ? <AiVisibilityCard lead={lead} /> : <GeoKitCard lead={lead} />}
+    </section>
   );
 }
 
@@ -244,6 +430,9 @@ export function LeadDetail({ id }: { id: string }) {
   // "Sem interesse": pergunta primeiro o motivo.
   const [askLost, setAskLost] = useState(false);
   const cardLayout = useCardLayout();
+  const catalog = useServiceCatalog();
+  const { data: team } = useTeamNames();
+  const [showEmpty, setShowEmpty] = useState(false);
 
   if (isLoading) {
     return (
@@ -262,9 +451,6 @@ export function LeadDetail({ id }: { id: string }) {
       </EmptyState>
     );
   }
-
-  const today = todayIso();
-  const overdue = lead.next_action_on !== null && lead.next_action_on < today;
 
   async function changeStatus(status: LeadStatus, lostReason?: LostReason | null, retryOn?: string | null) {
     if (status === 'sem_interesse' && lostReason === undefined) {
@@ -372,6 +558,17 @@ export function LeadDetail({ id }: { id: string }) {
             <LeadPager lead={lead} className="-my-1" />
           </div>
         }
+        description={(() => {
+          // De relance: cidade · serviços · valor · responsável.
+          const owner = (team?.length ?? 0) > 1 ? (lead.assigned_to ? team?.find((m) => m.user_id === lead.assigned_to)?.name : 'Sem responsável') : null;
+          const parts = [
+            lead.city,
+            lead.services?.length ? lead.services.map((k) => serviceLabel(k, catalog.all)).join(', ') : null,
+            staff && lead.estimated_value ? formatCurrency(lead.estimated_value, { decimals: false }) : null,
+            owner,
+          ].filter(Boolean);
+          return parts.length && !lead.anonymized_at ? parts.join(' · ') : undefined;
+        })()}
         title={
           lead.project_title ? (
             <>
@@ -477,6 +674,7 @@ export function LeadDetail({ id }: { id: string }) {
 
       {!lead.anonymized_at ? <PinnedNoteBox note={lead.pinned_note} onEdit={() => setPinOpen(true)} className="mb-3 -mt-2" /> : null}
       {!lead.anonymized_at ? <QuickContact lead={lead} whatsappMessages={!!settings?.features.whatsapp_templates} /> : null}
+      <NextStepBar lead={lead} />
       {!lead.anonymized_at ? <PinnedNoteDialog lead={lead} open={pinOpen} onOpenChange={setPinOpen} /> : null}
       {askLost ? (
         <LostReasonDialog
@@ -513,18 +711,8 @@ export function LeadDetail({ id }: { id: string }) {
         <div ref={mainColumn} className="flex flex-col gap-5">
           <Card>
             <CardHeader
-              title="Pipeline"
-              actions={
-                <>
-                  {staff && lead.status === 'cliente' && settings?.features.projects && !lead.anonymized_at ? <ProjectToggle lead={lead} /> : null}
-                  {(lead.next_action_on || lead.next_action_text) && !lead.anonymized_at ? (
-                    <>
-                      <FollowUpEmailButton lead={lead} />
-                      <FollowUpActions lead={lead} />
-                    </>
-                  ) : null}
-                </>
-              }
+              title="Negócio"
+              actions={staff && lead.status === 'cliente' && settings?.features.projects && !lead.anonymized_at ? <ProjectToggle lead={lead} /> : undefined}
             />
             <dl className="grid px-4 py-2 md:grid-cols-2 md:gap-x-6">
               <Row label="Serviços" className="md:col-span-2">
@@ -552,51 +740,77 @@ export function LeadDetail({ id }: { id: string }) {
                   <StageAge since={lead.status_changed_at} />
                 </Row>
               ) : null}
-              <Row label="Ângulo de abordagem" className="md:col-span-2">
-                {lead.approach_angle ? <span className="whitespace-pre-line">{lead.approach_angle}</span> : dash}
-              </Row>
-              <Row label="Próxima ação">
-                {lead.next_action_text || lead.next_action_on ? (
-                  <span className={cn(overdue && 'font-medium text-danger')}>
-                    {lead.next_action_text ?? 'Ação'}
-                    {lead.next_action_on ? ` · ${formatDate(lead.next_action_on)}` : ''}
-                    {overdue ? ' (em atraso)' : ''}
-                  </span>
-                ) : (
-                  dash
-                )}
-              </Row>
               <Row label="Responsável">
                 <AssignedField lead={lead} staff={staff} myId={me?.user.id} />
               </Row>
-              {staff ? <Row label="Valor estimado">{formatCurrency(lead.estimated_value) || dash}</Row> : null}
-              <Row label="Canal">
-                <ChannelLabel channel={lead.channel} />
-              </Row>
-              <Row label="1.º contacto">{formatDate(lead.first_contact_on) || dash}</Row>
-              <Row label="Último follow-up">{formatDate(lead.last_follow_up_on) || dash}</Row>
-              <Row label="Sugerido em">{formatDate(lead.suggested_on) || dash}</Row>
+              {/* Os campos vazios ficam recolhidos ("Mostrar campos vazios"). */}
+              {(() => {
+                const rows: { key: string; label: string; value: ReactNode; wide?: boolean; filled: boolean }[] = [
+                  {
+                    key: 'angle',
+                    label: 'Ângulo de abordagem',
+                    wide: true,
+                    filled: !!lead.approach_angle,
+                    value: <span className="whitespace-pre-line">{lead.approach_angle}</span>,
+                  },
+                  // Com próximo passo, ele está na faixa do topo.
+                  ...(lead.next_action_text || lead.next_action_on ? [] : [{ key: 'next', label: 'Próxima ação', filled: false, value: dash }]),
+                  ...(staff ? [{ key: 'value', label: 'Valor estimado', filled: !!lead.estimated_value, value: formatCurrency(lead.estimated_value) }] : []),
+                  { key: 'channel', label: 'Canal', filled: !!lead.channel, value: <ChannelLabel channel={lead.channel} /> },
+                  { key: 'first', label: '1.º contacto', filled: !!lead.first_contact_on, value: formatDate(lead.first_contact_on) },
+                  { key: 'last', label: 'Último follow-up', filled: !!lead.last_follow_up_on, value: formatDate(lead.last_follow_up_on) },
+                  { key: 'suggested', label: 'Sugerido em', filled: !!lead.suggested_on, value: formatDate(lead.suggested_on) },
+                ];
+                const empty = rows.filter((r) => !r.filled).length;
+                return (
+                  <>
+                    {rows
+                      .filter((r) => r.filled || showEmpty)
+                      .map((r) => (
+                        <Row key={r.key} label={r.label} className={r.wide ? 'md:col-span-2' : undefined}>
+                          {r.filled ? r.value : dash}
+                        </Row>
+                      ))}
+                    {empty ? (
+                      <div className="md:col-span-2">
+                        <button type="button" onClick={() => setShowEmpty(!showEmpty)} aria-expanded={showEmpty} className="py-1.5 text-xs text-muted hover:text-fg hover:underline">
+                          {showEmpty ? 'Esconder campos vazios' : `Mostrar campos vazios (${empty})`}
+                        </button>
+                      </div>
+                    ) : null}
+                  </>
+                );
+              })()}
             </dl>
           </Card>
 
           {/* Cliente: o projeto logo a seguir ao pipeline, na coluna larga. */}
           {staff && lead.status === 'cliente' && settings?.features.projects && !lead.anonymized_at ? <ProjectCard lead={lead} /> : null}
 
+          {/* Contactar: a ação principal num lead, logo a seguir ao negócio (o botão "Email" do topo traz aqui). */}
+          <ContactCard lead={lead} />
+
           <Card>
             <CardHeader title="Empresa e contacto" />
             <dl className="grid px-4 py-2 md:grid-cols-2 md:gap-x-6">
-              <Row label="Website">
-                <ExternalUrl url={lead.website} />
-                {isSocialUrl(lead.website) ? <span className="ml-2 text-xs text-muted">(rede social — sem site próprio)</span> : null}
-              </Row>
-              <Row label="Cidade">{lead.city ?? dash}</Row>
-              <Row label="Morada">{lead.address ?? dash}</Row>
+              {lead.website ? (
+                <Row label="Website">
+                  <ExternalUrl url={lead.website} />
+                  {isSocialUrl(lead.website) ? <span className="ml-2 text-xs text-muted">(rede social — sem site próprio)</span> : null}
+                </Row>
+              ) : null}
+              {lead.city ? <Row label="Cidade">{lead.city}</Row> : null}
+              {lead.address ? (
+                <Row label="Morada" className="md:col-span-2">
+                  {lead.address}
+                </Row>
+              ) : null}
               <Row label="Mapa">
                 <LeadLocation lead={lead} />
               </Row>
-              <Row label="Contacto">{lead.contact_name ?? dash}</Row>
-              <Row label="Email">
-                {lead.email ? (
+              {lead.contact_name ? <Row label="Contacto">{lead.contact_name}</Row> : null}
+              {lead.email ? (
+                <Row label="Email">
                   <span className="flex flex-col gap-0.5">
                     <a href={`mailto:${lead.email}`} className={cn('text-accent-text hover:underline', lead.email_bounced_at && 'line-through opacity-70')}>
                       {lead.email}
@@ -608,24 +822,32 @@ export function LeadDetail({ id }: { id: string }) {
                       </span>
                     ) : null}
                   </span>
-                ) : (
-                  dash
-                )}
-              </Row>
-              <Row label="Telefone">
-                {lead.phone ? (
+                </Row>
+              ) : null}
+              {lead.phone ? (
+                <Row label="Telefone">
                   <a href={telUrl(lead.phone)} className="inline-flex items-center gap-1 text-accent-text hover:underline">
                     <Phone className="h-3.5 w-3.5" aria-hidden />
                     {lead.phone}
                   </a>
-                ) : (
-                  dash
-                )}
-              </Row>
-              <Row label="Fonte">
-                <ExternalUrl url={lead.source_url} />
-              </Row>
+                </Row>
+              ) : null}
+              {lead.source_url ? (
+                <Row label="Fonte">
+                  <ExternalUrl url={lead.source_url} />
+                </Row>
+              ) : null}
             </dl>
+            {/* O que falta: a pessoa de contacto salta à vista (os emails e scripts usam o nome). */}
+            <MissingFields
+              lead={lead}
+              items={[
+                ...(lead.contact_name ? [] : [{ label: 'Pessoa de contacto', important: true, hint: 'Os emails e scripts começam pelo nome da pessoa' }]),
+                ...(lead.website ? [] : [{ label: 'Website' }]),
+                ...(lead.city ? [] : [{ label: 'Cidade' }]),
+                ...(lead.source_url ? [] : [{ label: 'Fonte' }]),
+              ]}
+            />
             {(!lead.phone || !lead.email || lead.email_bounced_at) && !lead.anonymized_at ? (
               <div className="px-4 pb-4">
                 <ContactFinder key={lead.updated_at} lead={lead} />
@@ -633,13 +855,7 @@ export function LeadDetail({ id }: { id: string }) {
             ) : null}
           </Card>
 
-          <SiteDiagnosisCard lead={lead} />
-
-          <AiVisibilityCard lead={lead} />
-
-          <GeoKitCard lead={lead} />
-
-          <ContactCard lead={lead} />
+          <SitePresence lead={lead} />
 
           <p className="text-xs text-muted">
             Criado em {formatDateTime(lead.created_at)} · atualizado em {formatDateTime(lead.updated_at)}

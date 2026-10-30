@@ -71,7 +71,7 @@ test('aviso de duplicado ao criar e junção com o lead existente', async ({ pag
   await page.getByRole('button', { name: 'Confirmar junção' }).click();
 
   await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
-  await expect(page.getByText('Lisboa')).toBeVisible();
+  await expect(page.locator('dd').getByText('Lisboa', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Atividade do lead').getByText('Duplicados juntados')).toBeVisible();
 });
 

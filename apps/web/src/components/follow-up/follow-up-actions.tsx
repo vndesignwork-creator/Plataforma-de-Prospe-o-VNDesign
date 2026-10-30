@@ -12,7 +12,8 @@ import { useFollowUp, useReschedule, useSettings } from '@/lib/queries';
  * Concluir ou adiar a próxima ação de um lead.
  * compact: dois botões pequenos (lista "Hoje"); normal: menu com mais opções.
  */
-export function FollowUpActions({ lead, compact }: { lead: Lead; compact?: boolean }) {
+/** `quickDone`: com um botão "Feito" (follow-up nos dias por omissão) antes do menu. */
+export function FollowUpActions({ lead, compact, quickDone }: { lead: Lead; compact?: boolean; quickDone?: boolean }) {
   const followUp = useFollowUp(lead.id);
   const reschedule = useReschedule();
   const { data: settings } = useSettings();
@@ -77,6 +78,18 @@ export function FollowUpActions({ lead, compact }: { lead: Lead; compact?: boole
   }
 
   return (
+    <>
+    {quickDone ? (
+      <Button
+        size="sm"
+        onClick={() => void run('done', days)}
+        disabled={followUp.isPending}
+        aria-label={`${first ? 'Marcar como contactado' : 'Marcar como feito'} — follow-up em ${days} dias`}
+        title={`${doneLabel} — o próximo follow-up fica daqui a ${days} dias`}
+      >
+        <Check className="h-3.5 w-3.5" aria-hidden /> {doneLabel}
+      </Button>
+    ) : null}
     <DropdownRoot>
       <DropdownTrigger className={buttonClasses('outline', 'sm')} disabled={followUp.isPending}>
         <Check className="h-3.5 w-3.5" aria-hidden /> {first ? 'Primeiro contacto' : 'Follow-up'} <ChevronDown className="h-3.5 w-3.5" aria-hidden />
@@ -93,5 +106,6 @@ export function FollowUpActions({ lead, compact }: { lead: Lead; compact?: boole
         <DropdownItem onSelect={() => run('snooze', 7)}>1 semana</DropdownItem>
       </DropdownContent>
     </DropdownRoot>
+    </>
   );
 }
