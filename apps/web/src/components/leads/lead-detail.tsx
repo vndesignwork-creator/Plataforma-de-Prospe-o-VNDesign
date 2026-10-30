@@ -565,8 +565,9 @@ export function LeadDetail({ id }: { id: string }) {
   return (
     <>
       <PageHeader
+        // Vindo da lista: ← → para o lead anterior/seguinte, sempre no canto direito.
+        aside={<LeadPager lead={lead} className="-my-1" />}
         eyebrow={
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <Breadcrumbs
               items={[{ label: 'Leads', href: '/leads' }]}
               meta={
@@ -595,9 +596,6 @@ export function LeadDetail({ id }: { id: string }) {
                 </>
               }
             />
-            {/* Vindo da lista: ← → para o lead anterior/seguinte dessa lista. */}
-            <LeadPager lead={lead} className="-my-1" />
-          </div>
         }
         description={(() => {
           // De relance: cidade · serviços · valor · responsável.
