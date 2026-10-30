@@ -29,17 +29,20 @@ export function MyTeamTiles() {
   );
 }
 
-export function TeamStatsSection() {
+/** `bare`: sem o título (a página Estatísticas põe-no na barra da secção). */
+export function TeamStatsSection({ bare }: { bare?: boolean } = {}) {
   const { data, isLoading } = useTeamStats();
   if (isLoading || !data) return <Skeleton className="h-40" />;
   return (
-    <section aria-labelledby="equipa-stats" className="flex flex-col gap-3">
-      <div>
-        <h2 id="equipa-stats" className="font-display text-xl font-semibold">
-          Equipa
-        </h2>
-        <p className="text-sm text-muted">O trabalho de cada pessoa nos últimos {data.days} dias.</p>
-      </div>
+    <section aria-labelledby={bare ? undefined : 'equipa-stats'} aria-label={bare ? 'Equipa' : undefined} className="flex flex-col gap-3">
+      {bare ? null : (
+        <div>
+          <h2 id="equipa-stats" className="font-display text-xl font-semibold">
+            Equipa
+          </h2>
+          <p className="text-sm text-muted">O trabalho de cada pessoa nos últimos {data.days} dias.</p>
+        </div>
+      )}
       <Card>
         <CardHeader title="Por pessoa" description="Contactos registados, leads que avançaram e leads criados." />
         <div className="relative overflow-x-auto">

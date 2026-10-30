@@ -12,6 +12,7 @@ import {
   ListChecks,
   Mail,
   PenLine,
+  Search,
   SlidersHorizontal,
   Sparkles,
   Tag,
@@ -20,7 +21,9 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { Input } from '@/components/ui/input';
 import { useRole } from '@/lib/queries';
 import { PROSPECTOR_SETTINGS } from '@/lib/role-access';
 import { cn } from '@/lib/utils';
@@ -55,6 +58,126 @@ export const SETTINGS_SECTIONS = [
 ] as const satisfies readonly { slug: string; label: string; group: SettingsGroup; icon: LucideIcon; description: string }[];
 
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
+
+/** Outras palavras por que se procura cada secção (pesquisa das Definições e Ctrl+K). */
+export const SETTINGS_KEYWORDS: Partial<Record<SettingsSection['slug'], string>> = {
+  assinatura: 'nome email telefone rodapé portfólio logótipo cargo',
+  email: 'smtp gmail enviar conta de email imap respostas limite diário remetente',
+  lembretes: 'follow-up notificações resumo diário sequência multicanal horário de silêncio fim de semana push lembrete',
+  funcionalidades: 'ligar desligar módulos pomodoro pagamentos projetos tempo dinheiro reuniões prospeção',
+  servicos: 'serviços categorias componentes catálogo pacotes',
+  propostas: 'pacotes preços pdf orçamento iva validade valor por hora calculadora',
+  ia: 'ia claude chatgpt openai openrouter chave api inteligência artificial modelo',
+  'listas-tarefas': 'modelos tarefas checklist',
+  setores: 'sectores oportunidades argumentos',
+  etiquetas: 'tags marcas renomear juntar',
+  campos: 'campos personalizados extra nº de lojas faturação',
+  'nao-contactar': 'rgpd bloquear lista negra opt-out',
+  formulario: 'site bricks webhook contacto',
+  api: 'token integração acesso externo',
+  conta: 'palavra-passe password 2fa sessões segurança apagar fotografia avatar dois passos',
+};
+
+const normalize = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+/** Procurar nas Definições: escreve ("iva", "silêncio", "2fa"…) e vai direto à secção. */
+export function SettingsSearch() {
+  const sections = useSettingsSections();
+  const router = useRouter();
+  const [text, setText] = useState('');
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const q = normalize(text.trim());
+  const results = q
+    ? sections.filter((s) => [s.label, s.description, SETTINGS_KEYWORDS[s.slug] ?? ''].some((t) => normalize(t).includes(q)))
+    : [];
+
+  function go(slug: string) {
+    setText('');
+    setOpen(false);
+    router.push(`/definicoes/${slug}`);
+  }
+
+  return (
+    <div className="relative w-full sm:w-72">
+      <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
+      <Input
+        type="search"
+        role="combobox"
+        aria-expanded={open && !!q}
+        aria-controls="definicoes-resultados"
+        aria-autocomplete="list"
+        aria-activedescendant={open && results[active] ? `definicoes-${results[active].slug}` : undefined}
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          setActive(0);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setActive((i) => Math.min(i + 1, results.length - 1));
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setActive((i) => Math.max(i - 1, 0));
+          } else if (e.key === 'Enter' && results[active]) {
+            e.preventDefault();
+            go(results[active].slug);
+          } else if (e.key === 'Escape') {
+            setOpen(false);
+          }
+        }}
+        placeholder="Procurar nas definições…"
+        aria-label="Procurar nas definições"
+        className="pl-9"
+      />
+      {open && q ? (
+        <ul
+          id="definicoes-resultados"
+          role="listbox"
+          aria-label="Secções encontradas"
+          className="absolute top-full right-0 left-0 z-50 mt-1 max-h-80 overflow-y-auto rounded-xl border border-border bg-surface p-1 shadow-card"
+        >
+          {results.length ? (
+            results.map((s, i) => {
+              const Icon = s.icon;
+              return (
+                <li
+                  key={s.slug}
+                  id={`definicoes-${s.slug}`}
+                  role="option"
+                  aria-selected={i === active}
+                  // onMouseDown: antes do blur do campo (que fecharia a lista).
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    go(s.slug);
+                  }}
+                  onMouseEnter={() => setActive(i)}
+                  className={cn('flex cursor-pointer items-start gap-2.5 rounded-lg px-2 py-2 text-sm', i === active && 'bg-surface-2')}
+                >
+                  <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden />
+                  <span className="min-w-0">
+                    <span className="block font-medium">{s.label}</span>
+                    <span className="block text-xs text-muted">{s.description}</span>
+                  </span>
+                </li>
+              );
+            })
+          ) : (
+            <li className="px-2 py-2 text-sm text-muted">Nada encontrado para “{text.trim()}”.</li>
+          )}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
 
 /** As secções que este utilizador vê (o prospetor só vê a assinatura e a conta). */
 export function useSettingsSections(): SettingsSection[] {

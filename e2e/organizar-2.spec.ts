@@ -217,3 +217,45 @@ test('estatísticas: este mês vs. o mês passado e por semana', async ({ page }
   await page.getByRole('button', { name: 'Semana' }).click();
   await expect(page.getByRole('heading', { name: 'Esta semana vs. a semana passada' })).toBeVisible();
 });
+
+test('Estatísticas: resumo no topo, índice das secções, recolher e organizar secções', async ({ page }) => {
+  await page.request.put('/api/v1/preferences/stats.sections', { data: { value: { order: [], hidden: [] } } });
+  await page.goto('/estatisticas');
+  await expect(page.getByText(/\d+ leads · [\d,]+% de conversão · .+ ganhos · .+ em pipeline/)).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Desde sempre' }).getByText('Total de leads')).toBeVisible();
+
+  // Recolher "Leads" e voltar a abrir pelo índice.
+  await page.getByRole('button', { name: 'Recolher: Leads' }).click();
+  await expect(page.getByRole('heading', { name: 'Por serviço', exact: true })).toHaveCount(0);
+  await page.getByRole('navigation', { name: 'Secções das estatísticas' }).getByRole('button', { name: 'Leads', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Por serviço', exact: true })).toBeVisible();
+
+  // Organizar: esconder "Funil e evolução".
+  await page.getByRole('button', { name: 'Organizar secções' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Organizar secções' });
+  await dialog.getByLabel('Mostrar Funil e evolução').click();
+  await dialog.getByRole('button', { name: 'Guardar' }).click();
+  await expect(page.getByRole('heading', { name: 'Funil de conversão' })).toHaveCount(0);
+  await page.request.put('/api/v1/preferences/stats.sections', { data: { value: { order: [], hidden: [] } } });
+});
+
+test('Definições: procurar ("iva", "2fa") e ir direto à secção', async ({ page }) => {
+  await page.goto('/definicoes');
+  const search = page.getByRole('combobox', { name: 'Procurar nas definições' });
+  await search.fill('iva');
+  await expect(page.getByRole('listbox', { name: 'Secções encontradas' }).getByRole('option', { name: /Propostas/ })).toBeVisible();
+  await search.press('Enter');
+  await expect(page).toHaveURL(/\/definicoes\/propostas$/);
+
+  await search.fill('2fa');
+  await page.getByRole('option', { name: /Conta/ }).click();
+  await expect(page).toHaveURL(/\/definicoes\/conta$/);
+
+  await search.fill('xyzzy');
+  await expect(page.getByText('Nada encontrado para “xyzzy”.')).toBeVisible();
+});
+
+test('Dashboard: a hora certa ao lado da data', async ({ page }) => {
+  await page.goto('/dashboard');
+  await expect(page.locator('time').filter({ hasText: /^\d{2}:\d{2}$/ }).first()).toBeVisible();
+});

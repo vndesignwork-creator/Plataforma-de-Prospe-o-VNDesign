@@ -45,7 +45,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useState } from 'react';
-import { SETTINGS_SECTIONS } from '@/components/settings/settings-nav';
+import { SETTINGS_KEYWORDS, SETTINGS_SECTIONS } from '@/components/settings/settings-nav';
 import { useServiceCatalog } from '@/components/services/services';
 import { toast } from 'sonner';
 import { useLeadTags } from '@/components/leads/tags';
@@ -78,23 +78,6 @@ type Item = {
 };
 
 /** Outras palavras com que se procura cada secção das Definições. */
-const SETTINGS_KEYWORDS: Partial<Record<(typeof SETTINGS_SECTIONS)[number]['slug'], string>> = {
-  assinatura: 'nome email telefone rodapé',
-  email: 'smtp gmail enviar conta de email imap respostas',
-  lembretes: 'follow-up notificações resumo diário sequência multicanal',
-  funcionalidades: 'ligar desligar módulos pomodoro pagamentos',
-  servicos: 'serviços categorias componentes catálogo pacotes',
-  propostas: 'pacotes preços pdf orçamento',
-  ia: 'ia claude chatgpt openai openrouter chave api',
-  'listas-tarefas': 'modelos tarefas checklist',
-  setores: 'sectores oportunidades argumentos',
-  etiquetas: 'tags marcas renomear juntar',
-  campos: 'campos personalizados extra nº de lojas faturação',
-  'nao-contactar': 'rgpd bloquear lista negra opt-out',
-  formulario: 'site bricks webhook contacto',
-  api: 'token integração acesso externo',
-  conta: 'palavra-passe password 2fa sessões segurança apagar',
-};
 
 /** Páginas que não estão no menu principal. */
 const EXTRA_PAGES: { href: string; label: string; icon: LucideIcon; keywords: string }[] = [

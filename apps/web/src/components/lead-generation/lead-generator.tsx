@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Gerador de leads: descreve que empresas procuras → o Claude pesquisa na
+ * Gerador de leads: descreve que empresas procuras → a IA pesquisa na
  * internet (1–3 minutos, em segundo plano) → revês a lista e escolhes quais
  * entram como leads (os sites são analisados a seguir).
  */
@@ -76,7 +76,7 @@ function SearchForm({
     <Card id="nova-pesquisa" className="scroll-mt-20">
       <CardHeader
         title="Nova pesquisa"
-        description="O Claude pesquisa na internet empresas reais que encaixam no pedido. Revês a lista antes de entrar algum lead."
+        description="A IA pesquisa na internet empresas reais que encaixam no pedido. Revês a lista antes de entrar algum lead."
       />
       {/* Pedido em cima; Zona, Setor, Serviços e Quantas numa linha (2×2 no telemóvel). */}
       <form onSubmit={submit} className="grid grid-cols-2 gap-4 p-4 lg:grid-cols-4" noValidate>
@@ -339,8 +339,8 @@ const addedCount = (r: LeadGenerationRun) => r.candidates.filter((c) => c.added_
 /** "12 pesquisas recentes · 140 empresas encontradas · 35 viraram leads · 2 automáticas ativas". */
 function GeneratorSummary({ runs, prospector }: { runs: LeadGenerationRun[] | undefined; prospector: boolean }) {
   const { data: schedules } = useLeadGenerationSchedules(!prospector);
-  if (!runs) return <>Descreve que empresas procuras e o Claude pesquisa na internet. Tu escolhes quais entram como leads.</>;
-  if (!runs.length) return <>Ainda não fizeste nenhuma pesquisa. Descreve que empresas procuras e o Claude pesquisa na internet.</>;
+  if (!runs) return <>Descreve que empresas procuras e a IA pesquisa na internet. Tu escolhes quais entram como leads.</>;
+  if (!runs.length) return <>Ainda não fizeste nenhuma pesquisa. Descreve que empresas procuras e a IA pesquisa na internet.</>;
   const found = runs.reduce((n, r) => n + r.candidates.length, 0);
   const added = runs.reduce((n, r) => n + addedCount(r), 0);
   const active = schedules?.filter((s) => s.enabled).length ?? 0;

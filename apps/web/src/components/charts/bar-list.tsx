@@ -1,4 +1,7 @@
-import type { ReactNode } from 'react';
+'use client';
+
+import { ChevronDown } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 export interface BarItem {
@@ -11,6 +14,8 @@ export interface BarItem {
   display?: string;
   /** Texto secundário no fim da linha (ex.: "50% do anterior"). */
   note?: string;
+  /** "Sem setor", "Sem canal"…: barra e texto em cinzento (não rouba a atenção). */
+  muted?: boolean;
 }
 
 /**
@@ -22,24 +27,30 @@ export function BarList({
   caption,
   unit = 'leads',
   emptyText = 'Sem dados.',
+  limit,
 }: {
   items: BarItem[];
   caption: string;
   unit?: string;
   emptyText?: string;
+  /** Mostra só os primeiros N (com "Ver todos"); os "muted" ficam sempre no fim. */
+  limit?: number;
 }) {
+  const [all, setAll] = useState(false);
   const max = Math.max(0, ...items.map((i) => i.value));
+  const main = items.filter((i) => !i.muted);
+  const shown = !limit || all || main.length <= limit ? items : [...main.slice(0, limit), ...items.filter((i) => i.muted)];
   const total = items.reduce((s, i) => s + i.value, 0);
   if (!items.length) return <p className="text-sm text-muted">{emptyText}</p>;
   return (
     <figure>
       <ul className="flex flex-col gap-2" aria-hidden>
-        {items.map((item) => {
+        {shown.map((item) => {
           const pct = max > 0 ? (item.value / max) * 100 : 0;
           const share = total > 0 ? Math.round((item.value / total) * 100) : 0;
           return (
             <li key={item.key} className="group relative grid grid-cols-[minmax(0,min(11rem,42%))_minmax(0,1fr)] items-center gap-3 text-sm">
-              <span className="flex min-w-0 items-center gap-1.5 truncate text-fg">
+              <span className={cn('flex min-w-0 items-center gap-1.5 truncate', item.muted ? 'text-muted' : 'text-fg')}>
                 {item.mark}
                 <span className="truncate">{item.label}</span>
               </span>
@@ -47,7 +58,7 @@ export function BarList({
                 <span className="relative h-3.5 flex-1">
                   <span className="absolute inset-y-0 left-0 w-full rounded-r bg-surface-3 opacity-60" />
                   <span
-                    className="absolute inset-y-0 left-0 rounded-r bg-accent transition-[width] duration-500"
+                    className={cn('absolute inset-y-0 left-0 rounded-r transition-[width] duration-500', item.muted ? 'bg-muted/40' : 'bg-accent')}
                     style={{ width: item.value > 0 ? `max(${pct}%, 3px)` : 0 }}
                   />
                 </span>
@@ -65,28 +76,39 @@ export function BarList({
           );
         })}
       </ul>
+      {limit && main.length > limit ? (
+        <button
+          type="button"
+          onClick={() => setAll(!all)}
+          aria-expanded={all}
+          className="mt-3 inline-flex items-center gap-1 text-sm text-accent-text hover:underline"
+        >
+          <ChevronDown className={cn('h-4 w-4 transition-transform', all && 'rotate-180')} aria-hidden />
+          {all ? 'Mostrar menos' : `Ver todos (${main.length})`}
+        </button>
+      ) : null}
       {/* Tabela equivalente para leitores de ecrã (num div: tabelas ignoram width:1px). */}
       <div className="sr-only">
-      <table>
-        <caption>{caption}</caption>
-        <thead>
-          <tr>
-            <th scope="col">Categoria</th>
-            <th scope="col">Valor</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((i) => (
-            <tr key={i.key}>
-              <th scope="row">{i.label}</th>
-              <td>
-                {i.display ?? i.value}
-                {i.note ? ` (${i.note})` : ''}
-              </td>
+        <table>
+          <caption>{caption}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Categoria</th>
+              <th scope="col">Valor</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {items.map((i) => (
+              <tr key={i.key}>
+                <th scope="row">{i.label}</th>
+                <td>
+                  {i.display ?? i.value}
+                  {i.note ? ` (${i.note})` : ''}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </figure>
   );

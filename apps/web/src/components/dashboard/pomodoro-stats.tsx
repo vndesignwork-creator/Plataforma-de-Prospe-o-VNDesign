@@ -12,7 +12,8 @@ import { usePomodoroStats } from '@/lib/queries';
 const dayFmt = new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
 const dayLongFmt = new Intl.DateTimeFormat('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
 
-export function PomodoroStatsSection() {
+/** `bare`: sem o título (a página Estatísticas põe-no na barra da secção). */
+export function PomodoroStatsSection({ bare }: { bare?: boolean } = {}) {
   const enabled = !!usePomodoroSettings();
   const { data, isLoading } = usePomodoroStats(enabled);
   if (!enabled) return null;
@@ -20,13 +21,15 @@ export function PomodoroStatsSection() {
   const avg = Math.round((data.week / 7) * 10) / 10;
 
   return (
-    <section aria-labelledby="pomodoros" className="flex flex-col gap-5">
-      <div>
-        <h2 id="pomodoros" className="font-display text-xl font-semibold">
-          Pomodoro
-        </h2>
-        <p className="text-sm text-muted">Os teus blocos de trabalho completos (o trabalho conta nas horas de cada projeto).</p>
-      </div>
+    <section aria-labelledby={bare ? undefined : 'pomodoros'} aria-label={bare ? 'Pomodoro' : undefined} className="flex flex-col gap-5">
+      {bare ? null : (
+        <div>
+          <h2 id="pomodoros" className="font-display text-xl font-semibold">
+            Pomodoro
+          </h2>
+          <p className="text-sm text-muted">Os teus blocos de trabalho completos (o trabalho conta nas horas de cada projeto).</p>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Hoje" value={data.today} hint={data.today === 1 ? 'pomodoro completo' : 'pomodoros completos'} />
         <StatTile label="Últimos 7 dias" value={data.week} hint={`${String(avg).replace('.', ',')} por dia`} />

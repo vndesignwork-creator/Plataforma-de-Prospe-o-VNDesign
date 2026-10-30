@@ -23,7 +23,7 @@ function greeting(now: Date) {
   return hour < 12 ? 'Bom dia' : hour < 20 ? 'Boa tarde' : 'Boa noite';
 }
 
-/** "Bom dia, Ana · quinta, 30/10" e, por baixo, o que há para hoje (cada parte leva à lista certa). */
+/** "Bom dia, Ana · quinta, 30/10 · 14:35" e, por baixo, o que há para hoje (cada parte leva à lista certa). */
 export function DashboardHeader({ organize }: { organize?: ReactNode }) {
   const { data: me } = useMe();
   const { data: today } = useToday();
@@ -33,9 +33,13 @@ export function DashboardHeader({ organize }: { organize?: ReactNode }) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- a hora só no browser (evita diferenças com o servidor)
     setNow(new Date());
+    // A hora certa no topo (atualiza a cada 15 segundos).
+    const timer = window.setInterval(() => setNow(new Date()), 15_000);
+    return () => window.clearInterval(timer);
   }, []);
   const first = me?.profile.name.split(' ')[0];
   const day = now ? lisbon({ weekday: 'long', day: '2-digit', month: '2-digit' }).format(now).replace(',', '') : null;
+  const time = now ? lisbon({ hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now) : null;
 
   const meetingsToday = today ? (today.meetings ?? []).filter((m) => lisbonDate(m.starts_at) === today.today).length : 0;
   const tasksToday = today?.tasks ? today.tasks.due_today.length + today.tasks.overdue.length : 0;
@@ -50,7 +54,17 @@ export function DashboardHeader({ organize }: { organize?: ReactNode }) {
 
   return (
     <PageHeader
-      eyebrow={now ? `${greeting(now)}${first ? `, ${first}` : ''} · ${day}` : undefined}
+      eyebrow={
+        now ? (
+          <>
+            {greeting(now)}
+            {first ? `, ${first}` : ''} · {day} ·{' '}
+            <time dateTime={now.toISOString()} className="tabular">
+              {time}
+            </time>
+          </>
+        ) : undefined
+      }
       title="Dashboard"
       description={
         !today ? (

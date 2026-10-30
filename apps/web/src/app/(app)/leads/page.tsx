@@ -13,7 +13,7 @@ export default function LeadsPage() {
     // Computador: a página cabe no ecrã; a tabela fica com o resto da altura (scroll e barra horizontal dentro dela).
     <div className="lg:flex lg:h-[calc(100dvh-3.5rem)] lg:min-h-[32rem] lg:flex-col">
       <PageHeader
-        title="Pipeline de leads"
+        title="Leads"
         description={<LeadsSummary />}
         actionsClassName="ml-auto"
         actions={

@@ -1237,7 +1237,7 @@ export function getOpenApiDocument() {
       '/leads/{id}/ai-email': {
         post: op({
           tags: ['Email com IA'],
-          summary: 'Rascunho de email escrito pelo Claude com os dados do lead',
+          summary: 'Rascunho de email escrito pela IA com os dados do lead',
           description: 'Usa os dados do lead, a última análise do site, os argumentos do setor e a assinatura. Pode demorar até 30 s.',
           requestParams: { path: leadId },
           requestBody: body(AiEmailRequestSchema),
@@ -2120,7 +2120,7 @@ export function getOpenApiDocument() {
           tags: ['Gerador de leads'],
           summary: 'Começar uma pesquisa de empresas com o Claude (pesquisa na internet)',
           description:
-            'Responde logo com a pesquisa em `running`; o Claude pesquisa durante 1–3 minutos em segundo plano. Consultar `GET /lead-generation/{id}` até `done` ou `error`. Uma pesquisa de cada vez.',
+            'Responde logo com a pesquisa em `running`; a IA pesquisa durante 1–3 minutos em segundo plano. Consultar `GET /lead-generation/{id}` até `done` ou `error`. Uma pesquisa de cada vez.',
           requestBody: body(LeadGenerationRequestSchema),
           responses: {
             '202': ok(data(LeadGenerationRunSchema), 'Pesquisa começada'),

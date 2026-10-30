@@ -23,7 +23,8 @@ const monthItem = (month: string, value: number) => {
   return { key: month, label: monthFmt.format(d).replace('.', ''), fullLabel: monthLongFmt.format(d), value };
 };
 
-export function ProfitabilitySection() {
+/** `bare`: sem o título (a página Estatísticas põe-no na barra da secção). */
+export function ProfitabilitySection({ bare }: { bare?: boolean } = {}) {
   const { data: settings } = useSettings();
   const enabled = !!settings?.features.projects;
   const timeOn = !!settings?.features.time_tracking;
@@ -35,15 +36,17 @@ export function ProfitabilitySection() {
   const hours = (m: number) => formatMinutes(m);
 
   return (
-    <section aria-labelledby="rentabilidade" className="flex flex-col gap-5">
-      <div>
-        <h2 id="rentabilidade" className="font-display text-xl font-semibold">
-          Rentabilidade
-        </h2>
-        <p className="text-sm text-muted">
-          Valor de cada projeto (proposta aceite, pagamentos ou valor estimado) a dividir pelas horas registadas.
-        </p>
-      </div>
+    <section aria-labelledby={bare ? undefined : 'rentabilidade'} aria-label={bare ? 'Rentabilidade' : undefined} className="flex flex-col gap-5">
+      {bare ? null : (
+        <div>
+          <h2 id="rentabilidade" className="font-display text-xl font-semibold">
+            Rentabilidade
+          </h2>
+          <p className="text-sm text-muted">
+            Valor de cada projeto (proposta aceite, pagamentos ou valor estimado) a dividir pelas horas registadas.
+          </p>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile
           label="Ganho médio por hora"
