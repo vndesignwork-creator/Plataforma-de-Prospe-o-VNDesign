@@ -8,7 +8,7 @@ import type { ProspectingMode } from '@vndesign/core';
 import { HelpCircle, Pencil, Target } from 'lucide-react';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { Button, HoverHint } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -146,9 +146,10 @@ export function useProspectingHelp(): [boolean, (open: boolean) => void] {
 
 export function HelpButton({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   return (
-    <Button variant="ghost" onClick={onToggle} aria-expanded={open} aria-controls="prospecao-ajuda" className="max-sm:w-10 max-sm:px-0" aria-label="Como funciona">
+    // Só o ícone; "Como funciona" aparece ao passar o rato.
+    <Button size="icon" variant="ghost" onClick={onToggle} aria-expanded={open} aria-controls="prospecao-ajuda" className="group relative" aria-label="Como funciona">
       <HelpCircle className="h-4 w-4" aria-hidden />
-      <span className="hidden sm:inline">Como funciona</span>
+      <HoverHint>Como funciona</HoverHint>
     </Button>
   );
 }

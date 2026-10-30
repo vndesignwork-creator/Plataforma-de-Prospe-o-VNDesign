@@ -1,4 +1,4 @@
-import { forwardRef, type ButtonHTMLAttributes } from 'react';
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline' | 'soft';
@@ -63,5 +63,20 @@ export function Spinner({ className }: { className?: string }) {
       aria-hidden
       className={cn('inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent', className)}
     />
+  );
+}
+
+/**
+ * O nome de um botão só com ícone, num balão por baixo ao passar o rato (ou com o teclado).
+ * O botão precisa das classes "group relative" e do aria-label (o balão não é lido duas vezes).
+ */
+export function HoverHint({ children }: { children: ReactNode }) {
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute top-full left-1/2 z-50 mt-1.5 -translate-x-1/2 rounded-md border border-border bg-surface-3 px-2 py-1 text-xs font-medium whitespace-nowrap text-fg opacity-0 shadow-card transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 pointer-coarse:hidden"
+    >
+      {children}
+    </span>
   );
 }

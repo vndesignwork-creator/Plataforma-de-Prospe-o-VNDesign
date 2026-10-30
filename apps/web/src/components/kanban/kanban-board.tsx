@@ -39,7 +39,7 @@ import { toast } from 'sonner';
 import { MultiSelectFilter, SingleSelectFilter } from '@/components/leads/multi-select';
 import { ViewSwitch } from '@/components/leads/view-switch';
 import { PageHeader } from '@/components/layout/page-header';
-import { Button, buttonClasses } from '@/components/ui/button';
+import { Button, HoverHint, buttonClasses } from '@/components/ui/button';
 import { TagChips, useTagFilterOptions } from '@/components/leads/tags';
 import { LostReasonDialog } from '@/components/leads/lost-reason';
 import { StageAge } from '@/components/leads/stage-age';
@@ -795,9 +795,10 @@ const HELP_TOUCH = 'Desliza para o lado para mudar de coluna. Para mudar o estad
 function KanbanHelp() {
   return (
     <DropdownRoot>
-      <DropdownTrigger className={buttonClasses('ghost', 'md')} aria-label="Como mover os cartões">
+      {/* Só o ícone; "Como mover" aparece ao passar o rato. */}
+      <DropdownTrigger className={buttonClasses('ghost', 'icon', 'group relative')} aria-label="Como mover os cartões">
         <HelpCircle className="h-4 w-4" aria-hidden />
-        <span className="hidden sm:inline">Como mover</span>
+        <HoverHint>Como mover</HoverHint>
       </DropdownTrigger>
       <DropdownContent className="max-w-xs">
         <DropdownLabel>Como mover os cartões</DropdownLabel>
