@@ -12,6 +12,7 @@ import {
   PROJECT_SORT_LABELS,
   PROJECTS_ORDER_PREFERENCE,
   formatCurrency,
+  leadPath,
   reorderSubset,
   projectMatches,
   sortProjects,
@@ -19,8 +20,10 @@ import {
   type Lead,
   type ProjectFilter,
   type ProjectSort,
+  type Project,
 } from '@vndesign/core';
-import { CalendarDays, ChevronsDownUp, ChevronsUpDown, Columns3, List } from 'lucide-react';
+import { ArrowDownUp, CalendarDays, CheckCircle2, ChevronsDownUp, ChevronsUpDown, Columns3, List, Search } from 'lucide-react';
+import Link from 'next/link';
 import {
   DndContext,
   KeyboardSensor,
@@ -35,11 +38,12 @@ import {
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { StatTile } from '@/components/charts/stat-tile';
+import { PageHeader } from '@/components/layout/page-header';
 import { Card, EmptyState, Skeleton } from '@/components/ui/card';
-import { setCollapsedKeys } from '@/components/ui/collapse';
-import { Select } from '@/components/ui/input';
+import { setCollapsedKeys, useCollapsedCount } from '@/components/ui/collapse';
+import { Input, Select } from '@/components/ui/input';
 import { verticalOnly } from '@/lib/dnd';
+import { cn } from '@/lib/utils';
 import { useBilling, usePreference, useProjects, useSetPreference, useSettings } from '@/lib/queries';
 import { ProjectRow, projectCollapseKey } from './project-row';
 import { WrapUpDialog } from './project-toggle';
@@ -57,37 +61,28 @@ const VIEWS = [
 const VIEW_KEY = 'vnd.projects.view';
 const SORT_KEY = 'vnd.projects.sort';
 
-function Segmented<T extends string>({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: T;
-  onChange: (v: T) => void;
-  options: readonly { value: T; label: string; icon?: typeof List }[];
-}) {
+const norm = (t: string) => t.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+
+/** Um número da faixa do topo (com uma ação ou nota por baixo). */
+function Kpi({ label, value, children }: { label: string; value: React.ReactNode; children?: React.ReactNode }) {
   return (
-    <div
-      className="grid gap-1.5 sm:flex"
-      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
-      role="group"
-      aria-label={label}
-    >
-      {options.map(({ value: v, label: l, icon: Icon }) => (
-        <button
-          key={v}
-          type="button"
-          aria-pressed={value === v}
-          onClick={() => onChange(v)}
-          className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-border px-3 text-sm font-medium text-muted hover:bg-surface-2 aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-accent-text pointer-coarse:min-h-10"
-        >
-          {Icon ? <Icon className="h-4 w-4" aria-hidden /> : null}
-          {l}
-        </button>
-      ))}
+    <div className="flex min-w-[9rem] flex-1 flex-col gap-0.5 rounded-xl border border-border bg-surface px-3 py-2">
+      <span className="text-xs text-muted">{label}</span>
+      <span className="text-lg font-semibold tabular">{value}</span>
+      {children}
     </div>
+  );
+}
+
+/** Topo: quantos projetos estão em curso e quantos entregam esta semana. */
+function ProjectsSummary({ projects, today }: { projects: Project[] | undefined; today: string }) {
+  if (!projects) return <>Os clientes com o projeto em curso: tarefas, pagamentos e próxima reunião.</>;
+  const week = projects.filter((p) => projectMatches(p, 'semana', today)).length;
+  return (
+    <>
+      {projects.length} projeto{projects.length === 1 ? '' : 's'} em curso
+      {week ? ` · ${week} entrega${week === 1 ? '' : 'm'} esta semana` : ''}
+    </>
   );
 }
 
@@ -105,6 +100,18 @@ export function ProjectsView() {
   const [wrapUp, setWrapUp] = useState<Lead | null>(null);
   const [filter, setFilter] = useState<ProjectFilter>('todos');
   const [sort, setSort] = useState<ProjectSort>('prazo');
+  const [search, setSearch] = useState('');
+  // Contagens dos separadores (os concluídos só para o número).
+  const { data: completedList } = useProjects('completed');
+  const { data: activeList } = useProjects('active', listState !== 'active');
+  const activeCount = (listState === 'active' ? projects : activeList)?.length;
+  const completedCount = (listState === 'completed' ? projects : completedList)?.length;
+  /** Um número que leva aos projetos: lista em curso com esse filtro. */
+  function showFilter(f: ProjectFilter) {
+    changeView('list');
+    setState('active');
+    setFilter(f);
+  }
 
   // Lembra a última vista escolhida (neste browser).
   useEffect(() => {
@@ -149,7 +156,14 @@ export function ProjectsView() {
   const { data: savedOrder } = usePreference<string[]>(PROJECTS_ORDER_PREFERENCE);
   const manual = Array.isArray(savedOrder) ? savedOrder : [];
   const saveOrder = useSetPreference<string[]>(PROJECTS_ORDER_PREFERENCE);
-  const shown = projects ? sortProjects(filtering ? projects.filter((p) => projectMatches(p, filter, today)) : projects, sort, manual) : projects;
+  const q = norm(search.trim());
+  const found = (p: Project) =>
+    !q || [p.lead.company_name, p.lead.project_title, p.lead.contact_name, p.lead.city].some((t) => t && norm(t).includes(q));
+  const shown = projects
+    ? sortProjects((filtering ? projects.filter((p) => projectMatches(p, filter, today)) : projects).filter(found), sort, manual)
+    : projects;
+  const collapseKeys = (shown ?? []).map((p) => projectCollapseKey(p.lead.id));
+  const collapsedCount = useCollapsedCount(collapseKeys);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
@@ -185,43 +199,98 @@ export function ProjectsView() {
   }
 
   const overdueProjects = (projects ?? []).filter((p) => listState === 'active' && p.info.due_on && p.info.due_on < today).length;
+  // "Criar plano de pagamentos" leva ao primeiro projeto em curso sem plano.
+  const withoutPlan = listState === 'active' ? (projects ?? []).find((p) => !p.payments.total) : undefined;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
+      <PageHeader title="Projetos" description={<ProjectsSummary projects={view === 'list' && state === 'completed' ? undefined : projects} today={today} />} />
+
+      {/* Números do mês numa faixa baixa; os que levam a projetos filtram a lista. */}
       {showPayments && billing ? (
-        <section aria-label="Faturação" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatTile
-            label="Projetos em curso"
-            value={billing.active_projects}
-            hint={overdueProjects ? <span className="text-danger">{overdueProjects} com a entrega atrasada</span> : undefined}
-          />
-          <StatTile label="Recebido este mês" value={euros(billing.received_month)} />
-          <StatTile label="Por receber" value={euros(billing.outstanding)} hint={billing.outstanding === 0 ? 'Cria um plano de pagamentos em cada projeto' : undefined} />
-          <StatTile
-            label="Em atraso"
-            value={<span className={billing.overdue ? 'text-danger' : undefined}>{euros(billing.overdue)}</span>}
-            hint={billing.overdue_count ? `${billing.overdue_count} pagamento${billing.overdue_count === 1 ? '' : 's'}` : undefined}
-          />
+        <section aria-label="Faturação" className="flex flex-wrap items-stretch gap-2">
+          <Kpi label="Em curso" value={String(billing.active_projects)}>
+            {overdueProjects ? (
+              <button type="button" onClick={() => showFilter('atrasados')} className="self-start text-left text-xs font-medium text-danger hover:underline">
+                {overdueProjects} com a entrega atrasada
+              </button>
+            ) : null}
+          </Kpi>
+          <Kpi label="Recebido este mês" value={euros(billing.received_month)} />
+          <Kpi label="Por receber" value={euros(billing.outstanding)}>
+            {billing.outstanding === 0 && withoutPlan ? (
+              <Link href={`${leadPath(withoutPlan.lead)}#projeto`} className="text-xs font-medium text-accent-text hover:underline">
+                Criar plano de pagamentos
+              </Link>
+            ) : null}
+          </Kpi>
+          {billing.overdue ? (
+            <Kpi label="Em atraso" value={<span className="text-danger">{euros(billing.overdue)}</span>}>
+              <button type="button" onClick={() => showFilter('pagamentos')} className="self-start text-left text-xs font-medium text-danger hover:underline">
+                Ver {billing.overdue_count} pagamento{billing.overdue_count === 1 ? '' : 's'}
+              </button>
+            </Kpi>
+          ) : (
+            <Kpi label="Em atraso" value={<span className="inline-flex items-center gap-1 text-success"><CheckCircle2 className="h-4 w-4" aria-hidden />Nada em atraso</span>} />
+          )}
         </section>
       ) : null}
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4">
-        <Segmented label="Vista" value={view} onChange={changeView} options={VIEWS} />
-        {view === 'list' ? (
-          <Segmented
-            label="Que projetos mostrar"
-            value={state}
-            onChange={setState}
-            options={[
-              { value: 'active', label: 'Em curso' },
-              { value: 'completed', label: 'Concluídos' },
-            ]}
-          />
-        ) : null}
+      {/* O que mostra (Em curso | Concluídos) e como (Lista | Fases | Calendário). */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border">
+        <div role="group" aria-label="Que projetos mostrar" className="-mb-px flex gap-1">
+          {(
+            [
+              { value: 'active', label: 'Em curso', count: activeCount },
+              { value: 'completed', label: 'Concluídos', count: completedCount },
+            ] as const
+          ).map((t) => {
+            const on = (view === 'list' ? state : 'active') === t.value;
+            return (
+              <button
+                key={t.value}
+                type="button"
+                aria-pressed={on}
+                onClick={() => {
+                  setState(t.value);
+                  if (t.value === 'completed' && view !== 'list') changeView('list');
+                }}
+                className={cn(
+                  'inline-flex min-h-10 items-center gap-2 border-b-2 px-3 text-sm transition-colors',
+                  on ? 'border-accent font-medium text-accent-text' : 'border-transparent text-muted hover:text-fg',
+                )}
+              >
+                {t.label}
+                {t.count !== undefined ? <span className="rounded bg-surface-3 px-1.5 text-xs font-medium tabular text-muted">{t.count}</span> : null}
+              </button>
+            );
+          })}
+        </div>
+        <div role="group" aria-label="Vista" className="mb-2 inline-flex h-10 items-center rounded-lg border border-border-input bg-surface-2 p-0.5">
+          {VIEWS.map(({ value: v, label: l, icon: Icon }) => (
+            <button
+              key={v}
+              type="button"
+              aria-pressed={view === v}
+              onClick={() => changeView(v)}
+              className={cn(
+                'inline-flex h-full items-center gap-1.5 rounded-md px-3 text-sm',
+                view === v ? 'bg-surface font-medium shadow-sm' : 'text-muted hover:text-fg',
+              )}
+            >
+              <Icon className="h-4 w-4" aria-hidden />
+              <span className="max-sm:sr-only">{l}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {view === 'list' && projects?.length ? (
-        <div className="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-0 flex-[1_1_14rem] sm:max-w-xs">
+            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
+            <Input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Procurar projeto ou cliente…" aria-label="Procurar projeto ou cliente" className="h-9 pl-9" />
+          </div>
           {filtering ? (
             <div className="relative flex gap-1.5 overflow-x-auto [scrollbar-width:none]" role="group" aria-label="Filtrar projetos">
               {PROJECT_FILTERS.filter((f) => f !== 'pagamentos' || showPayments).map((f) => (
@@ -231,7 +300,7 @@ export function ProjectsView() {
                   aria-pressed={filter === f}
                   onClick={() => setFilter(f)}
                   disabled={f !== 'todos' && counts[f] === 0}
-                  className="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full border border-border px-3 text-sm text-muted hover:bg-surface-2 disabled:opacity-50 aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-accent-text pointer-coarse:min-h-10"
+                  className="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full border border-border px-3 text-sm text-muted hover:bg-surface-2 disabled:border-dashed disabled:opacity-40 aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-accent-text pointer-coarse:min-h-10"
                 >
                   {PROJECT_FILTER_LABELS[f]}
                   <span className="tabular text-xs">{counts[f]}</span>
@@ -239,32 +308,24 @@ export function ProjectsView() {
               ))}
             </div>
           ) : null}
-          <div className="flex items-center gap-2 lg:ml-auto">
-            <label htmlFor="projects-sort" className="text-sm text-muted">
-              Ordenar por
-            </label>
-            <Select id="projects-sort" value={sort} onChange={(e) => changeSort(e.target.value as ProjectSort)} className="h-9 w-auto text-sm">
+          <div className="flex items-center gap-1 sm:ml-auto">
+            <ArrowDownUp className="h-4 w-4 text-muted" aria-hidden />
+            <Select id="projects-sort" aria-label="Ordenar por" title="Ordenar por" value={sort} onChange={(e) => changeSort(e.target.value as ProjectSort)} className="h-9 w-auto text-sm">
               {PROJECT_SORTS.map((s) => (
                 <option key={s} value={s}>
                   {PROJECT_SORT_LABELS[s]}
                 </option>
               ))}
             </Select>
+            {/* Um só botão: abre todos se algum estiver recolhido; senão, recolhe todos. */}
             <button
               type="button"
-              onClick={() => setCollapsedKeys((shown ?? []).map((p) => projectCollapseKey(p.lead.id)), true)}
+              onClick={() => setCollapsedKeys(collapseKeys, collapsedCount === 0)}
               className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-sm text-muted hover:bg-surface-2 hover:text-fg"
-              title="Recolher todos"
+              title={collapsedCount ? 'Abrir todos' : 'Recolher todos'}
             >
-              <ChevronsDownUp className="h-4 w-4" aria-hidden /> <span className="max-sm:sr-only">Recolher todos</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setCollapsedKeys((shown ?? []).map((p) => projectCollapseKey(p.lead.id)), false)}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-sm text-muted hover:bg-surface-2 hover:text-fg"
-              title="Abrir todos"
-            >
-              <ChevronsUpDown className="h-4 w-4" aria-hidden /> <span className="max-sm:sr-only">Abrir todos</span>
+              {collapsedCount ? <ChevronsUpDown className="h-4 w-4" aria-hidden /> : <ChevronsDownUp className="h-4 w-4" aria-hidden />}
+              <span className="max-sm:sr-only">{collapsedCount ? 'Abrir todos' : 'Recolher todos'}</span>
             </button>
           </div>
         </div>

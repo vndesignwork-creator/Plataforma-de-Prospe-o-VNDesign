@@ -48,6 +48,15 @@ export function useCollapsed(key: string, defaultCollapsed = false): [boolean, (
   return [collapsed, set];
 }
 
+/** Quantos destes estão recolhidos (para "Recolher todos" / "Abrir todos" num só botão). */
+export function useCollapsedCount(keys: readonly string[]): number {
+  return useSyncExternalStore(
+    subscribe,
+    () => keys.filter((k) => read(k) === '1').length,
+    () => 0,
+  );
+}
+
 /** Recolhe ou abre vários de uma vez (ex.: "Recolher todos" na página Projetos). */
 export function setCollapsedKeys(keys: readonly string[], collapsed: boolean) {
   try {
