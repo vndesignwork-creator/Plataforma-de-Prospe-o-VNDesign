@@ -6,29 +6,50 @@
  * entram como leads (os sites são analisados a seguir).
  */
 import { cleanAiText, type LeadCandidate, type LeadGenerationRun } from '@vndesign/core';
-import { CalendarClock, ChevronDown, ExternalLink, Globe, History, Loader2, Mail, Phone, Repeat, Sparkles } from 'lucide-react';
+import { CalendarClock, ChevronDown, ExternalLink, Globe, History, Loader2, Mail, Phone, Repeat, RotateCcw, Search, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { ServiceChips } from '@/components/services/services';
 import { errorMessage } from '@/lib/api-client';
-import { useAddGeneratedLeads, useLeadGenerationRun, useLeadGenerationRuns, useRole, useStartLeadGeneration, useTeamStats } from '@/lib/queries';
+import {
+  useAddGeneratedLeads,
+  useLeadGenerationRun,
+  useLeadGenerationRuns,
+  useLeadGenerationSchedules,
+  useRole,
+  useStartLeadGeneration,
+  useTeamStats,
+} from '@/lib/queries';
 import { cn, displayHost } from '@/lib/utils';
 import { ScheduleDialog, SchedulesCard } from './schedules';
-import { EMPTY_DRAFT, SearchFields, draftToRequest, type SearchDraft } from './search-fields';
+import { COUNTS, EMPTY_DRAFT, SEARCH_EXAMPLES, SearchFields, draftToRequest, type SearchDraft } from './search-fields';
 
-const usd = (value: number | null) =>
-  value === null ? null : value.toLocaleString('pt-PT', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
+const usd = (value: number | null) => (value === null ? null : value.toLocaleString('pt-PT', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }));
 
-const dateTime = (iso: string) =>
-  new Date(iso).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+const dateTime = (iso: string) => new Date(iso).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
-function SearchForm({ onStarted, busy, prospector }: { onStarted: (run: LeadGenerationRun) => void; busy: boolean; prospector: boolean }) {
+function SearchForm({
+  draft,
+  setDraft,
+  ideas,
+  onStarted,
+  busy,
+  prospector,
+}: {
+  draft: SearchDraft;
+  setDraft: (draft: SearchDraft) => void;
+  ideas: string[];
+  onStarted: (run: LeadGenerationRun) => void;
+  busy: boolean;
+  prospector: boolean;
+}) {
   const start = useStartLeadGeneration();
-  const [draft, setDraft] = useState<SearchDraft>(EMPTY_DRAFT);
   const [error, setError] = useState<string | undefined>();
   const [scheduling, setScheduling] = useState(false);
 
@@ -52,24 +73,25 @@ function SearchForm({ onStarted, busy, prospector }: { onStarted: (run: LeadGene
   }
 
   return (
-    <Card>
+    <Card id="nova-pesquisa" className="scroll-mt-20">
       <CardHeader
         title="Nova pesquisa"
         description="O Claude pesquisa na internet empresas reais que encaixam no pedido. Revês a lista antes de entrar algum lead."
       />
-      <form onSubmit={submit} className="grid gap-4 p-4 md:grid-cols-2" noValidate>
-        <SearchFields value={draft} onChange={setDraft} error={error} />
-        <p className="text-xs text-muted md:col-span-2">
-          Usa créditos do fornecedor de IA: cerca de 0,20 $ a 1,50 $ por pesquisa (o custo real aparece no fim).
-        </p>
-        <div className="flex flex-wrap items-center justify-end gap-3 md:col-span-2">
+      {/* Pedido em cima; Zona, Setor, Serviços e Quantas numa linha (2×2 no telemóvel). */}
+      <form onSubmit={submit} className="grid grid-cols-2 gap-4 p-4 lg:grid-cols-4" noValidate>
+        <SearchFields value={draft} onChange={setDraft} error={error} ideas={ideas} />
+        <div className="col-span-full flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
           {/* As pesquisas automáticas são do dono (o prospetor tem um limite semanal). */}
           {prospector ? null : (
-            <Button type="button" variant="outline" onClick={() => valid() && setScheduling(true)}>
+            <Button type="button" variant="ghost" onClick={() => valid() && setScheduling(true)} className="mr-auto">
               <Repeat className="h-4 w-4" aria-hidden />
               Repetir todas as semanas
             </Button>
           )}
+          <span className="text-xs text-muted" title="Usa créditos do fornecedor de IA; o custo real aparece no fim.">
+            ≈ 0,20–1,50 $ por pesquisa
+          </span>
           <Button type="submit" loading={start.isPending} disabled={busy}>
             <Sparkles className="h-4 w-4" aria-hidden />
             Procurar com IA
@@ -173,7 +195,12 @@ function Results({ run }: { run: LeadGenerationRun }) {
                     <span className="text-muted">Sem site próprio</span>
                   )}
                   {c.social_url ? (
-                    <a href={c.social_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent-text hover:underline">
+                    <a
+                      href={c.social_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-accent-text hover:underline"
+                    >
                       <ExternalLink className="h-3.5 w-3.5" aria-hidden /> {displayHost(c.social_url)}
                     </a>
                   ) : null}
@@ -243,13 +270,7 @@ function RunCard({ id, label, defaultOpen }: { id: string; label: string; defaul
               </Badge>
             ) : null}
             {run.status !== 'running' ? (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setOpen(!expanded)}
-                aria-expanded={expanded}
-                aria-controls={`pesquisa-${run.id}`}
-              >
+              <Button size="sm" variant="ghost" onClick={() => setOpen(!expanded)} aria-expanded={expanded} aria-controls={`pesquisa-${run.id}`}>
                 <ChevronDown className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')} aria-hidden />
                 {expanded ? 'Esconder' : run.status === 'error' ? 'Ver o erro' : 'Ver empresas'}
               </Button>
@@ -270,21 +291,21 @@ function RunCard({ id, label, defaultOpen }: { id: string; label: string; defaul
           .join(' · ')}
       />
       <div id={`pesquisa-${run.id}`} hidden={!expanded}>
-      {!expanded ? null : run.status === 'running' ? (
-        <div role="status" className="flex items-start gap-3 p-4 text-sm">
-          <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-accent-text" aria-hidden />
-          <p>
-            A pesquisar na internet… pode levar 1 a 3 minutos.
-            <span className="block text-muted">Podes sair desta página: o resultado fica guardado em “Pesquisas anteriores”.</span>
+        {!expanded ? null : run.status === 'running' ? (
+          <div role="status" className="flex items-start gap-3 p-4 text-sm">
+            <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-accent-text" aria-hidden />
+            <p>
+              A pesquisar na internet… pode levar 1 a 3 minutos.
+              <span className="block text-muted">Podes sair desta página: o resultado fica guardado em “Pesquisas anteriores”.</span>
+            </p>
+          </div>
+        ) : run.status === 'error' ? (
+          <p role="alert" className="m-4 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">
+            {run.error ?? 'A pesquisa falhou.'}
           </p>
-        </div>
-      ) : run.status === 'error' ? (
-        <p role="alert" className="m-4 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">
-          {run.error ?? 'A pesquisa falhou.'}
-        </p>
-      ) : (
-        <Results key={run.id} run={run} />
-      )}
+        ) : (
+          <Results key={run.id} run={run} />
+        )}
       </div>
     </Card>
   );
@@ -305,12 +326,44 @@ function Allowance() {
   );
 }
 
+/** As pesquisas recentes mais repetidas primeiro e, a seguir, exemplos (até 6). */
+function searchIdeas(runs: LeadGenerationRun[] | undefined): string[] {
+  const counts = new Map<string, number>();
+  for (const r of runs ?? []) counts.set(r.query, (counts.get(r.query) ?? 0) + 1);
+  const recent = [...counts.entries()].sort((x, y) => y[1] - x[1]).map(([q]) => q);
+  return [...new Set([...recent.slice(0, 3), ...SEARCH_EXAMPLES])].slice(0, 6);
+}
+
+const addedCount = (r: LeadGenerationRun) => r.candidates.filter((c) => c.added_lead_id).length;
+
+/** "12 pesquisas recentes · 140 empresas encontradas · 35 viraram leads · 2 automáticas ativas". */
+function GeneratorSummary({ runs, prospector }: { runs: LeadGenerationRun[] | undefined; prospector: boolean }) {
+  const { data: schedules } = useLeadGenerationSchedules(!prospector);
+  if (!runs) return <>Descreve que empresas procuras e o Claude pesquisa na internet. Tu escolhes quais entram como leads.</>;
+  if (!runs.length) return <>Ainda não fizeste nenhuma pesquisa. Descreve que empresas procuras e o Claude pesquisa na internet.</>;
+  const found = runs.reduce((n, r) => n + r.candidates.length, 0);
+  const added = runs.reduce((n, r) => n + addedCount(r), 0);
+  const active = schedules?.filter((s) => s.enabled).length ?? 0;
+  const parts = [
+    `${runs.length} pesquisa${runs.length === 1 ? '' : 's'} recente${runs.length === 1 ? '' : 's'}`,
+    `${found} empresa${found === 1 ? '' : 's'} encontrada${found === 1 ? '' : 's'}`,
+    `${added} ${added === 1 ? 'virou lead' : 'viraram leads'}`,
+    active ? `${active} automática${active === 1 ? '' : 's'} ativa${active === 1 ? '' : 's'}` : null,
+  ].filter(Boolean);
+  return <>{parts.join(' · ')}</>;
+}
+
+const PREVIOUS_PAGE = 8;
+
 export function LeadGenerator({ initialRunId }: { initialRunId?: string | null }) {
   const { data: runs, isLoading } = useLeadGenerationRuns();
   // ?pesquisa=… (link da notificação/email da pesquisa automática) abre essa pesquisa.
   const [currentId, setCurrentId] = useState<string | null>(initialRunId ?? null);
   // Cada vez que se abre uma pesquisa (lista, "Correr agora", nova pesquisa), o cartão volta aberto.
   const [openCount, setOpenCount] = useState(0);
+  const [draft, setDraft] = useState<SearchDraft>(EMPTY_DRAFT);
+  const [filter, setFilter] = useState('');
+  const [showAll, setShowAll] = useState(false);
   const current = currentId ?? runs?.[0]?.id ?? null;
   const currentRun = runs?.find((r) => r.id === current);
   const openRun = (id: string) => {
@@ -320,67 +373,144 @@ export function LeadGenerator({ initialRunId }: { initialRunId?: string | null }
   const running = runs?.some((r) => r.status === 'running');
   const prospector = useRole() === 'prospector';
 
+  /** "Repetir": o pedido de uma pesquisa anterior volta ao formulário. */
+  function repeat(r: LeadGenerationRun) {
+    setDraft({
+      query: r.query,
+      city: r.city ?? '',
+      sectorId: r.sector_id ?? '',
+      services: r.services,
+      count: COUNTS.includes(r.max_results) ? r.max_results : EMPTY_DRAFT.count,
+    });
+    const form = document.getElementById('nova-pesquisa');
+    form?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    form?.querySelector('textarea')?.focus({ preventScroll: true });
+    toast.success('Pesquisa copiada para o formulário: revê e carrega em “Procurar com IA”.');
+  }
+
+  const q = filter.trim().toLowerCase();
+  const previous = (runs ?? []).filter((r) => !q || `${r.query} ${r.city ?? ''}`.toLowerCase().includes(q));
+  const shown = showAll || q ? previous : previous.slice(0, PREVIOUS_PAGE);
+
   return (
-    <div className="flex flex-col gap-5">
-      {prospector ? <Allowance /> : null}
-      <SearchForm onStarted={(run) => openRun(run.id)} busy={!!running} prospector={prospector} />
-      {prospector ? null : (
-        <SchedulesCard
-          onOpenRun={(id) => {
-            openRun(id);
-            // O resultado fica logo abaixo deste cartão.
-            requestAnimationFrame(() => document.getElementById('pesquisa-atual')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-          }}
-        />
-      )}
-      <div id="pesquisa-atual" className="scroll-mt-20">
-        {isLoading ? (
-          <Skeleton className="h-40" />
-        ) : current ? (
-          <RunCard
-            key={`${current}-${openCount}`}
-            id={current}
-            label={!currentRun || current === runs?.[0]?.id ? 'Última pesquisa' : `Pesquisa de ${dateTime(currentRun.created_at)}`}
-            // Ao entrar na página, a última pesquisa aparece fechada; aberta quando se escolhe uma.
-            defaultOpen={currentId !== null}
+    <>
+      <PageHeader title="Gerar leads" description={<GeneratorSummary runs={runs} prospector={prospector} />} />
+      <div className="flex flex-col gap-5">
+        {prospector ? <Allowance /> : null}
+        <SearchForm draft={draft} setDraft={setDraft} ideas={searchIdeas(runs)} onStarted={(run) => openRun(run.id)} busy={!!running} prospector={prospector} />
+        {/* A pesquisa (a correr ou a última) logo a seguir ao formulário. */}
+        <div id="pesquisa-atual" className="scroll-mt-20">
+          {isLoading ? (
+            <Skeleton className="h-40" />
+          ) : current ? (
+            <RunCard
+              key={`${current}-${openCount}`}
+              id={current}
+              label={!currentRun || current === runs?.[0]?.id ? 'Última pesquisa' : `Pesquisa de ${dateTime(currentRun.created_at)}`}
+              // Ao entrar na página, a última pesquisa aparece fechada; aberta quando se escolhe uma.
+              defaultOpen={currentId !== null}
+            />
+          ) : null}
+        </div>
+        {prospector ? null : (
+          <SchedulesCard
+            onOpenRun={(id) => {
+              openRun(id);
+              // O resultado fica logo acima deste cartão.
+              requestAnimationFrame(() => document.getElementById('pesquisa-atual')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+            }}
           />
+        )}
+        {runs && runs.length > 1 ? (
+          <Card>
+            <CardHeader
+              title="Pesquisas anteriores"
+              actions={
+                runs.length > PREVIOUS_PAGE ? (
+                  <div className="relative w-48 max-sm:w-36">
+                    <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted" aria-hidden />
+                    <Input
+                      type="search"
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value)}
+                      placeholder="Procurar…"
+                      aria-label="Procurar nas pesquisas anteriores"
+                      className="h-8 pl-8 text-sm"
+                    />
+                  </div>
+                ) : null
+              }
+            />
+            {shown.length ? (
+              <ul className="divide-y divide-border" aria-label="Pesquisas anteriores">
+                {shown.map((r) => {
+                  const added = addedCount(r);
+                  return (
+                    <li key={r.id} className={cn('flex items-center gap-1 pr-2', r.id === current && 'bg-surface-2')}>
+                      <button
+                        type="button"
+                        onClick={() => openRun(r.id)}
+                        aria-current={r.id === current ? 'true' : undefined}
+                        className="flex min-w-0 flex-1 items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-surface-2"
+                      >
+                        {r.schedule_id ? (
+                          <CalendarClock className="h-4 w-4 shrink-0 text-accent-text" aria-label="Pesquisa automática" />
+                        ) : (
+                          <History className="h-4 w-4 shrink-0 text-muted" aria-hidden />
+                        )}
+                        {/* Telemóvel: o resumo passa para baixo do pedido (o pedido não fica cortado cedo). */}
+                        <span className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-3">
+                          <span className="min-w-0 truncate sm:flex-1">
+                            {r.query}
+                            {r.city ? <span className="text-muted"> · {r.city}</span> : null}
+                          </span>
+                          <span className="shrink-0 text-xs text-muted tabular sm:text-sm">
+                            {r.status === 'running' ? (
+                              'a pesquisar…'
+                            ) : r.status === 'error' ? (
+                              'falhou'
+                            ) : (
+                              <>
+                                {r.candidates.length} empresa(s)
+                                {added ? (
+                                  <span className="text-success">
+                                    {' '}
+                                    · {added} lead{added === 1 ? '' : 's'}
+                                  </span>
+                                ) : null}
+                              </>
+                            )}{' '}
+                            · {dateTime(r.created_at)}
+                          </span>
+                        </span>
+                      </button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => repeat(r)}
+                        aria-label={`Repetir a pesquisa: ${r.query}`}
+                        title="Copiar para o formulário"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                        <span className="hidden sm:inline">Repetir</span>
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="p-4 text-center text-sm text-muted">Nenhuma pesquisa com “{filter.trim()}”.</p>
+            )}
+            {!q && !showAll && previous.length > PREVIOUS_PAGE ? (
+              <div className="border-t border-border p-2 text-center">
+                <Button size="sm" variant="ghost" onClick={() => setShowAll(true)}>
+                  <ChevronDown className="h-4 w-4" aria-hidden /> Mostrar mais ({previous.length - PREVIOUS_PAGE})
+                </Button>
+              </div>
+            ) : null}
+          </Card>
         ) : null}
       </div>
-      {runs && runs.length > 1 ? (
-        <Card>
-          <CardHeader title="Pesquisas anteriores" />
-          <ul className="divide-y divide-border" aria-label="Pesquisas anteriores">
-            {runs.map((r) => (
-              <li key={r.id}>
-                <button
-                  type="button"
-                  onClick={() => openRun(r.id)}
-                  aria-current={r.id === current ? 'true' : undefined}
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-surface-2 aria-[current=true]:bg-surface-2"
-                >
-                  {r.schedule_id ? (
-                    <CalendarClock className="h-4 w-4 shrink-0 text-accent-text" aria-label="Pesquisa automática" />
-                  ) : (
-                    <History className="h-4 w-4 shrink-0 text-muted" aria-hidden />
-                  )}
-                  {/* Telemóvel: o resumo passa para baixo do pedido (o pedido não fica cortado cedo). */}
-                  <span className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-3">
-                    <span className="min-w-0 truncate sm:flex-1">{r.query}</span>
-                    <span className="shrink-0 text-xs text-muted tabular sm:text-sm">
-                      {r.status === 'running'
-                        ? 'a pesquisar…'
-                        : r.status === 'error'
-                          ? 'falhou'
-                          : `${r.candidates.length} empresa(s)`}{' '}
-                      · {dateTime(r.created_at)}
-                    </span>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      ) : null}
-    </div>
+    </>
   );
 }

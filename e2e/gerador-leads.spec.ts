@@ -78,3 +78,29 @@ test('API: uma pesquisa de cada vez e adicionar duas vezes não duplica', async 
   const bad = await page.request.post('/api/v1/lead-generation', { data: { query: 'x' } });
   expect(bad.status()).toBe(400);
 });
+
+test('topo: resumo, ideias num clique e "Repetir" uma pesquisa anterior', async ({ page }) => {
+  const a = await page.request.post('/api/v1/lead-generation', { data: { query: `padarias repetir ${run}`, city: 'Sintra', max_results: 10 } });
+  expect(a.status(), await a.text()).toBe(202);
+  await waitForRun(page, (await a.json()).data.id);
+  const b = await page.request.post('/api/v1/lead-generation', { data: { query: `cafés repetir ${run}` } });
+  expect(b.status(), await b.text()).toBe(202);
+  await waitForRun(page, (await b.json()).data.id);
+
+  await page.goto('/gerar-leads');
+  await expect(page.getByText(/\d+ pesquisas? recentes? · \d+ empresas? encontradas? · \d+ (virou lead|viraram leads)/)).toBeVisible();
+
+  // Ideias: um clique preenche o pedido.
+  await page.getByRole('group', { name: 'Ideias de pesquisa' }).getByRole('button', { name: 'restaurantes sem site ou com site antigo' }).click();
+  await expect(page.getByLabel('O que procuras?')).toHaveValue('restaurantes sem site ou com site antigo');
+
+  // Repetir: o pedido, a zona e o número voltam ao formulário.
+  const list = page.getByRole('list', { name: 'Pesquisas anteriores' });
+  const search = page.getByLabel('Procurar nas pesquisas anteriores');
+  if (await search.isVisible()) await search.fill(`padarias repetir ${run}`);
+  await list.getByRole('button', { name: `Repetir a pesquisa: padarias repetir ${run}` }).click();
+  await expect(page.getByText('Pesquisa copiada para o formulário')).toBeVisible();
+  await expect(page.getByLabel('O que procuras?')).toHaveValue(`padarias repetir ${run}`);
+  await expect(page.getByLabel('Zona')).toHaveValue('Sintra');
+  await expect(page.getByLabel('Quantas empresas')).toHaveValue('10');
+});

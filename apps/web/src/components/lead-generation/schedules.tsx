@@ -145,9 +145,7 @@ export function ScheduleDialog({
             </label>
           ) : null}
         </fieldset>
-        <p className="text-xs text-muted md:col-span-2">
-          Cada pesquisa gasta créditos do fornecedor de IA (cerca de 0,20 $ a 1,50 $), uma vez por semana.
-        </p>
+        <p className="text-xs text-muted md:col-span-2">Cada pesquisa gasta créditos do fornecedor de IA (cerca de 0,20 $ a 1,50 $), uma vez por semana.</p>
       </form>
     </Dialog>
   );
@@ -169,8 +167,8 @@ function CronStatus({ schedules }: { schedules: LeadGenerationSchedule[] }) {
     <p role="alert" className="mx-4 mb-3 flex items-start gap-2 rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning">
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
       <span>
-        O agendador não está a correr: as pesquisas automáticas só arrancam com o cron dos lembretes ligado na Hostinger (hPanel →
-        Avançado → Cron Jobs, de 5 em 5 minutos). Entretanto podes usar “Correr agora”.
+        O agendador não está a correr: as pesquisas automáticas só arrancam com o cron dos lembretes ligado na Hostinger (hPanel → Avançado → Cron Jobs, de 5 em
+        5 minutos). Entretanto podes usar “Correr agora”.
       </span>
     </p>
   );
@@ -197,9 +195,7 @@ function ScheduleRow({
     try {
       const saved = await save.mutateAsync({ id: s.id, body: { enabled } });
       toast.success(
-        enabled
-          ? `Pesquisa automática ativada. Próxima: ${saved.next_run_at ? when(saved.next_run_at) : '—'}.`
-          : 'Pesquisa automática desativada.',
+        enabled ? `Pesquisa automática ativada. Próxima: ${saved.next_run_at ? when(saved.next_run_at) : '—'}.` : 'Pesquisa automática desativada.',
       );
     } catch (err) {
       toast.error(errorMessage(err));
@@ -300,6 +296,28 @@ export function SchedulesCard({ onOpenRun }: { onOpenRun: (id: string) => void }
   const [editing, setEditing] = useState<LeadGenerationSchedule | null | undefined>(undefined);
   const sectorName = (id: string | null) => sectors?.find((x) => x.id === id)?.name ?? null;
 
+  const dialog =
+    editing !== undefined ? (
+      <ScheduleDialog key={editing?.id ?? 'nova'} open onOpenChange={(open) => !open && setEditing(undefined)} schedule={editing} />
+    ) : null;
+
+  // Sem nenhuma: uma linha só (não ocupa um cartão inteiro).
+  if (!isLoading && !schedules?.length) {
+    return (
+      <Card className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+        <CalendarClock className="h-4 w-4 shrink-0 text-muted" aria-hidden />
+        <div className="min-w-0 flex-1 text-sm">
+          <h2 className="inline font-semibold">Pesquisas automáticas</h2>
+          <span className="text-muted"> · Ainda não tens pesquisas automáticas. Repetem-se sozinhas uma vez por semana.</span>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => setEditing(null)}>
+          <Plus className="h-3.5 w-3.5" aria-hidden /> Nova
+        </Button>
+        {dialog}
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader
@@ -313,23 +331,17 @@ export function SchedulesCard({ onOpenRun }: { onOpenRun: (id: string) => void }
       />
       {isLoading ? (
         <Skeleton className="m-4 h-16" />
-      ) : schedules?.length ? (
+      ) : (
         <>
           <ul className="divide-y divide-border" aria-label="Pesquisas automáticas">
-            {schedules.map((s) => (
+            {schedules!.map((s) => (
               <ScheduleRow key={s.id} schedule={s} sectorName={sectorName(s.sector_id)} onEdit={() => setEditing(s)} onOpenRun={onOpenRun} />
             ))}
           </ul>
-          <CronStatus schedules={schedules} />
+          <CronStatus schedules={schedules!} />
         </>
-      ) : (
-        <p className="p-4 text-center text-sm text-muted">
-          Ainda não tens pesquisas automáticas. Preenche a pesquisa acima e carrega em “Repetir todas as semanas”, ou em “Nova”.
-        </p>
       )}
-      {editing !== undefined ? (
-        <ScheduleDialog key={editing?.id ?? 'nova'} open onOpenChange={(open) => !open && setEditing(undefined)} schedule={editing} />
-      ) : null}
+      {dialog}
     </Card>
   );
 }

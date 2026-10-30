@@ -681,10 +681,11 @@ export function useAddGeneratedLeads(runId: string) {
 }
 
 /** Pesquisas automáticas (semanais) do gerador de leads. */
-export function useLeadGenerationSchedules() {
+export function useLeadGenerationSchedules(enabled = true) {
   return useQuery({
     queryKey: ['lead-generation-schedules'],
     queryFn: () => api<{ data: LeadGenerationSchedule[] }>('/lead-generation/schedules').then((r) => r.data),
+    enabled,
   });
 }
 

@@ -29,14 +29,25 @@ export const draftToRequest = (d: SearchDraft) => ({
   max_results: d.count,
 });
 
+/** Exemplos para começar (aparecem depois das pesquisas recentes). */
+export const SEARCH_EXAMPLES = [
+  'restaurantes sem site ou com site antigo',
+  'clínicas dentárias com má imagem nas redes sociais',
+  'cabeleireiros e barbearias sem marcação online',
+  'alojamentos locais sem site próprio',
+];
+
 export function SearchFields({
   value,
   onChange,
   error,
+  ideas,
 }: {
   value: SearchDraft;
   onChange: (next: SearchDraft) => void;
   error?: string;
+  /** Ideias num clique, por baixo do pedido (preenchem o campo). */
+  ideas?: string[];
 }) {
   const { data: sectors } = useSectors();
   const catalog = useServiceCatalog();
@@ -47,12 +58,27 @@ export function SearchFields({
         label="O que procuras?"
         required
         error={error}
-        className="md:col-span-2"
-        hint="Ex.: “restaurantes sem site ou com site antigo”, “clínicas dentárias com má imagem nas redes sociais”."
+        className="col-span-full"
+        hint={ideas?.length ? undefined : 'Ex.: “restaurantes sem site ou com site antigo”, “clínicas dentárias com má imagem nas redes sociais”.'}
       >
-        <Textarea rows={2} value={value.query} maxLength={500} onChange={(e) => set({ query: e.target.value })} />
+        <Textarea rows={2} value={value.query} maxLength={500} onChange={(e) => set({ query: e.target.value })} className="text-base" />
       </Field>
-      <Field label="Zona" hint="Cidade ou concelho. Vazio = Portugal.">
+      {ideas?.length ? (
+        <div role="group" aria-label="Ideias de pesquisa" className="-mt-2 flex flex-wrap items-center gap-1.5 col-span-full">
+          <span className="text-xs text-muted">Ideias:</span>
+          {ideas.map((idea) => (
+            <button
+              key={idea}
+              type="button"
+              onClick={() => set({ query: idea })}
+              className="max-w-full truncate rounded-full border border-border px-2.5 py-0.5 text-xs text-muted hover:border-accent hover:text-fg pointer-coarse:py-1.5"
+            >
+              {idea}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <Field label="Zona" hint="Vazio = Portugal.">
         <Input value={value.city} maxLength={120} onChange={(e) => set({ city: e.target.value })} />
       </Field>
       <Field label="Setor (opcional)">
@@ -65,7 +91,7 @@ export function SearchFields({
           ))}
         </Select>
       </Field>
-      <div className="flex flex-col gap-1.5">
+      <div className="flex min-w-0 flex-col gap-1.5">
         <span className="text-sm font-medium">Serviços a propor</span>
         <MultiSelectFilter
           label={value.services.length ? 'Serviços' : 'Todos os serviços'}
@@ -79,7 +105,7 @@ export function SearchFields({
           }))}
         />
       </div>
-      <Field label="Quantas empresas (no máximo)">
+      <Field label="Quantas empresas">
         <Select value={String(value.count)} onChange={(e) => set({ count: Number(e.target.value) })}>
           {COUNTS.map((n) => (
             <option key={n} value={n}>
