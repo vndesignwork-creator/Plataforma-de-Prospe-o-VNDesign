@@ -22,7 +22,8 @@ import { useClientProjects, useCreateClientProject } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
 export function ClientProjectsCard({ lead }: { lead: Lead }) {
-  const { data } = useClientProjects(lead.id);
+  // Só clientes (ou projetos de um cliente que voltou) podem ter projetos: os outros leads não pedem nada.
+  const { data } = useClientProjects(lead.id, lead.status === 'cliente' || !!lead.client_of || !!lead.project_completed_at);
   const [open, setOpen] = useState(false);
   const projects = data?.projects ?? [];
   // Só aparece a clientes (ou a quem já tem mais de um projeto).

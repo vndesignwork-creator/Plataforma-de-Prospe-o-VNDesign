@@ -18,6 +18,7 @@ import { Input, Select } from '@/components/ui/input';
 import { ApiClientError, errorMessage } from '@/lib/api-client';
 import { useDeletePayment, usePaymentPlan, usePayments, useProposals, useSavePayment } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+import { EARLY_STATUSES } from './project-bits';
 
 const euros = (v: number) => formatCurrency(v);
 
@@ -192,7 +193,8 @@ export function PlanForm({ lead, onDone }: { lead: Lead; onDone?: () => void }) 
 }
 
 export function PaymentsCard({ lead }: { lead: Lead }) {
-  const { data: payments, isLoading } = usePayments(lead.id);
+  // Antes da reunião/proposta não há pagamentos: nem se pergunta ao servidor (o cartão não aparece).
+  const { data: payments, isLoading } = usePayments(lead.id, !EARLY_STATUSES.includes(lead.status));
   const [adding, setAdding] = useState(false);
   const today = todayIso();
   // Só faz sentido a partir da proposta (ou se já houver pagamentos).

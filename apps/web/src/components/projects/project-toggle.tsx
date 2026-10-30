@@ -18,7 +18,7 @@ import { Field } from '@/components/ui/field';
 import { Input, Select } from '@/components/ui/input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useLogActivity, useMe, useSetProjectCompleted, useSettings, useTemplates, type SettingsWithMail } from '@/lib/queries';
-import { useTemplateContext } from '@/lib/template-context';
+import { usesAiVisibility, useTemplateContext } from '@/lib/template-context';
 import { whatsappUrl } from '@/lib/utils';
 
 /** Pedir a avaliação: modelos com {{avaliacao}} (WhatsApp e email). */
@@ -27,12 +27,12 @@ function ReviewRequest({ lead }: { lead: Lead }) {
   const { data: settings } = useSettings();
   const { data: me } = useMe();
   const { data: templates } = useTemplates();
-  const context = useTemplateContext(lead);
+  const withReview = (templates ?? []).filter((t) => templateVariablesIn(t.body).includes('avaliacao'));
+  const context = useTemplateContext(lead, null, { aiVisibility: withReview.some((t) => usesAiVisibility(t.subject, t.body)) });
   const log = useLogActivity(lead.id);
   const [link, setLink] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const withReview = (templates ?? []).filter((t) => templateVariablesIn(t.body).includes('avaliacao'));
   const waTemplate = withReview.find((t) => t.kind === 'whatsapp');
   const emailTemplate = withReview.find((t) => t.kind !== 'whatsapp' && t.subject);
   const canEdit = me?.role !== 'member';

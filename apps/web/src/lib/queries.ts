@@ -1165,10 +1165,11 @@ export function useCollaboratorAction(leadId: string) {
   });
 }
 
-export function useClientProjects(leadId: string) {
+export function useClientProjects(leadId: string, enabled = true) {
   return useQuery({
     queryKey: ['client-projects', leadId],
     queryFn: () => api<{ data: ClientProjects }>(`/leads/${leadId}/client-projects`).then((r) => r.data),
+    enabled,
   });
 }
 

@@ -17,6 +17,7 @@ import { Input, Select, Textarea } from '@/components/ui/input';
 import { ApiClientError, errorMessage } from '@/lib/api-client';
 import { useContractAction, useContracts, useProposals, useSignature } from '@/lib/queries';
 import { whatsappUrl } from '@/lib/utils';
+import { EARLY_STATUSES } from './project-bits';
 
 export const contractUrl = (token: string) => `${typeof window === 'undefined' ? '' : window.location.origin}/c/${token}`;
 const code = (n: number) => String(n).padStart(3, '0');
@@ -284,7 +285,8 @@ function ContractRow({ lead, contract }: { lead: Lead; contract: LeadContract })
 }
 
 export function ContractsCard({ lead }: { lead: Lead }) {
-  const { data: contracts, isLoading } = useContracts(lead.id);
+  // Antes da reunião/proposta não há contratos: nem se pergunta ao servidor (o cartão não aparece).
+  const { data: contracts, isLoading } = useContracts(lead.id, !EARLY_STATUSES.includes(lead.status));
   const [creating, setCreating] = useState(false);
   const relevant = ['proposta_enviada', 'cliente'].includes(lead.status) || !!contracts?.length;
   if (lead.anonymized_at || (!isLoading && !relevant)) return null;

@@ -43,7 +43,7 @@ import { Input, Select, Textarea } from '@/components/ui/input';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { errorMessage } from '@/lib/api-client';
 import { useAiEmail, useLogActivity, useSettings, useTemplates, useUpdateLead } from '@/lib/queries';
-import { EMAIL_KINDS, useTemplateContext } from '@/lib/template-context';
+import { EMAIL_KINDS, usesAiVisibility, useTemplateContext } from '@/lib/template-context';
 import { cn, whatsappUrl } from '@/lib/utils';
 import { MultiSelectFilter } from './multi-select';
 
@@ -209,7 +209,6 @@ function AiPanel({ lead, onGenerated, onClose }: { lead: Lead; onGenerated: (ema
 
 export function ContactCard({ lead }: { lead: Lead }) {
   const { data: templates } = useTemplates();
-  const context = useTemplateContext(lead);
   const log = useLogActivity(lead.id);
   const update = useUpdateLead(lead.id);
   const catalog = useServiceCatalog();
@@ -229,6 +228,8 @@ export function ContactCard({ lead }: { lead: Lead }) {
     if (current) return undefined;
     return initialTemplate(templates, lead, category);
   }, [templates, current, lead, category]);
+  // O teste "Aparece nas IAs?" só é pedido se o modelo escolhido usar {{visibilidade_ia}}.
+  const context = useTemplateContext(lead, null, { aiVisibility: usesAiVisibility(template?.subject, template?.body) });
 
   const base = useMemo(() => {
     if (current?.type === 'saved') return { subject: lead.email_subject ?? '', body: lead.email_body ?? '', missing: [] as string[] };

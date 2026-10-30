@@ -1,13 +1,16 @@
 'use client';
 
 /** Peças pequenas dos projetos: prazo ("Faltam 5 dias"), fase (menu) e barra de progresso. */
-import { PROJECT_STAGE_LABELS, PROJECT_STAGES, dueStatus, formatDate, type ProjectStage } from '@vndesign/core';
+import { PROJECT_STAGE_LABELS, PROJECT_STAGES, dueStatus, formatDate, type LeadStatus, type ProjectStage } from '@vndesign/core';
 import { CalendarClock, ChevronDown, type LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { DropdownContent, DropdownLabel, DropdownRadioGroup, DropdownRadioItem, DropdownRoot, DropdownTrigger } from '@/components/ui/dropdown';
 import { errorMessage } from '@/lib/api-client';
 import { useUpdateProjectInfo } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+
+/** Estados antes da reunião/proposta: ainda sem pagamentos nem contratos (os cartões nem perguntam ao servidor). */
+export const EARLY_STATUSES: readonly LeadStatus[] = ['identificado', 'contactado', 'respondeu'];
 
 /** Cor de cada fase (pontos e colunas). */
 export const STAGE_COLORS: Record<ProjectStage, string> = {
