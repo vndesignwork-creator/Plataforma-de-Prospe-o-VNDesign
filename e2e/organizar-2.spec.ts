@@ -243,16 +243,41 @@ test('Definições: procurar ("iva", "2fa") e ir direto à secção', async ({ p
   await page.goto('/definicoes');
   const search = page.getByRole('combobox', { name: 'Procurar nas definições' });
   await search.fill('iva');
-  await expect(page.getByRole('listbox', { name: 'Secções encontradas' }).getByRole('option', { name: /Propostas/ })).toBeVisible();
+  await expect(page.getByRole('listbox', { name: 'Resultados nas definições' }).getByRole('option', { name: /^Propostas/ })).toBeVisible();
   await search.press('Enter');
   await expect(page).toHaveURL(/\/definicoes\/propostas$/);
 
   await search.fill('2fa');
-  await page.getByRole('option', { name: /Conta/ }).click();
+  await page.getByRole('option', { name: /^Conta/ }).click();
   await expect(page).toHaveURL(/\/definicoes\/conta$/);
 
   await search.fill('xyzzy');
   await expect(page.getByText('Nada encontrado para “xyzzy”.')).toBeVisible();
+});
+
+test('Definições: procurar uma opção dentro da secção ("Tempo em dinheiro") vai direto a ela', async ({ page }) => {
+  await page.goto('/definicoes');
+  const search = page.getByRole('combobox', { name: 'Procurar nas definições' });
+  await search.fill('tempo em dinheiro');
+  const option = page.getByRole('option', { name: /^Tempo em dinheiro/ });
+  await expect(option).toContainText('Funcionalidades → Tempo');
+  await option.click();
+  await expect(page).toHaveURL(/\/definicoes\/funcionalidades#func-time_value$/);
+  await expect(page.getByRole('switch', { name: /^Tempo em dinheiro:/ })).toBeInViewport({ timeout: 15_000 });
+
+  // Um campo de outra secção, pelo Enter.
+  await search.fill('limite diario');
+  await expect(page.getByRole('option', { name: /^Limite por dia/ })).toBeVisible();
+  await page.getByRole('option', { name: /^Limite por dia/ }).click();
+  await expect(page).toHaveURL(/\/definicoes\/email#email-limite-por-dia$/);
+});
+
+test('Ctrl+K: encontra opções das Definições', async ({ page }) => {
+  await page.goto('/dashboard');
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+  await page.keyboard.press('Control+k');
+  await page.getByRole('combobox', { name: 'Pesquisar leads, projetos, tarefas e páginas' }).fill('tempo em dinheiro');
+  await expect(page.getByRole('option', { name: /Definições → Funcionalidades → Tempo em dinheiro/ })).toBeVisible();
 });
 
 test('Dashboard: a hora certa ao lado da data', async ({ page }) => {

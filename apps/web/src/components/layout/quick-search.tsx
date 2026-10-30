@@ -45,6 +45,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useState } from 'react';
+import { revealSetting, searchSettingsItems, settingsItemTarget } from '@/components/settings/settings-items';
 import { SETTINGS_KEYWORDS, SETTINGS_SECTIONS } from '@/components/settings/settings-nav';
 import { useServiceCatalog } from '@/components/services/services';
 import { toast } from 'sonner';
@@ -260,6 +261,19 @@ function SearchBody({
           ...SETTINGS_SECTIONS.filter((sec) => !prospector || PROSPECTOR_SETTINGS.has(sec.slug))
             .filter((sec) => matches(sec.label, SETTINGS_KEYWORDS[sec.slug]))
             .map((sec) => ({ key: `s:${sec.slug}`, group: 'Páginas' as const, label: `Definições → ${sec.label}`, href: `/definicoes/${sec.slug}`, icon: Settings })),
+          // Opções soltas das Definições ("Tempo em dinheiro", "Limite por dia"…).
+          ...searchSettingsItems(text, new Set(SETTINGS_SECTIONS.filter((sec) => !prospector || PROSPECTOR_SETTINGS.has(sec.slug)).map((sec) => sec.slug)), 4).map((it) => {
+            const target = settingsItemTarget(it, features);
+            const section = SETTINGS_SECTIONS.find((sec) => sec.slug === it.slug)!;
+            return {
+              key: `so:${it.id}`,
+              group: 'Páginas' as const,
+              label: `Definições → ${section.label} → ${it.label}`,
+              hint: target.missing ? `liga primeiro “${target.missing}”` : undefined,
+              href: target.href,
+              icon: Settings,
+            };
+          }),
           ...(prospector ? [] : EXTRA_PAGES)
             .filter((p) => matches(p.label, p.keywords))
             .map((p) => ({ key: `x:${p.href}`, group: 'Páginas' as const, label: p.label, href: p.href, icon: p.icon })),
@@ -420,6 +434,7 @@ function SearchBody({
     if (!item.href) return;
     onClose();
     router.push(item.href);
+    if (item.href.startsWith('/definicoes/') && item.href.includes('#')) revealSetting(item.href.split('#')[1]);
   }
 
   const placeholder = compose

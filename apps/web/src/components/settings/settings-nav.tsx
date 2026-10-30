@@ -22,11 +22,12 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
-import { useRole } from '@/lib/queries';
+import { useRole, useSettings } from '@/lib/queries';
 import { PROSPECTOR_SETTINGS } from '@/lib/role-access';
 import { cn } from '@/lib/utils';
+import { normalize, revealSetting, searchSettingsItems, settingsItemTarget } from './settings-items';
 
 export type SettingsGroup = 'perfil' | 'email' | 'negocio' | 'leads' | 'plataforma';
 
@@ -43,11 +44,23 @@ export const SETTINGS_SECTIONS = [
   { slug: 'assinatura', label: 'Assinatura', group: 'perfil', icon: PenLine, description: 'O teu nome, contactos e portefólio no fim dos emails.' },
   { slug: 'conta', label: 'Conta', group: 'perfil', icon: UserCog, description: 'Nome, fotografia, palavra-passe e sessões.' },
   { slug: 'email', label: 'Email de envio', group: 'email', icon: Mail, description: 'A conta que envia os emails e lê as respostas.' },
-  { slug: 'lembretes', label: 'Follow-up e lembretes', group: 'email', icon: BellRing, description: 'Dias até ao follow-up, sequência, resumo diário e notificações.' },
+  {
+    slug: 'lembretes',
+    label: 'Follow-up e lembretes',
+    group: 'email',
+    icon: BellRing,
+    description: 'Dias até ao follow-up, sequência, resumo diário e notificações.',
+  },
   { slug: 'nao-contactar', label: 'Não contactar', group: 'email', icon: Ban, description: 'Emails e domínios que nunca recebem contactos.' },
   { slug: 'servicos', label: 'Serviços', group: 'negocio', icon: Layers, description: 'O que vendes: serviços, categorias e componentes.' },
   { slug: 'propostas', label: 'Propostas', group: 'negocio', icon: FileText, description: 'Pacotes, preços e textos do PDF da proposta.' },
-  { slug: 'formulario', label: 'Formulário do site', group: 'negocio', icon: FormInput, description: 'Os contactos do formulário do teu site entram como leads.' },
+  {
+    slug: 'formulario',
+    label: 'Formulário do site',
+    group: 'negocio',
+    icon: FormInput,
+    description: 'Os contactos do formulário do teu site entram como leads.',
+  },
   { slug: 'setores', label: 'Setores', group: 'leads', icon: Building2, description: 'Restauração, saúde, imobiliária…' },
   { slug: 'etiquetas', label: 'Etiquetas', group: 'leads', icon: Tag, description: 'Marcas livres para filtrar os leads.' },
   { slug: 'campos', label: 'Campos personalizados', group: 'leads', icon: SlidersHorizontal, description: 'Campos extra na ficha do lead.' },
@@ -78,28 +91,43 @@ export const SETTINGS_KEYWORDS: Partial<Record<SettingsSection['slug'], string>>
   conta: 'palavra-passe password 2fa sessões segurança apagar fotografia avatar dois passos',
 };
 
-const normalize = (s: string) =>
-  s
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
-
-/** Procurar nas Definições: escreve ("iva", "silêncio", "2fa"…) e vai direto à secção. */
+/** Procurar nas Definições: escreve ("iva", "silêncio", "tempo em dinheiro"…) e vai direto à secção ou à opção. */
 export function SettingsSearch() {
   const sections = useSettingsSections();
+  const { data: settings } = useSettings();
   const router = useRouter();
   const [text, setText] = useState('');
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  const q = normalize(text.trim());
-  const results = q
-    ? sections.filter((s) => [s.label, s.description, SETTINGS_KEYWORDS[s.slug] ?? ''].some((t) => normalize(t).includes(q)))
+  const words = normalize(text.trim()).split(/\s+/).filter(Boolean);
+  const results: Result[] = words.length
+    ? [
+        ...sections
+          .filter((s) => {
+            const hay = normalize(`${s.label} ${s.description} ${SETTINGS_KEYWORDS[s.slug] ?? ''}`);
+            return words.every((w) => hay.includes(w));
+          })
+          .map((s) => ({ key: s.slug, href: `/definicoes/${s.slug}`, icon: s.icon, label: s.label, description: s.description })),
+        ...searchSettingsItems(text, new Set(sections.map((s) => s.slug))).map((item) => {
+          const section = sections.find((s) => s.slug === item.slug)!;
+          const target = settingsItemTarget(item, settings?.features);
+          return {
+            key: item.id,
+            href: target.href,
+            icon: section.icon,
+            label: item.label,
+            description: [section.label, item.where].filter(Boolean).join(' → ') + (target.missing ? ` · liga primeiro “${target.missing}”` : ''),
+          };
+        }),
+      ]
     : [];
 
-  function go(slug: string) {
+  function go(href: string) {
     setText('');
     setOpen(false);
-    router.push(`/definicoes/${slug}`);
+    router.push(href);
+    const hash = href.split('#')[1];
+    if (hash) revealSetting(hash);
   }
 
   return (
@@ -108,10 +136,10 @@ export function SettingsSearch() {
       <Input
         type="search"
         role="combobox"
-        aria-expanded={open && !!q}
+        aria-expanded={open && !!words.length}
         aria-controls="definicoes-resultados"
         aria-autocomplete="list"
-        aria-activedescendant={open && results[active] ? `definicoes-${results[active].slug}` : undefined}
+        aria-activedescendant={open && results[active] ? `definicoes-${results[active].key}` : undefined}
         value={text}
         onChange={(e) => {
           setText(e.target.value);
@@ -129,7 +157,7 @@ export function SettingsSearch() {
             setActive((i) => Math.max(i - 1, 0));
           } else if (e.key === 'Enter' && results[active]) {
             e.preventDefault();
-            go(results[active].slug);
+            go(results[active].href);
           } else if (e.key === 'Escape') {
             setOpen(false);
           }
@@ -138,34 +166,34 @@ export function SettingsSearch() {
         aria-label="Procurar nas definições"
         className="pl-9"
       />
-      {open && q ? (
+      {open && words.length ? (
         <ul
           id="definicoes-resultados"
           role="listbox"
-          aria-label="Secções encontradas"
-          className="absolute top-full right-0 left-0 z-50 mt-1 max-h-80 overflow-y-auto rounded-xl border border-border bg-surface p-1 shadow-card"
+          aria-label="Resultados nas definições"
+          className="absolute top-full right-0 left-0 z-50 mt-1 max-h-96 overflow-y-auto rounded-xl border border-border bg-surface p-1 shadow-card sm:left-auto sm:w-96"
         >
           {results.length ? (
-            results.map((s, i) => {
-              const Icon = s.icon;
+            results.map((r, i) => {
+              const Icon = r.icon;
               return (
                 <li
-                  key={s.slug}
-                  id={`definicoes-${s.slug}`}
+                  key={r.key}
+                  id={`definicoes-${r.key}`}
                   role="option"
                   aria-selected={i === active}
                   // onMouseDown: antes do blur do campo (que fecharia a lista).
                   onMouseDown={(e) => {
                     e.preventDefault();
-                    go(s.slug);
+                    go(r.href);
                   }}
                   onMouseEnter={() => setActive(i)}
                   className={cn('flex cursor-pointer items-start gap-2.5 rounded-lg px-2 py-2 text-sm', i === active && 'bg-surface-2')}
                 >
                   <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden />
                   <span className="min-w-0">
-                    <span className="block font-medium">{s.label}</span>
-                    <span className="block text-xs text-muted">{s.description}</span>
+                    <span className="block font-medium">{r.label}</span>
+                    <span className="block text-xs text-muted">{r.description}</span>
                   </span>
                 </li>
               );
@@ -179,6 +207,8 @@ export function SettingsSearch() {
   );
 }
 
+type Result = { key: string; href: string; icon: LucideIcon; label: string; description: string };
+
 /** As secções que este utilizador vê (o prospetor só vê a assinatura e a conta). */
 export function useSettingsSections(): SettingsSection[] {
   const role = useRole();
@@ -189,6 +219,13 @@ export function SettingsNav() {
   const pathname = usePathname();
   const sections = useSettingsSections();
   const current = sections.find((s) => pathname === `/definicoes/${s.slug}`);
+  // Vindo da pesquisa (aqui ou no Ctrl+K) com /definicoes/<secção>#<opção>: vai até à opção.
+  useEffect(() => {
+    if (window.location.hash) revealSetting(window.location.hash);
+    const onHash = () => revealSetting(window.location.hash);
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, [pathname]);
   return (
     <>
       {/* Telemóvel e tablet: a lista de secções está em /definicoes; aqui só o caminho de volta. */}
