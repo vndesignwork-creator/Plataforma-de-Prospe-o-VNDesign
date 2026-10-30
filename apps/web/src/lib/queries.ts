@@ -104,6 +104,8 @@ import type {
 import { chunkReschedule,
   TEAM_ACTIVITY_PAGE,
   type LeadCityCount,
+  type DashboardPeriod,
+  type DashboardPeriodNumbers,
 } from '@vndesign/core';
 import { api } from './api-client';
 
@@ -370,6 +372,15 @@ export function useBoard(query: Record<string, string | string[] | undefined>) {
 
 export function useDashboard(enabled = true) {
   return useQuery({ queryKey: ['dashboard'], queryFn: () => api<{ data: Dashboard }>('/dashboard').then((r) => r.data), enabled });
+}
+
+/** Dashboard: os números de um período com o anterior (para comparar). */
+export function useDashboardPeriod(period: DashboardPeriod | null) {
+  return useQuery({
+    queryKey: ['dashboard-period', period],
+    queryFn: () => api<{ data: DashboardPeriodNumbers }>('/dashboard/period', { query: { period: period ?? undefined } }).then((r) => r.data),
+    enabled: period !== null,
+  });
 }
 
 export function useToday() {

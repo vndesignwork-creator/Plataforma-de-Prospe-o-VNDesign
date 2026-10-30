@@ -156,6 +156,8 @@ import {
   WorkspaceSettingsSchema,
   WorkspaceSettingsUpdateSchema,
   BoardColumnSchema,
+  DashboardPeriodQuerySchema,
+  DashboardPeriodSchema,
   DashboardSchema,
   ImportAnalysisSchema,
   ImportCommitSchema,
@@ -477,6 +479,14 @@ export function getOpenApiDocument() {
           tags: ['Dashboard'],
           summary: 'Resumo, contagens por setor/estado/canal, funil e evolução semanal',
           responses: { '200': ok(data(DashboardSchema)), ...common },
+        }),
+      },
+      '/dashboard/period': {
+        get: op({
+          tags: ['Dashboard'],
+          summary: 'Leads novos, contactados e clientes ganhos de um período (este mês ou 30 dias), com o período anterior',
+          requestParams: { query: DashboardPeriodQuerySchema },
+          responses: { '200': ok(data(DashboardPeriodSchema)), ...common },
         }),
       },
       '/dashboard/today': {

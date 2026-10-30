@@ -60,7 +60,18 @@ export function visibleCards<K extends string>(board: Board<K>, layout: LeadCard
   return arrangeKeys(board.defaults, layout).filter((k) => exists(k) && (board.alwaysShown.includes(k) || !(layout?.hidden ?? []).includes(k)));
 }
 
-export function CardLayoutButton<K extends string>({ board, available, className }: { board: Board<K>; available: readonly K[]; className?: string }) {
+export function CardLayoutButton<K extends string>({
+  board,
+  available,
+  className,
+  label = 'Organizar cartões',
+}: {
+  board: Board<K>;
+  available: readonly K[];
+  className?: string;
+  /** Texto do botão e título da janela (ex.: "Organizar números"). */
+  label?: string;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -69,14 +80,24 @@ export function CardLayoutButton<K extends string>({ board, available, className
         onClick={() => setOpen(true)}
         className={cn('inline-flex items-center gap-1.5 self-center rounded-lg px-2 py-1 text-xs text-muted hover:bg-surface-2 hover:text-fg', className)}
       >
-        <LayoutList className="h-3.5 w-3.5" aria-hidden /> Organizar cartões
+        <LayoutList className="h-3.5 w-3.5" aria-hidden /> {label}
       </button>
-      {open ? <CardLayoutDialog board={board} available={available} onClose={() => setOpen(false)} /> : null}
+      {open ? <CardLayoutDialog board={board} available={available} title={label} onClose={() => setOpen(false)} /> : null}
     </>
   );
 }
 
-function CardLayoutDialog<K extends string>({ board, available, onClose }: { board: Board<K>; available: readonly K[]; onClose: () => void }) {
+function CardLayoutDialog<K extends string>({
+  board,
+  available,
+  title,
+  onClose,
+}: {
+  board: Board<K>;
+  available: readonly K[];
+  title: string;
+  onClose: () => void;
+}) {
   const layout = useCardLayout(board.preference);
   const save = useSetPreference<LeadCardLayout>(board.preference);
   // Só os cartões que existem aqui (os outros mantêm o lugar).
@@ -110,7 +131,7 @@ function CardLayoutDialog<K extends string>({ board, available, onClose }: { boa
     <Dialog
       open
       onOpenChange={(o) => (!o ? onClose() : undefined)}
-      title="Organizar cartões"
+      title={title}
       description={board.description}
       className="max-w-md"
       footer={

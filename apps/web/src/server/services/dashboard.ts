@@ -1,6 +1,17 @@
-import { STALLED_STATUSES, addDays, todayIso, type Dashboard, type Lead, type Today } from '@vndesign/core';
+import {
+  STALLED_STATUSES,
+  addDays,
+  dashboardPeriodRange,
+  todayIso,
+  type Dashboard,
+  type DashboardPeriod,
+  type DashboardPeriodNumbers,
+  type Lead,
+  type Today,
+} from '@vndesign/core';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ApiContext } from '../context';
+import { selectInBatches } from '../batch';
 import { fromPostgrest } from '../http';
 import { LEAD_SELECT } from './leads';
 import { fetchTodayTasks } from './tasks';
@@ -24,6 +35,43 @@ export async function getDashboard(ctx: ApiContext): Promise<Dashboard> {
       value_pipeline: num(d.totals.value_pipeline),
     },
     by_sector: d.by_sector.map((s) => ({ ...s, value: num(s.value) })),
+  };
+}
+
+/** Os números de um período e do anterior (leads novos, contactados, clientes ganhos e o seu valor). */
+export async function getDashboardPeriod(ctx: ApiContext, period: DashboardPeriod): Promise<DashboardPeriodNumbers> {
+  const r = dashboardPeriodRange(period, todayIso());
+  const [current, previous] = await Promise.all([periodNumbers(ctx, r.from, r.to), periodNumbers(ctx, r.prevFrom, r.prevTo)]);
+  return { period, from: r.from, to: r.to, current, previous };
+}
+
+async function periodNumbers(ctx: ApiContext, from: string, to: string): Promise<DashboardPeriodNumbers['current']> {
+  const end = addDays(to, 1);
+  const leads = () => ctx.supabase.from('leads').select('id', { count: 'exact', head: true }).eq('workspace_id', ctx.workspaceId).is('anonymized_at', null);
+  const [created, contacted, wonRows] = await Promise.all([
+    leads().gte('created_at', from).lt('created_at', end),
+    leads().gte('first_contact_on', from).lte('first_contact_on', to),
+    // Quem passou a Cliente no período (pela linha do tempo; conta cada lead uma vez).
+    ctx.supabase
+      .from('lead_activities')
+      .select('lead_id')
+      .eq('workspace_id', ctx.workspaceId)
+      .eq('type', 'status_changed')
+      .eq('payload->>to', 'cliente')
+      .gte('created_at', from)
+      .lt('created_at', end)
+      .limit(5000),
+  ]);
+  for (const res of [created, contacted, wonRows]) if (res.error) throw fromPostgrest(res.error);
+  const wonIds = [...new Set(((wonRows.data ?? []) as { lead_id: string }[]).map((w) => w.lead_id))];
+  const values = await selectInBatches<{ estimated_value: number | null }>(wonIds, (batch) =>
+    ctx.supabase.from('leads').select('estimated_value').in('id', batch),
+  );
+  return {
+    new_leads: created.count ?? 0,
+    contacted: contacted.count ?? 0,
+    won: wonIds.length,
+    value_won: values.reduce((sum, l) => sum + Number(l.estimated_value ?? 0), 0),
   };
 }
 

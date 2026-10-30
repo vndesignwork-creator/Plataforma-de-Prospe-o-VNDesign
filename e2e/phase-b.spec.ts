@@ -105,6 +105,13 @@ test('Kanban: mover com o teclado muda o estado e agenda o follow-up', async ({ 
 test('Dashboard: o essencial e "Hoje"; o resto em Estatísticas', async ({ page }) => {
   await page.goto('/dashboard');
   await expect(page.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
+  // Por omissão, os números deste mês (com a comparação); "Sempre" mostra os totais.
+  const period = page.getByRole('group', { name: 'Período dos números' });
+  await expect(period.getByRole('button', { name: 'Este mês' })).toHaveAttribute('aria-pressed', 'true');
+  for (const label of ['Leads novos', 'Contactados', 'Clientes ganhos', 'Valor do pipeline']) {
+    await expect(page.getByText(label, { exact: true })).toBeVisible();
+  }
+  await period.getByRole('button', { name: 'Sempre' }).click();
   for (const label of ['Leads ativos', 'Clientes ganhos', 'Taxa de conversão', 'Valor do pipeline']) {
     await expect(page.getByText(label, { exact: true })).toBeVisible();
   }

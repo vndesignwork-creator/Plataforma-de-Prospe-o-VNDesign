@@ -848,6 +848,45 @@ export const DashboardSchema = z
   .meta({ id: 'Dashboard' });
 export type Dashboard = z.infer<typeof DashboardSchema>;
 
+/** Dashboard: os números de um período (e do período anterior, do mesmo tamanho, para comparar). */
+export const DASHBOARD_PERIODS = ['month', '30d'] as const;
+export type DashboardPeriod = (typeof DASHBOARD_PERIODS)[number];
+const PeriodNumbersSchema = z.object({
+  new_leads: z.int().meta({ description: 'Leads criados' }),
+  contacted: z.int().meta({ description: 'Leads com o 1.º contacto no período' }),
+  won: z.int().meta({ description: 'Leads que passaram a Cliente' }),
+  value_won: z.number().meta({ description: 'Valor estimado dos que passaram a Cliente' }),
+});
+export const DashboardPeriodSchema = z
+  .object({
+    period: z.enum(DASHBOARD_PERIODS),
+    from: z.string().meta({ description: 'AAAA-MM-DD (inclusive)' }),
+    to: z.string().meta({ description: 'AAAA-MM-DD (inclusive)' }),
+    current: PeriodNumbersSchema,
+    previous: PeriodNumbersSchema,
+  })
+  .meta({ id: 'DashboardPeriod' });
+export type DashboardPeriodNumbers = z.infer<typeof DashboardPeriodSchema>;
+export const DashboardPeriodQuerySchema = z.object({ period: z.enum(DASHBOARD_PERIODS).default('month') });
+
+/** Início e fim do período e do anterior (este mês: do dia 1 a hoje, contra o mesmo número de dias do mês passado). */
+export function dashboardPeriodRange(period: DashboardPeriod, today: string): { from: string; to: string; prevFrom: string; prevTo: string } {
+  const day = (iso: string, n: number) => {
+    const d = new Date(`${iso}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  };
+  if (period === '30d') return { from: day(today, -29), to: today, prevFrom: day(today, -59), prevTo: day(today, -30) };
+  const from = `${today.slice(0, 8)}01`;
+  const elapsed = Number(today.slice(8, 10)) - 1;
+  const prevStart = new Date(`${from}T12:00:00Z`);
+  prevStart.setUTCMonth(prevStart.getUTCMonth() - 1);
+  const prevFrom = prevStart.toISOString().slice(0, 10);
+  // Mesmo número de dias, sem passar do fim do mês passado.
+  const prevTo = [day(prevFrom, elapsed), day(from, -1)].sort()[0]!;
+  return { from, to: today, prevFrom, prevTo };
+}
+
 /** "Em conversa": os estados em que um lead tem de ter sempre um próximo passo marcado. */
 export const STALLED_STATUSES = ['contactado', 'respondeu', 'reuniao', 'proposta_enviada'] as const satisfies readonly LeadStatus[];
 

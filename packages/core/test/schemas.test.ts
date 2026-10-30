@@ -67,3 +67,13 @@ describe('ActivityCreateSchema', () => {
     expect(ActivityCreateSchema.safeParse({ type: 'merged' }).success).toBe(false);
   });
 });
+
+describe('Dashboard: períodos', () => {
+  it('este mês contra os mesmos dias do mês passado; 30 dias contra os 30 anteriores', async () => {
+    const { dashboardPeriodRange } = await import('../src/schemas');
+    expect(dashboardPeriodRange('month', '2026-10-30')).toEqual({ from: '2026-10-01', to: '2026-10-30', prevFrom: '2026-09-01', prevTo: '2026-09-30' });
+    expect(dashboardPeriodRange('month', '2026-03-31')).toEqual({ from: '2026-03-01', to: '2026-03-31', prevFrom: '2026-02-01', prevTo: '2026-02-28' });
+    expect(dashboardPeriodRange('month', '2026-10-05')).toEqual({ from: '2026-10-01', to: '2026-10-05', prevFrom: '2026-09-01', prevTo: '2026-09-05' });
+    expect(dashboardPeriodRange('30d', '2026-10-30')).toEqual({ from: '2026-10-01', to: '2026-10-30', prevFrom: '2026-09-01', prevTo: '2026-09-30' });
+  });
+});

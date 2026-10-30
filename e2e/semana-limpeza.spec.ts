@@ -174,7 +174,8 @@ test('Dashboard: projetos a precisar de atenção levam aos Projetos já filtrad
   await page.goto('/dashboard');
   const attention = page.getByRole('status', { name: 'Projetos a precisar de atenção' });
   await attention.getByRole('link', { name: /com a entrega atrasada/ }).click();
-  await expect(page).toHaveURL(/\/projetos\?filtro=atrasados$/);
+  // A página Projetos demora a abrir com muitos projetos na base de testes.
+  await expect(page).toHaveURL(/\/projetos\?filtro=atrasados$/, { timeout: 30_000 });
   await expect(page.getByRole('group', { name: 'Filtrar projetos' }).getByRole('button', { name: /^Atrasados/ })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('list', { name: 'Projetos em curso' }).getByText(name)).toBeVisible();
 

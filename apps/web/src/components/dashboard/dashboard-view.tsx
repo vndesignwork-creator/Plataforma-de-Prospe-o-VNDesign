@@ -6,7 +6,6 @@ import {
   formatCurrency,
   formatDate,
   formatDateTime,
-  formatPercent,
   todayIso,
   type TodayOpenedEmail,
   type Lead,
@@ -24,7 +23,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { Fragment, useState, type ReactNode } from 'react';
-import { StatTile } from '@/components/charts/stat-tile';
 import { FollowUpEmailButton } from '@/components/email/send-email-dialog';
 import { FollowUpActions } from '@/components/follow-up/follow-up-actions';
 import { StatusBadge } from '@/components/leads/badges';
@@ -37,6 +35,7 @@ import { DueChip, ReminderChip } from '@/components/tasks/tasks-card';
 import { Linkified } from '@/lib/linkify';
 import { useBilling, useDashboard, useProjects, useReschedule, useRole, useSettings, useToday } from '@/lib/queries';
 import { MyTeamTiles } from './team-stats';
+import { DashboardHeader, SummaryStrip } from './dashboard-top';
 import { ReconnectCard } from './reconnect-card';
 import { RepliesCard } from './replies-card';
 import { CardLayoutButton, DASHBOARD_BOARD, useCardLayout, visibleCards } from '@/components/leads/card-layout';
@@ -78,14 +77,28 @@ function TodayGroup({ title, icon, leads, tone }: { title: string; icon: ReactNo
   );
 }
 
-/** Reuniões de hoje e dos próximos 7 dias. */
-function TodayMeetings({ meetings }: { meetings: TodayMeeting[] }) {
+const lisbonDay = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Lisbon' }).format(new Date(iso));
+
+/** Reuniões: as de hoje e, à parte, as dos próximos 7 dias. */
+function TodayMeetings({ meetings, today }: { meetings: TodayMeeting[]; today: string }) {
+  if (!meetings.length) return null;
+  const todays = meetings.filter((m) => lisbonDay(m.starts_at) === today);
+  const later = meetings.filter((m) => lisbonDay(m.starts_at) !== today);
+  return (
+    <>
+      <MeetingList title="Reuniões de hoje" meetings={todays} />
+      <MeetingList title="Reuniões nos próximos 7 dias" meetings={later} />
+    </>
+  );
+}
+
+function MeetingList({ title, meetings }: { title: string; meetings: TodayMeeting[] }) {
   if (!meetings.length) return null;
   return (
-    <section aria-label="Reuniões">
+    <section aria-label={title}>
       <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold">
         <Users className="h-4 w-4" aria-hidden />
-        Reuniões <span className="font-normal text-muted">({meetings.length})</span>
+        {title} <span className="font-normal text-muted">({meetings.length})</span>
       </h3>
       <ul className="divide-y divide-border">
         {meetings.map((m) => (
@@ -110,7 +123,6 @@ function TodayMeetings({ meetings }: { meetings: TodayMeeting[] }) {
   );
 }
 
-/** Projetos em curso: os de entrega mais próxima, com a fase e o progresso das tarefas. */
 function ProjectsCard({ className }: { className?: string }) {
   const { data: settings } = useSettings();
   const enabled = settings?.features.projects ?? false;
@@ -416,7 +428,7 @@ function TodayCard({ className }: { className?: string }) {
     !data.opened?.length &&
     !data.stalled?.length;
   return (
-    <Card className={cn('flex flex-col', className)}>
+    <Card id="hoje" className={cn('flex scroll-mt-20 flex-col', className)}>
       <CardHeader
         title="Hoje"
         description={data ? `Follow-ups, próximas ações e tarefas · ${formatDate(data.today)}` : undefined}
@@ -426,7 +438,7 @@ function TodayCard({ className }: { className?: string }) {
         {empty ? <p className="px-2 py-6 text-center text-sm text-muted">Nada agendado para os próximos 7 dias. 🎉</p> : null}
         {data ? (
           <>
-            <TodayMeetings meetings={data.meetings ?? []} />
+            <TodayMeetings meetings={data.meetings ?? []} today={data.today} />
             <TodayOpened items={data.opened ?? []} />
             <TodayCatchUp today={data.today} leads={data.overdue} tasks={data.tasks?.overdue ?? []} />
             <TodayStalled today={data.today} leads={data.stalled ?? []} />
@@ -537,6 +549,7 @@ export function DashboardView() {
 function ProspectorDashboard() {
   return (
     <div className="flex flex-col gap-5">
+      <DashboardHeader />
       <MyTeamTiles />
       <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
         <TodayCard />
@@ -552,27 +565,38 @@ function OwnerDashboard() {
   const { data: settings } = useSettings();
   const projectsOn = settings?.features.projects ?? false;
   const layout = useCardLayout(DASHBOARD_CARDS_PREFERENCE);
+  const available = DASHBOARD_CARDS.filter((k) => projectsOn || (k !== 'projects' && k !== 'reconnect'));
+  // "Organizar cartões" no topo (antes estava no fundo da página).
+  const header = <DashboardHeader organize={<CardLayoutButton board={DASHBOARD_BOARD} available={available} className="self-center" />} />;
 
   if (error) {
     return (
-      <p role="alert" className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">
-        {errorMessage(error)}
-      </p>
+      <>
+        {header}
+        <p role="alert" className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">
+          {errorMessage(error)}
+        </p>
+      </>
     );
   }
   if (isLoading || !data) {
     return (
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }, (_, i) => (
-          <Skeleton key={i} className="h-24" />
-        ))}
-      </div>
+      <>
+        {header}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }, (_, i) => (
+            <Skeleton key={i} className="h-24" />
+          ))}
+        </div>
+      </>
     );
   }
 
   const t = data.totals;
   if (t.total === 0) {
     return (
+      <>
+        {header}
       <Card>
         <EmptyState title="Ainda não há leads">
           <p>Importa a tua folha ou cria o primeiro lead para veres aqui o resumo.</p>
@@ -586,25 +610,18 @@ function OwnerDashboard() {
           </p>
         </EmptyState>
       </Card>
+      </>
     );
   }
 
-  const summary = (
-    <section aria-label="Resumo" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <StatTile label="Leads ativos" value={t.active} hint={t.paused ? `${t.paused} em pausa` : `${t.total} no total`} />
-      <StatTile label="Clientes ganhos" value={t.won} hint={t.value_won ? `${euros(t.value_won)} ganhos` : undefined} />
-      <StatTile label="Taxa de conversão" value={formatPercent(t.conversion_rate_contacted)} hint="dos leads contactados" />
-      <StatTile label="Valor do pipeline" value={euros(t.value_pipeline)} hint="Soma dos leads ativos" />
-    </section>
-  );
-  const available = DASHBOARD_CARDS.filter((k) => projectsOn || (k !== 'projects' && k !== 'reconnect'));
-  const organize = <CardLayoutButton board={DASHBOARD_BOARD} available={available} />;
+  const summary = <SummaryStrip totals={t} />;
 
   // Sem nada mudado: as duas filas alinhadas de sempre (cartões da mesma fila com a mesma altura):
   // Hoje | Leads mais quentes e Pipeline | Projetos. Telemóvel: uma coluna, com o "Hoje" no topo e o Pipeline no fim.
   if (!layout || (!layout.order.length && !layout.hidden.length)) {
     return (
       <div className="flex flex-col gap-5">
+        {header}
         {summary}
         <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
           <TodayCard className="lg:col-start-1 lg:row-start-1" />
@@ -617,7 +634,6 @@ function OwnerDashboard() {
           <ProjectsCard className="lg:col-start-2 lg:row-start-3" />
         </div>
         {projectsOn ? <ReconnectCard /> : null}
-        {organize}
       </div>
     );
   }
@@ -641,6 +657,7 @@ function OwnerDashboard() {
   }
   return (
     <div className="flex flex-col gap-5">
+      {header}
       {blocks.map((block) =>
         wide.has(block[0]!) ? (
           <Fragment key={block[0]}>{cards[block[0]!]}</Fragment>
@@ -652,7 +669,6 @@ function OwnerDashboard() {
           </div>
         ),
       )}
-      {organize}
     </div>
   );
 }
