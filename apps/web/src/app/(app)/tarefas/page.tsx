@@ -7,14 +7,8 @@ export const metadata: Metadata = { title: 'Tarefas' };
 
 export default function TarefasPage() {
   return (
-    <>
-      <PageHeader
-        title="Tarefas"
-        description="As tarefas por fazer de todos os leads e projetos, pelo prazo. Marca a caixa quando estiver feita."
-      />
-      <Suspense>
-        <MyTasksView />
-      </Suspense>
-    </>
+    <Suspense fallback={<PageHeader title="Tarefas" />}>
+      <MyTasksView />
+    </Suspense>
   );
 }

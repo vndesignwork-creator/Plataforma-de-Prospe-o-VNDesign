@@ -183,6 +183,8 @@ test('Tarefas: dar prazo a uma tarefa sem prazo daqui mesmo (com Anular)', async
   const task = (await res.json()).data as { id: string };
   const due = async () => ((await (await page.request.get(`/api/v1/leads/${lead.id}/tasks`)).json()).data as { id: string; due_on: string | null }[]).find((t) => t.id === task.id)!.due_on;
   await page.goto('/tarefas?de=all');
+  // Com muitas tarefas, "Sem prazo" pode estar recolhida: a pesquisa abre tudo.
+  await page.getByLabel('Procurar tarefa ou lead').fill(`Rever textos ${run}`);
   await expect(page.getByRole('list', { name: 'Sem prazo' }).getByText(`Rever textos ${run}`)).toBeVisible();
 
   await page.getByRole('button', { name: `Prazo de Rever textos ${run}` }).click();
@@ -199,4 +201,49 @@ test('Tarefas: dar prazo a uma tarefa sem prazo daqui mesmo (com Anular)', async
   await page.getByRole('button', { name: `Prazo de Rever textos ${run}` }).click();
   await page.getByRole('menuitem', { name: 'Escolher data…' }).click();
   await expect(page.getByLabel(`Data do prazo de Rever textos ${run}`)).toBeVisible();
+});
+
+test('Tarefas: topo com resumo, Nova tarefa, pesquisa, Leads | Projetos e secções que se recolhem', async ({ page }) => {
+  const lead = await createLead(page.request, { company_name: `Topo Tarefas ${run}` });
+  expect((await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title: `Atrasada ${run}`, due_on: '2020-01-10' } })).status()).toBe(201);
+  await page.goto('/tarefas?de=all');
+  await expect(page.getByRole('heading', { name: 'Tarefas', level: 1 })).toBeVisible();
+  await expect(page.getByText(/\d+ por fazer/)).toBeVisible();
+  await expect(page.getByRole('button', { name: /\d+ em atraso/ })).toBeVisible();
+
+  // Nova tarefa daqui: escolher o lead pela pesquisa e o prazo "Hoje".
+  await page.getByRole('button', { name: 'Nova tarefa' }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Nova tarefa' });
+  await dialog.getByRole('button', { name: 'Criar tarefa' }).click();
+  await expect(dialog.getByText('Escreve a tarefa.')).toBeVisible();
+  await expect(dialog.getByText('Escolhe o lead ou projeto.')).toBeVisible();
+  await dialog.getByLabel('Tarefa').fill(`Nova daqui ${run}`);
+  await dialog.getByLabel('Procurar o lead ou projeto').fill(`Topo Tarefas ${run}`);
+  await dialog.getByRole('button', { name: new RegExp(`Topo Tarefas ${run}`) }).click();
+  await expect(dialog.getByRole('button', { name: 'Mudar' })).toBeVisible();
+  await dialog.getByRole('button', { name: /^Prazo/ }).click();
+  await page.getByRole('menuitem', { name: /^Hoje/ }).click();
+  await dialog.getByRole('button', { name: 'Criar tarefa' }).click();
+  await expect(page.getByText(new RegExp(`Tarefa criada em Topo Tarefas ${run}`))).toBeVisible();
+  await expect
+    .poll(async () => ((await (await page.request.get(`/api/v1/leads/${lead.id}/tasks`)).json()).data as { title: string }[]).map((t) => t.title))
+    .toContain(`Nova daqui ${run}`);
+
+  // Pesquisa: só as deste lead, em "Hoje" e "Em atraso".
+  await page.getByLabel('Procurar tarefa ou lead').fill(`Topo Tarefas ${run}`);
+  await expect(page.getByRole('list', { name: 'Hoje' }).getByText(`Nova daqui ${run}`)).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Em atraso' }).getByText(`Atrasada ${run}`)).toBeVisible();
+
+  // É um lead (não um projeto): no filtro Projetos desaparece e aparece "Limpar filtros".
+  await page.getByRole('group', { name: 'Tipo de tarefa' }).getByRole('button', { name: 'Projetos' }).click();
+  await expect(page).toHaveURL(/tipo=projetos/);
+  await expect(page.getByText('Nenhuma tarefa encontrada')).toBeVisible();
+  await page.getByRole('button', { name: 'Limpar filtros' }).click();
+  await expect(page.getByLabel('Procurar tarefa ou lead')).toHaveValue('');
+
+  // Recolher "Em atraso" e voltar a abrir pelo resumo do topo.
+  await page.getByRole('button', { name: 'Recolher: Em atraso' }).click();
+  await expect(page.getByRole('list', { name: 'Em atraso' })).toHaveCount(0);
+  await page.getByRole('button', { name: /\d+ em atraso/ }).click();
+  await expect(page.getByRole('list', { name: 'Em atraso' })).toBeVisible();
 });
