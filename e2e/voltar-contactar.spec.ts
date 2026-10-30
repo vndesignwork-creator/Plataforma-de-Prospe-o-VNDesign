@@ -260,3 +260,37 @@ test('Projetos: mover os blocos (pega ⠿) passa a "A minha ordem" e fica guarda
   await page.getByLabel('Ordenar por').selectOption('prazo');
   await expect.poll(order).toBe('A,B');
 });
+
+test('Prospeção: topo com o objetivo do dia (por modo), ajuda recolhida e separadores numa linha', async ({ page }) => {
+  await page.request.put('/api/v1/preferences/prospecting.mode', { data: { value: 'phone' } });
+  await page.request.put('/api/v1/preferences/prospecting.goal', { data: { value: {} } });
+  await page.goto('/prospecao');
+  await expect(page.getByRole('heading', { name: 'Prospeção', level: 1 })).toBeVisible();
+  await expect(page.getByRole('radio', { name: 'Telefone' })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByRole('tab', { name: /^Falta contacto/ })).toBeVisible();
+
+  // A ajuda abre e fecha com "Como funciona".
+  const help = page.getByRole('button', { name: 'Como funciona' });
+  if ((await help.getAttribute('aria-expanded')) === 'true') await page.getByRole('button', { name: 'Percebi' }).click();
+  await expect(page.getByRole('note').filter({ hasText: 'Contacta e regista o resultado' })).toHaveCount(0);
+  await help.click();
+  await expect(page.getByRole('note').filter({ hasText: 'Contacta e regista o resultado' })).toBeVisible();
+  await page.getByRole('button', { name: 'Percebi' }).click();
+
+  // Objetivo do dia (a telefonar): número inválido, depois 20.
+  await page.getByRole('button', { name: 'Definir objetivo do dia' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Objetivo do dia' });
+  await dialog.getByLabel('Contactos por dia').fill('0');
+  await dialog.getByRole('button', { name: 'Guardar' }).click();
+  await expect(dialog.getByText('Indica um número inteiro entre 1 e 500.')).toBeVisible();
+  await dialog.getByLabel('Contactos por dia').fill('20');
+  await dialog.getByRole('button', { name: 'Guardar' }).click();
+  await expect(page.getByText('Objetivo do dia: 20 contactos.')).toBeVisible();
+  await expect(page.getByRole('progressbar', { name: 'Objetivo do dia' })).toHaveAttribute('aria-valuemax', '20');
+  expect((await (await page.request.get('/api/v1/preferences/prospecting.goal')).json()).data.value).toEqual({ phone: 20 });
+
+  // Por email, o objetivo é outro (ainda nenhum).
+  await page.getByRole('radio', { name: 'Email' }).click();
+  await expect(page.getByRole('button', { name: 'Definir objetivo do dia' })).toBeVisible();
+  await page.request.put('/api/v1/preferences/prospecting.goal', { data: { value: {} } });
+});

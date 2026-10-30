@@ -33,6 +33,7 @@ import {
 } from '@vndesign/core';
 import {
   CalendarClock,
+  Check,
   ChevronDown,
   Mail,
   FileText,
@@ -47,6 +48,7 @@ import {
   RotateCcw,
   Route,
   Search,
+  SearchX,
   Sparkles,
   ThumbsDown,
   ThumbsUp,
@@ -72,6 +74,8 @@ import { errorMessage } from '@/lib/api-client';
 import { usePreference, useProspectingOutcome, useProspectingQueue, useSetPreference, useSettings, useTemplates } from '@/lib/queries';
 import { useTemplateContext } from '@/lib/template-context';
 import { cn, displayHost, telUrl, whatsappUrl } from '@/lib/utils';
+import { PageHeader } from '@/components/layout/page-header';
+import { DailyGoal, HelpButton, HelpNote, useProspectingHelp } from './prospecting-header';
 import { SequenceStep, pickTemplate } from './sequence-step';
 
 const KIND_ICON: Record<ProspectingItem['kind'], typeof Eye> = {
@@ -180,6 +184,7 @@ export function ProspectingSession() {
   const [limit, setLimit] = useState(PAGE);
   const [doneToday, setDoneToday] = useState<number | null>(null);
   const [emailsSent, setEmailsSent] = useState(0);
+  const [helpOpen, setHelpOpen] = useProspectingHelp();
 
   const items = data?.items ?? [];
   // O servidor separa os sem email/contacto ("Falta …") dos outros; guardar um contacto não faz o lead saltar de separador.
@@ -240,82 +245,132 @@ export function ProspectingSession() {
     setDoneToday(result.done_today);
   }
 
+  const helpText =
+    view === 'missing'
+      ? mode === 'email'
+        ? 'Leads da lista sem email: procura-o (site, Google, Maps, redes sociais ou automaticamente) e guarda-o; depois já lhes podes escrever aqui.'
+        : 'Leads da lista sem telefone nem email: procura o contacto (Google, Maps, redes sociais ou automaticamente) e guarda-o; depois já os podes contactar aqui.'
+      : mode === 'email'
+        ? 'Cada linha tem o email pronto a rever e enviar (o 1.º ou o follow-up seguinte). Ao enviar, o lead passa a Contactado e o próximo follow-up fica marcado — não precisas de registar nada. Ligaste? Usa “Registar”.'
+        : 'Contacta e regista o resultado na própria linha. O lead passa para “Feito nesta sessão”, onde vês a contagem (1×, 2×…) e podes registar outra tentativa.';
+  const doneCount = mode === 'email' ? emailsToday : today;
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div role="tablist" aria-label="Que leads" className="flex flex-wrap gap-1 rounded-lg bg-surface-2 p-1">
-          {views(mode).map((v) => (
+      <PageHeader
+        title="Prospeção"
+        description={
+          <span className="flex flex-col gap-1.5" aria-live="polite">
+            <span className="flex flex-wrap items-center gap-x-1.5">
+              {mode === 'email' ? (
+                <span>
+                  Hoje: <strong className="text-fg tabular">{emailsToday}</strong> email{emailsToday === 1 ? '' : 's'} enviado{emailsToday === 1 ? '' : 's'}
+                </span>
+              ) : (
+                <span>
+                  Hoje: <strong className="text-fg tabular">{today}</strong> contacto{today === 1 ? '' : 's'}
+                </span>
+              )}
+              <span aria-hidden>·</span>
+              <span>
+                Nesta sessão: <strong className="text-fg tabular">{done.length}</strong>
+              </span>
+              {data ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>
+                    Faltam <strong className="text-fg tabular">{pending.length}</strong>
+                  </span>
+                </>
+              ) : null}
+              {done.length ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDoneOpen(true);
+                      requestAnimationFrame(() => document.getElementById('feito-nesta-sessao')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+                    }}
+                    className="inline-flex items-center gap-1 font-medium text-success hover:underline"
+                  >
+                    <Check className="h-3.5 w-3.5" aria-hidden /> {done.length} feito{done.length === 1 ? '' : 's'}
+                  </button>
+                </>
+              ) : null}
+            </span>
+            <DailyGoal mode={mode} done={doneCount} />
+          </span>
+        }
+        actions={
+          <>
+            <div role="radiogroup" aria-label="Trabalho por" className="inline-flex h-10 items-center rounded-lg border border-border-input bg-surface-2 p-0.5">
+              {PROSPECTING_MODES.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="radio"
+                  aria-checked={mode === m}
+                  onClick={() => {
+                    if (m === mode) return;
+                    setModePref.mutate(m);
+                    setLimit(PAGE);
+                  }}
+                  className={cn(
+                    'inline-flex h-full items-center gap-1.5 rounded-md px-3 text-sm',
+                    mode === m ? 'bg-surface font-medium text-fg shadow-sm' : 'text-muted hover:text-fg',
+                  )}
+                >
+                  {m === 'email' ? <Mail className="h-4 w-4" aria-hidden /> : <Phone className="h-4 w-4" aria-hidden />}
+                  {PROSPECTING_MODE_LABELS[m]}
+                </button>
+              ))}
+            </div>
+            <HelpButton open={helpOpen} onToggle={() => setHelpOpen(!helpOpen)} />
+            <Link href="/gerar-leads" className={buttonClasses('outline', 'md', 'max-sm:w-10 max-sm:px-0')} aria-label="Gerar leads">
+              <Sparkles className="h-4 w-4" aria-hidden />
+              <span className="hidden sm:inline">Gerar leads</span>
+            </Link>
+          </>
+        }
+      />
+
+      {/* Os separadores numa linha (deslizam no telemóvel); "Falta …" à parte, à direita. */}
+      <div role="tablist" aria-label="Que leads" className="-mt-2 flex overflow-x-auto border-b border-border [scrollbar-width:none]">
+        {views(mode).map((v) => {
+          const on = view === v.value;
+          const missing = v.value === 'missing';
+          return (
             <button
               key={v.value}
               type="button"
               role="tab"
-              aria-selected={view === v.value}
+              aria-selected={on}
               onClick={() => changeView(v.value)}
               className={cn(
-                'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-                view === v.value ? 'bg-surface text-fg shadow-sm' : 'text-muted hover:text-fg',
+                '-mb-px inline-flex min-h-10 shrink-0 items-center gap-1.5 border-b-2 px-3 text-sm whitespace-nowrap transition-colors',
+                missing && 'ml-auto',
+                on ? (missing ? 'border-warning font-medium text-warning' : 'border-accent font-medium text-accent-text') : 'border-transparent text-muted hover:text-fg',
               )}
             >
+              {missing ? <SearchX className="h-4 w-4" aria-hidden /> : null}
               {v.label}
               {counts ? ' ' : null}
               {counts ? (
-                <span className={cn('ml-0.5 text-xs tabular', v.value === 'missing' && counts.missing ? 'text-warning' : 'text-muted')}>{counts[v.value]}</span>
+                <span
+                  className={cn(
+                    'rounded px-1.5 text-xs font-medium tabular',
+                    missing && counts.missing ? 'bg-warning-soft text-warning' : 'bg-surface-3 text-muted',
+                  )}
+                >
+                  {counts[v.value]}
+                </span>
               ) : null}
             </button>
-          ))}
-        </div>
-        <div role="radiogroup" aria-label="Trabalho por" className="flex items-center gap-1 text-sm">
-          <span className="mr-1 text-muted">Trabalho por:</span>
-          {PROSPECTING_MODES.map((m) => (
-            <button
-              key={m}
-              type="button"
-              role="radio"
-              aria-checked={mode === m}
-              onClick={() => {
-                if (m === mode) return;
-                setModePref.mutate(m);
-                setLimit(PAGE);
-              }}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 font-medium transition-colors',
-                mode === m ? 'border-accent/60 bg-accent-soft text-accent-text' : 'border-border text-muted hover:text-fg',
-              )}
-            >
-              {m === 'email' ? <Mail className="h-3.5 w-3.5" aria-hidden /> : <Phone className="h-3.5 w-3.5" aria-hidden />}
-              {PROSPECTING_MODE_LABELS[m]}
-            </button>
-          ))}
-        </div>
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted" aria-live="polite">
-          <span>
-            Nesta sessão: <strong className="text-fg tabular">{done.length}</strong>
-          </span>
-          {mode === 'email' ? (
-            <span>
-              Hoje: <strong className="text-fg tabular">{emailsToday}</strong> email{emailsToday === 1 ? '' : 's'} enviado{emailsToday === 1 ? '' : 's'}
-            </span>
-          ) : (
-            <span>
-              Hoje: <strong className="text-fg tabular">{today}</strong> contacto{today === 1 ? '' : 's'}
-            </span>
-          )}
-          {data ? (
-            <span>
-              Faltam <strong className="text-fg tabular">{pending.length}</strong>
-            </span>
-          ) : null}
-        </p>
+          );
+        })}
       </div>
-      <p className="text-sm text-muted">
-        {view === 'missing'
-          ? mode === 'email'
-            ? 'Leads da lista sem email: procura-o (site, Google, Maps, redes sociais ou automaticamente) e guarda-o; depois já lhes podes escrever aqui.'
-            : 'Leads da lista sem telefone nem email: procura o contacto (Google, Maps, redes sociais ou automaticamente) e guarda-o; depois já os podes contactar aqui.'
-          : mode === 'email'
-            ? 'Cada linha tem o email pronto a rever e enviar (o 1.º ou o follow-up seguinte). Ao enviar, o lead passa a Contactado e o próximo follow-up fica marcado — não precisas de registar nada. Ligaste? Usa “Registar”.'
-            : 'Contacta e regista o resultado na própria linha. O lead passa para “Feito nesta sessão”, onde vês a contagem (1×, 2×…) e podes registar outra tentativa.'}
-      </p>
+      {helpOpen ? <HelpNote onClose={() => setHelpOpen(false)}>{helpText}</HelpNote> : null}
 
       {isLoading ? <Skeleton className="h-96" /> : null}
 
@@ -379,7 +434,7 @@ export function ProspectingSession() {
       ) : null}
 
       {done.length ? (
-        <section aria-label="Feito nesta sessão" className="flex flex-col gap-2">
+        <section id="feito-nesta-sessao" aria-label="Feito nesta sessão" className="flex scroll-mt-20 flex-col gap-2">
           <button
             type="button"
             aria-expanded={doneOpen}
