@@ -93,7 +93,7 @@ type ProjectKpi = (typeof PROJECT_KPIS)[number];
 const PROJECT_KPI_BOARD: Board<ProjectKpi> = {
   preference: 'projects.kpis',
   defaults: PROJECT_KPIS,
-  labels: { em_curso: 'Em curso', recebido: 'Recebido este mês', por_receber: 'Por receber', em_atraso: 'Em atraso' },
+  labels: { em_curso: 'Em curso', recebido: 'Recebido este mês', por_receber: 'Por receber', em_atraso: 'Pagamentos em atraso' },
   alwaysShown: [],
   description: 'A ordem dos números do topo dos Projetos e os que queres ver.',
 };
@@ -246,13 +246,17 @@ export function ProjectsView() {
         em_atraso: (
           <>
           {billing.overdue ? (
-            <Kpi label="Em atraso" value={<span className="text-danger">{euros(billing.overdue)}</span>}>
+            <Kpi label="Pagamentos em atraso" value={<span className="text-danger">{euros(billing.overdue)}</span>}>
               <button type="button" onClick={() => showFilter('pagamentos')} className="self-start text-left text-xs font-medium text-danger hover:underline">
                 Ver {billing.overdue_count} pagamento{billing.overdue_count === 1 ? '' : 's'}
               </button>
             </Kpi>
           ) : (
-            <Kpi label="Em atraso" value={<span className="inline-flex items-center gap-1 text-success"><CheckCircle2 className="h-4 w-4" aria-hidden />Nada em atraso</span>} />
+            <Kpi label="Pagamentos em atraso" value={euros(0)}>
+              <span className="inline-flex items-center gap-1 text-xs text-muted">
+                <CheckCircle2 className="h-3 w-3 text-success" aria-hidden /> Todos em dia
+              </span>
+            </Kpi>
           )}
           </>
         ),
