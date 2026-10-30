@@ -668,6 +668,8 @@ export const WorkspaceSettingsSchema = z
     follow_up_days: z.int().min(1).max(60).default(3),
     /** Trabalha ao fim de semana: os follow-ups automáticos podem cair ao sábado e ao domingo (por omissão passam para segunda). */
     work_weekends: z.boolean().default(false),
+    /** Importar (folha ou API): os leads ainda não contactados entram sem próxima ação (a data da folha é ignorada). */
+    import_skip_next_action: z.boolean().default(false),
     /** Sequência de follow-ups por email (depois de um email enviado pela plataforma). */
     follow_up_sequence: FollowUpSequenceSchema.default(DEFAULT_FOLLOW_UP_SEQUENCE),
     /** Arquivar sozinhos os leads em "Sem interesse" há mais de N dias (null = desligado). */
@@ -731,6 +733,7 @@ export const WorkspaceSettingsUpdateSchema = z
   .object({
     follow_up_days: z.int({ error: 'Indica um número de dias.' }).min(1, { error: 'Mínimo 1 dia.' }).max(60, { error: 'Máximo 60 dias.' }),
     work_weekends: z.boolean().optional(),
+    import_skip_next_action: z.boolean().optional(),
     follow_up_sequence: z.object({ enabled: z.boolean(), steps: FollowUpStepsSchema }),
     prospecting_sequence: ProspectingSequenceSchema.optional(),
     auto_archive_days: z

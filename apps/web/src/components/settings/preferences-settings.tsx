@@ -27,6 +27,7 @@ export function PreferencesSettings() {
     DEFAULT_FOLLOW_UP_SEQUENCE.steps.map((s) => ({ days: String(s.days), template_id: '' })),
   );
   const [optOut, setOptOut] = useState('');
+  const [importSkip, setImportSkip] = useState(false);
   const [autoArchive, setAutoArchive] = useState(false);
   const [autoArchiveDays, setAutoArchiveDays] = useState('60');
   const [cleanup, setCleanup] = useState(false);
@@ -42,6 +43,7 @@ export function PreferencesSettings() {
     setSequenceEnabled(from.follow_up_sequence.enabled);
     setSteps(from.follow_up_sequence.steps.map((s) => ({ days: String(s.days), template_id: s.template_id ?? '' })));
     setOptOut(from.opt_out_line);
+    setImportSkip(from.import_skip_next_action);
     setAutoArchive(from.auto_archive_days !== null);
     setAutoArchiveDays(String(from.auto_archive_days ?? 60));
     setCleanup(from.activity_cleanup_months !== null);
@@ -66,6 +68,7 @@ export function PreferencesSettings() {
     auto_archive_days: autoArchive ? Number(autoArchiveDays) : null,
     activity_cleanup_months: cleanup ? Number(cleanupMonths) : null,
     opt_out_line: optOut,
+    import_skip_next_action: importSkip,
     daily_digest: { enabled: digestEnabled, recipient },
   };
   const dirty =
@@ -81,6 +84,7 @@ export function PreferencesSettings() {
         auto_archive_days: settings.auto_archive_days,
         activity_cleanup_months: settings.activity_cleanup_months,
         opt_out_line: settings.opt_out_line,
+        import_skip_next_action: settings.import_skip_next_action,
         daily_digest: { enabled: settings.daily_digest.enabled, recipient: settings.daily_digest.recipient ?? '' },
       });
 
@@ -130,6 +134,16 @@ export function PreferencesSettings() {
           <p className="text-xs text-muted">
             Desligado: os follow-ups que a plataforma marca sozinha (Contactado, Não atendeu, Mais tarde, sequências) nunca caem ao sábado
             nem ao domingo — passam para segunda-feira. As datas que escolhes à mão ficam como estão.
+          </p>
+        </div>
+        <div className="flex flex-col gap-1.5 md:col-span-2">
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input type="checkbox" checked={importSkip} onChange={(e) => setImportSkip(e.target.checked)} />
+            Leads importados sem próxima ação
+          </label>
+          <p className="text-xs text-muted">
+            Ao importar uma folha ou receber leads pela API (ex.: a tarefa semanal com o Claude), os leads ainda não contactados entram sem a
+            data da próxima ação — não chegam já &quot;em atraso&quot;. Os outros estados mantêm a data.
           </p>
         </div>
         <Field label="Linha de opt-out (RGPD)" hint="Variável {{opt_out}} nos modelos de email.">

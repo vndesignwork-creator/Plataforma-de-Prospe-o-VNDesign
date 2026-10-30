@@ -25,6 +25,7 @@ import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
 import { listSectors } from './sectors';
 import { loadServiceCatalog } from './service-catalog';
+import { getSettings } from './workspace';
 
 export const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
@@ -240,6 +241,14 @@ export async function commitImport(ctx: ApiContext, input: CommitImportInput): P
   );
   const blockedIdx = new Set(dnc.map((d) => d.row_index));
   const allowed = toWrite.filter((_, i) => !blockedIdx.has(i));
+  // Definições: os leads ainda não contactados entram sem a próxima ação da folha/API (não chegam já "em atraso").
+  if ((await getSettings(ctx)).import_skip_next_action) {
+    for (const item of allowed) {
+      if ((item.lead.status ?? 'identificado') !== 'identificado') continue;
+      delete item.lead.next_action_on;
+      delete item.lead.next_action_text;
+    }
+  }
 
   const { data: job, error: jobError } = await ctx.supabase
     .from('import_jobs')

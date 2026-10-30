@@ -68,6 +68,7 @@ const ITEMS: Omit<SettingsItem, 'id'>[] = [
   { slug: 'lembretes', label: 'Dias até ao follow-up', keywords: 'follow-up próxima ação dias' },
   { slug: 'lembretes', label: 'Sequência de follow-ups por email', keywords: 'follow-ups automáticos passos' },
   { slug: 'lembretes', label: 'Linha de opt-out (RGPD)', keywords: 'opt_out anular subscrição rgpd' },
+  { slug: 'lembretes', label: 'Leads importados sem próxima ação', keywords: 'importar folha api data próxima ação em atraso' },
   { slug: 'lembretes', label: 'Arquivo automático', keywords: 'arquivar sem interesse' },
   { slug: 'lembretes', label: 'Limpar registos antigos', find: 'Apagar os registos “Lead editado” antigos', keywords: 'lead editado apagar histórico limpeza' },
   { slug: 'lembretes', label: 'Resumo diário por email', keywords: 'resumo manhã digest' },

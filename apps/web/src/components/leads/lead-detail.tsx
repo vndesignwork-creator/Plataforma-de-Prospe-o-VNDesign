@@ -21,6 +21,8 @@ import {
   isCardHidden,
   type LeadCard,
   relativeDay,
+  nextActionOrigin,
+  type NextActionOrigin,
 } from '@vndesign/core';
 import {
   Archive,
@@ -67,6 +69,7 @@ import {
   useLead,
   useLeads,
   useLeadTasks,
+  useActivities,
   useMe,
   useReschedule,
   useSettings,
@@ -221,9 +224,33 @@ function QuickContact({ lead, whatsappMessages }: { lead: Lead; whatsappMessages
 const WEEKDAYS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 
 /** Faixa no topo da ficha: o próximo passo, quando é, e Feito / Follow-up ▾ / Enviar follow-up ali mesmo. */
+/** "Veio da importação (20/10)", "Adiado por Va a 22/10"… (a partir da linha do tempo). */
+function originText(origin: NextActionOrigin, who: (id: string | null) => string | null): string {
+  const day = formatDate(origin.at).slice(0, 5);
+  const by = 'via_api' in origin && origin.via_api ? ' via API' : who(origin.actor_user_id) ? ` por ${who(origin.actor_user_id)}` : '';
+  switch (origin.kind) {
+    case 'import':
+      return `Veio com a importação da folha (${day})`;
+    case 'api':
+      return `Veio com o lead pela API (${day})`;
+    case 'created':
+      return `Definida ao criar o lead${by} (${day})`;
+    case 'snoozed':
+      return `Adiado${by} a ${day}`;
+    case 'scheduled':
+      return `Agendado${by} a ${day}`;
+    case 'edited':
+      return `Alterado${by} a ${day}`;
+  }
+}
+
 function NextStepBar({ lead }: { lead: Lead }) {
   const reschedule = useReschedule();
   const invalidate = useInvalidateLead();
+  // A mesma lista da linha do tempo (sem pedido a mais): de onde veio a data.
+  const { data: activities } = useActivities(lead.id);
+  const { data: team } = useTeamNames();
+  const { data: me } = useMe();
   if (lead.anonymized_at) return null;
   const today = todayIso();
   if (!lead.next_action_on && !lead.next_action_text) {
@@ -264,6 +291,10 @@ function NextStepBar({ lead }: { lead: Lead }) {
   }
   const due = lead.next_action_on;
   const overdue = due !== null && due < today;
+  const origin = activities ? nextActionOrigin(lead, activities) : null;
+  // Com equipa: quem foi ("por ti", "por Paula"); sozinho, não é preciso dizer.
+  const who = (id: string | null) =>
+    (team?.length ?? 0) > 1 && id ? (id === me?.user.id ? 'ti' : (team?.find((m) => m.user_id === id)?.name ?? null)) : null;
   // Discreta: uma linha, sem fundo; só a data fica a vermelho quando está em atraso.
   return (
     <section aria-label="Próximo passo" className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-border px-3 py-2">
@@ -276,6 +307,7 @@ function NextStepBar({ lead }: { lead: Lead }) {
             {due ? ` · ${WEEKDAYS[new Date(`${due}T12:00:00Z`).getUTCDay()]} ${formatDate(due)}` : ''}
           </span>
           {due ? <span className={overdue ? 'text-danger' : 'text-muted'}> ({overdue ? `em atraso, ${relativeDay(due, today)}` : relativeDay(due, today)})</span> : null}
+          {origin ? <span className="block text-xs text-muted">{originText(origin, who)}</span> : null}
         </span>
       </p>
       <div className="flex flex-wrap items-center gap-2">
