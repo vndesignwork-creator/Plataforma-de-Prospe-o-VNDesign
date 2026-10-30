@@ -236,7 +236,7 @@ test('Estatísticas: resumo no topo, índice das secções, recolher e organizar
   const dialog = page.getByRole('dialog', { name: 'Organizar secções' });
   await dialog.getByLabel('Mostrar Funil e evolução').click();
   await dialog.getByRole('button', { name: 'Guardar' }).click();
-  await expect(page.getByRole('heading', { name: 'Funil de conversão' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Funil de todos os leads' })).toHaveCount(0);
   await page.request.put('/api/v1/preferences/stats.sections', { data: { value: { order: [], hidden: [] } } });
 });
 

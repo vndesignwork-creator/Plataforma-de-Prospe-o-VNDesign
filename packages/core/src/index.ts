@@ -50,6 +50,7 @@ export * from './custom-fields';
 export * from './lead-trash';
 export * from './lead-summary';
 export * from './next-action';
+export * from './funnel';
 export * from './card-scan';
 export * from './period-compare';
 export * from './saved-views';

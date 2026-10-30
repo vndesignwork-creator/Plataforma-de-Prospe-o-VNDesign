@@ -190,6 +190,8 @@ import {
   CustomFieldCreateSchema,
   CustomFieldUpdateSchema,
   PeriodCompareQuerySchema,
+  CohortFunnelQuerySchema,
+  CohortFunnelSchema,
   PeriodCompareSchema,
   LostReasonCountSchema,
   NoteSearchQuerySchema,
@@ -1580,6 +1582,14 @@ export function getOpenApiDocument() {
           summary: 'Este mês (ou semana) até hoje contra o anterior até ao mesmo dia: leads novos, contactos, respostas, reuniões, propostas, clientes e recebido',
           requestParams: { query: PeriodCompareQuerySchema },
           responses: { '200': ok(data(PeriodCompareSchema)), ...common },
+        }),
+      },
+      '/stats/funnel': {
+        get: op({
+          tags: ['Dashboard'],
+          summary: 'Funil por período: dos leads que entraram nos últimos 30/90/365 dias, quantos chegaram a cada fase e em quantos dias',
+          requestParams: { query: CohortFunnelQuerySchema },
+          responses: { '200': ok(data(CohortFunnelSchema)), ...common },
         }),
       },
       '/stats/team': {

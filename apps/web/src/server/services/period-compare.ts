@@ -4,7 +4,7 @@
  * lead pode contar em várias), os leads criados, as reuniões marcadas e o
  * recebido nos pagamentos.
  */
-import { addDays, comparePeriods, todayIso, type CompareMetric, type ComparePeriod, type PeriodCompare } from '@vndesign/core';
+import { addDays, comparePeriods, todayIso, type CohortFunnel, type CompareMetric, type ComparePeriod, type PeriodCompare } from '@vndesign/core';
 import type { ApiContext } from '../context';
 import { fromPostgrest } from '../http';
 import { lisbonMidnight } from './prospecting';
@@ -64,4 +64,13 @@ export async function comparePeriodStats(ctx: ApiContext, period: ComparePeriod)
   const [current, previous] = await Promise.all([metricsFor(ctx, ranges.current, f), metricsFor(ctx, ranges.previous, f)]);
   const metrics = (Object.keys(current) as CompareMetric[]).map((key) => ({ key, current: current[key] ?? 0, previous: previous[key] ?? 0 }));
   return { period, ...ranges, metrics };
+}
+
+/** Funil por período: dos leads que entraram nos últimos N dias, até onde chegaram (stats_cohort_funnel). */
+export async function cohortFunnel(ctx: ApiContext, days: number): Promise<CohortFunnel> {
+  const from = addDays(todayIso(), -days);
+  const { data, error } = await ctx.supabase.rpc('stats_cohort_funnel', { p_workspace_id: ctx.workspaceId, p_from: from });
+  if (error) throw fromPostgrest(error);
+  const rows = (data ?? []) as { stage: CohortFunnel['stages'][number]['stage']; reached: number; avg_days: number | string | null }[];
+  return { from, stages: rows.map((r) => ({ stage: r.stage, reached: Number(r.reached), avg_days: r.avg_days === null ? null : Number(r.avg_days) })) };
 }

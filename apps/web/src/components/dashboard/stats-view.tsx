@@ -16,6 +16,7 @@ import { errorMessage } from '@/lib/api-client';
 import { useDashboard, useRole, useSectors, useSettings, useTeamNames } from '@/lib/queries';
 import { EmailStatsSection } from './email-stats';
 import { LostReasonsCard } from './lost-reasons';
+import { CohortFunnelCard } from './cohort-funnel';
 import { ComparePeriodSwitch, PeriodCompareCard } from './period-compare';
 import { PomodoroStatsSection } from './pomodoro-stats';
 import { ProfitabilitySection } from './profitability-section';
@@ -213,8 +214,10 @@ function OwnerStats() {
   const funnelFirst = data.funnel[0]?.count ?? 0;
   const funnelBlock = (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-2">
+      {/* Pelo histórico (quem entrou no período e até onde chegou); o de baixo é o estado de agora. */}
+      <CohortFunnelCard className="lg:col-span-2" />
       <Card>
-        <CardHeader title="Funil de conversão" description="Etapa mais avançada a que cada lead já chegou" />
+        <CardHeader title="Funil de todos os leads" description="Etapa mais avançada a que cada lead já chegou (desde sempre)" />
         <div className="p-4">
           <BarList
             caption="Funil de conversão"

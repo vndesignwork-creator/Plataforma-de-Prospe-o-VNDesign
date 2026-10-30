@@ -122,7 +122,7 @@ test('Dashboard: o essencial e "Hoje"; o resto em Estatísticas', async ({ page 
     'href',
     '/leads?status=contactado',
   );
-  await expect(page.getByRole('heading', { name: 'Funil de conversão' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Funil de todos os leads' })).toHaveCount(0);
 
   await page.getByRole('link', { name: 'Estatísticas', exact: true }).last().click();
   await expect(page).toHaveURL(/\/estatisticas$/);
@@ -130,7 +130,13 @@ test('Dashboard: o essencial e "Hoje"; o resto em Estatísticas', async ({ page 
   for (const label of ['Total de leads', 'Valor total estimado']) {
     await expect(page.getByText(label, { exact: true })).toBeVisible();
   }
-  await expect(page.getByRole('heading', { name: 'Funil de conversão' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Funil de todos os leads' })).toBeVisible();
+  // Funil por período (pela linha do tempo): os leads novos e até onde chegaram.
+  await expect(page.getByRole('heading', { name: 'Funil dos leads novos' })).toBeVisible();
+  const cohort = page.getByRole('list', { name: 'Funil dos leads novos' });
+  await expect(cohort.getByRole('listitem')).toHaveCount(6);
+  await page.getByRole('radiogroup', { name: 'Período do funil' }).getByRole('radio', { name: '12 meses' }).click();
+  await expect(cohort.getByRole('listitem').first()).toContainText(/\d+ leads novos/);
   await expect(page.getByRole('table', { name: 'Leads por estado' })).toBeAttached();
 });
 
