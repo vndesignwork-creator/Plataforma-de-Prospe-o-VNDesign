@@ -208,7 +208,7 @@ test('Tarefas: topo com resumo, Nova tarefa, pesquisa, Leads | Projetos e sec√ß√
   expect((await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title: `Atrasada ${run}`, due_on: '2020-01-10' } })).status()).toBe(201);
   await page.goto('/tarefas?de=all');
   await expect(page.getByRole('heading', { name: 'Tarefas', level: 1 })).toBeVisible();
-  await expect(page.getByText(/\d+ por fazer/)).toBeVisible();
+  await expect(page.getByText(/\d+\+? por fazer/)).toBeVisible();
   await expect(page.getByRole('button', { name: /\d+ em atraso/ })).toBeVisible();
 
   // Nova tarefa daqui: escolher o lead pela pesquisa e o prazo "Hoje".

@@ -185,6 +185,12 @@ export function PomodoroBox({ lead, compact, className }: { lead: Lead; compact?
       <div className="flex items-center justify-between gap-2 text-xs">
         <span className="inline-flex items-center gap-1.5 font-medium text-muted">
           <Timer className="h-3.5 w-3.5" aria-hidden /> Pomodoro
+          {/* Compacto e parado: o relógio grande só aparece quando está a contar. */}
+          {compact && !here ? (
+            <span className="font-normal tabular" role="timer" aria-live="off" aria-label="Tempo que falta">
+              · {formatCountdown(left)}
+            </span>
+          ) : null}
         </span>
         <span className="inline-flex items-center gap-3 text-muted">
           {here ? <Dots completed={here.completed} every={here.long_every} /> : null}
@@ -207,6 +213,7 @@ export function PomodoroBox({ lead, compact, className }: { lead: Lead; compact?
         </span>
       </div>
 
+      {compact && !here ? null : (
       <Dial
         fraction={1 - left / total}
         tone={!here || paused || here.phase === 'ready' ? 'muted' : onBreak ? 'success' : 'accent'}
@@ -218,6 +225,7 @@ export function PomodoroBox({ lead, compact, className }: { lead: Lead; compact?
         </span>
         {here?.task ? <span className="line-clamp-2 text-xs text-muted">{here.task.title}</span> : null}
       </Dial>
+      )}
 
       {here ? (
         <div className="flex flex-wrap justify-center gap-2">

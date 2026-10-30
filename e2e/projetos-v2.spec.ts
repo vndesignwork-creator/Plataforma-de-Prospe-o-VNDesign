@@ -28,6 +28,11 @@ test.afterAll(async ({ browser }) => {
   await page.close();
 });
 
+/** Ficha do cliente: as partes do projeto estão em separadores (Trabalho e entregas | Tempo e dinheiro | Cliente e equipa). */
+async function projectTab(page: import('@playwright/test').Page, name: string) {
+  await page.locator('#projeto').getByRole('tablist', { name: 'Partes do projeto' }).getByRole('tab', { name: new RegExp(`^${name}`) }).click();
+}
+
 test('lista: prazo, fase, ações rápidas, plano de pagamentos, temporizador, fases e calendário', async ({ page }) => {
   test.setTimeout(90_000);
   const name = `Atelier Prazo ${run}`;
@@ -144,7 +149,8 @@ test('ficha: revisões, horas e €/hora, entregas e a página para o cliente', 
   // Revisões: 1 incluída; a segunda fica "A cobrar".
   await card.getByLabel('Incluídas no preço').fill('1');
   await card.getByLabel('Incluídas no preço').press('Enter');
-  await expect(page.getByText('1 revisão incluída no preço.')).toBeVisible();
+  // A ficha de cliente faz muitos pedidos ao abrir: a gravação pode ficar uns segundos na fila.
+  await expect(page.getByText('1 revisão incluída no preço.')).toBeVisible({ timeout: 30_000 });
   await card.getByRole('button', { name: 'Revisão', exact: true }).click();
   let dialog = page.getByRole('dialog', { name: 'Revisão 1' });
   await expect(dialog.getByLabel('A cobrar à parte')).not.toBeChecked();
@@ -162,6 +168,7 @@ test('ficha: revisões, horas e €/hora, entregas e a página para o cliente', 
   await expect(card.getByText('2 de 1 · 1 a cobrar')).toBeVisible();
 
   // Horas: 2 h à mão → 300 €/hora (valor estimado 600 €).
+  await projectTab(page, 'Tempo e dinheiro');
   await card.getByRole('button', { name: 'À mão' }).click();
   dialog = page.getByRole('dialog', { name: 'Registar horas' });
   await dialog.getByLabel('Horas').fill('2');
@@ -176,6 +183,7 @@ test('ficha: revisões, horas e €/hora, entregas e a página para o cliente', 
   await expect(card.getByText(/o projeto rende 200\s€\/hora/)).toBeVisible();
 
   // Entregas: link sem https:// e aprovada pelo cliente.
+  await projectTab(page, 'Trabalho e entregas');
   await card.getByRole('button', { name: 'Entrega', exact: true }).click();
   await card.getByLabel('Nome da entrega').fill('Logótipo — versão final');
   await card.getByLabel('Link (opcional)').fill('drive.google.com/logo-final');
@@ -187,6 +195,7 @@ test('ficha: revisões, horas e €/hora, entregas e a página para o cliente', 
   await expect(card.getByText('1 de 1 aprovada')).toBeVisible();
 
   // Página para o cliente: abre sem sessão; desligada deixa de abrir.
+  await projectTab(page, 'Cliente e equipa');
   await card.getByRole('button', { name: 'Criar link' }).click();
   const url = await card.getByLabel('Link da página do cliente').inputValue();
   expect(url).toMatch(/\/p\/[A-Za-z0-9_-]{24}$/);
@@ -273,4 +282,34 @@ test('fases: ao arrastar um cartão só a cópia segue o rato (o original fica n
   const original = await handle.evaluate((el) => (el.closest('li') as HTMLElement).style.transform);
   expect(original).toBe('');
   await page.mouse.up();
+});
+
+test('ficha do cliente: projeto primeiro, fases clicáveis, separadores lembrados e as 5 próximas tarefas', async ({ page }) => {
+  const lead = await createClient(page.request, { company_name: `Ficha Cliente ${Date.now().toString(36)}` });
+  for (let i = 1; i <= 7; i += 1) await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title: `Passo ${i}` } });
+  await page.goto(`/leads/${lead.id}`);
+  const card = page.locator('#projeto');
+  // O projeto vem antes do "Negócio".
+  const projectTop = (await card.boundingBox())!.y;
+  const negocioTop = (await page.getByRole('heading', { name: 'Negócio', exact: true }).boundingBox())!.y;
+  expect(projectTop).toBeLessThan(negocioTop);
+
+  // Fases: carregar em "Em produção" muda a fase.
+  await card.getByRole('group', { name: /Fase do projeto/ }).getByRole('button', { name: /Em produção/ }).click();
+  await expect(page.getByText('Fase: Em produção.')).toBeVisible();
+  await expect(card.getByRole('group', { name: /Fase do projeto/ }).getByRole('button', { name: /Em produção/ })).toHaveAttribute('aria-pressed', 'true');
+
+  // Separadores: Tempo e dinheiro mostra o Pomodoro compacto (sem o relógio grande) e fica lembrado.
+  await projectTab(page, 'Tempo e dinheiro');
+  const pomodoro = card.getByRole('region', { name: 'Pomodoro' });
+  await expect(pomodoro.getByRole('button', { name: /^Começar \d+ min$/ })).toBeVisible();
+  await expect(pomodoro.getByText('Pronto', { exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(card.getByRole('tab', { name: /^Tempo e dinheiro/ })).toHaveAttribute('aria-selected', 'true');
+
+  // Tarefas: as 5 próximas e "Ver todas".
+  const list = page.locator('#tarefas').getByRole('list', { name: 'Tarefas por fazer' });
+  await expect(list.getByRole('listitem')).toHaveCount(5);
+  await page.locator('#tarefas').getByRole('button', { name: /^Ver todas \(\d+\)$/ }).click();
+  await expect(list.getByRole('listitem')).not.toHaveCount(5);
 });

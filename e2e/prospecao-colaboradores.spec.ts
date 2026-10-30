@@ -84,6 +84,11 @@ function totp(secret: string, at = Date.now()): string {
   return String((hmac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, '0');
 }
 
+/** Ficha do cliente: as partes do projeto estão em separadores (Trabalho e entregas | Tempo e dinheiro | Cliente e equipa). */
+async function projectTab(page: import('@playwright/test').Page, name: string) {
+  await page.locator('#projeto').getByRole('tablist', { name: 'Partes do projeto' }).getByRole('tab', { name: new RegExp(`^${name}`) }).click();
+}
+
 test('imagens do site: tirar no telemóvel e no computador, no relatório e no email', async ({ page }) => {
   const lead = await createLead(page.request, { company_name: `Imagens ${run}`, website: 'http://localhost:3000/offline', services: ['site_institucional'] });
   const audit = await page.request.post(`/api/v1/leads/${lead.id}/audits`, { data: {} });
@@ -334,6 +339,7 @@ test('colaboradores: convidar, aceitar, portal só do projeto e remover', async 
   const email = `colab-${run}@exemplo.pt`;
 
   await page.goto(`/leads/${lead.id}`);
+  await projectTab(page, 'Cliente e equipa');
   const section = page.getByRole('region', { name: 'Colaboradores' });
   await section.getByRole('button', { name: 'Convidar' }).click();
   await section.getByLabel('Nome').fill('Rui Programador');
@@ -379,7 +385,8 @@ test('colaboradores: convidar, aceitar, portal só do projeto e remover', async 
     const deliverables = (await (await page.request.get(`/api/v1/leads/${lead.id}/deliverables`)).json()).data as { title: string; status: string }[];
     expect(deliverables).toContainEqual(expect.objectContaining({ title: 'Maquete v1', status: 'rascunho' }));
     await page.reload();
-    await expect(page.locator('#projeto').getByText('Rui Programador').first()).toBeVisible({ timeout: 20_000 });
+    // (As horas do colaborador também têm o nome, no separador "Tempo e dinheiro": procura-se na secção Colaboradores.)
+    await expect(section.getByText('Rui Programador').first()).toBeVisible({ timeout: 20_000 });
 
     // Remover: perde logo o acesso.
     await section.getByRole('button', { name: `Remover ${email}` }).click();

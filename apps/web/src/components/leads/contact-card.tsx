@@ -70,6 +70,13 @@ const AI_VALUE = 'ia';
 
 /** Modelo inicial: email frio (ou follow-up) mais adequado ao lead. */
 function initialTemplate(templates: ContactTemplate[], lead: Lead, category: string | null): ContactTemplate | undefined {
+  // Cliente: uma mensagem normal (não um follow-up "sem resposta").
+  if (lead.status === 'cliente') {
+    for (const kind of ['general_email', 'short_message', 'whatsapp'] as const) {
+      const found = rankTemplatesForLead(templates.filter((t) => t.kind === kind), lead, category)[0];
+      if (found) return found;
+    }
+  }
   const firstKind = lead.status === 'identificado' ? 'cold_email' : 'follow_up';
   return rankTemplatesForLead(templates.filter((t) => t.kind === firstKind), lead, category)[0] ?? templates[0];
 }

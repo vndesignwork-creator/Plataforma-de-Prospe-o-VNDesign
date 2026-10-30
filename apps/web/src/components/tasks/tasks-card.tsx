@@ -517,6 +517,8 @@ function TemplateMenu({ templates, suggested, onApply }: { templates: TaskTempla
  * listas prontas por serviço. `embedded`: só o campo e a lista, sem o cartão
  * (ex.: dentro de cada projeto na página Projetos).
  */
+const NEXT_TASKS = 5;
+
 export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }) {
   const today = todayIso();
   const qc = useQueryClient();
@@ -534,15 +536,23 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
   const [showDueInput, setShowDueInput] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
+  // Na coluna lateral: as 5 próximas por fazer (todas com "Ver todas" ou vindo de um link para as tarefas).
+  const [showAll, setShowAll] = useState(false);
 
   // Ao abrir a ficha por um link para as tarefas (ex.: "Criar tarefas" no Kanban), descer até aqui
   // quando a lista já tem altura (o browser tentou antes de o cartão existir).
   useEffect(() => {
-    if (!isLoading && window.location.hash === '#tarefas') document.getElementById('tarefas')?.scrollIntoView();
+    if (!isLoading && window.location.hash === '#tarefas') {
+      // Vindo de um link para as tarefas: todas à vista (a que se procura pode não estar nas 5 primeiras).
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- só no browser (o endereço)
+      setShowAll(true);
+      document.getElementById('tarefas')?.scrollIntoView();
+    }
   }, [isLoading]);
 
   const { pending, done } = splitTasks(tasks ?? []);
   const total = (tasks ?? []).length;
+  const shownPending = embedded || showAll ? pending : pending.slice(0, NEXT_TASKS);
   const suggested = suggestTaskTemplates(templates ?? [], lead.services ?? []);
 
   const sensors = useSensors(
@@ -829,13 +839,24 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
                 },
               }}
             >
-              <SortableContext items={pending.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+              <SortableContext items={shownPending.map((t) => t.id)} strategy={verticalListSortingStrategy}>
                 <ul aria-label="Tarefas por fazer" className="divide-y divide-border py-1">
-                  {pending.map((task) => (
+                  {shownPending.map((task) => (
                     <TaskRow key={task.id} {...rowProps(task, pending.length > 1)} />
                   ))}
                 </ul>
               </SortableContext>
+              {pending.length > shownPending.length || (showAll && !embedded && pending.length > NEXT_TASKS) ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAll(!showAll)}
+                  aria-expanded={showAll}
+                  className="flex w-full items-center gap-1.5 border-t border-border px-4 py-2 text-sm text-accent-text hover:underline"
+                >
+                  <ChevronRight className={cn('h-4 w-4 transition-transform', showAll && '-rotate-90')} aria-hidden />
+                  {showAll ? 'Mostrar só as próximas' : `Ver todas (${pending.length})`}
+                </button>
+              ) : null}
             </DndContext>
           ) : (
             <p className="px-4 py-3 text-sm text-muted">Tudo feito. 🎉</p>

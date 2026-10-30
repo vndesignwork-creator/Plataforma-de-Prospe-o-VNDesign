@@ -105,6 +105,43 @@ export function StageSteps({ stage, className }: { stage: ProjectStage; classNam
   );
 }
 
+/** As fases como botões (ficha do cliente): carregar numa muda a fase do projeto. */
+export function StagePicker({ leadId, stage, className }: { leadId: string; stage: ProjectStage; className?: string }) {
+  const update = useUpdateProjectInfo(leadId);
+  const current = PROJECT_STAGES.indexOf(stage);
+  async function change(next: ProjectStage) {
+    if (next === stage) return;
+    try {
+      await update.mutateAsync({ stage: next });
+      toast.success(`Fase: ${PROJECT_STAGE_LABELS[next]}.`);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
+  return (
+    <div role="group" aria-label="Fase do projeto (carrega para mudar)" className={cn('flex items-stretch gap-1', className)}>
+      {PROJECT_STAGES.map((s, i) => (
+        <button
+          key={s}
+          type="button"
+          aria-pressed={i === current}
+          aria-label={`Fase ${PROJECT_STAGE_LABELS[s]}`}
+          disabled={update.isPending}
+          onClick={() => void change(s)}
+          title={i === current ? `Fase atual: ${PROJECT_STAGE_LABELS[s]}` : `Mudar a fase para ${PROJECT_STAGE_LABELS[s]}`}
+          className="group flex min-w-0 flex-1 flex-col gap-1 rounded-md px-0.5 py-1 text-left hover:bg-surface-2 disabled:opacity-70"
+        >
+          <span className={cn('h-1.5 rounded-full transition-colors', i <= current ? 'bg-accent' : 'bg-surface-3 group-hover:bg-muted/40')} aria-hidden />
+          <span className={cn('truncate text-[11px]', i === current ? 'font-semibold text-fg' : 'text-muted group-hover:text-fg')}>
+            {i < current ? '✓ ' : ''}
+            {PROJECT_STAGE_LABELS[s]}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /** Barra larga com a percentagem (tarefas, pagamentos). */
 export function ProgressBar({
   value,

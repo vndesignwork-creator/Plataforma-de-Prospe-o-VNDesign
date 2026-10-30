@@ -107,7 +107,6 @@ import { ContractsCard } from '@/components/projects/contracts-card';
 import { BrandKitCard } from '@/components/projects/brand-kit-card';
 import { ClientProjectsCard } from '@/components/projects/client-projects-card';
 import { ProjectCard } from '@/components/projects/project-card';
-import { ProjectToggle } from '@/components/projects/project-toggle';
 
 function Row({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
@@ -706,10 +705,12 @@ export function LeadDetail({ id }: { id: string }) {
 
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
         <div ref={mainColumn} className="flex flex-col gap-5">
+          {/* Cliente: o projeto primeiro (é o que interessa todos os dias). */}
+          {staff && lead.status === 'cliente' && settings?.features.projects && !lead.anonymized_at ? <ProjectCard lead={lead} /> : null}
+
           <Card>
             <CardHeader
               title="Negócio"
-              actions={staff && lead.status === 'cliente' && settings?.features.projects && !lead.anonymized_at ? <ProjectToggle lead={lead} /> : undefined}
             />
             <dl className="grid px-4 py-2 md:grid-cols-2 md:gap-x-6">
               <Row label="Serviços" className="md:col-span-2">
@@ -781,8 +782,6 @@ export function LeadDetail({ id }: { id: string }) {
             </dl>
           </Card>
 
-          {/* Cliente: o projeto logo a seguir ao pipeline, na coluna larga. */}
-          {staff && lead.status === 'cliente' && settings?.features.projects && !lead.anonymized_at ? <ProjectCard lead={lead} /> : null}
 
           {/* Contactar: a ação principal num lead, logo a seguir ao negócio (o botão "Email" do topo traz aqui). */}
           <ContactCard lead={lead} />

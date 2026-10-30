@@ -25,6 +25,11 @@ async function anonymous(browser: Browser) {
   return { context, page: await context.newPage() };
 }
 
+/** Ficha do cliente: as partes do projeto estão em separadores (Trabalho e entregas | Tempo e dinheiro | Cliente e equipa). */
+async function projectTab(page: import('@playwright/test').Page, name: string) {
+  await page.locator('#projeto').getByRole('tablist', { name: 'Partes do projeto' }).getByRole('tab', { name: new RegExp(`^${name}`) }).click();
+}
+
 test('arranque: ao passar a Cliente, prazo, revisões, tarefas e plano de pagamentos', async ({ page }) => {
   const lead = await createLead(page.request, { company_name: `Arranque ${run}`, services: ['site_institucional'], status: 'proposta_enviada', estimated_value: 900 });
   const res = await page.request.patch(`/api/v1/leads/${lead.id}`, { data: { status: 'cliente' } });
@@ -45,7 +50,8 @@ test('arranque: ao passar a Cliente, prazo, revisões, tarefas e plano de pagame
   // Um cliente antigo (criado já como cliente): "Preparar" na ficha.
   const old = await createLead(page.request, { company_name: `Cliente Antigo ${run}`, services: ['identidade_visual'], status: 'cliente' });
   await page.goto(`/leads/${old.id}`);
-  await page.locator('#projeto').getByRole('button', { name: 'Preparar' }).click();
+  await page.locator('#projeto').getByRole('button', { name: 'Mais ações do projeto' }).click();
+  await page.getByRole('menuitem', { name: /^Preparar/ }).click();
   await expect(page.getByText(/Projeto preparado: \d+ tarefas \(Identidade Visual\) · entrega a/)).toBeVisible();
   await expect(page.locator('#projeto').getByText('Faltam 21 dias')).toBeVisible();
 });
@@ -55,6 +61,7 @@ test('despesas e lucro; rentabilidade nas Estatísticas', async ({ page }) => {
   await page.request.post(`/api/v1/leads/${lead.id}/time`, { data: { date: iso(0), minutes: 120 } });
   await page.goto(`/leads/${lead.id}`);
   const card = page.locator('#projeto');
+  await projectTab(page, 'Tempo e dinheiro');
   await card.getByRole('button', { name: 'Despesa', exact: true }).click();
   await card.getByLabel('Descrição da despesa').fill('Alojamento (1 ano)');
   await card.getByLabel('Valor (€)').fill('100');

@@ -24,6 +24,11 @@ async function showSiteCard(page: import('@playwright/test').Page, label: string
   if (SITE_TABS[label]) await page.getByRole('tablist', { name: 'Site e presença online' }).getByRole('tab', { name: SITE_TABS[label], exact: true }).click();
 }
 
+/** Ficha do cliente: as partes do projeto estão em separadores (Trabalho e entregas | Tempo e dinheiro | Cliente e equipa). */
+async function projectTab(page: import('@playwright/test').Page, name: string) {
+  await page.locator('#projeto').getByRole('tablist', { name: 'Partes do projeto' }).getByRole('tab', { name: new RegExp(`^${name}`) }).click();
+}
+
 test('ficha de cliente: cartões de prospeção recolhidos; num lead por contactar, abertos', async ({ page }) => {
   test.setTimeout(90_000);
   const client = await createLead(page.request, { company_name: `Cliente Limpo ${run}`, status: 'cliente', services: ['landing_page'] });
@@ -116,6 +121,7 @@ test('horas por tarefa: registo à mão com tarefa, tempo na tarefa e "Tempo por
 
   await page.goto(`/leads/${lead.id}`);
   await expect(page.locator('#tarefas').getByRole('listitem').filter({ hasText: `Página inicial ${run}` })).toContainText('1 h 30 min');
+  await projectTab(page, 'Tempo e dinheiro');
   const byTask = page.locator('#projeto').getByRole('list', { name: 'Tempo por tarefa' });
   await expect(byTask).toContainText(`Página inicial ${run}`);
   await expect(byTask).toContainText('1 h 30 min');

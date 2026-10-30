@@ -45,11 +45,17 @@ test.beforeEach(async ({ request }) => {
   expect(saved.status(), await saved.text()).toBe(200);
 });
 
+/** Ficha do cliente: as partes do projeto estão em separadores (Trabalho e entregas | Tempo e dinheiro | Cliente e equipa). */
+async function projectTab(page: import('@playwright/test').Page, name: string) {
+  await page.locator('#projeto').getByRole('tablist', { name: 'Partes do projeto' }).getByRole('tab', { name: new RegExp(`^${name}`) }).click();
+}
+
 test('pomodoro na ficha: tarefa, pausar, continuar, fim do trabalho com aviso, pausa e parar', async ({ page }) => {
   test.setTimeout(90_000);
   const lead = await createProject(page.request, `Pomodoro ${run}`);
   const before = ((await (await page.request.get('/api/v1/stats/pomodoros')).json()).data as { today: number }).today;
   await page.goto(`/leads/${lead.id}`);
+  await projectTab(page, 'Tempo e dinheiro');
   const box = page.locator('#projeto').getByRole('region', { name: 'Pomodoro' });
   await box.getByLabel('Em que tarefa?').selectOption({ label: 'Montar a página inicial' });
   await box.getByRole('button', { name: 'Começar 25 min' }).click();
@@ -198,6 +204,7 @@ test('pausa à espera: com "Começar a pausa automaticamente" desligado, a pausa
   expect(saved.status(), await saved.text()).toBe(200);
   const lead = await createProject(page.request, `Pomodoro espera ${run}`);
   await page.goto(`/leads/${lead.id}`);
+  await projectTab(page, 'Tempo e dinheiro');
   const box = page.locator('#projeto').getByRole('region', { name: 'Pomodoro' });
   await box.getByRole('button', { name: 'Começar 25 min' }).click();
   await expect(box).toContainText('A trabalhar');
@@ -227,6 +234,7 @@ test('horas: pôr a zero apaga todos os registos do projeto e para o pomodoro', 
   }
   expect((await page.request.post('/api/v1/pomodoro', { data: { lead_id: lead.id } })).status()).toBe(201);
   await page.goto(`/leads/${lead.id}`);
+  await projectTab(page, 'Tempo e dinheiro');
   const hours = page.locator('#projeto').getByRole('region', { name: 'Horas' });
   await hours.getByRole('button', { name: 'Pôr a zero' }).click();
   const dialog = page.getByRole('dialog', { name: 'Pôr as horas a zero?' });

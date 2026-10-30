@@ -27,6 +27,11 @@ const addDays = (n: number) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
+/** Ficha do cliente: as partes do projeto estão em separadores (Trabalho e entregas | Tempo e dinheiro | Cliente e equipa). */
+async function projectTab(page: import('@playwright/test').Page, name: string) {
+  await page.locator('#projeto').getByRole('tablist', { name: 'Partes do projeto' }).getByRole('tab', { name: new RegExp(`^${name}`) }).click();
+}
+
 test('formulário do site: cria o lead com tarefa e nota; junta ao mesmo lead; robôs e erros', async ({ page }) => {
   const on = await page.request.post('/api/v1/site-form', { data: { enabled: true } });
   expect(on.status(), await on.text()).toBe(200);
@@ -127,6 +132,7 @@ test('equipa → atividade: quem fez o quê, com filtro por período', async ({ 
 test('pomodoro: modo foco em ecrã inteiro e Esc para sair', async ({ page }) => {
   const lead = await createLead(page.request, { company_name: `Foco ${run}`, status: 'cliente' });
   await page.goto(`/leads/${lead.id}`);
+  await projectTab(page, 'Tempo e dinheiro');
   const box = page.getByRole('region', { name: 'Pomodoro' }).first();
   await box.getByRole('button', { name: /Começar \d+ min/ }).click();
   await box.getByRole('button', { name: 'Modo foco (ecrã inteiro)' }).click();
