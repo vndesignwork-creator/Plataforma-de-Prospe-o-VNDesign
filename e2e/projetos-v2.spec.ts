@@ -167,13 +167,13 @@ test('ficha: revisões, horas e €/hora, entregas e a página para o cliente', 
   await dialog.getByLabel('Horas').fill('2');
   await dialog.getByLabel('O que fizeste (opcional)').fill('Maquete');
   await dialog.getByRole('button', { name: 'Registar' }).click();
-  await expect(card.getByText(/2 h registadas · 300\s€\/hora/)).toBeVisible();
+  await expect(card.getByText(/o projeto rende 300\s€\/hora/)).toBeVisible();
   // Corrigir o registo: 3 h → 200 €/hora.
   await card.getByRole('button', { name: /Corrigir o registo de 2 h/ }).click();
   await card.getByRole('spinbutton', { name: 'Horas' }).fill('3');
   await card.getByRole('button', { name: 'Guardar a correção' }).click();
   await expect(page.getByText('Registo corrigido.')).toBeVisible();
-  await expect(card.getByText(/3 h registadas · 200\s€\/hora/)).toBeVisible();
+  await expect(card.getByText(/o projeto rende 200\s€\/hora/)).toBeVisible();
 
   // Entregas: link sem https:// e aprovada pelo cliente.
   await card.getByRole('button', { name: 'Entrega', exact: true }).click();
