@@ -29,7 +29,9 @@ export function CohortFunnelCard({ className }: { className?: string }) {
     <Card className={className}>
       <CardHeader
         title="Funil dos leads novos"
-        description={data ? `Dos leads que entraram desde ${formatDate(data.from)}: até onde chegaram e em quanto tempo` : 'Até onde chegaram e em quanto tempo'}
+        description={
+          data ? `Dos leads que entraram desde ${formatDate(data.from)}: até onde chegaram e em quanto tempo` : 'Até onde chegaram e em quanto tempo'
+        }
         actions={
           <div role="radiogroup" aria-label="Período do funil" onKeyDown={rovingKeyDown} className="inline-flex rounded-lg bg-surface-2 p-0.5 text-sm">
             {FUNNEL_WINDOWS.map((w, i) => (

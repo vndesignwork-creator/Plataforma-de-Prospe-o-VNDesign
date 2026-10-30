@@ -194,6 +194,20 @@ export function useLead(id: string) {
   });
 }
 
+/**
+ * Prepara a ficha de um lead (dados, tarefas e linha do tempo) antes de lá chegar:
+ * o "Lead seguinte" abre logo. Os dados ficam frescos 30 s (não pede outra vez ao abrir).
+ */
+export function usePrefetchLead() {
+  const qc = useQueryClient();
+  return (id: string) => {
+    const opts = { staleTime: 30_000 };
+    void qc.prefetchQuery({ queryKey: qk.lead(id), queryFn: () => api<{ data: Lead }>(`/leads/${id}`).then((r) => r.data), ...opts });
+    void qc.prefetchQuery({ queryKey: ['tasks', id], queryFn: () => api<{ data: LeadTask[] }>(`/leads/${id}/tasks`).then((r) => r.data), ...opts });
+    void qc.prefetchQuery({ queryKey: qk.activities(id), queryFn: () => api<{ data: Activity[] }>(`/leads/${id}/activities`).then((r) => r.data), ...opts });
+  };
+}
+
 export function useActivities(id: string) {
   return useQuery({
     queryKey: qk.activities(id),

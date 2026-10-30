@@ -11,6 +11,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api-client';
+import { usePrefetchLead } from '@/lib/queries';
 import { isTypingTarget } from '@/lib/shortcuts';
 import { cn } from '@/lib/utils';
 
@@ -62,6 +63,19 @@ export function LeadPager({ lead, className }: { lead: Lead; className?: string 
   const position = list && index >= 0 ? (list.page - 1) * list.limit + index + 1 : 0;
   const hasPrev = position > 1;
   const hasNext = !!list && index >= 0 && position < list.total;
+  const prefetchLead = usePrefetchLead();
+  const nextItem = list && index >= 0 ? list.items[index + 1] : undefined;
+
+  // Com a ficha já aberta, prepara a seguinte (página e dados): "Lead seguinte" / J abre logo.
+  useEffect(() => {
+    if (!nextItem) return;
+    const timer = window.setTimeout(() => {
+      router.prefetch(leadPath(nextItem));
+      prefetchLead(nextItem.id);
+    }, 1500);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só quando muda o lead seguinte
+  }, [nextItem?.id]);
 
   async function go(step: 1 | -1) {
     if (!list || busy || (step === 1 ? !hasNext : !hasPrev)) return;
