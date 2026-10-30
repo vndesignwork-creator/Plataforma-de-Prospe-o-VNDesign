@@ -25,6 +25,7 @@ import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { api, errorMessage } from '@/lib/api-client';
 import { useMailAccount, useMarkRepliesHandled, usePreference, useReplies, useRole } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+import { rovingKeyDown, rovingTabIndex } from '@/lib/roving';
 
 const DAYS = 14;
 const PAGE = 8;
@@ -196,13 +197,14 @@ export function RepliesCard({ className }: { className?: string }) {
         actions={
           <div className="flex items-center gap-1">
             {collapsed ? null : (
-              <div role="tablist" aria-label="Que respostas" className="flex gap-1 rounded-lg bg-surface-2 p-0.5 text-sm">
+              <div role="tablist" aria-label="Que respostas" onKeyDown={rovingKeyDown} className="flex gap-1 rounded-lg bg-surface-2 p-0.5 text-sm">
                 {(['pending', 'all'] as const).map((v) => (
                   <button
                     key={v}
                     type="button"
                     role="tab"
                     aria-selected={view === v}
+                    tabIndex={rovingTabIndex(view === v, 0)}
                     onClick={() => {
                       setView(v);
                       setLimit(PAGE);
@@ -241,7 +243,7 @@ export function RepliesCard({ className }: { className?: string }) {
               {account === null || (account && !detection) ? (
                 <p>
                   Liga a deteção de respostas em{' '}
-                  <Link href="/definicoes/email" className="text-accent-text hover:underline">
+                  <Link href="/definicoes/email" className="text-accent-text underline underline-offset-2">
                     Definições → Email
                   </Link>{' '}
                   para veres aqui quem te respondeu.

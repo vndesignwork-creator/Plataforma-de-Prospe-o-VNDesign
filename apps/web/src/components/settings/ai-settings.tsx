@@ -402,7 +402,7 @@ export function AiSettings() {
               Junta as tuas chaves da Anthropic (Claude), OpenAI (ChatGPT), OpenRouter ou de outro serviço compatível, para a
               plataforma usar IA. Cada pedido gasta créditos da conta do fornecedor. Para outras ferramentas enviarem leads{' '}
               <em>para cá</em>, vai a{' '}
-              <Link href="/definicoes/api" className="text-accent-text hover:underline">
+              <Link href="/definicoes/api" className="text-accent-text underline underline-offset-2">
                 Acesso externo (API)
               </Link>
               .

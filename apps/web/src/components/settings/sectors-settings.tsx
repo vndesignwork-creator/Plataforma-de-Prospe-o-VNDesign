@@ -16,6 +16,7 @@ import { api, errorMessage } from '@/lib/api-client';
 import { useInvalidateSectors, useSectors } from '@/lib/queries';
 import { SECTOR_ICON_COMPONENTS, SectorIconView } from '@/components/icons/lead-icons';
 import { cn } from '@/lib/utils';
+import { rovingKeyDown, rovingTabIndex } from '@/lib/roving';
 
 type SectorInput = z.input<typeof SectorCreateSchema>;
 type SectorOutput = z.output<typeof SectorCreateSchema>;
@@ -87,8 +88,8 @@ function SectorDialog({
         </Field>
         <fieldset className="sm:col-span-2">
           <legend className="mb-1.5 text-sm font-medium">Ícone</legend>
-          <div role="radiogroup" aria-label="Ícone do setor" className="flex flex-wrap gap-1.5">
-            {SECTOR_ICON_KEYS.map((key) => {
+          <div role="radiogroup" aria-label="Ícone do setor" onKeyDown={rovingKeyDown} className="flex flex-wrap gap-1.5">
+            {SECTOR_ICON_KEYS.map((key, i) => {
               const Icon = SECTOR_ICON_COMPONENTS[key];
               const selected = currentIcon === key;
               return (
@@ -97,6 +98,7 @@ function SectorDialog({
                   type="button"
                   role="radio"
                   aria-checked={selected}
+                  tabIndex={rovingTabIndex(selected, i, SECTOR_ICON_KEYS.some((k) => k === currentIcon))}
                   aria-label={SECTOR_ICONS[key]}
                   title={SECTOR_ICONS[key]}
                   onClick={() => setValue('icon', key, { shouldDirty: true })}

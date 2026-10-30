@@ -107,6 +107,7 @@ import { ContractsCard } from '@/components/projects/contracts-card';
 import { BrandKitCard } from '@/components/projects/brand-kit-card';
 import { ClientProjectsCard } from '@/components/projects/client-projects-card';
 import { ProjectCard } from '@/components/projects/project-card';
+import { rovingKeyDown, rovingTabIndex } from '@/lib/roving';
 
 function Row({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
@@ -351,13 +352,14 @@ function SitePresence({ lead }: { lead: Lead }) {
         <h2 id="site-presenca" className="text-xs font-medium tracking-wide text-muted uppercase">
           Site e presença online
         </h2>
-        <div role="tablist" aria-label="Site e presença online" className="inline-flex h-9 max-w-full items-center overflow-x-auto rounded-lg border border-border-input bg-surface-2 p-0.5 [scrollbar-width:none]">
+        <div role="tablist" aria-label="Site e presença online" onKeyDown={rovingKeyDown} className="inline-flex h-9 max-w-full items-center overflow-x-auto rounded-lg border border-border-input bg-surface-2 p-0.5 [scrollbar-width:none]">
           {SITE_TABS.map((t) => (
             <button
               key={t.id}
               type="button"
               role="tab"
               aria-selected={tab === t.id}
+              tabIndex={rovingTabIndex(tab === t.id, 0)}
               onClick={() => choose(t.id)}
               className={cn('inline-flex h-full shrink-0 items-center rounded-md px-3 text-sm whitespace-nowrap', tab === t.id ? 'bg-surface font-medium shadow-sm' : 'text-muted hover:text-fg')}
             >
@@ -517,6 +519,25 @@ export function LeadDetail({ id }: { id: string }) {
     }
   }
 
+  // Negócio: as linhas que podem estar vazias (recolhidas por omissão).
+  const businessRows: { key: string; label: string; value: ReactNode; wide?: boolean; filled: boolean }[] = [
+    {
+      key: 'angle',
+      label: 'Ângulo de abordagem',
+      wide: true,
+      filled: !!lead.approach_angle,
+      value: <span className="whitespace-pre-line">{lead.approach_angle}</span>,
+    },
+    // Com próximo passo, ele está na faixa do topo.
+    ...(lead.next_action_text || lead.next_action_on ? [] : [{ key: 'next', label: 'Próxima ação', filled: false, value: dash }]),
+    ...(staff ? [{ key: 'value', label: 'Valor estimado', filled: !!lead.estimated_value, value: formatCurrency(lead.estimated_value) }] : []),
+    { key: 'channel', label: 'Canal', filled: !!lead.channel, value: <ChannelLabel channel={lead.channel} /> },
+    { key: 'first', label: '1.º contacto', filled: !!lead.first_contact_on, value: formatDate(lead.first_contact_on) },
+    { key: 'last', label: 'Último follow-up', filled: !!lead.last_follow_up_on, value: formatDate(lead.last_follow_up_on) },
+    { key: 'suggested', label: 'Sugerido em', filled: !!lead.suggested_on, value: formatDate(lead.suggested_on) },
+  ];
+  const emptyBusinessRows = businessRows.filter((r) => !r.filled).length;
+
   return (
     <>
       <PageHeader
@@ -542,7 +563,7 @@ export function LeadDetail({ id }: { id: string }) {
                   {lead.client_of ? (
                     <>
                       {' · '}
-                      <Link href={`/leads/${lead.client_of}`} className="text-accent-text hover:underline">
+                      <Link href={`/leads/${lead.client_of}`} className="text-accent-text underline underline-offset-2">
                         projeto de um cliente que voltou (ver o cliente)
                       </Link>
                     </>
@@ -741,45 +762,25 @@ export function LeadDetail({ id }: { id: string }) {
               <Row label="Responsável">
                 <AssignedField lead={lead} staff={staff} myId={me?.user.id} />
               </Row>
-              {/* Os campos vazios ficam recolhidos ("Mostrar campos vazios"). */}
-              {(() => {
-                const rows: { key: string; label: string; value: ReactNode; wide?: boolean; filled: boolean }[] = [
-                  {
-                    key: 'angle',
-                    label: 'Ângulo de abordagem',
-                    wide: true,
-                    filled: !!lead.approach_angle,
-                    value: <span className="whitespace-pre-line">{lead.approach_angle}</span>,
-                  },
-                  // Com próximo passo, ele está na faixa do topo.
-                  ...(lead.next_action_text || lead.next_action_on ? [] : [{ key: 'next', label: 'Próxima ação', filled: false, value: dash }]),
-                  ...(staff ? [{ key: 'value', label: 'Valor estimado', filled: !!lead.estimated_value, value: formatCurrency(lead.estimated_value) }] : []),
-                  { key: 'channel', label: 'Canal', filled: !!lead.channel, value: <ChannelLabel channel={lead.channel} /> },
-                  { key: 'first', label: '1.º contacto', filled: !!lead.first_contact_on, value: formatDate(lead.first_contact_on) },
-                  { key: 'last', label: 'Último follow-up', filled: !!lead.last_follow_up_on, value: formatDate(lead.last_follow_up_on) },
-                  { key: 'suggested', label: 'Sugerido em', filled: !!lead.suggested_on, value: formatDate(lead.suggested_on) },
-                ];
-                const empty = rows.filter((r) => !r.filled).length;
-                return (
-                  <>
-                    {rows
-                      .filter((r) => r.filled || showEmpty)
-                      .map((r) => (
-                        <Row key={r.key} label={r.label} className={r.wide ? 'md:col-span-2' : undefined}>
-                          {r.filled ? r.value : dash}
-                        </Row>
-                      ))}
-                    {empty ? (
-                      <div className="md:col-span-2">
-                        <button type="button" onClick={() => setShowEmpty(!showEmpty)} aria-expanded={showEmpty} className="py-1.5 text-xs text-muted hover:text-fg hover:underline">
-                          {showEmpty ? 'Esconder campos vazios' : `Mostrar campos vazios (${empty})`}
-                        </button>
-                      </div>
-                    ) : null}
-                  </>
-                );
-              })()}
+              {/* Os campos vazios ficam recolhidos ("Mostrar campos vazios", fora da lista <dl>). */}
+              {businessRows
+                .filter((r) => r.filled || showEmpty)
+                .map((r) => (
+                  <Row key={r.key} label={r.label} className={r.wide ? 'md:col-span-2' : undefined}>
+                    {r.filled ? r.value : dash}
+                  </Row>
+                ))}
             </dl>
+            {emptyBusinessRows ? (
+              <button
+                type="button"
+                onClick={() => setShowEmpty(!showEmpty)}
+                aria-expanded={showEmpty}
+                className="mx-4 mb-2 self-start py-1.5 text-xs text-muted hover:text-fg hover:underline"
+              >
+                {showEmpty ? 'Esconder campos vazios' : `Mostrar campos vazios (${emptyBusinessRows})`}
+              </button>
+            ) : null}
           </Card>
 
 

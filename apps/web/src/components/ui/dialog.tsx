@@ -2,7 +2,7 @@
 
 import * as RadixDialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
-import { useRef, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 interface DialogProps {
@@ -19,13 +19,26 @@ interface DialogProps {
 export function Dialog({ open, onOpenChange, title, description, children, footer, className }: DialogProps) {
   // O diálogo é controlado (sem Radix Trigger): guardamos quem tinha o foco para o devolver ao fechar.
   const opener = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    if (open && document.activeElement instanceof HTMLElement && document.activeElement !== document.body) opener.current = document.activeElement;
+  }, [open]);
+  // Muitos diálogos saem da página logo ao fechar ({aberto ? <Diálogo/> : null}) e aí o Radix não
+  // devolve o foco: devolvemo-lo nós, se ficou perdido (no <body>).
+  useEffect(
+    () => () => {
+      const el = opener.current;
+      window.setTimeout(() => {
+        if (el?.isConnected && (!document.activeElement || document.activeElement === document.body)) el.focus();
+      });
+    },
+    [],
+  );
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-[2px]" />
         <RadixDialog.Content
           onOpenAutoFocus={(event) => {
-            opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
             // Foco no primeiro campo do formulário (em vez do botão de fechar).
             const field = (event.currentTarget as HTMLElement).querySelector<HTMLElement>(
               'input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([disabled]), select:not([disabled]), textarea:not([disabled])',

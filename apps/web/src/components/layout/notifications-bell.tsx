@@ -154,9 +154,12 @@ export function NotificationsBell({ className }: { className?: string }) {
       >
         <Bell className="h-5 w-5" aria-hidden />
         {unread ? (
-          <span className="absolute -top-0.5 -right-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-accent px-1 text-[11px] leading-none font-semibold text-accent-fg tabular" aria-hidden>
-            {unread > 9 ? '9+' : unread}
-          </span>
+          // O número desenhado por CSS (não é texto): o nome do botão diz o número exato ("Avisos: 64 por ler").
+          <span
+            data-count={unread > 9 ? '9+' : String(unread)}
+            className="absolute -top-0.5 -right-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-accent px-1 text-[11px] leading-none font-semibold text-accent-fg tabular before:content-[attr(data-count)]"
+            aria-hidden
+          />
         ) : null}
       </DropdownTrigger>
       <DropdownContent align="end" className="max-h-[70vh] w-96 max-w-[calc(100vw-2rem)] overflow-y-auto">

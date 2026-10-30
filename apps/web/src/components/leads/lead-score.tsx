@@ -59,7 +59,7 @@ export function LeadScoreDetails({ lead }: { lead: ScoreLead }) {
           'focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none',
           TONES[t],
         )}
-        aria-label={`Prioridade ${lead.score} de 100 (${meta.label}). Ver porquê`}
+        aria-label={`${meta.label} · ${lead.score}: prioridade ${lead.score} de 100. Ver porquê`}
       >
         <Icon className="h-3.5 w-3.5" aria-hidden />
         {meta.label} · {lead.score}

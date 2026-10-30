@@ -38,6 +38,7 @@ import { Input, Select, Textarea } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api-client';
 import { useLeadGeo, useLeadGeoAction } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+import { rovingKeyDown, rovingTabIndex } from '@/lib/roving';
 
 type Tab = 'google' | 'schema' | 'faq' | 'llms';
 const TABS: { id: Tab; label: string; icon: typeof Star }[] = [
@@ -94,13 +95,14 @@ export function GeoKitCard({ lead }: { lead: Lead }) {
       />
       {collapsed ? null : (
         <>
-          <div role="tablist" aria-label="Kit GEO" className="flex gap-1 overflow-x-auto border-b border-border px-2 [scrollbar-width:none]">
+          <div role="tablist" aria-label="Kit GEO" onKeyDown={rovingKeyDown} className="flex gap-1 overflow-x-auto border-b border-border px-2 [scrollbar-width:none]">
             {TABS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 type="button"
                 role="tab"
                 aria-selected={tab === id}
+                tabIndex={rovingTabIndex(tab === id, 0)}
                 onClick={() => setTab(id)}
                 className={cn(
                   '-mb-px inline-flex min-h-10 shrink-0 items-center gap-1.5 border-b-2 px-2.5 text-sm',
@@ -193,7 +195,7 @@ function ConfirmDialog({
       description={
         <>
           Vê no{' '}
-          <a href={mapsUrl} target="_blank" rel="noreferrer noopener" className="text-accent-text hover:underline">
+          <a href={mapsUrl} target="_blank" rel="noreferrer noopener" className="text-accent-text underline underline-offset-2">
             Google Maps
           </a>{' '}
           e confirma o que lá está. Fica guardado e vale mais do que a pesquisa da IA.
@@ -211,13 +213,14 @@ function ConfirmDialog({
       }
     >
       <div className="flex flex-col gap-3">
-        <div role="radiogroup" aria-label="Tem perfil no Google?" className="grid grid-cols-2 gap-2">
-          {[true, false].map((v) => (
+        <div role="radiogroup" aria-label="Tem perfil no Google?" onKeyDown={rovingKeyDown} className="grid grid-cols-2 gap-2">
+          {[true, false].map((v, i) => (
             <button
               key={String(v)}
               type="button"
               role="radio"
               aria-checked={found === v}
+              tabIndex={rovingTabIndex(found === v, i)}
               onClick={() => setFound(v)}
               className={cn(
                 'rounded-lg border px-3 py-2 text-sm font-medium',

@@ -113,6 +113,8 @@ export function ProfileSettings() {
               type="file"
               accept="image/jpeg,image/png,image/webp"
               className="sr-only"
+              // O botão ao lado abre-o: fora do Tab para não haver dois "Escolher foto".
+              tabIndex={-1}
               aria-label="Escolher foto"
               onChange={(e) => void upload(e.target.files?.[0])}
             />
@@ -132,7 +134,7 @@ export function ProfileSettings() {
             hint={
               <>
                 Um nome curto ou uma alcunha (ex.: “Va”). Vazio = o nome da{' '}
-                <Link href="/definicoes/assinatura" className="text-accent-text hover:underline">
+                <Link href="/definicoes/assinatura" className="text-accent-text underline underline-offset-2">
                   Assinatura
                 </Link>
                 , que continua a ser o dos emails.

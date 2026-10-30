@@ -316,12 +316,12 @@ function ColumnNav({
                   title={shown ? `Esconder a coluna ${meta.label}` : `Mostrar a coluna ${meta.label}`}
                   className={cn(
                     'flex min-h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium whitespace-nowrap transition-colors',
-                    shown ? 'border-border bg-surface text-fg hover:border-muted' : 'border-dashed border-border text-muted opacity-60 hover:opacity-100',
+                    shown ? 'border-border bg-surface text-fg hover:border-muted' : 'border-dashed border-border text-muted hover:text-fg',
                   )}
                 >
                   <span className="h-2 w-2 rounded-full" style={{ backgroundColor: meta.color }} aria-hidden />
                   {meta.label}
-                  <span className="tabular opacity-80">{columns[status].length}</span>
+                  <span className="tabular">{columns[status].length}</span>
                   {shown ? <Eye className="h-3 w-3 text-muted" aria-hidden /> : <EyeOff className="h-3 w-3" aria-hidden />}
                 </button>
               </li>
@@ -342,7 +342,7 @@ function ColumnNav({
               >
                 <span className="h-2 w-2 rounded-full" style={{ backgroundColor: meta.color }} aria-hidden />
                 {meta.label}
-                <span className="tabular opacity-80">{columns[status].length}</span>
+                <span className="tabular">{columns[status].length}</span>
               </button>
             </li>
           );

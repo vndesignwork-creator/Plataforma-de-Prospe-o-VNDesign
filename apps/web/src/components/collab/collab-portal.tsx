@@ -108,7 +108,7 @@ export function CollabProjectView({ leadId }: { leadId: string }) {
           {data.owner.email ? (
             <>
               {' · '}
-              <a href={`mailto:${data.owner.email}`} className="text-accent-text hover:underline">
+              <a href={`mailto:${data.owner.email}`} className="text-accent-text underline underline-offset-2">
                 {data.owner.email}
               </a>
             </>
@@ -116,7 +116,7 @@ export function CollabProjectView({ leadId }: { leadId: string }) {
           {data.website ? (
             <>
               {' · '}
-              <a href={data.website} target="_blank" rel="noreferrer noopener" className="text-accent-text hover:underline">
+              <a href={data.website} target="_blank" rel="noreferrer noopener" className="text-accent-text underline underline-offset-2">
                 site atual
               </a>
             </>

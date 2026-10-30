@@ -67,7 +67,7 @@ test('sessão de prospeção: lead sem contactos, colar o telefone e aparece Lig
   await finder.getByLabel('Telefone').fill('912 000 111');
   await finder.getByRole('button', { name: 'Guardar contactos' }).click();
   await expect(page.getByText('Contactos guardados.')).toBeVisible();
-  await expect(row.getByRole('navigation', { name: 'Contactar' }).getByRole('link', { name: 'Ligar' })).toBeVisible();
+  await expect(row.getByRole('group', { name: 'Contactar' }).getByRole('link', { name: 'Ligar' })).toBeVisible();
   // Ainda sem email: o "Procurar contacto" continua (só para o email).
   await expect(finder).toContainText('Sem email');
 });

@@ -154,7 +154,7 @@ function CardLayoutDialog<K extends string>({
           const shown = fixed || !hidden.has(k);
           const label = board.labels[k];
           return (
-            <li key={k} className={cn('flex items-center gap-2 rounded-lg border border-border px-2 py-1.5', !shown && 'opacity-60')}>
+            <li key={k} className={cn('flex items-center gap-2 rounded-lg border border-border px-2 py-1.5', !shown && 'border-dashed text-muted')}>
               <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-sm">
                 <input
                   type="checkbox"

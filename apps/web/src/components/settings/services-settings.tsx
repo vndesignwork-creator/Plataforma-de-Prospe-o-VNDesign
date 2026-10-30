@@ -13,6 +13,7 @@ import { SERVICE_ICON_COMPONENTS, ServiceGlyph, useServiceCatalog } from '@/comp
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useInvalidateServices, useServiceCategories, useServices } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+import { rovingKeyDown, rovingTabIndex } from '@/lib/roving';
 
 interface Draft {
   id: string | null;
@@ -33,7 +34,7 @@ function IconPicker({ value, onChange, label }: { value: ServiceIconKey; onChang
   return (
     <fieldset className="sm:col-span-2">
       <legend className="mb-1.5 text-sm font-medium">Ícone</legend>
-      <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1.5">
+      <div role="radiogroup" aria-label={label} onKeyDown={rovingKeyDown} className="flex flex-wrap gap-1.5">
         {SERVICE_ICON_KEYS.map((key) => {
           const Icon = SERVICE_ICON_COMPONENTS[key];
           const selected = value === key;
@@ -43,6 +44,7 @@ function IconPicker({ value, onChange, label }: { value: ServiceIconKey; onChang
               type="button"
               role="radio"
               aria-checked={selected}
+              tabIndex={rovingTabIndex(selected, 0)}
               aria-label={SERVICE_ICONS[key]}
               title={SERVICE_ICONS[key]}
               onClick={() => onChange(key)}
@@ -234,12 +236,15 @@ function ServicesList() {
                 ? items.map((s, i) => (
                     <li
                       key={s.id}
-                      className={cn(
-                        'grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-1 px-4 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto]',
-                        s.archived_at && 'opacity-70',
-                      )}
+                      className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-1 px-4 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto]"
                     >
-                      <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-surface-2 text-accent-text">
+                      {/* Escondido: só o ícone fica esbatido (o texto mantém o contraste; o "Escondido" diz o resto). */}
+                      <span
+                        className={cn(
+                          'mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-surface-2 text-accent-text',
+                          s.archived_at && 'opacity-50 grayscale',
+                        )}
+                      >
                         <ServiceGlyph icon={s.icon} />
                       </span>
                       <div className="min-w-0">

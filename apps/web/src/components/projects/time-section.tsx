@@ -86,7 +86,7 @@ export function TimerButton({
         running
           ? `Pausar o temporizador (total ${formatClock(total)})`
           : logged
-            ? `Continuar a contar o tempo (total ${formatClock(total)})`
+            ? `Continuar · ${formatClock(total)} (retomar a contagem do tempo)`
             : 'Começar a contar o tempo'
       }
     >

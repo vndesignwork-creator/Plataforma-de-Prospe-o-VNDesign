@@ -83,7 +83,7 @@ export function EmailStatsSection() {
                   <>
                     {' '}
                     Para ver as aberturas e os cliques, liga o rastreio em{' '}
-                    <Link href="/definicoes/funcionalidades" className="text-accent-text hover:underline">
+                    <Link href="/definicoes/funcionalidades" className="text-accent-text underline underline-offset-2">
                       Funcionalidades
                     </Link>
                     .

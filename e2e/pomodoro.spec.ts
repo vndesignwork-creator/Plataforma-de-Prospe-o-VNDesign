@@ -56,7 +56,7 @@ test('pomodoro na ficha: tarefa, pausar, continuar, fim do trabalho com aviso, p
   const before = ((await (await page.request.get('/api/v1/stats/pomodoros')).json()).data as { today: number }).today;
   await page.goto(`/leads/${lead.id}`);
   await projectTab(page, 'Tempo e dinheiro');
-  const box = page.locator('#projeto').getByRole('region', { name: 'Pomodoro' });
+  const box = page.locator('#projeto').getByRole('group', { name: 'Pomodoro' });
   await box.getByLabel('Em que tarefa?').selectOption({ label: 'Montar a página inicial' });
   await box.getByRole('button', { name: 'Começar 25 min' }).click();
   await expect(page.getByText('Pomodoro de 25 minutos a contar.')).toBeVisible();
@@ -205,7 +205,7 @@ test('pausa à espera: com "Começar a pausa automaticamente" desligado, a pausa
   const lead = await createProject(page.request, `Pomodoro espera ${run}`);
   await page.goto(`/leads/${lead.id}`);
   await projectTab(page, 'Tempo e dinheiro');
-  const box = page.locator('#projeto').getByRole('region', { name: 'Pomodoro' });
+  const box = page.locator('#projeto').getByRole('group', { name: 'Pomodoro' });
   await box.getByRole('button', { name: 'Começar 25 min' }).click();
   await expect(box).toContainText('A trabalhar');
 

@@ -20,6 +20,7 @@ import { Input, Select } from '@/components/ui/input';
 import { ApiClientError, errorMessage } from '@/lib/api-client';
 import { useAllCollaborators, useCollaboratorsAdmin, useProjects, useSettings, useTeam, useTeamAction } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+import { rovingKeyDown, rovingTabIndex } from '@/lib/roving';
 
 export type TeamTab = 'prospecao' | 'projetos' | 'atividade';
 type Kind = 'leads' | 'project';
@@ -51,7 +52,7 @@ export function TeamView({ initialTab }: { initialTab: TeamTab }) {
     <div className="flex flex-col gap-5">
       {/* Telemóvel: Convidar por cima dos separadores (os separadores ficam colados à linha). */}
       <div className="flex flex-col-reverse items-start gap-3 border-b border-border sm:flex-row sm:items-end sm:justify-between">
-        <div role="tablist" aria-label="Equipa" className="-mb-px flex gap-1">
+        <div role="tablist" aria-label="Equipa" onKeyDown={rovingKeyDown} className="-mb-px flex max-w-full gap-1 overflow-x-auto [scrollbar-width:none]">
           {tabs.map(({ id, label, icon: Icon, count }) => (
             <button
               key={id}
@@ -60,9 +61,10 @@ export function TeamView({ initialTab }: { initialTab: TeamTab }) {
               id={`tab-${id}`}
               aria-selected={tab === id}
               aria-controls={`painel-${id}`}
+              tabIndex={rovingTabIndex(tab === id, 0)}
               onClick={() => select(id)}
               className={cn(
-                'inline-flex min-h-11 items-center gap-2 border-b-2 px-3 text-sm transition-colors',
+                'inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-sm whitespace-nowrap transition-colors',
                 tab === id ? 'border-accent font-medium text-accent-text' : 'border-transparent text-muted hover:text-fg',
               )}
             >

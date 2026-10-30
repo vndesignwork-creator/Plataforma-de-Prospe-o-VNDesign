@@ -50,7 +50,7 @@ export function HourlyRateButton({ className }: { className?: string }) {
         type="button"
         onClick={() => setOpen(true)}
         className={cn('inline-flex items-center gap-1 text-xs text-muted hover:text-fg', className)}
-        aria-label={rate ? `Valor por hora: ${formatCurrency(rate)}. Alterar` : 'Definir o teu valor por hora'}
+        aria-label={rate ? `a ${formatCurrency(rate, { decimals: false })}/h: alterar o valor por hora` : undefined}
       >
         {rate ? `a ${formatCurrency(rate, { decimals: false })}/h` : 'Definir valor por hora'}
         <Pencil className="h-3 w-3" aria-hidden />

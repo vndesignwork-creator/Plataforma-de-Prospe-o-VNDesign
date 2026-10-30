@@ -139,7 +139,7 @@ export function TagEditor({ lead }: { lead: Lead }) {
             onBlur={() => text.trim() && add(text)}
             placeholder={tags.length ? 'Outra etiqueta' : 'Acrescentar etiqueta'}
             aria-label="Nova etiqueta"
-            className="h-7 w-48 rounded-md border border-transparent bg-transparent px-1 text-sm outline-none placeholder:text-muted focus:border-border"
+            className="h-7 w-48 rounded-md border border-transparent bg-transparent px-1 text-sm outline-none placeholder:text-muted focus:border-border focus-visible:border-accent"
           />
           <datalist id={listId}>
             {suggestions.slice(0, 30).map((t) => (

@@ -301,7 +301,7 @@ test('ficha do cliente: projeto primeiro, fases clicáveis, separadores lembrado
 
   // Separadores: Tempo e dinheiro mostra o Pomodoro compacto (sem o relógio grande) e fica lembrado.
   await projectTab(page, 'Tempo e dinheiro');
-  const pomodoro = card.getByRole('region', { name: 'Pomodoro' });
+  const pomodoro = card.getByRole('group', { name: 'Pomodoro' });
   await expect(pomodoro.getByRole('button', { name: /^Começar \d+ min$/ })).toBeVisible();
   await expect(pomodoro.getByText('Pronto', { exact: true })).toHaveCount(0);
   await page.reload();

@@ -107,6 +107,12 @@
     outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
+  /* Escolher ficheiro: o campo verdadeiro está escondido (sr-only); o contorno vai para o botão/rótulo visível. */
+  label:has(input[type='file'].sr-only:focus-visible),
+  input[type='file'].sr-only:focus-visible + label {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
   ::selection {
     background: var(--accent-soft);
   }

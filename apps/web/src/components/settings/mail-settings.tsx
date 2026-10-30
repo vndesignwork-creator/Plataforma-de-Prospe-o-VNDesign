@@ -233,14 +233,14 @@ function MailForm({ account, defaultName }: { account: MailAccount | null; defau
           <ol className="list-decimal space-y-0.5 pl-5 text-muted">
             <li>
               Liga a <strong>Verificação em dois passos</strong> em{' '}
-              <a href="https://myaccount.google.com/security" target="_blank" rel="noreferrer" className="text-accent-text hover:underline">
+              <a href="https://myaccount.google.com/security" target="_blank" rel="noreferrer" className="text-accent-text underline underline-offset-2">
                 myaccount.google.com/security
               </a>
               .
             </li>
             <li>
               Abre{' '}
-              <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" className="text-accent-text hover:underline">
+              <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" className="text-accent-text underline underline-offset-2">
                 myaccount.google.com/apppasswords
               </a>
               , escreve “VNDesign Leads” e carrega em <strong>Criar</strong>.
@@ -361,7 +361,7 @@ export function MailSettings() {
           <>
             A tua caixa de correio para enviar emails aos leads <em>pela plataforma</em> (botões “Enviar” na ficha e na proposta).
             As respostas chegam à tua caixa normal. O resumo diário usa outra configuração (
-            <Link href="/definicoes/lembretes" className="text-accent-text hover:underline">
+            <Link href="/definicoes/lembretes" className="text-accent-text underline underline-offset-2">
               Follow-up e lembretes
             </Link>
             ).

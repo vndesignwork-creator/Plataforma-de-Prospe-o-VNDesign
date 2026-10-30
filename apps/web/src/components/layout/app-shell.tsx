@@ -109,7 +109,6 @@ function SidebarFooter({ email }: { email: string | null }) {
         href="/definicoes/conta"
         className="group flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-2"
         title="Definições da conta"
-        aria-label={`A minha conta: ${name}`}
       >
         <Avatar name={name || '?'} url={me?.profile.avatar_url} size={36} />
         <span className="min-w-0 flex-1">

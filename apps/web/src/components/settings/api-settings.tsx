@@ -135,7 +135,7 @@ export function ApiSettings() {
           <>
             Tokens para outras ferramentas enviarem leads <em>para cá</em> — por exemplo, a tua tarefa semanal de prospeção
             com o Claude. Para usar o ChatGPT ou o Claude <em>dentro</em> da plataforma, vai a{' '}
-            <Link href="/definicoes/ia" className="text-accent-text hover:underline">
+            <Link href="/definicoes/ia" className="text-accent-text underline underline-offset-2">
               Inteligência artificial
             </Link>
             .

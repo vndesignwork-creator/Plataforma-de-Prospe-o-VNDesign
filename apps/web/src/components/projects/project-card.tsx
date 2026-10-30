@@ -31,6 +31,7 @@ import { PomodoroBox } from './pomodoro';
 import { ProjectToggle } from './project-toggle';
 import { ProjectUpdateButton, WelcomeButton } from './project-update';
 import { TimeSection } from './time-section';
+import { rovingKeyDown, rovingTabIndex } from '@/lib/roving';
 
 const euros = (v: number) => formatCurrency(v, { decimals: false });
 
@@ -241,7 +242,7 @@ export function ProjectCard({ lead }: { lead: Lead }) {
           </div>
           {tabs.length ? (
             <>
-              <div role="tablist" aria-label="Partes do projeto" className="flex overflow-x-auto border-t border-b border-border px-2 [scrollbar-width:none]">
+              <div role="tablist" aria-label="Partes do projeto" onKeyDown={rovingKeyDown} className="flex overflow-x-auto border-t border-b border-border px-2 [scrollbar-width:none]">
                 {tabs.map((t) => (
                   <button
                     key={t.id}
@@ -250,6 +251,7 @@ export function ProjectCard({ lead }: { lead: Lead }) {
                     id={`projeto-tab-${t.id}`}
                     aria-selected={active === t.id}
                     aria-controls={`projeto-painel-${t.id}`}
+                    tabIndex={rovingTabIndex(active === t.id, 0)}
                     onClick={() => choose(t.id)}
                     className={cn(
                       '-mb-px inline-flex min-h-10 shrink-0 items-center gap-1.5 border-b-2 px-3 text-sm whitespace-nowrap',

@@ -133,7 +133,7 @@ test('pomodoro: modo foco em ecrã inteiro e Esc para sair', async ({ page }) =>
   const lead = await createLead(page.request, { company_name: `Foco ${run}`, status: 'cliente' });
   await page.goto(`/leads/${lead.id}`);
   await projectTab(page, 'Tempo e dinheiro');
-  const box = page.getByRole('region', { name: 'Pomodoro' }).first();
+  const box = page.getByRole('group', { name: 'Pomodoro' }).first();
   await box.getByRole('button', { name: /Começar \d+ min/ }).click();
   await box.getByRole('button', { name: 'Modo foco (ecrã inteiro)' }).click();
   const focus = page.getByRole('dialog', { name: 'Modo foco' });

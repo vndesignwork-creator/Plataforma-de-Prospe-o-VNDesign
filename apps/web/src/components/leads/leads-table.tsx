@@ -323,7 +323,7 @@ export function LeadsPageActions() {
   return (
     <DropdownRoot>
       {/* Importar e exportar juntos (usa-se pouco: não precisa de lugar no menu lateral). */}
-      <DropdownTrigger className={buttonClasses('outline', 'md', 'max-sm:w-10 max-sm:px-0')} aria-label="Importar ou exportar leads">
+      <DropdownTrigger className={buttonClasses('outline', 'md', 'max-sm:w-10 max-sm:px-0')} aria-label="Importar / Exportar leads">
         <ArrowDownUp className="h-4 w-4" aria-hidden />
         <span className="hidden sm:inline">Importar / Exportar</span>
       </DropdownTrigger>

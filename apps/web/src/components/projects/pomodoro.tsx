@@ -179,6 +179,7 @@ export function PomodoroBox({ lead, compact, className }: { lead: Lead; compact?
 
   return (
     <section
+      role="group"
       aria-label="Pomodoro"
       className={cn('flex min-w-0 flex-col gap-3 rounded-lg border border-border p-3', working && !paused && 'border-accent', onBreak && !paused && 'border-success', className)}
     >

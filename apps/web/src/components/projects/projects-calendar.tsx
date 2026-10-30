@@ -121,7 +121,7 @@ export function ProjectsCalendar({ today }: { today: string }) {
                     key={d}
                     role="gridcell"
                     aria-label={dayFmt.format(new Date(`${d}T00:00:00Z`))}
-                    className={cn('flex min-h-24 min-w-0 flex-col gap-1 bg-surface p-1.5', !inMonth(d) && 'bg-surface-2/60 opacity-60')}
+                    className={cn('flex min-h-24 min-w-0 flex-col gap-1 bg-surface p-1.5', !inMonth(d) && 'bg-surface-2/60')}
                   >
                     <span
                       className={cn(

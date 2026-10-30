@@ -133,10 +133,11 @@ export function FeaturesSettings() {
                       const parent = FEATURE_PARENT[key];
                       const off = (group.master && key !== group.master && !settings.features[group.master]) || (parent && !settings.features[parent]);
                       return (
-                        <li key={key} className={cn('flex items-start gap-3 px-4 py-3', parent && 'pl-10', off && 'opacity-60')}>
-                          <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden />
+                        <li key={key} className={cn('flex items-start gap-3 px-4 py-3', parent && 'pl-10')}>
+                          {/* Desligada pela de cima: ícone esbatido e nome em cinzento (o texto continua legível). */}
+                          <Icon className={cn('mt-0.5 h-4 w-4 shrink-0 text-muted', off && 'opacity-40')} aria-hidden />
                           <span className="min-w-0 flex-1">
-                            <span className="block text-sm font-medium" data-setting-label>
+                            <span className={cn('block text-sm font-medium', off && 'text-muted')} data-setting-label>
                               {f.label}
                             </span>
                             <span className="block text-sm text-muted">{f.description}</span>

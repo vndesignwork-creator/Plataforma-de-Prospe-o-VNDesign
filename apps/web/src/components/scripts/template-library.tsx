@@ -121,7 +121,7 @@ function Preview({ subject, body, kind }: { subject: string; body: string; kind:
   return (
     <section aria-label="Pré-visualização" className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="text-sm font-semibold">Pré-visualização com</h3>
+        <h2 className="text-sm font-semibold">Pré-visualização com</h2>
         <Select
           aria-label="Lead para a pré-visualização"
           value={lead?.id ?? ''}

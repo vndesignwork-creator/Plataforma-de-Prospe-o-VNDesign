@@ -44,7 +44,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { revealSetting, searchSettingsItems, settingsItemTarget } from '@/components/settings/settings-items';
 import { SETTINGS_KEYWORDS, SETTINGS_SECTIONS } from '@/components/settings/settings-nav';
 import { useServiceCatalog } from '@/components/services/services';
@@ -129,6 +129,11 @@ export function QuickSearch({
   prospector: boolean;
   onShortcuts?: () => void;
 }) {
+  // Sem Radix Trigger, o Radix não devolve o foco ao fechar: volta a quem o tinha (ex.: o botão "Pesquisar…").
+  const opener = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    if (open) opener.current = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
+  }, [open]);
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
@@ -136,6 +141,12 @@ export function QuickSearch({
         <RadixDialog.Content
           className="fixed top-[8vh] left-1/2 z-50 flex max-h-[80vh] w-[calc(100vw-2rem)] max-w-xl -translate-x-1/2 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-card"
           aria-describedby={undefined}
+          onCloseAutoFocus={(event) => {
+            if (opener.current?.isConnected) {
+              event.preventDefault();
+              opener.current.focus();
+            }
+          }}
         >
           <RadixDialog.Title className="sr-only">Pesquisa rápida</RadixDialog.Title>
           {/* Montado só aberto: cada vez que abre começa vazio. */}

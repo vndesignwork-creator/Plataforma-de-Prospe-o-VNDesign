@@ -77,6 +77,7 @@ import { cn, displayHost, telUrl, whatsappUrl } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/page-header';
 import { DailyGoal, HelpButton, HelpNote, useProspectingHelp } from './prospecting-header';
 import { SequenceStep, pickTemplate } from './sequence-step';
+import { rovingKeyDown, rovingTabIndex } from '@/lib/roving';
 
 const KIND_ICON: Record<ProspectingItem['kind'], typeof Eye> = {
   opened: Eye,
@@ -304,13 +305,14 @@ export function ProspectingSession() {
         }
         actions={
           <>
-            <div role="radiogroup" aria-label="Trabalho por" className="inline-flex h-10 items-center rounded-lg border border-border-input bg-surface-2 p-0.5">
+            <div role="radiogroup" aria-label="Trabalho por" onKeyDown={rovingKeyDown} className="inline-flex h-10 items-center rounded-lg border border-border-input bg-surface-2 p-0.5">
               {PROSPECTING_MODES.map((m) => (
                 <button
                   key={m}
                   type="button"
                   role="radio"
                   aria-checked={mode === m}
+                  tabIndex={rovingTabIndex(mode === m, 0)}
                   onClick={() => {
                     if (m === mode) return;
                     setModePref.mutate(m);
@@ -336,7 +338,7 @@ export function ProspectingSession() {
       />
 
       {/* Os separadores numa linha (deslizam no telemóvel); "Falta …" à parte, à direita. */}
-      <div role="tablist" aria-label="Que leads" className="-mt-2 flex overflow-x-auto border-b border-border [scrollbar-width:none]">
+      <div role="tablist" aria-label="Que leads" onKeyDown={rovingKeyDown} className="-mt-2 flex overflow-x-auto border-b border-border [scrollbar-width:none]">
         {views(mode).map((v) => {
           const on = view === v.value;
           const missing = v.value === 'missing';
@@ -346,6 +348,7 @@ export function ProspectingSession() {
               type="button"
               role="tab"
               aria-selected={on}
+              tabIndex={rovingTabIndex(on, 0)}
               onClick={() => changeView(v.value)}
               className={cn(
                 '-mb-px inline-flex min-h-10 shrink-0 items-center gap-1.5 border-b-2 px-3 text-sm whitespace-nowrap transition-colors',
@@ -537,9 +540,9 @@ function LeadRow({
       <div className="flex items-start justify-between gap-x-4 gap-y-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-start gap-2">
-            <h3 id={headingId} className="min-w-0 flex-1 font-sans text-base font-semibold break-words">
+            <h2 id={headingId} className="min-w-0 flex-1 font-sans text-base font-semibold break-words">
               <span className="text-muted tabular">#{lead.number}</span> {lead.company_name}
-            </h3>
+            </h2>
             <span className="shrink-0 sm:hidden">
               <LeadScoreBadge lead={lead} />
             </span>
@@ -578,7 +581,7 @@ function LeadRow({
       {mode === 'email' ? (
         // Os botões e o "Registar" na mesma linha quando cabem (no telemóvel não ficam cada um na sua linha).
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <nav aria-label="Contactar" className="flex flex-wrap gap-2">
+          <div role="group" aria-label="Contactar" className="flex flex-wrap gap-2">
             <EmailAction lead={lead} onSent={onEmailed} />
             {!lead.email || lead.email_bounced_at ? (
               <Button size="sm" variant="soft" aria-expanded={finder} onClick={() => setFinder(!finder)}>
@@ -595,7 +598,7 @@ function LeadRow({
                 <MessageCircle className="h-3.5 w-3.5" aria-hidden /> WhatsApp
               </a>
             ) : null}
-          </nav>
+          </div>
           {/* Uma chamada ou uma resposta por outra via: regista-se aqui (o email enviado já fica registado sozinho). */}
           <DropdownRoot>
             <DropdownTrigger asChild>
@@ -630,7 +633,7 @@ function LeadRow({
         </div>
       ) : (
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-          <nav aria-label="Contactar" className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap [&>*]:justify-center">
+          <div role="group" aria-label="Contactar" className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap [&>*]:justify-center">
             {lead.phone ? (
               <a href={telUrl(lead.phone)} className={buttonClasses('soft', 'sm')}>
                 <Phone className="h-3.5 w-3.5" aria-hidden /> Ligar
@@ -662,7 +665,7 @@ function LeadRow({
                 {hasContact(lead) ? `Procurar ${lead.phone ? 'email' : 'telefone'}` : 'Procurar contacto'}
               </Button>
             ) : null}
-          </nav>
+          </div>
 
           <div
             role="group"
