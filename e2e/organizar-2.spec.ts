@@ -88,7 +88,8 @@ test('reciclagem: apagar na ficha, repor com tudo; apagar de vez', async ({ page
   const dialog = page.getByRole('dialog', { name: `Apagar #${lead.number}?` });
   await expect(dialog.getByText(/vai para Leads → Apagados/)).toBeVisible();
   await dialog.getByRole('button', { name: 'Apagar', exact: true }).click();
-  await expect(page.getByText(`Lead #${lead.number} apagado (fica 30 dias em Apagados).`)).toBeVisible();
+  // O pedido de apagar espera pelos da ficha que ainda estão a carregar (base de testes grande): mais tempo.
+  await expect(page.getByText(`Lead #${lead.number} apagado (fica 30 dias em Apagados).`)).toBeVisible({ timeout: 30_000 });
   expect((await page.request.get(`/api/v1/leads/${lead.id}`)).status()).toBe(404);
 
   await page.goto('/leads/apagados');

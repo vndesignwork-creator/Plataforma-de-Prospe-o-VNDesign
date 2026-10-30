@@ -167,11 +167,13 @@ export function useInvalidateServices() {
   };
 }
 
-export function useLeads(query: Record<string, string | number | string[] | undefined>) {
+/** `enabled: false`: não pede (ex.: a pesquisa de um diálogo fechado). */
+export function useLeads(query: Record<string, string | number | string[] | undefined>, enabled = true) {
   return useQuery({
     queryKey: qk.leads(query),
     queryFn: ({ signal }) => api<LeadListResponse>('/leads', { query, signal }),
     placeholderData: keepPreviousData,
+    enabled,
   });
 }
 

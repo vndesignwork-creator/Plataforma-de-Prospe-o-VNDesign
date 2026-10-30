@@ -21,7 +21,7 @@ import { SendEmailButton } from '@/components/email/send-email-dialog';
 import { useServiceCatalog } from '@/components/services/services';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { useTemplates } from '@/lib/queries';
-import { useTemplateContext } from '@/lib/template-context';
+import { usesAiVisibility, useTemplateContext } from '@/lib/template-context';
 import { telUrl, whatsappUrl } from '@/lib/utils';
 
 const ICONS = { whatsapp: MessageCircle, email: Mail, call: Phone, dm: MessagesSquare } as const;
@@ -42,10 +42,11 @@ export function pickTemplate(templates: ContactTemplate[], step: NonNullable<Pro
 
 export function SequenceStep({ lead, step }: { lead: Lead; step: NonNullable<ProspectingItem['sequence']> }) {
   const { data: templates } = useTemplates();
-  const context = useTemplateContext(lead);
   const catalog = useServiceCatalog();
   const category = leadServiceCategory(lead.services, catalog.all) ?? null;
   const template = templates ? pickTemplate(templates, step, category) : null;
+  // Só pede o teste "Aparece nas IAs?" se o modelo o usar (um pedido por lead, na lista toda).
+  const context = useTemplateContext(lead, null, { aiVisibility: usesAiVisibility(template?.subject, template?.body) });
   const subject = template?.subject ? renderTemplate(template.subject, context).text : '';
   const body = template ? renderTemplate(template.body, context).text : '';
   // O email vai formatado; WhatsApp, a cópia e o que se mostra aqui vão em texto simples.

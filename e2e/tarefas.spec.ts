@@ -10,7 +10,8 @@ const iso = (offset = 0) => {
 
 test('ficha: acrescentar, reordenar com o teclado, concluir e editar tarefas', async ({ page }) => {
   const lead = (await (await page.request.post('/api/v1/leads', { data: { company_name: `Tarefas Ficha ${run}` } })).json()).data;
-  await page.goto(`/leads/${lead.id}`);
+  // Com #tarefas a ficha mostra todas (normalmente só as 5 próximas e "Ver todas").
+  await page.goto(`/leads/${lead.id}#tarefas`);
   const card = page.locator('#tarefas');
   await expect(card.getByText('Ainda não há tarefas.')).toBeVisible();
 
@@ -25,11 +26,12 @@ test('ficha: acrescentar, reordenar com o teclado, concluir e editar tarefas', a
   await expect(pending.first()).toContainText('Publicar site');
 
   // "Pedir fotos" (a primeira escrita, agora em baixo) sobe para o topo com o teclado.
+  // Ao ritmo de uma pessoa: teclas instantâneas logo a seguir a pegar na tarefa perdem-se no arrastar.
   await card.getByRole('button', { name: 'Mover a tarefa: Pedir fotos' }).focus();
-  await page.keyboard.press('Space');
-  await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('Space');
+  for (const key of ['Space', 'ArrowUp', 'ArrowUp', 'Space']) {
+    await page.keyboard.press(key);
+    await page.waitForTimeout(350);
+  }
   await expect(pending.first()).toContainText('Pedir fotos');
   await expect
     .poll(async () => (await (await page.request.get(`/api/v1/leads/${lead.id}/tasks`)).json()).data.map((t: { title: string }) => t.title))
@@ -114,7 +116,7 @@ test('lista pronta sugerida pelos serviços do lead (sem repetir tarefas)', asyn
   const lead = (
     await (await page.request.post('/api/v1/leads', { data: { company_name: `Tarefas Lista ${run}`, services: ['identidade_visual'], status: 'cliente' } })).json()
   ).data;
-  await page.goto(`/leads/${lead.id}`);
+  await page.goto(`/leads/${lead.id}#tarefas`);
   const card = page.locator('#tarefas');
   await card.getByRole('button', { name: /Identidade Visual · 10 tarefas/ }).click();
   await expect(page.getByText('10 tarefas de "Identidade Visual" acrescentadas.')).toBeVisible();

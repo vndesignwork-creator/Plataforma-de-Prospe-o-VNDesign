@@ -72,7 +72,7 @@ import { useServiceCatalog } from '@/components/services/services';
 import { Textarea } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api-client';
 import { usePreference, useProspectingOutcome, useProspectingQueue, useSetPreference, useSettings, useTemplates } from '@/lib/queries';
-import { useTemplateContext } from '@/lib/template-context';
+import { usesAiVisibility, useTemplateContext } from '@/lib/template-context';
 import { cn, displayHost, telUrl, whatsappUrl } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/page-header';
 import { DailyGoal, HelpButton, HelpNote, useProspectingHelp } from './prospecting-header';
@@ -797,21 +797,24 @@ const FIRST_EMAIL_STEP = { step: 1, total: 1, day: 0, channel: 'email' as const,
  */
 function EmailAction({ lead, onSent }: { lead: Lead; onSent: (result: LeadEmailSendResult) => void }) {
   const { data: templates } = useTemplates();
-  const context = useTemplateContext(lead);
   const catalog = useServiceCatalog();
+  const first = lead.status === 'identificado';
+  const canEmail = !!lead.email && !lead.email_bounced_at && lead.status !== 'contactado';
+  const t =
+    canEmail && first && !(lead.email_body ?? '').trim() && templates
+      ? pickTemplate(templates, FIRST_EMAIL_STEP, leadServiceCategory(lead.services, catalog.all) ?? null)
+      : null;
+  // Só pede o teste "Aparece nas IAs?" se o modelo o usar (antes: um pedido por cada lead da lista).
+  const context = useTemplateContext(lead, null, { aiVisibility: usesAiVisibility(t?.subject, t?.body) });
   if (!lead.email || lead.email_bounced_at) return null;
   if (lead.status === 'contactado') return <FollowUpEmailButton lead={lead} variant="soft" onSent={onSent} />;
-  const first = lead.status === 'identificado';
   let subject = lead.email_subject ?? '';
   let body = lead.email_body ?? '';
   let template = 'Email de prospeção';
-  if (first && !body.trim() && templates) {
-    const t = pickTemplate(templates, FIRST_EMAIL_STEP, leadServiceCategory(lead.services, catalog.all) ?? null);
-    if (t) {
-      subject = t.subject ? renderTemplate(t.subject, context).text : '';
-      body = renderTemplate(t.body, context).text;
-      template = t.name;
-    }
+  if (t) {
+    subject = t.subject ? renderTemplate(t.subject, context).text : '';
+    body = renderTemplate(t.body, context).text;
+    template = t.name;
   }
   return (
     <SendEmailButton

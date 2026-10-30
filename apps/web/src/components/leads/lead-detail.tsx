@@ -1013,7 +1013,8 @@ function MergePickerDialog({ lead, open, onOpenChange }: { lead: Lead; open: boo
   const router = useRouter();
   const [search, setSearch] = useState('');
   const q = useDebouncedValue(search.trim());
-  const { data, isFetching } = useLeads({ q: q || undefined, limit: 8, sort: 'company_name', order: 'asc' });
+  // Só pesquisa com o diálogo aberto (antes pedia a lista em cada ficha aberta).
+  const { data, isFetching } = useLeads({ q: q || undefined, limit: 8, sort: 'company_name', order: 'asc' }, open);
   const results = (data?.data ?? []).filter((l) => l.id !== lead.id);
   return (
     <Dialog

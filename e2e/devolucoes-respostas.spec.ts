@@ -291,10 +291,19 @@ test('prospeção: separadores com contagens e "Falta email" calculado no servid
   await expect(page.getByRole('tab', { name: /^Follow-ups \d+$/ })).toBeVisible();
   await expect(page.getByRole('tab', { name: /^Falta email \d+$/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /com follow-up ou por contactar sem email → Falta email/ })).toBeVisible();
+  // As listas mostram 25 de cada vez, os mais antigos primeiro: com muitos leads de outros testes com a mesma
+  // data, o deste pode estar depois de "Mostrar mais".
+  const findIn = async (listName: string, company: string) => {
+    const list = page.getByRole('list', { name: listName });
+    const item = list.getByRole('listitem', { name: new RegExp(company) });
+    await expect(list.getByRole('listitem').first()).toBeVisible();
+    for (let i = 0; i < 40 && !(await item.count()); i++) await page.getByRole('button', { name: /^Mostrar mais/ }).click();
+    await expect(item).toBeVisible();
+  };
   await page.getByRole('tab', { name: /^Falta email/ }).click();
-  await expect(page.getByRole('list', { name: 'Leads sem contacto' }).getByRole('listitem', { name: new RegExp(`Sem Email FU ${run}`) })).toBeVisible();
+  await findIn('Leads sem contacto', `Sem Email FU ${run}`);
   await page.getByRole('tab', { name: /^Follow-ups/ }).click();
-  await expect(page.getByRole('list', { name: 'Leads para contactar' }).getByRole('listitem', { name: new RegExp(`Com Email FU ${run}`) })).toBeVisible();
+  await findIn('Leads para contactar', `Com Email FU ${run}`);
 });
 
 test('lista Respostas no Dashboard: por responder, Responder na conversa, Já tratei e ausências', async ({ page }) => {
