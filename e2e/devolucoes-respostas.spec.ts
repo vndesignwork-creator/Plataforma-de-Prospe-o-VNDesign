@@ -180,7 +180,7 @@ test('estatísticas: aberto, clicado e respondido por modelo', async ({ page }) 
   await page.goto('/estatisticas');
   await expect(page.getByText('Emails: o que resulta')).toBeVisible();
   await expect(page.getByText(template)).toBeVisible();
-  await expect(page.getByText('Quando abrem os teus emails')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Quando abrem os teus emails' })).toBeVisible();
 });
 
 test('horário de silêncio: ligar, escolher as horas e o fim de semana', async ({ page }) => {

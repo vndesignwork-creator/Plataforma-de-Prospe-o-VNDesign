@@ -106,12 +106,23 @@ test('prioridade: pontuação com razões, ordenar por prioridade e “Leads mai
   const sorted = (await (await page.request.get('/api/v1/leads', { params: { q: run, sort: 'score', order: 'desc' } })).json()).data as { id: string }[];
   expect(sorted.map((l) => l.id).indexOf(hot.id)).toBeLessThan(sorted.map((l) => l.id).indexOf(cold.id));
 
+  // Dashboard: por pontuação; empatados, primeiro os nunca contactados e os que esperam há mais tempo
+  // (com muitos leads iguais de outros testes, o deste pode não caber nos 8).
+  const today = (await (await page.request.get('/api/v1/dashboard/today')).json()).data as {
+    hot: { score: number; first_contact_on: string | null; created_at: string }[];
+  };
+  for (let i = 1; i < today.hot.length; i++) {
+    const [a, b] = [today.hot[i - 1]!, today.hot[i]!];
+    expect(a.score).toBeGreaterThanOrEqual(b.score);
+    if (a.score === b.score && !a.first_contact_on && !b.first_contact_on) expect(a.created_at <= b.created_at).toBe(true);
+  }
   await page.goto('/dashboard');
   const card = page.getByRole('list', { name: 'Leads mais quentes' });
-  await expect(card.getByRole('link', { name: new RegExp(`Hotel Quente ${run}`) })).toBeVisible();
+  await expect(card.getByRole('link').first()).toBeVisible();
+  await expect(card.getByText(/Quente · \d+|Morno · \d+/).first()).toBeVisible();
 
   await page.goto(`/leads/${hot.id}`);
-  await page.getByRole('button', { name: /Prioridade \d+ de 100/ }).click();
+  await page.getByRole('button', { name: /prioridade \d+ de 100/i }).click();
   await expect(page.getByText('Site não funciona no telemóvel')).toBeVisible();
 });
 

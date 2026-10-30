@@ -40,7 +40,8 @@ test('importar a folha (CSV): cabeçalho, duplicados no ficheiro e relatório', 
 
   // A ficha tem os valores convertidos da folha.
   await page.getByRole('link', { name: new RegExp(`Oficina Import ${run}`) }).click();
-  await expect(page.getByText(`Ligar · ${dueText}`)).toBeVisible();
+  // Com o dia da semana: "Ligar · dom 29/11/2026".
+  await expect(page.getByText(new RegExp(`Ligar · \\S+ ${dueText}`))).toBeVisible();
   await expect(page.getByText('1250,00 €')).toBeVisible();
   await expect(page.getByLabel('Atividade do lead').getByText('Origem: import')).toBeVisible();
 
@@ -135,7 +136,7 @@ test('Dashboard: o essencial e "Hoje"; o resto em Estatísticas', async ({ page 
 
 test('exportar leads para Excel', async ({ page }) => {
   await page.goto('/leads');
-  await page.getByRole('button', { name: 'Importar ou exportar leads' }).click();
+  await page.getByRole('button', { name: 'Importar / Exportar leads' }).click();
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('menuitem', { name: 'Excel (.xlsx)' }).click(),

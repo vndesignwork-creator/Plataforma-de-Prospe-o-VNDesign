@@ -143,8 +143,15 @@ test('"Hoje": tarefas com prazo aparecem e concluem-se no dashboard', async ({ p
 
   await page.goto('/dashboard');
   const urgent = page.getByRole('region', { name: 'Tarefas para hoje' });
+  const week = page.getByRole('region', { name: 'Tarefas nos próximos 7 dias' });
+  // Cada grupo mostra 5 e "Mostrar todos (N)": com muitas tarefas, a nova pode estar recolhida.
+  for (const group of [urgent, week]) {
+    await expect(group.getByRole('checkbox').first()).toBeVisible();
+    const more = group.getByRole('button', { name: /^Mostrar todos/ });
+    if (await more.count()) await more.click();
+  }
   await expect(urgent.getByText(`Ligar ao cliente ${run}`)).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Tarefas nos próximos 7 dias' }).getByText(`Entregar logótipo ${run}`)).toBeVisible();
+  await expect(week.getByText(`Entregar logótipo ${run}`)).toBeVisible();
 
   await urgent.getByLabel(`Concluir: Ligar ao cliente ${run}`).click();
   await expect(page.getByText(`Tarefa concluída: Ligar ao cliente ${run}`)).toBeVisible();
