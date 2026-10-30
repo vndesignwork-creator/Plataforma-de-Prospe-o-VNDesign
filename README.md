@@ -966,6 +966,10 @@ npx playwright install chromium
 npm run test:e2e       # arranca o "npm run dev" automaticamente
 ```
 
+Os testes criam leads, tarefas e projetos e não os apagam: com o tempo ficam lentos e falham
+sem razão. `npm run e2e:limpar` repõe o Supabase **local** (só aceita 127.0.0.1/localhost) e volta
+a criar o utilizador de teste (`E2E_EMAIL`/`E2E_PASSWORD`).
+
 Se já tiveres o `npm run dev` a correr, acrescenta ao `apps/web/.env.local`
 `AUDIT_ALLOW_PRIVATE=1`, `AUDIT_SKIP_PAGESPEED=1` (o teste do auditor analisa um site local),
 `ANTHROPIC_API_KEY=sk-ant-teste`, `AI_BASE_URL=http://127.0.0.1:4621` e
