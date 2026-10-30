@@ -20,6 +20,7 @@ import {
   vCardFileName,
   isCardHidden,
   type LeadCard,
+  relativeDay,
 } from '@vndesign/core';
 import {
   Archive,
@@ -218,15 +219,6 @@ function QuickContact({ lead, whatsappMessages }: { lead: Lead; whatsappMessages
 }
 
 const WEEKDAYS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
-
-/** "hoje", "amanhã", "daqui a 3 dias", "há 2 dias". */
-function relativeDay(due: string, today: string): string {
-  const days = Math.round((Date.parse(`${due}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`)) / 86_400_000);
-  if (days === 0) return 'hoje';
-  if (days === 1) return 'amanhã';
-  if (days === -1) return 'ontem';
-  return days > 0 ? `daqui a ${days} dias` : `há ${-days} dias`;
-}
 
 /** Faixa no topo da ficha: o próximo passo, quando é, e Feito / Follow-up ▾ / Enviar follow-up ali mesmo. */
 function NextStepBar({ lead }: { lead: Lead }) {

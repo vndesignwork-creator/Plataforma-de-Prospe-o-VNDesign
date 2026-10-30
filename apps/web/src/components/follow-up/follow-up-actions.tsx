@@ -67,29 +67,30 @@ export function FollowUpActions({ lead, compact, quickDone }: { lead: Lead; comp
   }
 
   if (compact) {
+    // Com o nome à vista ("Contactado", "Adiar"): só o ícone não dizia o que fazia.
     return (
       <span className="flex gap-1">
         <Button
-          size="icon"
+          size="sm"
           variant="ghost"
-          className="h-8 w-8 pointer-coarse:h-10 pointer-coarse:w-10"
+          className="h-8 px-2 pointer-coarse:h-10"
           onClick={() => run('done', null)}
           disabled={followUp.isPending}
           aria-label={`${first ? 'Marcar como contactado' : 'Marcar como feito'}: #${lead.number} ${lead.company_name}`}
           title={first ? 'Contactado (passa a Contactado)' : 'Feito'}
         >
-          <Check className="h-4 w-4" aria-hidden />
+          <Check className="h-4 w-4" aria-hidden /> {first ? 'Contactado' : 'Feito'}
         </Button>
         <Button
-          size="icon"
+          size="sm"
           variant="ghost"
-          className="h-8 w-8 pointer-coarse:h-10 pointer-coarse:w-10"
+          className="h-8 px-2 pointer-coarse:h-10"
           onClick={() => run('snooze', days)}
           disabled={followUp.isPending}
           aria-label={`Adiar ${days} dias: #${lead.number} ${lead.company_name}`}
           title={`Adiar ${days} dias`}
         >
-          <AlarmClock className="h-4 w-4" aria-hidden />
+          <AlarmClock className="h-4 w-4" aria-hidden /> Adiar
         </Button>
       </span>
     );

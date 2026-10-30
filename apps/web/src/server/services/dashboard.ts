@@ -119,7 +119,10 @@ export async function fetchToday(client: SupabaseClient, workspaceId: string): P
   };
 }
 
-/** Os leads com maior prioridade (pontuação), em pipeline. */
+/**
+ * Os leads com maior prioridade (pontuação), em pipeline. Com a mesma pontuação: primeiro os que
+ * nunca foram contactados e, entre esses, os que esperam há mais tempo.
+ */
 export async function fetchHotLeads(client: SupabaseClient, workspaceId: string, limit = 8): Promise<Lead[]> {
   const { data, error } = await client
     .from('leads')
@@ -130,7 +133,8 @@ export async function fetchHotLeads(client: SupabaseClient, workspaceId: string,
     .not('status', 'in', '(cliente,sem_interesse,em_pausa)')
     .gt('score', 0)
     .order('score', { ascending: false })
-    .order('number', { ascending: false })
+    .order('first_contact_on', { ascending: true, nullsFirst: true })
+    .order('created_at', { ascending: true })
     .limit(limit);
   // Antes da migração 20261028000100 não há pontuação.
   if (error?.code === '42703') return [];

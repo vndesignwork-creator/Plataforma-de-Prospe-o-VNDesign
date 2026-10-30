@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, daysBetween, formatCurrency, formatDate, formatDateTime, todayIso, workingDay } from '../src/format';
+import { addDays, daysBetween, formatCurrency, formatDate, formatDateTime, relativeDay, todayIso, workingDay } from '../src/format';
 
 describe('formatação pt-PT', () => {
   it('datas DD/MM/AAAA', () => {
@@ -29,5 +29,17 @@ describe('dias úteis', () => {
     expect(workingDay('2026-10-25')).toBe('2026-10-26'); // domingo
     expect(workingDay('2026-10-23')).toBe('2026-10-23'); // sexta
     expect(workingDay('2026-10-25', true)).toBe('2026-10-25');
+  });
+});
+
+describe('relativeDay', () => {
+  it('diz o dia em relação a hoje', () => {
+    expect(relativeDay('2026-10-30', '2026-10-30')).toBe('hoje');
+    expect(relativeDay('2026-10-31', '2026-10-30')).toBe('amanhã');
+    expect(relativeDay('2026-10-29', '2026-10-30')).toBe('ontem');
+    expect(relativeDay('2026-10-26', '2026-10-30')).toBe('há 4 dias');
+    expect(relativeDay('2026-11-02', '2026-10-30')).toBe('daqui a 3 dias');
+    // Mudança de hora (25/10/2026): continua a contar dias de calendário.
+    expect(relativeDay('2026-10-24', '2026-10-26')).toBe('há 2 dias');
   });
 });

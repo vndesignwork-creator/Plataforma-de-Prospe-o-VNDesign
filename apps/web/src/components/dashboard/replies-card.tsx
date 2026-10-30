@@ -182,6 +182,39 @@ export function RepliesCard({ className }: { className?: string }) {
   const detection = !!account?.reply_detection;
   // Muitas respostas: o cartão recolhe-se (fica lembrado neste browser).
   const [collapsed, setCollapsed] = useCollapsed('dashboard-replies');
+  // Nada por responder: uma linha só (o cartão inteiro ocupava uma fila para dizer "nenhuma").
+  const [showQuiet, setShowQuiet] = useState(false);
+
+  if (data && !data.pending && !showQuiet) {
+    return (
+      <Card role="region" aria-label="Respostas" className={cn('flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm', className)}>
+        <MailOpen className="h-4 w-4 shrink-0 text-muted" aria-hidden />
+        <h2 className="font-semibold">Respostas</h2>
+        <span className="text-muted">
+          Nenhuma por responder{data.items.length ? ` · ${data.items.length} nos últimos ${DAYS} dias` : ''}
+        </span>
+        {account === null || (account && !detection) ? (
+          <Link href="/definicoes/email" className="text-accent-text underline underline-offset-2">
+            Ligar a deteção de respostas
+          </Link>
+        ) : null}
+        {data.items.length ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="ml-auto"
+            onClick={() => {
+              setShowQuiet(true);
+              setView('all');
+              setCollapsed(false);
+            }}
+          >
+            Ver as respostas
+          </Button>
+        ) : null}
+      </Card>
+    );
+  }
 
   return (
     <Card className={cn('flex flex-col', className)}>

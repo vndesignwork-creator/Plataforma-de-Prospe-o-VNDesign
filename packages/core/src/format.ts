@@ -45,6 +45,15 @@ export function formatDate(value: string | Date | null | undefined): string {
   return formatDate(iso);
 }
 
+/** Dia relativo a hoje (datas "AAAA-MM-DD"): "hoje", "amanhã", "ontem", "daqui a 3 dias", "há 2 dias". */
+export function relativeDay(day: string, today: string): string {
+  const days = Math.round((Date.parse(`${day}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`)) / 86_400_000);
+  if (days === 0) return 'hoje';
+  if (days === 1) return 'amanhã';
+  if (days === -1) return 'ontem';
+  return days > 0 ? `daqui a ${days} dias` : `há ${-days} dias`;
+}
+
 /** Timestamp → "08/10/2026, 14:05" (hora de Lisboa). */
 export function formatDateTime(value: string | Date | null | undefined): string {
   if (!value) return '';

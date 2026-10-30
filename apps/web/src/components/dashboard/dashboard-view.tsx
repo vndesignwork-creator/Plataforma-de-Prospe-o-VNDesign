@@ -6,6 +6,7 @@ import {
   formatCurrency,
   formatDate,
   formatDateTime,
+  relativeDay,
   todayIso,
   type TodayOpenedEmail,
   type Lead,
@@ -18,7 +19,7 @@ import {
   DASHBOARD_CARDS_PREFERENCE,
   type DashboardCard,
 } from '@vndesign/core';
-import { AlertCircle, BarChart3, BellRing, BriefcaseBusiness, CalendarClock, CalendarDays, Eye, Flame, ListChecks, MapPin, Phone, Users } from 'lucide-react';
+import { AlertCircle, BarChart3, BellRing, BriefcaseBusiness, CalendarClock, CalendarDays, Eye, ListChecks, Mail, MapPin, Phone, Users } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -39,60 +40,103 @@ import { DashboardHeader, SummaryStrip } from './dashboard-top';
 import { ReconnectCard } from './reconnect-card';
 import { RepliesCard } from './replies-card';
 import { CardLayoutButton, DASHBOARD_BOARD, useCardLayout, visibleCards } from '@/components/leads/card-layout';
-import { cn } from '@/lib/utils';
-import { DueBadge, ProgressBar, StageLabel } from '@/components/projects/project-bits';
+import { cn, telUrl } from '@/lib/utils';
+import { DueBadge, StageLabel } from '@/components/projects/project-bits';
 import { meetingLabel } from '@/components/meetings/meetings-card';
 import { StatusIcon } from '@/components/icons/lead-icons';
 
 const euros = (v: number) => formatCurrency(v, { decimals: false });
 
-function TodayGroup({ title, icon, leads, tone }: { title: string; icon: ReactNode; leads: Lead[]; tone?: 'danger' }) {
+/** Quantos aparecem em cada grupo do "Hoje" antes de "Mostrar todos" (sem lista com scroll dentro do cartão). */
+const SHOWN = 5;
+
+/** "Mostrar todos (21)" / "Mostrar menos" por baixo de um grupo comprido. */
+function ShowAll({ total, open, onToggle, what }: { total: number; open: boolean; onToggle: () => void; what: string }) {
+  if (total <= SHOWN) return null;
+  return (
+    <button type="button" onClick={onToggle} aria-expanded={open} className="mt-1 px-2 py-1 text-xs font-medium text-accent-text hover:underline">
+      {open ? 'Mostrar menos' : `Mostrar todos (${total})`}
+      <span className="sr-only"> — {what}</span>
+    </button>
+  );
+}
+
+/**
+ * Follow-ups de um grupo do "Hoje". O que é igual em todas as linhas (ex.: "Primeiro contacto ·
+ * Identificado") aparece uma vez por cima, e cada linha fica só com o que muda.
+ */
+function TodayGroup({
+  title,
+  icon,
+  leads,
+  today,
+  when,
+  header,
+}: {
+  title: string;
+  icon?: ReactNode;
+  leads: Lead[];
+  today: string;
+  when: 'past' | 'today' | 'future';
+  /** Em vez do título (o "Em atraso" usa a faixa com "Pôr em dia"). */
+  header?: ReactNode;
+}) {
+  const [all, setAll] = useState(false);
   if (!leads.length) return null;
+  const firstText = leads[0]!.next_action_text ?? '';
+  const sameText = leads.length > 1 && leads.every((l) => (l.next_action_text ?? '') === firstText);
+  const sameStatus = leads.length > 1 && leads.every((l) => l.status === leads[0]!.status);
+  const common = [sameText ? firstText : '', sameStatus ? LEAD_STATUS_META[leads[0]!.status].label : ''].filter(Boolean);
   return (
     <section aria-label={title}>
-      <h3 className={`mb-1 flex items-center gap-1.5 text-sm font-semibold ${tone === 'danger' ? 'text-danger' : ''}`}>
-        {icon}
-        {title} <span className="font-normal text-muted">({leads.length})</span>
-      </h3>
-      <ul className="divide-y divide-border">
-        {leads.map((l) => (
-          <li key={l.id} className="flex items-center gap-1">
-            {/* Nome numa linha só para ele; data, ação e estado por baixo (no telemóvel o nome não fica cortado). */}
-            <Link href={leadPath(l)} className="min-w-0 flex-1 rounded-md px-2 py-2 hover:bg-surface-2">
-              <span className="block truncate text-sm font-medium">
-                <span className="text-muted tabular">#{l.number}</span> {l.company_name}
+      {header ?? (
+        <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold">
+          {icon}
+          {title} <span className="font-normal text-muted">({leads.length})</span>
+        </h3>
+      )}
+      {common.length ? <p className="mt-1.5 px-2 text-xs text-muted">Todos: {common.join(' · ')}</p> : null}
+      <ul className="divide-y divide-border" aria-label={title}>
+        {(all ? leads : leads.slice(0, SHOWN)).map((l) => {
+          const details = [
+            when !== 'today' && l.next_action_on ? (
+              <span key="d" className="tabular" title={formatDate(l.next_action_on)}>
+                {relativeDay(l.next_action_on, today)}
               </span>
-              <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-                <span className={`tabular ${tone === 'danger' ? 'font-semibold text-danger' : ''}`}>{formatDate(l.next_action_on)}</span>
-                <span className="min-w-0 truncate">{l.next_action_text ?? 'Próxima ação'}</span>
-                <StatusBadge status={l.status} />
+            ) : null,
+            sameText ? null : (
+              <span key="t" className="min-w-0 truncate">
+                {l.next_action_text ?? 'Próxima ação'}
               </span>
-            </Link>
-            <FollowUpEmailButton lead={l} compact />
-            <FollowUpActions lead={l} compact />
-          </li>
-        ))}
+            ),
+            sameStatus ? null : <StatusBadge key="s" status={l.status} />,
+          ].filter(Boolean);
+          return (
+            // Sem espaço (telemóvel), os botões passam para baixo do nome, encostados à direita.
+            <li key={l.id} className="flex flex-wrap items-center gap-x-1">
+              <Link href={leadPath(l)} className="min-w-[12rem] flex-1 rounded-md px-2 py-2 hover:bg-surface-2">
+                <span className="block truncate text-sm font-medium">
+                  <span className="text-muted tabular">#{l.number}</span> {l.company_name}
+                </span>
+                {details.length ? <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">{details}</span> : null}
+              </Link>
+              <span className="ml-auto flex items-center gap-1 pb-1 sm:pb-0">
+                <FollowUpEmailButton lead={l} compact />
+                <FollowUpActions lead={l} compact />
+              </span>
+            </li>
+          );
+        })}
       </ul>
+      <ShowAll total={leads.length} open={all} onToggle={() => setAll(!all)} what={title} />
     </section>
   );
 }
 
 const lisbonDay = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Lisbon' }).format(new Date(iso));
 
-/** Reuniões: as de hoje e, à parte, as dos próximos 7 dias. */
-function TodayMeetings({ meetings, today }: { meetings: TodayMeeting[]; today: string }) {
-  if (!meetings.length) return null;
-  const todays = meetings.filter((m) => lisbonDay(m.starts_at) === today);
-  const later = meetings.filter((m) => lisbonDay(m.starts_at) !== today);
-  return (
-    <>
-      <MeetingList title="Reuniões de hoje" meetings={todays} />
-      <MeetingList title="Reuniões nos próximos 7 dias" meetings={later} />
-    </>
-  );
-}
-
 function MeetingList({ title, meetings }: { title: string; meetings: TodayMeeting[] }) {
+  const [all, setAll] = useState(false);
   if (!meetings.length) return null;
   return (
     <section aria-label={title}>
@@ -101,7 +145,7 @@ function MeetingList({ title, meetings }: { title: string; meetings: TodayMeetin
         {title} <span className="font-normal text-muted">({meetings.length})</span>
       </h3>
       <ul className="divide-y divide-border">
-        {meetings.map((m) => (
+        {(all ? meetings : meetings.slice(0, SHOWN)).map((m) => (
           <li key={m.id}>
             <Link href={leadPath(m.lead)} className="block rounded-md px-2 py-2 hover:bg-surface-2">
               <span className="block truncate text-sm font-medium">
@@ -119,6 +163,7 @@ function MeetingList({ title, meetings }: { title: string; meetings: TodayMeetin
           </li>
         ))}
       </ul>
+      <ShowAll total={meetings.length} open={all} onToggle={() => setAll(!all)} what={title} />
     </section>
   );
 }
@@ -145,6 +190,7 @@ function ProjectsCard({ className }: { className?: string }) {
     <Card className={cn('flex flex-col', className)}>
       <CardHeader
         title="Projetos"
+        className="py-2.5"
         description={
           isLoading ? (
             'Clientes com o projeto em curso'
@@ -181,7 +227,7 @@ function ProjectsCard({ className }: { className?: string }) {
         </div>
       ) : list.length ? (
         <ul className="flex flex-col p-2" aria-label="Projetos em curso">
-          {list.slice(0, 3).map(({ lead, info, tasks }) => (
+          {list.slice(0, 3).map(({ lead, info, tasks, next_task }) => (
             <li key={lead.id}>
               <Link href={`${leadPath(lead)}#projeto`} className="flex flex-col gap-1 rounded-md px-2 py-1.5 text-sm hover:bg-surface-2">
                 <span className="flex min-w-0 items-center gap-2">
@@ -189,13 +235,28 @@ function ProjectsCard({ className }: { className?: string }) {
                   <span className="min-w-0 flex-1 truncate font-medium">{lead.company_name} {lead.project_title ? <span className="font-normal text-muted">· {lead.project_title}</span> : null}</span>
                   <DueBadge dueOn={info.due_on} today={today} className="shrink-0" />
                 </span>
-                <span className="flex items-center gap-3 pl-5.5 text-xs text-muted">
-                  <StageLabel stage={info.stage} />
+                {/* O próximo passo (a próxima tarefa) em vez de uma barra a 0 % que parecia um erro. */}
+                <span className="flex min-w-0 items-center gap-2 pl-5.5 text-xs text-muted">
+                  <span className="shrink-0">
+                    <StageLabel stage={info.stage} />
+                  </span>
+                  <span aria-hidden>·</span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {next_task ? (
+                      <>
+                        Próximo: <span className="text-fg">{next_task.title}</span>
+                      </>
+                    ) : tasks.total ? (
+                      'Tarefas todas feitas'
+                    ) : (
+                      'Sem tarefas'
+                    )}
+                  </span>
                   {tasks.total ? (
-                    <ProgressBar className="min-w-0 flex-1" value={tasks.done} total={tasks.total} label={`Tarefas de ${lead.company_name}: ${tasks.done} de ${tasks.total}`} />
-                  ) : (
-                    <span>Sem tarefas</span>
-                  )}
+                    <span className="shrink-0 tabular" title={`Tarefas feitas: ${tasks.done} de ${tasks.total}`}>
+                      {tasks.done}/{tasks.total}
+                    </span>
+                  ) : null}
                 </span>
               </Link>
             </li>
@@ -221,6 +282,7 @@ function ProjectsCard({ className }: { className?: string }) {
 function TodayTasks({ title, today, tasks }: { title: string; today: string; tasks: TodayTask[] }) {
   const qc = useQueryClient();
   const [doneIds, setDoneIds] = useState<string[]>([]);
+  const [all, setAll] = useState(false);
   if (!tasks.length) return null;
   const overdue = tasks.filter((t) => t.due_on! < today).length;
   async function complete(task: TodayTask) {
@@ -258,7 +320,7 @@ function TodayTasks({ title, today, tasks }: { title: string; today: string; tas
         {title} <span className="font-normal text-muted">({tasks.length}{overdue ? `, ${overdue} em atraso` : ''})</span>
       </h3>
       <ul className="divide-y divide-border">
-        {tasks.map((t) => {
+        {(all ? tasks : tasks.slice(0, SHOWN)).map((t) => {
           const done = doneIds.includes(t.id);
           return (
             <li key={t.id} className="flex items-start gap-2 px-2 py-2">
@@ -284,12 +346,14 @@ function TodayTasks({ title, today, tasks }: { title: string; today: string; tas
           );
         })}
       </ul>
+      <ShowAll total={tasks.length} open={all} onToggle={() => setAll(!all)} what={title} />
     </section>
   );
 }
 
 /** Leads que abriram um email nas últimas 48 horas: bom momento para ligar. */
 function TodayOpened({ items }: { items: TodayOpenedEmail[] }) {
+  const [all, setAll] = useState(false);
   if (!items.length) return null;
   return (
     <section aria-label="Abriram o teu email">
@@ -298,7 +362,7 @@ function TodayOpened({ items }: { items: TodayOpenedEmail[] }) {
         Abriram o teu email <span className="font-normal text-muted">({items.length})</span>
       </h3>
       <ul className="divide-y divide-border">
-        {items.map((o) => (
+        {(all ? items : items.slice(0, SHOWN)).map((o) => (
           <li key={o.id} className="flex items-center gap-1">
             <Link href={leadPath(o.lead)} className="min-w-0 flex-1 rounded-md px-2 py-2 hover:bg-surface-2">
               <span className="block truncate text-sm font-medium">
@@ -321,6 +385,7 @@ function TodayOpened({ items }: { items: TodayOpenedEmail[] }) {
           </li>
         ))}
       </ul>
+      <ShowAll total={items.length} open={all} onToggle={() => setAll(!all)} what="Abriram o teu email" />
     </section>
   );
 }
@@ -368,9 +433,13 @@ function TodayCatchUp({ today, leads, tasks }: { today: string; leads: Lead[]; t
   ].filter(Boolean);
   return (
     <div role="status" aria-label="Atrasados" className="flex flex-wrap items-center gap-2 rounded-lg border border-danger/40 px-3 py-2 text-sm">
-      <span className="mr-auto">
-        <span className="font-medium text-danger">Em atraso:</span> {what.join(' e ')}
-      </span>
+      {/* É também o título da lista dos atrasados (antes havia a faixa e, por baixo, "Em atraso (21)"). */}
+      <h3 className="mr-auto flex items-center gap-1.5 font-normal">
+        <AlertCircle className="h-4 w-4 shrink-0 text-danger" aria-hidden />
+        <span>
+          <span className="font-semibold text-danger">Em atraso:</span> {what.join(' e ')}
+        </span>
+      </h3>
       <DateMenu
         today={today}
         heading="Passar os atrasados para"
@@ -429,23 +498,32 @@ function TodayCard({ className }: { className?: string }) {
     !data.stalled?.length;
   return (
     <Card id="hoje" className={cn('flex scroll-mt-20 flex-col', className)}>
-      <CardHeader
-        title="Hoje"
-        description={data ? `Follow-ups, próximas ações e tarefas · ${formatDate(data.today)}` : undefined}
-      />
-      <div className="relative flex max-h-[26rem] flex-col gap-4 overflow-y-auto p-3">
+      {/* A data já está na saudação do topo; sem lista com scroll dentro (cada grupo mostra 5 e "Mostrar todos"). */}
+      <CardHeader title="Hoje" description="Follow-ups, próximas ações e tarefas" className="py-2.5" />
+      <div className="flex flex-col gap-4 p-3">
         {isLoading ? <Skeleton className="h-40" /> : null}
         {empty ? <p className="px-2 py-6 text-center text-sm text-muted">Nada agendado para os próximos 7 dias. 🎉</p> : null}
         {data ? (
           <>
-            <TodayMeetings meetings={data.meetings ?? []} today={data.today} />
-            <TodayOpened items={data.opened ?? []} />
-            <TodayCatchUp today={data.today} leads={data.overdue} tasks={data.tasks?.overdue ?? []} />
+            {data.overdue.length ? (
+              <TodayGroup
+                title="Em atraso"
+                when="past"
+                today={data.today}
+                leads={data.overdue}
+                header={<TodayCatchUp today={data.today} leads={data.overdue} tasks={data.tasks?.overdue ?? []} />}
+              />
+            ) : (
+              <TodayCatchUp today={data.today} leads={[]} tasks={data.tasks?.overdue ?? []} />
+            )}
             <TodayStalled today={data.today} leads={data.stalled ?? []} />
-            <TodayGroup title="Em atraso" tone="danger" icon={<AlertCircle className="h-4 w-4" aria-hidden />} leads={data.overdue} />
-            <TodayGroup title="Para hoje" icon={<CalendarClock className="h-4 w-4" aria-hidden />} leads={data.due_today} />
+            {/* Pela urgência: atrasados, hoje (reuniões, follow-ups, tarefas), quem abriu o email e só depois a semana. */}
+            <MeetingList title="Reuniões de hoje" meetings={(data.meetings ?? []).filter((m) => lisbonDay(m.starts_at) === data.today)} />
+            <TodayGroup title="Para hoje" when="today" today={data.today} icon={<CalendarClock className="h-4 w-4" aria-hidden />} leads={data.due_today} />
             <TodayTasks title="Tarefas para hoje" today={data.today} tasks={urgentTasks} />
-            <TodayGroup title="Próximos 7 dias" icon={<CalendarDays className="h-4 w-4" aria-hidden />} leads={data.upcoming} />
+            <TodayOpened items={data.opened ?? []} />
+            <TodayGroup title="Próximos 7 dias" when="future" today={data.today} icon={<CalendarDays className="h-4 w-4" aria-hidden />} leads={data.upcoming} />
+            <MeetingList title="Reuniões nos próximos 7 dias" meetings={(data.meetings ?? []).filter((m) => lisbonDay(m.starts_at) !== data.today)} />
             <TodayTasks title="Tarefas nos próximos 7 dias" today={data.today} tasks={weekTasks} />
           </>
         ) : null}
@@ -454,15 +532,25 @@ function TodayCard({ className }: { className?: string }) {
   );
 }
 
-/** Os leads com maior prioridade (pontuação calculada pela base de dados). */
+/**
+ * Os leads com maior prioridade (pontuação calculada pela base de dados; com a mesma pontuação vêm
+ * primeiro os nunca contactados). As razões que todos têm aparecem uma vez em cima; em cada linha, só as outras.
+ */
 function HotLeadsCard({ className }: { className?: string }) {
   const { data } = useToday();
   const hot = data?.hot ?? [];
+  const common = hot.length > 1 ? (hot[0]!.score_reasons ?? []).filter((r) => hot.every((l) => l.score_reasons?.includes(r))) : [];
   return (
     <Card className={cn('flex flex-col', className)}>
       <CardHeader
         title="Leads mais quentes"
-        description="Quem vale mais a pena contactar agora"
+        className="py-2.5"
+        description={
+          <>
+            Quem vale mais a pena contactar agora
+            {common.length ? <span className="mt-0.5 block text-xs">Todos: {common.join(' · ')}</span> : null}
+          </>
+        }
         actions={
           <Link href="/leads?sort=score&order=desc" className="text-sm text-accent-text hover:underline">
             Ver todos
@@ -473,37 +561,61 @@ function HotLeadsCard({ className }: { className?: string }) {
         <p className="flex flex-1 items-center justify-center p-4 text-center text-sm text-muted">Sem leads quentes de momento.</p>
       ) : null}
       <ul className="flex flex-col p-2 empty:hidden" aria-label="Leads mais quentes">
-        {hot.map((l) => (
-          <li key={l.id}>
-            <Link
-              href={leadPath(l)}
-              className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-surface-2"
-              title={l.score_reasons?.join(' · ')}
-            >
-              <Flame className="h-3.5 w-3.5 shrink-0 text-muted" aria-hidden />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium">{l.company_name}</span>
-                <span className="block truncate text-xs text-muted">
-                  {l.score_reasons?.slice(0, 2).join(' · ') || LEAD_STATUS_META[l.status].label}
+        {hot.map((l) => {
+          const own = (l.score_reasons ?? []).filter((r) => !common.includes(r));
+          const detail = own.slice(0, 2).join(' · ') || [l.city, LEAD_STATUS_META[l.status].label].filter(Boolean).join(' · ');
+          return (
+            <li key={l.id} className="group flex items-center gap-1 rounded-md hover:bg-surface-2">
+              <Link href={leadPath(l)} className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-2 py-1.5 text-sm" title={l.score_reasons?.join(' · ')}>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">{l.company_name}</span>
+                  <span className="block truncate text-xs text-muted">{detail}</span>
                 </span>
-              </span>
-              <LeadScoreBadge lead={l} />
-            </Link>
-          </li>
-        ))}
+                <LeadScoreBadge lead={l} showLabel />
+              </Link>
+              {/* Ligar / Email: ao passar o rato ou com o teclado (no telemóvel, sempre). */}
+              {l.phone || l.email ? (
+                <span className="hidden shrink-0 items-center pr-1 group-focus-within:flex group-hover:flex pointer-coarse:flex">
+                  {l.phone ? (
+                    <a href={telUrl(l.phone)} className={buttonClasses('ghost', 'icon', 'h-8 w-8')} aria-label={`Ligar a ${l.company_name}`} title="Ligar">
+                      <Phone className="h-4 w-4" aria-hidden />
+                    </a>
+                  ) : null}
+                  {l.email ? (
+                    <Link href={`${leadPath(l)}#contactar`} className={buttonClasses('ghost', 'icon', 'h-8 w-8')} aria-label={`Email a ${l.company_name}`} title="Escrever email">
+                      <Mail className="h-4 w-4" aria-hidden />
+                    </Link>
+                  ) : null}
+                </span>
+              ) : null}
+            </li>
+          );
+        })}
       </ul>
     </Card>
   );
 }
 
-/** Estados pela ordem do pipeline, com o número de leads e ligação à lista filtrada. */
+/** As fases do funil, pela ordem; "Sem interesse" e "Em pausa" ficam à parte, por baixo. */
+const FUNNEL: LeadStatus[] = ['identificado', 'contactado', 'respondeu', 'reuniao', 'proposta_enviada', 'cliente'];
+const pct = (part: number, whole: number) => `${Math.round((part / whole) * 100)} %`;
+
+/**
+ * Funil: o nome da fase, logo a seguir o número e a barra, e quantos passaram à fase seguinte
+ * (um lead numa fase já passou por todas as anteriores: um cliente conta em todas).
+ */
 function PipelineCard({ byStatus, className }: { byStatus: { status: LeadStatus; count: number }[]; className?: string }) {
-  const max = Math.max(1, ...byStatus.map((s) => s.count));
+  const count = (s: LeadStatus) => byStatus.find((x) => x.status === s)?.count ?? 0;
+  const reached = FUNNEL.map((_, i) => FUNNEL.slice(i).reduce((n, s) => n + count(s), 0));
+  const max = Math.max(1, ...FUNNEL.map(count));
+  const total = byStatus.reduce((n, s) => n + s.count, 0);
+  const aside = (['sem_interesse', 'em_pausa'] as const).filter((s) => count(s));
   return (
     <Card className={cn('flex flex-col', className)}>
       <CardHeader
         title="Pipeline"
-        description="Leads em cada estado"
+        description="Leads em cada fase e quantos passaram à seguinte"
+        className="py-2.5"
         actions={
           <span className="flex items-center gap-3 text-sm">
             <Link href="/kanban" className="text-accent-text hover:underline">
@@ -515,25 +627,43 @@ function PipelineCard({ byStatus, className }: { byStatus: { status: LeadStatus;
           </span>
         }
       />
-      {/* No computador, em duas colunas (por baixo do "Hoje", que é largo). */}
-      {/* Ocupa a altura toda do cartão (fica alinhado com o cartão Projetos ao lado). */}
-      <ul className="grid flex-1 p-2 lg:grid-flow-col lg:grid-rows-4 lg:content-evenly lg:gap-x-6" aria-label="Leads por estado">
-        {byStatus.map(({ status, count }) => (
-          <li key={status}>
-            <Link
-              href={`/leads?status=${status}`}
-              className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-surface-2"
-            >
-              <StatusIcon status={status} className="h-3.5 w-3.5 shrink-0" />
-              <span className="min-w-0 flex-1 truncate">{LEAD_STATUS_META[status].label}</span>
-              <span className="h-1.5 w-16 overflow-hidden rounded-full bg-surface-3" aria-hidden>
-                <span className="block h-full rounded-full bg-accent" style={{ width: `${(count / max) * 100}%` }} />
-              </span>
-              <span className="w-8 text-right font-medium tabular">{count}</span>
-            </Link>
-          </li>
-        ))}
+      <ul className="flex flex-1 flex-col justify-evenly p-2" aria-label="Leads por estado">
+        {FUNNEL.map((status, i) => {
+          const next = reached[i + 1];
+          return (
+            <li key={status}>
+              <Link
+                href={`/leads?status=${status}`}
+                className="grid grid-cols-[1rem_minmax(0,9.5rem)_2.25rem_minmax(0,1fr)] items-center gap-x-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-surface-2 sm:grid-cols-[1rem_minmax(0,9.5rem)_2.25rem_minmax(0,1fr)_8.5rem]"
+              >
+                <StatusIcon status={status} className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{LEAD_STATUS_META[status].label}</span>
+                <span className="text-right font-medium tabular">{count(status)}</span>
+                <span className="h-1.5 overflow-hidden rounded-full bg-surface-3" aria-hidden>
+                  <span className="block h-full rounded-full bg-accent" style={{ width: `${(count(status) / max) * 100}%` }} />
+                </span>
+                {/* Telemóvel: a percentagem passa para a linha de baixo. */}
+                <span className="col-start-2 col-end-5 text-xs text-muted tabular sm:col-start-auto sm:col-end-auto sm:text-right">
+                  {next !== undefined && reached[i] ? `${pct(next, reached[i]!)} avançaram` : null}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
       </ul>
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border px-4 py-2 text-xs text-muted">
+        {total ? (
+          <span>
+            <span className="font-medium text-fg tabular">{pct(count('cliente'), total)}</span> dos leads passaram a cliente
+          </span>
+        ) : null}
+        {aside.map((s) => (
+          <Link key={s} href={`/leads?status=${s}`} className="inline-flex items-center gap-1 hover:text-fg hover:underline">
+            <StatusIcon status={s} className="h-3 w-3" />
+            {LEAD_STATUS_META[s].label}: <span className="tabular">{count(s)}</span>
+          </Link>
+        ))}
+      </p>
     </Card>
   );
 }
@@ -625,7 +755,8 @@ function OwnerDashboard() {
         {summary}
         <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
           <TodayCard className="lg:col-start-1 lg:row-start-1" />
-          <HotLeadsCard className="lg:col-start-2 lg:row-start-1" />
+          {/* O "Hoje" pode ficar comprido: os quentes não esticam (sem um buraco vazio no cartão). */}
+          <HotLeadsCard className="lg:col-start-2 lg:row-start-1 lg:self-start" />
           <RepliesCard className="lg:col-span-2 lg:row-start-2" />
           <PipelineCard
             byStatus={data.by_status}
