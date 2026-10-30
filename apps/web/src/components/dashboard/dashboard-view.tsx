@@ -19,7 +19,7 @@ import {
   DASHBOARD_CARDS_PREFERENCE,
   type DashboardCard,
 } from '@vndesign/core';
-import { AlertCircle, BarChart3, BellRing, BriefcaseBusiness, CalendarClock, CalendarDays, Eye, ListChecks, Mail, MapPin, Phone, Users } from 'lucide-react';
+import { AlertCircle, BarChart3, BellRing, BriefcaseBusiness, CalendarClock, CalendarDays, Columns3, Eye, ListChecks, Mail, MapPin, Phone, Users } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -617,10 +617,12 @@ function PipelineCard({ byStatus, className }: { byStatus: { status: LeadStatus;
         description="Leads em cada fase e quantos passaram à seguinte"
         className="py-2.5"
         actions={
-          <span className="flex items-center gap-3 text-sm">
-            <Link href="/kanban" className="text-accent-text hover:underline">
-              Kanban
+          // Dois links (cada um com o seu ícone e um separador): juntos pareciam um só texto.
+          <span className="flex items-center gap-2 text-sm">
+            <Link href="/kanban" className="inline-flex items-center gap-1 text-accent-text hover:underline">
+              <Columns3 className="h-3.5 w-3.5" aria-hidden /> Kanban
             </Link>
+            <span className="h-4 w-px bg-border" aria-hidden />
             <Link href="/estatisticas" className="inline-flex items-center gap-1 text-accent-text hover:underline">
               <BarChart3 className="h-3.5 w-3.5" aria-hidden /> Estatísticas
             </Link>
