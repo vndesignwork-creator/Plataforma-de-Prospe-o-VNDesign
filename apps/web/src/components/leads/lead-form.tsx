@@ -20,7 +20,7 @@ import {
   type LeadCreateInput,
   leadPath,
 } from '@vndesign/core';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
@@ -183,6 +183,12 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
     }
   }
 
+  const chosenServices = (useWatch({ control, name: 'services' }) ?? []) as string[];
+  // Quantos campos de "Mais detalhes" já têm valor (o "Mobile?" por verificar não conta).
+  const moreValues = useWatch({ control, name: [...MORE_FIELDS] });
+  const moreFilled = moreValues.filter((v, i) => (MORE_FIELDS[i] === 'mobile' ? v && v !== 'desconhecido' : v !== null && v !== undefined && String(v).trim() !== '')).length;
+  const duplicates = dupCheck.data?.duplicates ?? [];
+
   // "Mais detalhes": aberto na edição; na criação abre se houver erros lá dentro.
   const [moreOpen, setMoreOpen] = useState(isEdit || MORE_FIELDS.some((f) => !!initial?.[f as keyof Lead]));
   const moreHasErrors = MORE_FIELDS.some((f) => errors[f]);
@@ -224,10 +230,15 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
         </p>
       ) : null}
 
+      {/* Preencher com IA: o cartão de visita ou umas palavras ditas/escritas (só os campos vazios). */}
       {isEdit ? null : (
-        <div className="flex flex-col gap-2">
-          <CardScanButton onResult={fillFromCard} />
-          <LeadQuickFill onResult={fillFromCard} />
+        <div role="group" aria-label="Preencher com IA" className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-border px-4 py-2.5 text-sm">
+          <span className="inline-flex items-center gap-1.5 font-medium">
+            <Sparkles className="h-4 w-4 text-accent-text" aria-hidden /> Preencher com IA
+          </span>
+          <CardScanButton onResult={fillFromCard} bare />
+          <LeadQuickFill onResult={fillFromCard} bare />
+          <span className="text-xs text-muted">Só preenche os campos vazios.</span>
         </div>
       )}
 
@@ -236,7 +247,7 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
           <Input autoComplete="off" autoFocus={!isEdit} {...register('company_name')} />
         </Field>
         {dupCheck.data && (dupCheck.data.duplicates.length || dupCheck.data.do_not_contact.length) ? (
-          <div className="md:col-span-2">
+          <div id="lead-duplicados" className="scroll-mt-24 md:col-span-2">
             <DuplicatePanel
               duplicates={dupCheck.data.duplicates}
               doNotContact={dupCheck.data.do_not_contact}
@@ -245,6 +256,22 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
             />
           </div>
         ) : null}
+        <Field
+          label="Website"
+          error={e('website')}
+          hint={
+            isDirectoryUrl(website)
+              ? 'Isto é um diretório (TripAdvisor, Sluurpy, Google Maps…), não o site da empresa: ao gravar passa para “Fonte”.'
+              : isSocialUrl(website)
+                ? 'Rede social: fica como página da empresa (sem site próprio).'
+                : 'O site próprio (ex.: vndesign.pt). Sem site? Deixa vazio.'
+          }
+        >
+          <Input type="url" inputMode="url" autoComplete="off" {...register('website')} />
+        </Field>
+        <Field label="Cidade" error={e('city')}>
+          <Input autoComplete="off" {...register('city')} />
+        </Field>
         <Field label="Setor" error={e('sector_id')}>
           <Select {...register('sector_id', { setValueAs: emptyToNull })}>
             <option value="">— Sem setor —</option>
@@ -254,22 +281,6 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
               </option>
             ))}
           </Select>
-        </Field>
-        <Field label="Cidade" error={e('city')}>
-          <Input autoComplete="off" {...register('city')} />
-        </Field>
-        <Field
-          label="Website"
-          error={e('website')}
-          hint={
-            isDirectoryUrl(website)
-              ? 'Isto é um diretório (TripAdvisor, Sluurpy, Google Maps…), não o site da empresa: ao gravar passa para “Fonte”.'
-              : isSocialUrl(website)
-                ? 'Rede social: fica como página da empresa (sem site próprio).'
-                : 'O site próprio da empresa (ex.: vndesign.pt). Sem site? Deixa vazio ou põe a página de Facebook.'
-          }
-        >
-          <Input type="url" inputMode="url" autoComplete="off" {...register('website')} />
         </Field>
       </Section>
 
@@ -299,17 +310,24 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
         </Field>
       </Section>
 
-      <Section title="Serviços de interesse" description="O que podes propor a esta empresa — site, imagem gráfica ou ambos.">
+      <Section
+        title="Serviços de interesse"
+        description={
+          chosenServices.length
+            ? `${chosenServices.length} escolhido${chosenServices.length === 1 ? '' : 's'} · o que podes propor a esta empresa.`
+            : 'O que podes propor a esta empresa — site, imagem gráfica ou ambos.'
+        }
+      >
         <div className="md:col-span-2">
           <Controller
             control={control}
             name="services"
-            render={({ field }) => <ServicePicker value={field.value ?? []} onChange={field.onChange} />}
+            render={({ field }) => <ServicePicker value={field.value ?? []} onChange={field.onChange} compact />}
           />
         </div>
       </Section>
 
-      <Section title="Pipeline" description='Ao passar a "Contactado", é agendado um follow-up a +3 dias.'>
+      <Section title="Estado e próximo passo" description='Ao passar a "Contactado", é agendado um follow-up a +3 dias.'>
         <Field label="Estado" error={e('status')}>
           <Select {...register('status')}>
             {LEAD_STATUSES.map((s) => (
@@ -347,6 +365,7 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
         <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center gap-x-2 gap-y-0.5 rounded-xl border border-dashed border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2 [&::-webkit-details-marker]:hidden">
           <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" aria-hidden />
           Mais detalhes
+          {moreFilled ? <span className="rounded bg-accent-soft px-1.5 text-xs font-medium text-accent-text">{moreFilled} preenchido{moreFilled === 1 ? '' : 's'}</span> : null}
           <span className="font-normal text-muted">morada e origem, datas de contacto, diagnóstico do site, email de prospeção</span>
         </summary>
         <div className="flex flex-col gap-5">
@@ -408,7 +427,19 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur lg:left-60">
         <div className="mx-auto flex max-w-5xl items-center justify-end gap-2">
-          {isEdit && isDirty ? <span className="mr-auto text-sm text-muted">Alterações por gravar</span> : null}
+          {/* O que falta antes de criar e se já existe parecido (o painel completo está junto ao nome). */}
+          {!name?.trim() ? (
+            <span className="mr-auto text-sm text-muted">
+              Falta: <span className="font-medium text-fg">Empresa</span>
+            </span>
+          ) : duplicates.length ? (
+            <a href="#lead-duplicados" className="mr-auto min-w-0 truncate text-sm text-warning hover:underline">
+              Pode já existir: #{duplicates[0]!.number} {duplicates[0]!.company_name}
+              {duplicates.length > 1 ? ` (+${duplicates.length - 1})` : ''}
+            </a>
+          ) : isEdit && isDirty ? (
+            <span className="mr-auto text-sm text-muted">Alterações por gravar</span>
+          ) : null}
           <Link href={lead ? leadPath(lead) : '/leads'} className={buttonClasses('ghost')}>
             Cancelar
           </Link>

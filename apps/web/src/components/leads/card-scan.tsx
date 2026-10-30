@@ -24,7 +24,8 @@ async function shrink(file: File): Promise<string> {
   return canvas.toDataURL('image/jpeg', 0.85);
 }
 
-export function CardScanButton({ onResult }: { onResult: (data: CardScanResult) => void }) {
+/** `bare`: só o botão (o formulário junta-o ao "Ditar ou escrever" numa barra). */
+export function CardScanButton({ onResult, bare }: { onResult: (data: CardScanResult) => void; bare?: boolean }) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
 
@@ -43,8 +44,7 @@ export function CardScanButton({ onResult }: { onResult: (data: CardScanResult) 
     }
   }
 
-  return (
-    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-border px-4 py-3 text-sm">
+  const button = (
       <label className={buttonClasses('outline', 'sm', busy ? 'pointer-events-none opacity-60' : 'cursor-pointer')}>
         {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Camera className="h-4 w-4 text-accent-text" aria-hidden />}
         {busy ? 'A ler o cartão…' : 'Ler cartão de visita'}
@@ -62,6 +62,11 @@ export function CardScanButton({ onResult }: { onResult: (data: CardScanResult) 
           }}
         />
       </label>
+  );
+  if (bare) return button;
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-border px-4 py-3 text-sm">
+      {button}
       <span className="text-muted">Tira uma foto ao cartão: a IA preenche a empresa, o contacto, o email, o telefone e o site.</span>
     </div>
   );

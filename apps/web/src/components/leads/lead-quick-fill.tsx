@@ -33,7 +33,8 @@ const empty: Omit<CardScanResult, 'model'> = {
   notes: null,
 };
 
-export function LeadQuickFill({ onResult }: { onResult: (data: CardScanResult) => void }) {
+/** `bare`: só os botões (sem a caixa e a explicação). */
+export function LeadQuickFill({ onResult, bare }: { onResult: (data: CardScanResult) => void; bare?: boolean }) {
   const [open, setOpen] = useState(false);
   const picker = useSyncExternalStore(() => () => {}, hasContactPicker, () => false);
 
@@ -55,8 +56,9 @@ export function LeadQuickFill({ onResult }: { onResult: (data: CardScanResult) =
     }
   }
 
+  const Wrapper = bare ? 'span' : 'div';
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-border px-4 py-3 text-sm">
+    <Wrapper className={bare ? 'contents' : 'flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-border px-4 py-3 text-sm'}>
       <Button type="button" size="sm" variant="outline" onClick={() => setOpen(true)}>
         <Mic className="h-4 w-4 text-accent-text" aria-hidden /> Ditar ou escrever
       </Button>
@@ -65,7 +67,9 @@ export function LeadQuickFill({ onResult }: { onResult: (data: CardScanResult) =
           <BookUser className="h-4 w-4 text-accent-text" aria-hidden /> Escolher dos contactos
         </Button>
       ) : null}
-      <span className="text-muted">Descreve o lead por palavras tuas: a IA preenche a empresa, o contacto, o telefone, o email e as notas.</span>
+      {bare ? null : (
+        <span className="text-muted">Descreve o lead por palavras tuas: a IA preenche a empresa, o contacto, o telefone, o email e as notas.</span>
+      )}
       {open ? (
         <TextFillDialog
           onClose={() => setOpen(false)}
@@ -75,7 +79,7 @@ export function LeadQuickFill({ onResult }: { onResult: (data: CardScanResult) =
           }}
         />
       ) : null}
-    </div>
+    </Wrapper>
   );
 }
 

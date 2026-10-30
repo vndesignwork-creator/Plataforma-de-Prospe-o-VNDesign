@@ -57,3 +57,22 @@ test('estatísticas mostram os leads por serviço', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Por serviço' })).toBeVisible();
   await expect(page.getByRole('table', { name: 'Leads por serviço de interesse' })).toBeAttached();
 });
+
+test('novo lead: barra "Preencher com IA", serviços em etiquetas, o que falta e "Mais detalhes" com contagem', async ({ page }) => {
+  await page.goto('/leads/novo');
+  const ai = page.getByRole('group', { name: 'Preencher com IA' });
+  await expect(ai.getByText('Ler cartão de visita')).toBeVisible();
+  await expect(ai.getByRole('button', { name: 'Ditar ou escrever' })).toBeVisible();
+  await expect(page.getByText('Falta:')).toBeVisible();
+
+  await page.getByRole('checkbox', { name: 'Identidade Visual' }).check();
+  await expect(page.getByText(/^1 escolhido · /)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Estado e próximo passo' })).toBeVisible();
+
+  await page.getByLabel('Empresa', { exact: false }).first().fill(`Etiquetas Serviços ${Date.now().toString(36)}`);
+  await expect(page.getByText('Falta:')).toHaveCount(0);
+
+  await page.getByText('Mais detalhes').click();
+  await page.getByLabel('Morada').fill('Rua Direita 1, Sintra');
+  await expect(page.getByText('1 preenchido', { exact: true })).toBeVisible();
+});
