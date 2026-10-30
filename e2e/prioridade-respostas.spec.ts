@@ -93,6 +93,11 @@ test('prioridade: pontuação com razões, ordenar por prioridade e “Leads mai
   expect(hot.score_reasons).toEqual(['Respondeu', 'Sem site próprio', 'Tem email', 'Setor prioritário', 'Valor estimado ≥ 1000 €']);
   const cold = await createLead(page.request, { company_name: `Loja Fria ${run}`, website: `https://loja-${run}.pt`, mobile: 'sim' });
   expect(cold.score).toBe(0);
+  // Degraus mais finos (20261108001700): email e telefone e uma pessoa de contacto contam mais do que só o email.
+  const full = await createLead(page.request, { company_name: `Completo ${run}`, email: `a@completo-${run}.pt`, phone: '912000001', contact_name: 'Ana' });
+  const onlyEmail = await createLead(page.request, { company_name: `Só Email P ${run}`, email: `b@completo-${run}.pt` });
+  expect(full.score).toBeGreaterThan(onlyEmail.score);
+  expect(full.score_reasons).toEqual(expect.arrayContaining(['Tem email e telefone', 'Pessoa de contacto']));
 
   // Muda sozinha: com um site rápido e adaptado, deixa de contar "Sem site próprio".
   await page.request.patch(`/api/v1/leads/${hot.id}`, { data: { website: `https://hotel-${run}.pt`, mobile: 'nao' } });

@@ -1,6 +1,6 @@
 /**
  * Prioridade dos leads: a pontuação (0–100) é calculada pela base de dados
- * (vnd_lead_score, migração 20261028000100) sempre que o lead muda. Aqui só se
+ * (vnd_lead_score, migrações 20261028000100 e 20261108001700) sempre que o lead muda. Aqui só se
  * traduz em "quente / morno / frio" para a plataforma.
  */
 export type LeadTemperature = 'hot' | 'warm' | 'cold';
