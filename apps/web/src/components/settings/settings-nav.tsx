@@ -100,27 +100,27 @@ export function SettingsSearch() {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const words = normalize(text.trim()).split(/\s+/).filter(Boolean);
-  const results: Result[] = words.length
-    ? [
-        ...sections
-          .filter((s) => {
-            const hay = normalize(`${s.label} ${s.description} ${SETTINGS_KEYWORDS[s.slug] ?? ''}`);
-            return words.every((w) => hay.includes(w));
-          })
-          .map((s) => ({ key: s.slug, href: `/definicoes/${s.slug}`, icon: s.icon, label: s.label, description: s.description })),
-        ...searchSettingsItems(text, new Set(sections.map((s) => s.slug))).map((item) => {
-          const section = sections.find((s) => s.slug === item.slug)!;
-          const target = settingsItemTarget(item, settings?.features);
-          return {
-            key: item.id,
-            href: target.href,
-            icon: section.icon,
-            label: item.label,
-            description: [section.label, item.where].filter(Boolean).join(' → ') + (target.missing ? ` · liga primeiro “${target.missing}”` : ''),
-          };
-        }),
-      ]
-    : [];
+  const query = words.join(' ');
+  const sectionResults: Result[] = sections
+    .filter((s) => {
+      const hay = normalize(`${s.label} ${s.description} ${SETTINGS_KEYWORDS[s.slug] ?? ''}`);
+      return words.length > 0 && words.every((w) => hay.includes(w));
+    })
+    .map((s) => ({ key: s.slug, href: `/definicoes/${s.slug}`, icon: s.icon, label: s.label, description: s.description }));
+  const itemResults: (Result & { byName: boolean })[] = searchSettingsItems(text, new Set(sections.map((s) => s.slug))).map((item) => {
+    const section = sections.find((s) => s.slug === item.slug)!;
+    const target = settingsItemTarget(item, settings?.features);
+    return {
+      key: item.id,
+      href: target.href,
+      icon: section.icon,
+      label: item.label,
+      description: [section.label, item.where].filter(Boolean).join(' → ') + (target.missing ? ` · liga primeiro “${target.missing}”` : ''),
+      byName: normalize(item.label).includes(query),
+    };
+  });
+  // Quem escreve o nome de uma opção ("tempo em dinheiro") vê-a antes da secção onde está.
+  const results: Result[] = [...itemResults.filter((r) => r.byName), ...sectionResults, ...itemResults.filter((r) => !r.byName)];
 
   function go(href: string) {
     setText('');

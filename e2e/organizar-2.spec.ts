@@ -245,7 +245,7 @@ test('Definições: procurar ("iva", "2fa") e ir direto à secção', async ({ p
   await search.fill('iva');
   await expect(page.getByRole('listbox', { name: 'Resultados nas definições' }).getByRole('option', { name: /^Propostas/ })).toBeVisible();
   await search.press('Enter');
-  await expect(page).toHaveURL(/\/definicoes\/propostas$/);
+  await expect(page).toHaveURL(/\/definicoes\/propostas(#|$)/);
 
   await search.fill('2fa');
   await page.getByRole('option', { name: /^Conta/ }).click();
