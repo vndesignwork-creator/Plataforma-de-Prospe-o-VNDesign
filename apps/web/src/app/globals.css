@@ -107,6 +107,65 @@
     outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
+  /* Entrada da app instalada (ver layout.tsx): o fundo é o do ecrã de arranque do Android, para não piscar. */
+  #vnd-intro {
+    display: none;
+  }
+  html[data-intro] #vnd-intro {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #0d0d0d;
+    font-family: var(--font-display);
+    font-size: clamp(3.5rem, 22vw, 6.5rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 0.92;
+    animation: vnd-intro-out 0.4s ease-in 1.45s forwards;
+  }
+  html[data-intro] #vnd-intro :is(.vn, .d, .l) {
+    display: inline-block;
+    opacity: 0;
+    animation: vnd-intro-in 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+  #vnd-intro .vn {
+    color: #ef5c32;
+  }
+  #vnd-intro .d {
+    color: #f4f2ee;
+    animation-delay: 0.25s !important;
+  }
+  #vnd-intro .l {
+    color: #8f8c87;
+    animation-delay: 0.45s !important;
+  }
+  @keyframes vnd-intro-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.35em);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes vnd-intro-out {
+    to {
+      opacity: 0;
+      transform: scale(1.06);
+      visibility: hidden;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html[data-intro] #vnd-intro :is(.vn, .d, .l) {
+      opacity: 1;
+      animation: none;
+    }
+  }
   /* Escolher ficheiro: o campo verdadeiro está escondido (sr-only); o contorno vai para o botão/rótulo visível. */
   label:has(input[type='file'].sr-only:focus-visible),
   input[type='file'].sr-only:focus-visible + label {

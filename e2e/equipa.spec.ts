@@ -83,7 +83,7 @@ test('equipa: convidar um prospetor, o que vê, responsável, limite do gerador 
     // Ficha do lead: sem valor nem propostas.
     await p.page.goto(`/leads/${lead.id}`);
     await expect(p.page.getByRole('heading', { name: `Equipa Valor ${run}` })).toBeVisible();
-    await expect(p.page.getByText('Responsável')).toBeVisible();
+    await expect(p.page.getByText('Responsável', { exact: true })).toBeVisible();
     await expect(p.page.getByText('Valor estimado')).toHaveCount(0);
     await expect(p.page.getByText(/7\s?777/)).toHaveCount(0);
     await expect(p.page.getByRole('heading', { name: 'Propostas' })).toHaveCount(0);

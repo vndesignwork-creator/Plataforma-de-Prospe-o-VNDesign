@@ -26,7 +26,12 @@ test('criar um serviço novo e usá-lo num lead', async ({ page }) => {
   // Escolher no formulário do lead.
   const lead = (await (await page.request.post('/api/v1/leads', { data: { company_name: `Estúdio ${run}` } })).json()).data;
   await page.goto(`/leads/${lead.id}/editar`);
-  await page.getByRole('group', { name: 'Outros serviços' }).getByLabel(name).check();
+  const others = page.getByRole('group', { name: 'Outros serviços' });
+  // Categorias grandes mostram 8 e "+N": o serviço novo pode estar recolhido.
+  await expect(others.getByRole('checkbox').first()).toBeVisible();
+  const more = others.getByRole('button', { name: /^\+\d+/ });
+  if (await more.count()) await more.click();
+  await others.getByLabel(name).check();
   await page.getByRole('button', { name: 'Gravar alterações' }).click();
   await expect(page.getByRole('list', { name: 'Serviços de interesse' }).getByText(name)).toBeVisible();
 

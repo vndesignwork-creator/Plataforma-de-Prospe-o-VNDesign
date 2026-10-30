@@ -227,6 +227,8 @@ export function ServicePicker({
                   <button
                     type="button"
                     onClick={() => setExpanded((list) => (list.includes(category) ? list.filter((c) => c !== category) : [...list, category]))}
+                    aria-expanded={hidden === 0}
+                    aria-label={hidden > 0 ? `+${hidden}: mostrar todos os serviços de ${catalog.categoryLabel(category)}` : undefined}
                     className="inline-flex min-h-8 items-center rounded-full px-2.5 text-sm text-accent-text hover:underline"
                   >
                     {hidden > 0 ? `+${hidden}` : 'Mostrar menos'}
