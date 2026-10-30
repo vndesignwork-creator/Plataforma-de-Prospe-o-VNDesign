@@ -26,7 +26,7 @@ import { usePreference, useSetPreference } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
 /** O que muda entre a ficha e o Dashboard. */
-interface Board<K extends string> {
+export interface Board<K extends string> {
   preference: string;
   defaults: readonly K[];
   labels: Record<K, string>;

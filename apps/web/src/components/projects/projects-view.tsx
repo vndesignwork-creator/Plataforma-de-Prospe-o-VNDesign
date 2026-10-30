@@ -36,9 +36,10 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/page-header';
+import { CardLayoutButton, useCardLayout, visibleCards, type Board } from '@/components/leads/card-layout';
 import { Card, EmptyState, Skeleton } from '@/components/ui/card';
 import { setCollapsedKeys, useCollapsedCount } from '@/components/ui/collapse';
 import { Input, Select } from '@/components/ui/input';
@@ -85,6 +86,17 @@ function ProjectsSummary({ projects, today }: { projects: Project[] | undefined;
     </>
   );
 }
+
+const PROJECT_KPIS = ['em_curso', 'recebido', 'por_receber', 'em_atraso'] as const;
+type ProjectKpi = (typeof PROJECT_KPIS)[number];
+/** Os números do topo dos Projetos: cada pessoa escolhe a ordem e os que quer ver (preferência "projects.kpis"). */
+const PROJECT_KPI_BOARD: Board<ProjectKpi> = {
+  preference: 'projects.kpis',
+  defaults: PROJECT_KPIS,
+  labels: { em_curso: 'Em curso', recebido: 'Recebido este mês', por_receber: 'Por receber', em_atraso: 'Em atraso' },
+  alwaysShown: [],
+  description: 'A ordem dos números do topo dos Projetos e os que queres ver.',
+};
 
 export function ProjectsView() {
   const [view, setView] = useState<View>('list');
@@ -202,13 +214,10 @@ export function ProjectsView() {
   // "Criar plano de pagamentos" leva ao primeiro projeto em curso sem plano.
   const withoutPlan = listState === 'active' ? (projects ?? []).find((p) => !p.payments.total) : undefined;
 
-  return (
-    <div className="flex flex-col gap-4">
-      <PageHeader title="Projetos" description={<ProjectsSummary projects={view === 'list' && state === 'completed' ? undefined : projects} today={today} />} />
-
-      {/* Números do mês numa faixa baixa; os que levam a projetos filtram a lista. */}
-      {showPayments && billing ? (
-        <section aria-label="Faturação" className="flex flex-wrap items-stretch gap-2">
+  const kpiCards: Record<ProjectKpi, React.ReactNode> = billing
+    ? {
+        em_curso: (
+          <>
           <Kpi label="Em curso" value={String(billing.active_projects)}>
             {overdueProjects ? (
               <button type="button" onClick={() => showFilter('atrasados')} className="self-start text-left text-xs font-medium text-danger hover:underline">
@@ -216,7 +225,15 @@ export function ProjectsView() {
               </button>
             ) : null}
           </Kpi>
+          </>
+        ),
+        recebido: (
+          <>
           <Kpi label="Recebido este mês" value={euros(billing.received_month)} />
+          </>
+        ),
+        por_receber: (
+          <>
           <Kpi label="Por receber" value={euros(billing.outstanding)}>
             {billing.outstanding === 0 && withoutPlan ? (
               <Link href={`${leadPath(withoutPlan.lead)}#projeto`} className="text-xs font-medium text-accent-text hover:underline">
@@ -224,6 +241,10 @@ export function ProjectsView() {
               </Link>
             ) : null}
           </Kpi>
+          </>
+        ),
+        em_atraso: (
+          <>
           {billing.overdue ? (
             <Kpi label="Em atraso" value={<span className="text-danger">{euros(billing.overdue)}</span>}>
               <button type="button" onClick={() => showFilter('pagamentos')} className="self-start text-left text-xs font-medium text-danger hover:underline">
@@ -233,7 +254,29 @@ export function ProjectsView() {
           ) : (
             <Kpi label="Em atraso" value={<span className="inline-flex items-center gap-1 text-success"><CheckCircle2 className="h-4 w-4" aria-hidden />Nada em atraso</span>} />
           )}
-        </section>
+          </>
+        ),
+      }
+    : ({} as Record<ProjectKpi, React.ReactNode>);
+  const kpiLayout = useCardLayout(PROJECT_KPI_BOARD.preference);
+  const kpiKeys = visibleCards(PROJECT_KPI_BOARD, kpiLayout, () => true);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <PageHeader title="Projetos" description={<ProjectsSummary projects={view === 'list' && state === 'completed' ? undefined : projects} today={today} />} />
+
+      {/* Números do mês numa faixa baixa; os que levam a projetos filtram a lista. Organizam-se como no Dashboard. */}
+      {showPayments && billing ? (
+        <div className="mb-2 flex flex-col gap-1.5">
+          {kpiKeys.length ? (
+            <section aria-label="Faturação" className="flex flex-wrap items-stretch gap-3">
+              {kpiKeys.map((key) => (
+                <Fragment key={key}>{kpiCards[key]}</Fragment>
+              ))}
+            </section>
+          ) : null}
+          <CardLayoutButton board={PROJECT_KPI_BOARD} available={PROJECT_KPIS} className="self-end" />
+        </div>
       ) : null}
 
       {/* O que mostra (Em curso | Concluídos) e como (Lista | Fases | Calendário). */}
