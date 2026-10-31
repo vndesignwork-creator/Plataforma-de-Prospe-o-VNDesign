@@ -196,7 +196,7 @@ export function AppShell({ email, children }: { email: string | null; children: 
           <Logo narrow />
         </Link>
         {role === 'prospector' ? null : <RunningTimer compact className="ml-auto shrink-0" />}
-        <NotificationsBell className={cn(role === 'prospector' && 'ml-auto')} />
+        <NotificationsBell sheet className={cn(role === 'prospector' && 'ml-auto')} />
         <button type="button" onClick={openSearch} className="rounded-lg p-2 text-fg hover:bg-surface-2" aria-label="Pesquisar">
           <Search className="h-5 w-5" aria-hidden />
         </button>

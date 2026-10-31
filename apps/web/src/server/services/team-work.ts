@@ -24,7 +24,7 @@ import { createSupabaseAdminClient } from '../supabase-admin';
 import { sendUserPush } from './push';
 import { teamNames } from './team';
 
-const NOTIFICATION_SELECT = 'id, kind, lead_id, task_id, activity_id, actor_user_id, title, text, url, read_at, created_at, lead:leads(id, number, company_name)';
+const NOTIFICATION_SELECT = 'id, kind, lead_id, task_id, activity_id, actor_user_id, title, text, url, read_at, created_at, lead:leads(id, number, company_name, phone)';
 
 export async function listNotifications(ctx: ApiContext): Promise<NotificationList> {
   const [list, unread] = await Promise.all([

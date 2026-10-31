@@ -134,7 +134,7 @@ export const NotificationSchema = z
     url: z.string().nullable().meta({ description: 'Página para onde o aviso leva (null = a ficha do lead)' }),
     read_at: z.string().nullable(),
     created_at: z.string(),
-    lead: z.object({ id: z.uuid(), number: z.int(), company_name: z.string() }).nullable(),
+    lead: z.object({ id: z.uuid(), number: z.int(), company_name: z.string(), phone: z.string().nullable().optional().meta({ description: 'Telefone do lead (para ligar logo a partir do aviso)' }) }).nullable(),
   })
   .meta({ id: 'Notification' });
 export type Notification = z.infer<typeof NotificationSchema>;

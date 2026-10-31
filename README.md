@@ -253,6 +253,10 @@ Abre um lead a partir da lista (com os filtros e a ordem que quiseres): no topo 
 - **Responsável:** ao editar uma tarefa (✏️) escolhe **Responsável** (só aparece com equipa). A tarefa mostra o nome e essa pessoa recebe um aviso.
 - **Página Tarefas** (menu, ou **G + T**): as tarefas por fazer de todos os leads e projetos, por **Em atraso / Hoje / Próximos 7 dias / Mais tarde / Sem prazo**. Com equipa: **As minhas** (para o dono, também as sem responsável — como nos leads), **Sem responsável**, **Todas** ou **De uma pessoa…**; o botão com o nome de cada tarefa muda o responsável. O botão 📅 de cada tarefa dá-lhe um prazo daqui mesmo (Hoje, Amanhã, Próxima semana, Escolher data… ou Sem prazo, com **Anular**): útil para as que estão em *Sem prazo*, que não aparecem no Hoje nem no calendário. Marca a caixa para concluir (com **Anular**).
 - **Avisos (🔔):** no topo da barra lateral (no telemóvel, ao lado da pesquisa). Mostra as tarefas que te deram e quando te mencionam; tocar abre o lead no sítio certo. Se tiveres as notificações ligadas no dispositivo, chega também uma notificação.
+  - Cada aviso tem uma etiqueta com a cor do tipo (lembretes e atrasados a laranja, respostas a verde, emails abertos a azul, pedidos do site e clientes a roxo, devolvidos a vermelho), o lead e "há 5 min" (a data completa ao passar o rato). Os por ler têm uma barra laranja à esquerda. Agrupam-se por dia: Hoje, Ontem, Esta semana, Mais antigos.
+  - Ações rápidas: num lembrete, **Feita** (conclui a tarefa) e **Adiar 1 h**; numa resposta, **Responder**; num email aberto, **Ligar** (se o lead tiver telefone).
+  - No topo: **Marcar todos como lidos** e a roda dentada para escolher os avisos. Em baixo: **Apagar os lidos** e **Limpar todos**, com 5 s para **Anular**.
+  - No telemóvel abre um painel de baixo para cima, com botões maiores.
 - API: `assigned_to` nas tarefas; `GET /api/v1/tasks?assigned=me|none|all|{id}`; `GET /api/v1/notifications`, `POST /api/v1/notifications/read`.
 
 ## Comentários da equipa (@menções)

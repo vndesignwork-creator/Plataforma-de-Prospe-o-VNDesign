@@ -31,6 +31,11 @@
   --success-soft: rgb(76 195 138 / 0.14);
   --warning: #f0b94a;
   --warning-soft: rgb(240 185 74 / 0.12);
+  /* Cores extra dos avisos (emails abertos, pedidos do site/clientes) */
+  --info: #6cb2f2;
+  --info-soft: rgb(108 178 242 / 0.14);
+  --violet: #b597f6;
+  --violet-soft: rgb(181 151 246 / 0.14);
   --focus: #ff8a65;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 24px rgb(0 0 0 / 0.35);
 }
@@ -57,6 +62,10 @@
   --success-soft: rgb(23 102 63 / 0.1);
   --warning: #8a5a00;
   --warning-soft: rgb(240 185 74 / 0.18);
+  --info: #1f5fa6; /* 6,4:1 sobre branco */
+  --info-soft: rgb(31 95 166 / 0.1);
+  --violet: #6a3fc0; /* 7:1 sobre branco */
+  --violet-soft: rgb(106 63 192 / 0.1);
   --focus: #b2390f;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 24px rgb(0 0 0 / 0.08);
 }
@@ -82,6 +91,10 @@
   --color-success-soft: var(--success-soft);
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-violet: var(--violet);
+  --color-violet-soft: var(--violet-soft);
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-syne), var(--font-jakarta), ui-sans-serif, sans-serif;
   --shadow-card: var(--shadow);
