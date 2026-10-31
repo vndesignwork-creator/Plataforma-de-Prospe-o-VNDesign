@@ -692,7 +692,8 @@ function LeadsTableView() {
               ? mobileSorts
               : [...mobileSorts, { value: `${sort}:${order}`, label: 'Ordenação da tabela' }]
           }
-          className="flex-1 md:flex-none lg:hidden"
+          // Sem encolher até "M…": se não couber, o seletor de vista passa para a linha de baixo.
+          className="min-w-fit flex-1 md:flex-none lg:hidden"
         />
         <SavedViewsMenu
           params={new URLSearchParams(searchParams.toString())}

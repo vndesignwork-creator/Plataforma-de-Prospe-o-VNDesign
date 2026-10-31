@@ -265,7 +265,8 @@ export function MyTasksView() {
             </div>
           ) : null}
           {showKind ? (
-            <div role="group" aria-label="Tipo de tarefa" className={SEGMENTED}>
+            // À direita (no telemóvel, quando passa para a linha de baixo, também).
+            <div role="group" aria-label="Tipo de tarefa" className={cn(SEGMENTED, 'ml-auto')}>
               {KINDS.map((k) => (
                 <button key={k.value} type="button" aria-pressed={kind === k.value} onClick={() => setKind(k.value)} className={segment(kind === k.value)}>
                   {k.label}
@@ -307,7 +308,7 @@ export function MyTasksView() {
           groups.map(({ group, tasks }) => (
             <TaskSection key={group} group={group} count={tasks.length} defaultCollapsed={urgent && (group === 'later' || group === 'none')} forceOpen={!!q}>
               {tasks.map((t) => (
-                <li key={t.id} className="flex items-start gap-2 px-4 py-2.5 sm:gap-3">
+                <li key={t.id} className="flex flex-wrap items-start gap-x-2 gap-y-2 px-4 py-2.5 sm:flex-nowrap sm:gap-3">
                   <input
                     type="checkbox"
                     onChange={() => void complete(t)}
@@ -342,38 +343,41 @@ export function MyTasksView() {
                       </div>
                     ) : null}
                   </div>
-                  <DuePicker
-                    value={t.due_on ?? ''}
-                    today={today}
-                    task={t.title}
-                    compact
-                    onChange={(v) => void setDue(t, v)}
-                    onCustom={() => setPicking(t.id)}
-                  />
-                  {hasTeam ? (
-                    <DropdownRoot>
-                      <DropdownTrigger
-                        className="inline-flex max-w-36 shrink-0 items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted hover:bg-surface-2 hover:text-fg"
-                        aria-label={`Responsável por ${t.title}: ${nameOf(t.assigned_to) ?? 'ninguém'}`}
-                      >
-                        <UserRound className="h-3 w-3 shrink-0" aria-hidden />
-                        <span className="truncate">{nameOf(t.assigned_to) ?? 'Ninguém'}</span>
-                      </DropdownTrigger>
-                      <DropdownContent>
-                        <DropdownLabel>Dar a</DropdownLabel>
-                        {(team ?? []).map((m) => (
-                          <DropdownItem key={m.user_id} onSelect={() => void assign(t, m.user_id)} disabled={m.user_id === t.assigned_to}>
-                            {m.name}
-                            {m.user_id === me?.user.id ? ' (tu)' : ''}
+                  {/* Telemóvel: os botões passam para baixo do texto (alinhados com ele), em vez de o espremerem. */}
+                  <div className="flex shrink-0 items-center gap-2 max-sm:basis-full max-sm:pl-6">
+                    <DuePicker
+                      value={t.due_on ?? ''}
+                      today={today}
+                      task={t.title}
+                      compact
+                      onChange={(v) => void setDue(t, v)}
+                      onCustom={() => setPicking(t.id)}
+                    />
+                    {hasTeam ? (
+                      <DropdownRoot>
+                        <DropdownTrigger
+                          className="inline-flex max-w-36 shrink-0 items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted hover:bg-surface-2 hover:text-fg"
+                          aria-label={`Responsável por ${t.title}: ${nameOf(t.assigned_to) ?? 'ninguém'}`}
+                        >
+                          <UserRound className="h-3 w-3 shrink-0" aria-hidden />
+                          <span className="truncate">{nameOf(t.assigned_to) ?? 'Ninguém'}</span>
+                        </DropdownTrigger>
+                        <DropdownContent>
+                          <DropdownLabel>Dar a</DropdownLabel>
+                          {(team ?? []).map((m) => (
+                            <DropdownItem key={m.user_id} onSelect={() => void assign(t, m.user_id)} disabled={m.user_id === t.assigned_to}>
+                              {m.name}
+                              {m.user_id === me?.user.id ? ' (tu)' : ''}
+                            </DropdownItem>
+                          ))}
+                          <DropdownSeparator />
+                          <DropdownItem onSelect={() => void assign(t, null)} disabled={!t.assigned_to}>
+                            Ninguém
                           </DropdownItem>
-                        ))}
-                        <DropdownSeparator />
-                        <DropdownItem onSelect={() => void assign(t, null)} disabled={!t.assigned_to}>
-                          Ninguém
-                        </DropdownItem>
-                      </DropdownContent>
-                    </DropdownRoot>
-                  ) : null}
+                        </DropdownContent>
+                      </DropdownRoot>
+                    ) : null}
+                  </div>
                 </li>
               ))}
             </TaskSection>

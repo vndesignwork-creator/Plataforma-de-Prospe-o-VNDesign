@@ -28,7 +28,8 @@ export function ViewSwitch({ current }: { current: (typeof VIEWS)[number]['id'] 
   }
   const qs = shared.toString();
   return (
-    <div role="group" aria-label="Vista" className="inline-flex h-10 items-center rounded-lg border border-border-input bg-surface-2 p-0.5">
+    // ml-auto: sempre encostado à direita (também quando passa para outra linha no telemóvel).
+    <div role="group" aria-label="Vista" className="ml-auto inline-flex h-10 items-center rounded-lg border border-border-input bg-surface-2 p-0.5">
       {VIEWS.map(({ id, href, label, icon: Icon }) =>
         id === current ? (
           <span key={id} aria-current="page" className="inline-flex h-full items-center gap-1.5 rounded-md bg-surface px-3 text-sm font-medium shadow-sm">
