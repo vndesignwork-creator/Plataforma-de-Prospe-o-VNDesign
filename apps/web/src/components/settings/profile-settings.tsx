@@ -7,7 +7,7 @@
  */
 import { AVATAR_SIZE, PROFILE_NAME_MAX, type Me, type Profile } from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { Camera, Trash2 } from 'lucide-react';
+import { Camera, Image as ImageIcon, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -17,18 +17,31 @@ import { Card, CardHeader } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
-import { qk, useMe } from '@/lib/queries';
+import { imageFileFromUrl } from '@/lib/image-file';
+import { qk, useMe, useSignature } from '@/lib/queries';
 
-/** Recorta o quadrado do centro e reduz para AVATAR_SIZE (WebP; JPEG se o browser não fizer WebP). */
-async function squareImage(file: File): Promise<Blob> {
+/**
+ * Reduz para AVATAR_SIZE (WebP; JPEG se o browser não fizer WebP). Uma foto recorta
+ * o quadrado do centro ("cover"); um logótipo cabe inteiro, com margem ("contain").
+ */
+async function squareImage(file: File, fit: 'cover' | 'contain' = 'cover'): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
-  const side = Math.min(bitmap.width, bitmap.height);
   const canvas = document.createElement('canvas');
   canvas.width = AVATAR_SIZE;
   canvas.height = AVATAR_SIZE;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Não foi possível ler a imagem.');
-  ctx.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
+  if (fit === 'cover') {
+    const side = Math.min(bitmap.width, bitmap.height);
+    ctx.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
+  } else {
+    // Dentro do círculo da foto: 70% do lado, centrado.
+    const box = AVATAR_SIZE * 0.7;
+    const scale = Math.min(box / bitmap.width, box / bitmap.height);
+    const w = bitmap.width * scale;
+    const h = bitmap.height * scale;
+    ctx.drawImage(bitmap, (AVATAR_SIZE - w) / 2, (AVATAR_SIZE - h) / 2, w, h);
+  }
   bitmap.close();
   const blob = (type: string) => new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.88));
   const out = (await blob('image/webp')) ?? (await blob('image/jpeg'));
@@ -40,6 +53,7 @@ export function ProfileSettings() {
   const qc = useQueryClient();
   const { data: me } = useMe();
   const profile = me?.profile;
+  const { data: signature } = useSignature();
   const [name, setName] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -67,7 +81,7 @@ export function ProfileSettings() {
     }
   }
 
-  async function upload(file: File | undefined) {
+  async function upload(file: File | undefined, fit: 'cover' | 'contain' = 'cover') {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       toast.error('Escolhe uma imagem (JPEG, PNG ou WebP).');
@@ -75,7 +89,7 @@ export function ProfileSettings() {
     }
     setUploading(true);
     try {
-      const blob = await squareImage(file);
+      const blob = await squareImage(file, fit);
       const form = new FormData();
       form.append('file', new File([blob], blob.type === 'image/webp' ? 'foto.webp' : 'foto.jpg', { type: blob.type }));
       const res = await fetch('/api/v1/me/avatar', { method: 'POST', body: form, credentials: 'same-origin' });
@@ -88,6 +102,18 @@ export function ProfileSettings() {
     } finally {
       setUploading(false);
       if (input.current) input.current.value = '';
+    }
+  }
+
+  /** A foto passa a ser o logótipo da assinatura (inteiro, centrado no círculo). */
+  async function applySignatureLogo() {
+    if (!signature?.logo_url) return;
+    setUploading(true);
+    try {
+      await upload(await imageFileFromUrl(signature.logo_url, 'logotipo.png'), 'contain');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : errorMessage(error));
+      setUploading(false);
     }
   }
 
@@ -121,6 +147,11 @@ export function ProfileSettings() {
             <Button size="sm" variant="outline" onClick={() => input.current?.click()} loading={uploading}>
               <Camera className="h-3.5 w-3.5" aria-hidden /> {profile?.avatar_url ? 'Mudar foto' : 'Escolher foto'}
             </Button>
+            {signature?.logo_url ? (
+              <Button size="sm" variant="ghost" onClick={() => void applySignatureLogo()} disabled={uploading}>
+                <ImageIcon className="h-3.5 w-3.5" aria-hidden /> Usar o logótipo da assinatura
+              </Button>
+            ) : null}
             {profile?.avatar_url ? (
               <Button size="sm" variant="ghost" onClick={() => void removePhoto()}>
                 <Trash2 className="h-3.5 w-3.5" aria-hidden /> Tirar foto

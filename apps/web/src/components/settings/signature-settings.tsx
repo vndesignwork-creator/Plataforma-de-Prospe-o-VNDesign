@@ -10,7 +10,7 @@ import {
   formatSignature,
   type Signature,
 } from '@vndesign/core';
-import { ImagePlus, Trash2 } from 'lucide-react';
+import { ImagePlus, Trash2, UserRound } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -21,7 +21,8 @@ import { Field } from '@/components/ui/field';
 import { FormSaveBar } from '@/components/ui/form-save-bar';
 import { Input, Textarea } from '@/components/ui/input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
-import { useSignature } from '@/lib/queries';
+import { imageFileFromUrl } from '@/lib/image-file';
+import { useMe, useSignature } from '@/lib/queries';
 
 /** No formulário, os projetos são uma caixa de texto (um link por linha). */
 const FormSchema = SignatureUpdateSchema.omit({ project_links: true }).extend({ projects: z.string().max(5000) });
@@ -98,6 +99,20 @@ export function SignatureSettings() {
   const values = useWatch({ control });
   const [uploading, setUploading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const { data: me } = useMe();
+  const avatarUrl = me?.profile?.avatar_url ?? null;
+
+  /** O logótipo passa a ser a foto do perfil. */
+  async function applyProfilePhoto() {
+    if (!avatarUrl) return;
+    setUploading(true);
+    try {
+      await uploadLogo(await imageFileFromUrl(avatarUrl, 'foto.png'));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : errorMessage(error));
+      setUploading(false);
+    }
+  }
 
   async function uploadLogo(file: File | undefined) {
     if (!file) return;
@@ -221,6 +236,11 @@ export function SignatureSettings() {
                   <Button type="button" size="sm" variant="outline" onClick={() => fileInput.current?.click()} loading={uploading}>
                     <ImagePlus className="h-3.5 w-3.5" aria-hidden /> {data?.logo_url ? 'Mudar logótipo' : 'Escolher logótipo'}
                   </Button>
+                  {avatarUrl ? (
+                    <Button type="button" size="sm" variant="ghost" onClick={() => void applyProfilePhoto()} disabled={uploading}>
+                      <UserRound className="h-3.5 w-3.5" aria-hidden /> Usar a foto do perfil
+                    </Button>
+                  ) : null}
                   {data?.logo_url ? (
                     <Button type="button" size="sm" variant="ghost" onClick={() => void removeLogo()}>
                       <Trash2 className="h-3.5 w-3.5" aria-hidden /> Tirar logótipo

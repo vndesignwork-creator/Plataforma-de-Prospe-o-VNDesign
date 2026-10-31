@@ -30,10 +30,12 @@ async function mailTo(request: APIRequestContext, address: string, subject: stri
 const SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="100"><rect width="300" height="100" fill="#ef5c32"/><text x="20" y="65" font-size="48" fill="#fff">VND</text></svg>`;
 
 let before: Record<string, unknown> | null = null;
+let hadAvatar = true;
 
 test.afterAll(async ({ browser }) => {
   const page = await browser.newPage({ storageState: 'e2e/.auth/user.json' });
   await page.request.delete('/api/v1/signature/logo');
+  if (!hadAvatar) await page.request.delete('/api/v1/me/avatar');
   await page.request.delete('/api/v1/mail-account');
   if (before) {
     const { full_name, role_title, company, phone, email, website, portfolio_url, project_links } = before;
@@ -104,4 +106,32 @@ test('logótipo na assinatura: escolher, tamanho, vai embutido no email por baix
   await expect(page.getByText('Logótipo tirado.')).toBeVisible();
   await expect(preview).toHaveCount(0);
   expect((await (await page.request.get('/api/v1/signature')).json()).data.logo_url).toBeNull();
+});
+
+test('a foto do perfil passa a logótipo da assinatura e vice-versa', async ({ page }) => {
+  const me = (await (await page.request.get('/api/v1/me/profile')).json()).data as { avatar_url: string | null };
+  hadAvatar = !!me.avatar_url;
+  await page.request.delete('/api/v1/me/avatar');
+  await page.request.delete('/api/v1/signature/logo');
+
+  // Logótipo → foto do perfil (o logótipo cabe inteiro no círculo).
+  await page.goto('/definicoes/assinatura');
+  await expect(page.getByRole('button', { name: 'Usar a foto do perfil' })).toHaveCount(0);
+  await page.getByLabel('Escolher logótipo').setInputFiles({ name: 'logo.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(SVG) });
+  await expect(page.getByText('Logótipo guardado.')).toBeVisible();
+  await page.goto('/definicoes/conta');
+  await page.getByRole('button', { name: 'Usar o logótipo da assinatura' }).click();
+  await expect(page.getByText('Foto guardada.')).toBeVisible();
+  const avatar = (await (await page.request.get('/api/v1/me/profile')).json()).data.avatar_url as string;
+  expect(avatar).toMatch(/^\/api\/v1\/avatars\//);
+
+  // Foto do perfil → logótipo da assinatura.
+  await page.request.delete('/api/v1/signature/logo');
+  await page.goto('/definicoes/assinatura');
+  await page.getByRole('button', { name: 'Usar a foto do perfil' }).click();
+  await expect(page.getByText('Logótipo guardado.')).toBeVisible();
+  const logo = (await (await page.request.get('/api/v1/signature')).json()).data.logo_url as string;
+  const image = await page.request.get(logo);
+  expect(image.headers()['content-type']).toBe('image/png');
+  await expect(page.getByRole('complementary', { name: 'Pré-visualização da assinatura' }).getByRole('img', { name: 'Logótipo da assinatura' })).toBeVisible();
 });

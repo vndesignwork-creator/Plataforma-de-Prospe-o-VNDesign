@@ -333,6 +333,8 @@ português) com as mesmas colunas — pode ser reimportado sem mapear nada.
   WebP também — o browser converte para PNG) e o tamanho (Pequeno, Médio, Grande). Nos emails enviados pela plataforma aos leads, o
   logótipo vai **embutido no email** (não depende de links externos) logo por baixo da assinatura, com link para o teu site. Só aparece
   quando a assinatura está no email (numa resposta curta sem assinatura, não). Cada pessoa da equipa tem o seu.
+  Atalhos: **"Usar a foto do perfil"** (na Assinatura) e **"Usar o logótipo da assinatura"** (em Conta → Perfil; o logótipo fica
+  inteiro, centrado no círculo da foto).
 - **Por serviço:** `{{servicos}}` (ex.: “identidade visual e flyers”), `{{categoria}}`
   (ex.: “design gráfico”) e `{{beneficio}}` (a *frase de valor* do serviço, em
   **Definições → Serviços**). Cada modelo pode ter uma **categoria de serviço**: na ficha, o
