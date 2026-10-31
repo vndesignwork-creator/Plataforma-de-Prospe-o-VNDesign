@@ -48,7 +48,8 @@ export async function sendWithAccount(
     subject: string;
     text: string;
     html: string;
-    attachments?: { filename: string; content: Buffer; contentType: string }[];
+    /** Com `cid`, o anexo é uma imagem embutida no HTML (<img src="cid:…">). */
+    attachments?: { filename: string; content: Buffer; contentType: string; cid?: string }[];
     /** Resposta a este Message-ID (o cliente de email junta-os na mesma conversa). */
     inReplyTo?: string;
     /** Convite de calendário (.ics): o Gmail/Outlook mostram "Adicionar ao calendário". */

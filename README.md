@@ -329,6 +329,10 @@ português) com as mesmas colunas — pode ser reimportado sem mapear nada.
   `{{meu_site}}`, `{{portfolio}}`, `{{projetos}}`, `{{assinatura}}`, `{{opt_out}}`,
   `{{reuniao}}` (próxima reunião: “amanhã, às 10:00”), `{{reuniao_local}}` e `{{avaliacao}}` (link para avaliação no Google).
   `{{contacto|equipa}}` usa “equipa” quando o lead não tem contacto.
+- **Logótipo na assinatura** (Definições → Assinatura → Logótipo): escolhe uma imagem (PNG com fundo transparente fica melhor; JPEG, SVG e
+  WebP também — o browser converte para PNG) e o tamanho (Pequeno, Médio, Grande). Nos emails enviados pela plataforma aos leads, o
+  logótipo vai **embutido no email** (não depende de links externos) logo por baixo da assinatura, com link para o teu site. Só aparece
+  quando a assinatura está no email (numa resposta curta sem assinatura, não). Cada pessoa da equipa tem o seu.
 - **Por serviço:** `{{servicos}}` (ex.: “identidade visual e flyers”), `{{categoria}}`
   (ex.: “design gráfico”) e `{{beneficio}}` (a *frase de valor* do serviço, em
   **Definições → Serviços**). Cada modelo pode ter uma **categoria de serviço**: na ficha, o

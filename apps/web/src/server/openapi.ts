@@ -595,6 +595,19 @@ export function getOpenApiDocument() {
         get: op({ tags: ['Conta'], summary: 'Assinatura do utilizador', responses: { '200': ok(data(SignatureSchema)), ...common } }),
         put: op({ tags: ['Conta'], summary: 'Atualizar assinatura', requestBody: body(SignatureUpdateSchema), responses: { '200': ok(data(SignatureSchema)), ...common } }),
       },
+      '/signature/logo': {
+        get: op({
+          tags: ['Conta'],
+          summary: 'O logótipo da assinatura (redireciona para um link temporário)',
+          responses: { '302': { description: 'Link temporário' }, '404': problem('Sem logótipo'), ...common },
+        }),
+        post: op({
+          tags: ['Conta'],
+          summary: 'Logótipo novo (multipart, campo "file": PNG, JPEG ou GIF até 1 MB); vai por baixo da assinatura nos emails aos leads',
+          responses: { '200': ok(data(SignatureSchema)), '422': problem('Sem imagem, formato inválido ou demasiado grande'), ...common },
+        }),
+        delete: op({ tags: ['Conta'], summary: 'Tirar o logótipo da assinatura', responses: { '200': ok(data(SignatureSchema)), ...common } }),
+      },
       '/settings': {
         get: op({
           tags: ['Conta'],

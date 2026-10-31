@@ -98,7 +98,12 @@ export async function updateSettings(
 // -----------------------------------------------------------------------------
 // Assinatura do utilizador atual
 // -----------------------------------------------------------------------------
-const SIGNATURE_SELECT = 'full_name, role_title, company, phone, email, website, portfolio_url, design_portfolio_url, project_links';
+const SIGNATURE_SELECT =
+  'full_name, role_title, company, phone, email, website, portfolio_url, design_portfolio_url, project_links, logo_path, logo_width, updated_at';
+
+/** Endereço do logótipo na plataforma (muda quando o logótipo muda, para o browser não mostrar o antigo). */
+const signatureLogoUrl = (row: { logo_path: string | null; updated_at: string }) =>
+  row.logo_path ? `/api/v1/signature/logo?v=${new Date(row.updated_at).getTime()}` : null;
 
 export async function getSignature(ctx: ApiContext): Promise<Signature> {
   const { data, error } = await ctx.supabase
@@ -121,9 +126,12 @@ export async function getSignature(ctx: ApiContext): Promise<Signature> {
       portfolio_url: null,
       design_portfolio_url: null,
       project_links: [],
+      logo_url: null,
+      logo_width: 160,
     };
   }
-  return data as Signature;
+  const { logo_path, updated_at, ...row } = data as Signature & { logo_path: string | null; updated_at: string };
+  return { ...row, logo_url: signatureLogoUrl({ logo_path, updated_at }) };
 }
 
 export async function updateSignature(ctx: ApiContext, patch: Partial<Signature>): Promise<Signature> {
@@ -141,6 +149,7 @@ export async function updateSignature(ctx: ApiContext, patch: Partial<Signature>
     if (e) throw fromPostgrest(e);
   } else {
     const current = await getSignature(ctx);
+    delete current.logo_url; // calculado, não é uma coluna
     const { error: e } = await ctx.supabase
       .from('signatures')
       .insert({ ...current, ...patch, workspace_id: ctx.workspaceId, user_id: ctx.user.id, is_default: true });

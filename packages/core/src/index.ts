@@ -17,6 +17,7 @@ export * from './tasks';
 export * from './lead-generation';
 export * from './ai-providers';
 export * from './mail';
+export * from './signature-logo';
 export * from './score';
 export * from './projects';
 export * from './project-tools';

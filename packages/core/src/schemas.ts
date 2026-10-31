@@ -960,6 +960,8 @@ export const SignatureSchema = z
     portfolio_url: z.string().nullable(),
     design_portfolio_url: z.string().nullable().optional(),
     project_links: z.array(z.string()),
+    logo_url: z.string().nullable().optional().meta({ description: 'Logótipo da assinatura (null = sem logótipo)' }),
+    logo_width: z.int().optional().meta({ description: 'Largura do logótipo no email, em píxeis' }),
   })
   .meta({ id: 'Signature' });
 export type Signature = z.infer<typeof SignatureSchema>;
@@ -979,6 +981,7 @@ export const SignatureUpdateSchema = z
       .max(10)
       .transform((links) => links.filter(Boolean))
       .pipe(z.array(z.url({ protocol: /^https?$/, error: 'Link inválido.' }))),
+    logo_width: z.int().min(60).max(320).meta({ description: 'Largura do logótipo no email (60–320 px)' }),
   })
   .partial()
   .meta({ id: 'SignatureUpdate' });

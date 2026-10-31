@@ -2,16 +2,25 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
-import { SignatureUpdateSchema, formatSignature, type Signature } from '@vndesign/core';
-import { useEffect, type ReactNode } from 'react';
+import {
+  SIGNATURE_LOGO_MAX_BYTES,
+  SIGNATURE_LOGO_SIZES,
+  SIGNATURE_LOGO_STORE_WIDTH,
+  SignatureUpdateSchema,
+  formatSignature,
+  type Signature,
+} from '@vndesign/core';
+import { ImagePlus, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { Button } from '@/components/ui/button';
 import { Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
 import { FormSaveBar } from '@/components/ui/form-save-bar';
 import { Input, Textarea } from '@/components/ui/input';
-import { api, errorMessage } from '@/lib/api-client';
+import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useSignature } from '@/lib/queries';
 
 /** No formulário, os projetos são uma caixa de texto (um link por linha). */
@@ -30,7 +39,47 @@ function toForm(s: Signature | undefined): FormInput {
     portfolio_url: s?.portfolio_url ?? '',
     design_portfolio_url: s?.design_portfolio_url ?? '',
     projects: (s?.project_links ?? []).join('\n'),
+    logo_width: s?.logo_width ?? 160,
   };
+}
+
+/**
+ * Prepara o logótipo no browser: qualquer imagem (incluindo SVG e WebP, que muitos
+ * programas de email não mostram) passa a PNG, com no máximo 640 px de largura
+ * (o dobro do tamanho maior, para ficar nítido). Se o PNG passar de 1 MB, vai em JPEG.
+ */
+async function prepareLogo(file: File): Promise<Blob> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error('Não foi possível ler a imagem.'));
+      el.src = url;
+    });
+    const naturalWidth = img.naturalWidth || 600;
+    const naturalHeight = img.naturalHeight || 200;
+    const width = Math.min(SIGNATURE_LOGO_STORE_WIDTH, naturalWidth);
+    const height = Math.max(1, Math.round((naturalHeight / naturalWidth) * width));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Não foi possível ler a imagem.');
+    ctx.drawImage(img, 0, 0, width, height);
+    const blob = (type: string) => new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.9));
+    const png = await blob('image/png');
+    if (png && png.size <= SIGNATURE_LOGO_MAX_BYTES) return png;
+    // Muito pesado (ex.: uma fotografia): JPEG sobre fundo branco.
+    ctx.globalCompositeOperation = 'destination-over';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    const jpeg = await blob('image/jpeg');
+    if (!jpeg || jpeg.size > SIGNATURE_LOGO_MAX_BYTES) throw new Error('A imagem é demasiado grande: escolhe uma com menos de 1 MB.');
+    return jpeg;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 export function SignatureSettings() {
@@ -42,10 +91,47 @@ export function SignatureSettings() {
     reset,
     control,
     setError,
+    setValue,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<FormInput, unknown, FormOutput>({ resolver: zodResolver(FormSchema), defaultValues: toForm(data) });
   useEffect(() => reset(toForm(data)), [data, reset]);
   const values = useWatch({ control });
+  const [uploading, setUploading] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  async function uploadLogo(file: File | undefined) {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Escolhe uma imagem (PNG, JPEG, SVG ou WebP).');
+      return;
+    }
+    setUploading(true);
+    try {
+      const blob = await prepareLogo(file);
+      const form = new FormData();
+      form.append('file', new File([blob], blob.type === 'image/png' ? 'logotipo.png' : 'logotipo.jpg', { type: blob.type }));
+      const res = await fetch('/api/v1/signature/logo', { method: 'POST', body: form, credentials: 'same-origin' });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new ApiClientError(res.status, payload ?? { type: 'about:blank', title: 'Falha no envio', status: res.status });
+      qc.setQueryData(['signature'], (payload as { data: Signature }).data);
+      toast.success('Logótipo guardado.');
+    } catch (error) {
+      toast.error(error instanceof Error && !(error instanceof ApiClientError) ? error.message : errorMessage(error));
+    } finally {
+      setUploading(false);
+      if (fileInput.current) fileInput.current.value = '';
+    }
+  }
+
+  async function removeLogo() {
+    try {
+      const { data: saved } = await api<{ data: Signature }>('/signature/logo', { method: 'DELETE' });
+      qc.setQueryData(['signature'], saved);
+      toast.success('Logótipo tirado.');
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
 
   const onSubmit = handleSubmit(async ({ projects, ...rest }) => {
     try {
@@ -115,12 +201,65 @@ export function SignatureSettings() {
                 <Textarea rows={4} placeholder={'https://cliente-um.pt\nhttps://cliente-dois.pt'} {...register('projects')} />
               </Field>
             </Group>
+            <Group title="Logótipo">
+              <div className="flex flex-col gap-3 md:col-span-2">
+                <p className="text-sm text-muted">
+                  Vai por baixo da assinatura nos emails que envias pela plataforma (embutido no email, com link para o teu site). PNG com fundo
+                  transparente fica melhor; também aceita JPEG, SVG e WebP.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    ref={fileInput}
+                    type="file"
+                    accept="image/png,image/jpeg,image/gif,image/svg+xml,image/webp"
+                    className="sr-only"
+                    // O botão ao lado abre-o: fora do Tab para não haver dois "Escolher logótipo".
+                    tabIndex={-1}
+                    aria-label="Escolher logótipo"
+                    onChange={(e) => void uploadLogo(e.target.files?.[0])}
+                  />
+                  <Button type="button" size="sm" variant="outline" onClick={() => fileInput.current?.click()} loading={uploading}>
+                    <ImagePlus className="h-3.5 w-3.5" aria-hidden /> {data?.logo_url ? 'Mudar logótipo' : 'Escolher logótipo'}
+                  </Button>
+                  {data?.logo_url ? (
+                    <Button type="button" size="sm" variant="ghost" onClick={() => void removeLogo()}>
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden /> Tirar logótipo
+                    </Button>
+                  ) : null}
+                </div>
+                {data?.logo_url ? (
+                  <div role="radiogroup" aria-label="Tamanho do logótipo" className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                    <span className="text-muted">Tamanho:</span>
+                    {SIGNATURE_LOGO_SIZES.map((size) => (
+                      <label key={size.width} className="inline-flex cursor-pointer items-center gap-1.5">
+                        <input
+                          type="radio"
+                          name="logo_width"
+                          value={size.width}
+                          checked={Number(values.logo_width) === size.width}
+                          onChange={() => setValue('logo_width', size.width, { shouldDirty: true })}
+                          className="accent-[var(--accent)]"
+                        />
+                        {size.label}
+                      </label>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </Group>
           </div>
           <aside aria-label="Pré-visualização da assinatura" className="self-start lg:sticky lg:top-6">
             <p className="mb-1.5 text-sm font-medium">Pré-visualização</p>
             <div className="rounded-lg border border-border bg-surface-2 p-3 text-sm">
               <p className="text-muted">Cumprimentos,</p>
               <pre className="mt-2 font-sans whitespace-pre-wrap">{preview || '—'}</pre>
+              {data?.logo_url ? (
+                // Pré-visualização: o tamanho é o do email (fundo branco, como na maioria dos programas de email).
+                <span className="mt-3 inline-block max-w-full rounded bg-white p-1.5">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- link temporário do armazenamento */}
+                  <img src={data.logo_url} alt="Logótipo da assinatura" style={{ width: Number(values.logo_width) || 160 }} className="block h-auto max-w-full" />
+                </span>
+              ) : null}
             </div>
             <p className="mt-1.5 text-xs text-muted">É o que entra em {'{{assinatura}}'} no fim dos emails.</p>
           </aside>
