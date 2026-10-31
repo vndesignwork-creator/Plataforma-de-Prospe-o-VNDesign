@@ -670,7 +670,12 @@ export function KanbanBoard() {
         </div>
         <ViewSwitch current="kanban" />
       </div>
-      <div role="group" aria-label="Filtros" className="flex flex-wrap items-center gap-2 max-sm:grid max-sm:grid-cols-2">
+      {/* Telemóvel: 2 por linha; o último, se ficar sozinho, ocupa a largura toda. */}
+      <div
+        role="group"
+        aria-label="Filtros"
+        className="flex flex-wrap items-center gap-2 max-sm:grid max-sm:grid-cols-2 max-sm:[&>*]:w-full max-sm:[&>*:last-child:nth-child(odd)]:col-span-2"
+      >
         <MultiSelectFilter
           label="Setor"
           value={sector}
