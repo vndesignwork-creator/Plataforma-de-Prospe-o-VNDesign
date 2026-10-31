@@ -209,13 +209,24 @@ test('Dashboard: com pouco no "Hoje", os quentes acompanham a altura dele; Pipel
   const hot = page.getByRole('list', { name: 'Leads mais quentes' });
   await expect(hot.locator('li').first()).toBeVisible();
   await expect(page.locator('#hoje').getByText('É tudo para os próximos 7 dias.')).toBeVisible();
-  await expect
-    .poll(async () => {
-      const today = (await page.locator('#hoje').boundingBox())!.height;
-      const card = (await hot.locator('xpath=..').boundingBox())!.height;
-      return Math.abs(today - card) < 2;
-    })
-    .toBe(true);
+  const sameHeight = async () => {
+    const today = (await page.locator('#hoje').boundingBox())!.height;
+    const card = (await hot.locator('xpath=..').boundingBox())!.height;
+    return Math.abs(today - card) < 2;
+  };
+  await expect.poll(sameHeight).toBe(true);
+
+  // Também com os cartões organizados à medida (outro caminho de montagem).
+  const order = ['summary', 'today', 'hot', 'replies', 'pipeline', 'projects', 'reconnect'];
+  await page.request.put('/api/v1/preferences/dashboard.cards', { data: { value: { order, hidden: [] } } });
+  try {
+    await page.reload();
+    await expect(hot.locator('li').first()).toBeVisible();
+    await expect.poll(sameHeight).toBe(true);
+  } finally {
+    await page.request.put('/api/v1/preferences/dashboard.cards', { data: { value: { order: [], hidden: [] } } });
+  }
+  await page.reload();
 
   // Pipeline: o número de cada fase e a parte do total (sem "avançaram", que contava os clientes em todas as fases).
   const pipeline = page.getByRole('list', { name: 'Leads por estado' });

@@ -621,7 +621,9 @@ function useRowsThatFit(list: RefObject<HTMLUListElement | null>, count: number,
     const card = ul.parentElement!;
     const wide = window.matchMedia('(min-width: 1024px)');
     const measure = () => {
-      if (!wide.matches) return setRows(null);
+      // Só no computador e com os dois lado a lado (com os cartões organizados à medida podem não estar).
+      const sideBySide = Math.abs(card.getBoundingClientRect().top - today.getBoundingClientRect().top) < 4;
+      if (!wide.matches || !sideBySide) return setRows(null);
       const first = ul.querySelector('li');
       if (!first) return;
       const rowHeight = first.getBoundingClientRect().height;
@@ -824,7 +826,8 @@ function OwnerDashboard() {
   const cards: Record<DashboardCard, ReactNode> = {
     summary,
     today: <TodayCard />,
-    hot: <HotLeadsCard />,
+    // Ao lado do "Hoje" (se calhar na mesma fila), mostra só as linhas que cabem.
+    hot: <HotLeadsCard fitToday className="lg:self-start" />,
     replies: <RepliesCard />,
     pipeline: <PipelineCard byStatus={data.by_status} />,
     projects: <ProjectsCard />,
