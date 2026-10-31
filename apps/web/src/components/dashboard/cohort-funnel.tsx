@@ -15,6 +15,9 @@ import { rovingKeyDown, rovingTabIndex } from '@/lib/roving';
 import { cn } from '@/lib/utils';
 
 const pct = (part: number, whole: number) => `${Math.round((part / whole) * 100)} %`;
+/** Com poucos leads uma percentagem engana ("100 %" de 2): até 10, mostra "2 de 3". */
+const MIN_FOR_PERCENT = 10;
+const passed = (part: number, whole: number) => (whole >= MIN_FOR_PERCENT ? pct(part, whole) : `${part} de ${whole}`);
 const daysText = (d: number) => (d < 1 ? 'menos de 1 dia' : `${d.toLocaleString('pt-PT', { maximumFractionDigits: 1 })} dia${d === 1 ? '' : 's'}`);
 
 export function CohortFunnelCard({ className }: { className?: string }) {
@@ -26,7 +29,7 @@ export function CohortFunnelCard({ className }: { className?: string }) {
   const first = data?.stages[0]?.reached ?? 0;
 
   return (
-    <Card className={className}>
+    <Card id="funil" className={cn('scroll-mt-20', className)}>
       <CardHeader
         title="Funil dos leads novos"
         description={
@@ -70,13 +73,19 @@ export function CohortFunnelCard({ className }: { className?: string }) {
                 </span>
                 {/* Telemóvel: a passagem e o tempo vão para a linha de baixo. */}
                 <span className="col-start-2 col-end-5 text-xs text-muted tabular sm:col-start-auto sm:col-end-auto sm:text-right">
-                  {prev ? `${pct(s.reached, prev)} da fase anterior` : `${s.reached} leads novos`}
+                  {prev ? `${passed(s.reached, prev)} da fase anterior` : `${s.reached} leads novos`}
                   {s.avg_days !== null ? ` · ≈ ${daysText(s.avg_days)}` : ''}
                 </span>
               </li>
             );
           })}
         </ol>
+      ) : null}
+      {data && first ? (
+        <p className="border-t border-border px-4 py-2 text-xs text-muted">
+          Um lead que saltou fases (ex.: passou logo a Cliente) conta também nas anteriores. Com menos de {MIN_FOR_PERCENT} leads numa fase, mostra “x de y” em
+          vez da percentagem.
+        </p>
       ) : null}
     </Card>
   );

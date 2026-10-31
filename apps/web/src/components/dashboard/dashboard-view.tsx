@@ -23,7 +23,7 @@ import { AlertCircle, BarChart3, BellRing, BriefcaseBusiness, CalendarClock, Cal
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { Fragment, useState, type ReactNode } from 'react';
+import { Fragment, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { FollowUpEmailButton } from '@/components/email/send-email-dialog';
 import { FollowUpActions } from '@/components/follow-up/follow-up-actions';
 import { StatusBadge } from '@/components/leads/badges';
@@ -528,6 +528,15 @@ function TodayCard({ className }: { className?: string }) {
           </>
         ) : null}
       </div>
+      {/* Quando o cartão fica mais alto do que o conteúdo (os quentes ao lado), esta linha vai para o fundo. */}
+      {data && !empty ? (
+        <p className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border px-4 py-2 text-xs text-muted">
+          <span>É tudo para os próximos 7 dias.</span>
+          <Link href="/prospecao" className="text-accent-text hover:underline">
+            Contactar mais leads na Prospeção →
+          </Link>
+        </p>
+      ) : null}
     </Card>
   );
 }
@@ -536,9 +545,11 @@ function TodayCard({ className }: { className?: string }) {
  * Os leads com maior prioridade (pontuação calculada pela base de dados; com a mesma pontuação vêm
  * primeiro os nunca contactados). As razões que todos têm aparecem uma vez em cima; em cada linha, só as outras.
  */
-function HotLeadsCard({ className }: { className?: string }) {
+function HotLeadsCard({ className, fitToday }: { className?: string; fitToday?: boolean }) {
   const { data } = useToday();
-  const hot = data?.hot ?? [];
+  const list = useRef<HTMLUListElement>(null);
+  const rows = useRowsThatFit(list, data?.hot?.length ?? 0, !!fitToday);
+  const hot = rows === null ? (data?.hot ?? []) : (data?.hot ?? []).slice(0, rows);
   const common = hot.length > 1 ? (hot[0]!.score_reasons ?? []).filter((r) => hot.every((l) => l.score_reasons?.includes(r))) : [];
   return (
     <Card className={cn('flex flex-col', className)}>
@@ -560,7 +571,7 @@ function HotLeadsCard({ className }: { className?: string }) {
       {data && !hot.length ? (
         <p className="flex flex-1 items-center justify-center p-4 text-center text-sm text-muted">Sem leads quentes de momento.</p>
       ) : null}
-      <ul className="flex flex-col p-2 empty:hidden" aria-label="Leads mais quentes">
+      <ul ref={list} className="flex flex-col p-2 empty:hidden" aria-label="Leads mais quentes">
         {hot.map((l) => {
           const own = (l.score_reasons ?? []).filter((r) => !common.includes(r));
           const detail = own.slice(0, 2).join(' · ') || [l.city, LEAD_STATUS_META[l.status].label].filter(Boolean).join(' · ');
@@ -596,17 +607,53 @@ function HotLeadsCard({ className }: { className?: string }) {
   );
 }
 
+/**
+ * No computador, ao lado do "Hoje": os quentes mostram só as linhas que cabem na altura do
+ * conteúdo do "Hoje" (pelo menos 3), para o "Hoje" não ficar com um espaço vazio por baixo.
+ * Os outros estão em "Ver todos". null = mostrar todos (telemóvel, ou sem o "Hoje").
+ */
+function useRowsThatFit(list: RefObject<HTMLUListElement | null>, count: number, enabled: boolean): number | null {
+  const [rows, setRows] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const ul = list.current;
+    const today = document.getElementById('hoje');
+    if (!enabled || !ul || !today || !count) return;
+    const card = ul.parentElement!;
+    const wide = window.matchMedia('(min-width: 1024px)');
+    const measure = () => {
+      if (!wide.matches) return setRows(null);
+      const first = ul.querySelector('li');
+      if (!first) return;
+      const rowHeight = first.getBoundingClientRect().height;
+      // A altura natural do "Hoje" (a soma das partes: o cartão em si pode estar esticado pela grelha).
+      const todayHeight = Array.from(today.children).reduce((h, el) => h + el.getBoundingClientRect().height, 2);
+      const chrome = card.getBoundingClientRect().height - ul.getBoundingClientRect().height + 16; // cabeçalho, bordas e o p-2 da lista
+      setRows(Math.max(3, Math.min(count, Math.floor((todayHeight - chrome) / rowHeight))));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    for (const el of Array.from(today.children)) observer.observe(el);
+    wide.addEventListener('change', measure);
+    return () => {
+      observer.disconnect();
+      wide.removeEventListener('change', measure);
+    };
+  }, [list, count, enabled]);
+  return rows;
+}
+
 /** As fases do funil, pela ordem; "Sem interesse" e "Em pausa" ficam à parte, por baixo. */
 const FUNNEL: LeadStatus[] = ['identificado', 'contactado', 'respondeu', 'reuniao', 'proposta_enviada', 'cliente'];
 const pct = (part: number, whole: number) => `${Math.round((part / whole) * 100)} %`;
 
 /**
- * Funil: o nome da fase, logo a seguir o número e a barra, e quantos passaram à fase seguinte
- * (um lead numa fase já passou por todas as anteriores: um cliente conta em todas).
+ * Quantos leads estão agora em cada fase (número, barra e a parte do total). A passagem de uma
+ * fase à seguinte fica nas Estatísticas, que a calculam pela linha do tempo: daqui, pelo estado
+ * atual, um cliente contava como tendo passado por todas as fases (dava "100 % avançaram" em
+ * fases sem ninguém).
  */
 function PipelineCard({ byStatus, className }: { byStatus: { status: LeadStatus; count: number }[]; className?: string }) {
   const count = (s: LeadStatus) => byStatus.find((x) => x.status === s)?.count ?? 0;
-  const reached = FUNNEL.map((_, i) => FUNNEL.slice(i).reduce((n, s) => n + count(s), 0));
   const max = Math.max(1, ...FUNNEL.map(count));
   const total = byStatus.reduce((n, s) => n + s.count, 0);
   const aside = (['sem_interesse', 'em_pausa'] as const).filter((s) => count(s));
@@ -614,7 +661,7 @@ function PipelineCard({ byStatus, className }: { byStatus: { status: LeadStatus;
     <Card className={cn('flex flex-col', className)}>
       <CardHeader
         title="Pipeline"
-        description="Leads em cada fase e quantos passaram à seguinte"
+        description="Quantos leads estão em cada fase agora"
         className="py-2.5"
         actions={
           // Dois links (cada um com o seu ícone e um separador): juntos pareciam um só texto.
@@ -630,8 +677,7 @@ function PipelineCard({ byStatus, className }: { byStatus: { status: LeadStatus;
         }
       />
       <ul className="flex flex-1 flex-col justify-evenly p-2" aria-label="Leads por estado">
-        {FUNNEL.map((status, i) => {
-          const next = reached[i + 1];
+        {FUNNEL.map((status) => {
           return (
             <li key={status}>
               <Link
@@ -646,7 +692,7 @@ function PipelineCard({ byStatus, className }: { byStatus: { status: LeadStatus;
                 </span>
                 {/* Telemóvel: a percentagem passa para a linha de baixo. */}
                 <span className="col-start-2 col-end-5 text-xs text-muted tabular sm:col-start-auto sm:col-end-auto sm:text-right">
-                  {next !== undefined && reached[i] ? `${pct(next, reached[i]!)} avançaram` : null}
+                  {count(status) && total ? `${pct(count(status), total)} do total` : null}
                 </span>
               </Link>
             </li>
@@ -665,6 +711,9 @@ function PipelineCard({ byStatus, className }: { byStatus: { status: LeadStatus;
             {LEAD_STATUS_META[s].label}: <span className="tabular">{count(s)}</span>
           </Link>
         ))}
+        <Link href="/estatisticas#funil" className="ml-auto text-accent-text hover:underline">
+          Passagem entre fases →
+        </Link>
       </p>
     </Card>
   );
@@ -685,7 +734,7 @@ function ProspectorDashboard() {
       <MyTeamTiles />
       <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
         <TodayCard />
-        <HotLeadsCard />
+        <HotLeadsCard fitToday className="lg:self-start" />
       </div>
       <RepliesCard />
     </div>
@@ -757,8 +806,8 @@ function OwnerDashboard() {
         {summary}
         <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
           <TodayCard className="lg:col-start-1 lg:row-start-1" />
-          {/* O "Hoje" pode ficar comprido: os quentes não esticam (sem um buraco vazio no cartão). */}
-          <HotLeadsCard className="lg:col-start-2 lg:row-start-1 lg:self-start" />
+          {/* Os quentes mostram só as linhas que cabem ao lado do "Hoje" (sem espaço vazio em nenhum dos dois). */}
+          <HotLeadsCard fitToday className="lg:col-start-2 lg:row-start-1 lg:self-start" />
           <RepliesCard className="lg:col-span-2 lg:row-start-2" />
           <PipelineCard
             byStatus={data.by_status}

@@ -193,3 +193,33 @@ test('Kanban: mudar o estado pelo menu ⇄ e mostrar/esconder colunas pelo índi
   await expect(pausa).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel('Leads em Em pausa')).toBeVisible();
 });
+
+test('Dashboard: com pouco no "Hoje", os quentes acompanham a altura dele; Pipeline mostra a parte do total', async ({ page }) => {
+  // Um "Hoje" quase vazio (só 1 lead na semana), com os quentes de verdade.
+  await page.route('**/api/v1/dashboard/today', async (route) => {
+    const res = await route.fetch();
+    const json = await res.json();
+    const d = json.data;
+    d.upcoming = [...d.upcoming, ...d.overdue, ...d.due_today].slice(0, 1);
+    Object.assign(d, { overdue: [], due_today: [], meetings: [], opened: [], stalled: [], tasks: { overdue: [], due_today: [], upcoming: [] } });
+    await route.fulfill({ response: res, json });
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/dashboard');
+  const hot = page.getByRole('list', { name: 'Leads mais quentes' });
+  await expect(hot.locator('li').first()).toBeVisible();
+  await expect(page.locator('#hoje').getByText('É tudo para os próximos 7 dias.')).toBeVisible();
+  await expect
+    .poll(async () => {
+      const today = (await page.locator('#hoje').boundingBox())!.height;
+      const card = (await hot.locator('xpath=..').boundingBox())!.height;
+      return Math.abs(today - card) < 2;
+    })
+    .toBe(true);
+
+  // Pipeline: o número de cada fase e a parte do total (sem "avançaram", que contava os clientes em todas as fases).
+  const pipeline = page.getByRole('list', { name: 'Leads por estado' });
+  await expect(pipeline.getByText(/\d+ % do total/).first()).toBeVisible();
+  await expect(pipeline.getByText(/avançaram/)).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Passagem entre fases →' })).toHaveAttribute('href', '/estatisticas#funil');
+});
