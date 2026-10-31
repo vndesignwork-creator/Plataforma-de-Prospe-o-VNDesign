@@ -32,7 +32,7 @@ export function DailyGoal({ mode, done }: { mode: ProspectingMode; done: number 
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="group inline-flex items-center gap-2 rounded-md text-sm hover:text-fg"
+          className="group inline-flex w-fit items-center gap-2 rounded-md text-sm hover:text-fg max-sm:self-end"
           aria-label={`Objetivo do dia: ${done} de ${goal}. Alterar`}
         >
           <span
@@ -52,7 +52,12 @@ export function DailyGoal({ mode, done }: { mode: ProspectingMode; done: number 
           <Pencil className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" aria-hidden />
         </button>
       ) : (
-        <button type="button" onClick={() => setOpen(true)} className="inline-flex items-center gap-1 text-sm text-muted hover:text-fg hover:underline">
+        // Com ar de botão (antes parecia só texto); no telemóvel fica à direita.
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-accent/50 bg-accent-soft px-2.5 py-1 text-sm font-medium text-accent-text hover:border-accent hover:bg-accent/20 max-sm:self-end"
+        >
           <Target className="h-3.5 w-3.5" aria-hidden /> Definir objetivo do dia
         </button>
       )}
