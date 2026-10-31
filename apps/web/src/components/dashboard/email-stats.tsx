@@ -36,7 +36,7 @@ export function EmailStatsSection() {
   const bestReply = Math.max(0, ...(data?.templates ?? []).filter((t) => t.sent >= 5).map((t) => t.replied / t.sent));
 
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2">
       <Card>
         <CardHeader title="Emails: o que resulta" description="Os emails enviados pela plataforma, por modelo" actions={period} />
         <div className="relative overflow-x-auto p-4">
