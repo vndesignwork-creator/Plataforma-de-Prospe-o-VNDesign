@@ -40,6 +40,7 @@ import { Badge, Card, CardHeader } from '@/components/ui/card';
 import { CollapseButton, useProspectingCollapsed } from '@/components/ui/collapse';
 import { Field } from '@/components/ui/field';
 import { Input, Select, Textarea } from '@/components/ui/input';
+import { SignatureLogoPreview } from '@/components/email/signature-logo-preview';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { errorMessage } from '@/lib/api-client';
 import { useAiEmail, useLogActivity, useSettings, useTemplates, useUpdateLead } from '@/lib/queries';
@@ -418,7 +419,13 @@ export function ContactCard({ lead }: { lead: Lead }) {
                 {isEmail ? 'Mensagem' : kind === 'call_script' ? 'Guião' : 'Texto'}
               </label>
               {isEmail ? (
-                <RichTextEditor id="script-body" label="Mensagem" value={body} onChange={(html) => setDraft({ subject, body: html })} />
+                <RichTextEditor
+                  id="script-body"
+                  label="Mensagem"
+                  value={body}
+                  onChange={(html) => setDraft({ subject, body: html })}
+                  footer={<SignatureLogoPreview body={body} />}
+                />
               ) : (
                 <Textarea id="script-body" rows={12} value={body} onChange={(e) => setDraft({ subject, body: e.target.value })} className="leading-relaxed" />
               )}

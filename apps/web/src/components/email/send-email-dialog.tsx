@@ -15,6 +15,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { SignatureLogoPreview } from './signature-logo-preview';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { EmailCheckHint } from './email-check-hint';
 import { useAudits, useInvalidateLead, useMailAccount, useSettings } from '@/lib/queries';
@@ -173,7 +174,13 @@ function SendEmailDialog({
             <Input value={form.subject} maxLength={300} onChange={(e) => setForm({ ...form, subject: e.target.value })} />
           </Field>
           <Field label="Mensagem" required error={errors.body?.[0]}>
-            <RichTextEditor label="Mensagem" value={form.body} onChange={(body) => setForm((f) => ({ ...f, body }))} minHeight="14rem" />
+            <RichTextEditor
+              label="Mensagem"
+              value={form.body}
+              onChange={(body) => setForm((f) => ({ ...f, body }))}
+              minHeight="14rem"
+              footer={<SignatureLogoPreview body={form.body} />}
+            />
           </Field>
           {proposal ? (
             <p className="flex items-center gap-1.5 text-sm text-muted">

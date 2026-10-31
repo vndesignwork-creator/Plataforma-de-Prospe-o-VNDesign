@@ -103,6 +103,7 @@ export function RichTextEditor({
   toolbarEnd,
   onEditorKeyDown,
   onCaret,
+  footer,
 }: {
   value: string;
   onChange: (html: string) => void;
@@ -122,6 +123,8 @@ export function RichTextEditor({
   onEditorKeyDown?: (e: KeyboardEvent<HTMLDivElement>) => void;
   /** Texto do parágrafo antes do cursor, a cada tecla (ex.: abrir a lista de variáveis com "{{"). */
   onCaret?: (before: string) => void;
+  /** Por baixo do texto, dentro da caixa, sem se poder editar (ex.: o logótipo da assinatura). */
+  footer?: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   // O último HTML que saiu daqui: um valor novo vindo de fora (outro modelo, a IA) substitui o conteúdo.
@@ -304,6 +307,7 @@ export function RichTextEditor({
           '[&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-6',
         )}
       />
+      {footer}
     </div>
   );
 }

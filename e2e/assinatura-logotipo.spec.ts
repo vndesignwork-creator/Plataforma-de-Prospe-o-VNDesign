@@ -94,6 +94,26 @@ test('logótipo na assinatura: escolher, tamanho, vai embutido no email por baix
   expect(withLogo.Attachments).toHaveLength(0);
   expect(withLogo.HTML).toMatch(/912 345 678 · vndesign\.pt<br><a href="[^"]+"[^>]*><img src="cid:logotipo-assinatura@vndesign-leads"[^>]*width="220"/);
 
+  // Na ficha, o logótipo aparece dentro da caixa da mensagem quando a assinatura está no texto.
+  const shown = (
+    await (
+      await page.request.post('/api/v1/leads?force=true', {
+        data: {
+          company_name: `Logo Ficha ${run}`,
+          email: `ficha-${run}@exemplo.pt`,
+          email_subject: 'Uma ideia',
+          email_body: `Olá,\n\nUma ideia.\n\nCumprimentos,\nAna Logo ${run}\nWeb Designer · VNDesign\n912 345 678 · vndesign.pt`,
+        },
+      })
+    ).json()
+  ).data;
+  await page.goto(`/leads/${shown.id}`);
+  const contact = page.getByRole('region', { name: 'Contactar' });
+  await expect(contact.getByTestId('signature-logo-preview').getByRole('img', { name: 'Logótipo da assinatura' })).toBeVisible();
+  // Sem a assinatura no texto, não aparece.
+  await contact.getByRole('textbox', { name: 'Mensagem' }).fill('Só uma pergunta rápida.');
+  await expect(contact.getByTestId('signature-logo-preview')).toHaveCount(0);
+
   // Sem a assinatura no email: sem logótipo.
   const plain = await page.request.post(`/api/v1/leads/${lead.id}/email`, { data: { to, subject: `Sem logo ${run}`, body: 'Obrigada pela resposta!' } });
   expect(plain.status()).toBe(200);
@@ -102,6 +122,7 @@ test('logótipo na assinatura: escolher, tamanho, vai embutido no email por baix
   expect(withoutLogo.HTML).not.toContain('cid:');
 
   // Tirar o logótipo.
+  await page.goto('/definicoes/assinatura');
   await page.getByRole('button', { name: 'Tirar logótipo' }).click();
   await expect(page.getByText('Logótipo tirado.')).toBeVisible();
   await expect(preview).toHaveCount(0);
