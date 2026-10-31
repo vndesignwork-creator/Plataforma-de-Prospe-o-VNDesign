@@ -74,7 +74,7 @@ export function TeamView({ initialTab }: { initialTab: TeamTab }) {
             </button>
           ))}
         </div>
-        <Button className="sm:mb-2" onClick={() => setInviting({ kind: tab === 'projetos' ? 'project' : 'leads', name: '', email: '', exclude: [] })}>
+        <Button className="self-end sm:mb-2" onClick={() => setInviting({ kind: tab === 'projetos' ? 'project' : 'leads', name: '', email: '', exclude: [] })}>
           <UserPlus className="h-4 w-4" aria-hidden /> Convidar
         </Button>
       </div>

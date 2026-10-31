@@ -81,7 +81,8 @@ export function TeamMembers() {
             {team.members.map((m) => (
               <li key={m.user_id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 text-sm">
                 <Avatar name={m.name ?? m.email ?? '?'} url={m.avatar_url} size={36} />
-                <span className="min-w-0 flex-1">
+                {/* Telemóvel: o texto com a linha toda (ao lado da foto); o papel e o apagar passam para baixo, à direita. */}
+                <span className="min-w-0 flex-1 max-sm:basis-[calc(100%-3rem)]">
                   <span className="block truncate font-medium">
                     {m.name ?? m.email} {m.is_me ? <span className="font-normal text-muted">(tu)</span> : null}
                   </span>
@@ -91,12 +92,14 @@ export function TeamMembers() {
                   <MemberNumbers stat={byUser.get(m.user_id)} days={stats?.days ?? 30} />
                 </span>
                 {m.role === 'owner' || m.is_me ? (
-                  <Badge tone={m.role === 'owner' ? 'accent' : 'neutral'}>{MEMBER_ROLE_LABELS[m.role]}</Badge>
+                  <Badge tone={m.role === 'owner' ? 'accent' : 'neutral'} className="max-sm:ml-auto">
+                    {MEMBER_ROLE_LABELS[m.role]}
+                  </Badge>
                 ) : (
                   <Select
                     aria-label={`Papel de ${m.name ?? m.email}`}
                     value={m.role === 'admin' ? 'admin' : 'prospector'}
-                    className="h-9 w-40 text-sm"
+                    className="h-9 w-40 text-sm max-sm:ml-auto"
                     onChange={(e) =>
                       void run({ role: { user_id: m.user_id, role: e.target.value as InviteRole } }, `${m.name ?? m.email}: ${MEMBER_ROLE_LABELS[e.target.value as InviteRole]}.`)
                     }
