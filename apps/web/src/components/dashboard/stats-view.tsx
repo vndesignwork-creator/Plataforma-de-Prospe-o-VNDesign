@@ -112,6 +112,9 @@ function StatsIndex({ sections }: { sections: StatsSection[] }) {
 }
 
 /** "Desde sempre": os totais em números mais pequenos (os gráficos aparecem mais cedo). */
+/** Parte de um total: percentagem a partir de 10; abaixo disso "2 de 3". */
+const share = (part: number, whole: number) => (!whole ? '0 %' : whole >= 10 ? formatPercent(part / whole) : `${part} de ${whole}`);
+
 function AllTimeCard({ items }: { items: { label: string; value: ReactNode; hint?: string }[] }) {
   return (
     <Card>
@@ -217,7 +220,10 @@ function OwnerStats() {
       {/* Pelo histórico (quem entrou no período e até onde chegou); o de baixo é o estado de agora. */}
       <CohortFunnelCard className="lg:col-span-2" />
       <Card>
-        <CardHeader title="Funil de todos os leads" description="Etapa mais avançada a que cada lead já chegou (desde sempre)" />
+        <CardHeader
+          title="Funil de todos os leads"
+          description="Etapa mais avançada a que cada lead já chegou (desde sempre). Quem saltou fases conta também nas anteriores."
+        />
         <div className="p-4">
           <BarList
             caption="Funil de conversão"
@@ -228,12 +234,8 @@ function OwnerStats() {
                 label: LEAD_STATUS_META[f.stage].label,
                 mark: <StatusIcon status={f.stage} className="h-3.5 w-3.5" />,
                 value: f.count,
-                note:
-                  i === 0
-                    ? undefined
-                    : `${funnelFirst ? formatPercent(f.count / funnelFirst) : '0%'} do total · ${
-                        prev ? formatPercent(f.count / prev) : '0%'
-                      } da etapa anterior`,
+                // Com poucos leads, "x de y" em vez de uma percentagem que engana ("100 %" de 2).
+                note: i === 0 ? undefined : `${share(f.count, funnelFirst)} do total · ${share(f.count, prev ?? 0)} da etapa anterior`,
               };
             })}
           />

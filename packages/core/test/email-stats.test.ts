@@ -19,9 +19,10 @@ describe('emails por modelo', () => {
       { lead_id: 'c', at: '2026-12-20T08:00:00Z' }, // mais de 30 dias: não conta
     ];
     expect(statsByTemplate(sent, tracking, replies)).toEqual([
-      { template: 'Email de prospeção', sent: 2, opened: 1, clicked: 1, replied: 0 },
-      { template: 'Follow-up 1', sent: 1, opened: 1, clicked: 0, replied: 1 },
-      { template: null, sent: 1, opened: 0, clicked: 0, replied: 0 },
+      { template: 'Email de prospeção', sent: 2, tracked: 2, opened: 1, clicked: 1, replied: 0 },
+      { template: 'Follow-up 1', sent: 1, tracked: 1, opened: 1, clicked: 0, replied: 1 },
+      // Sem rastreio: não entra na base das aberturas.
+      { template: null, sent: 1, tracked: 0, opened: 0, clicked: 0, replied: 0 },
     ]);
   });
 });

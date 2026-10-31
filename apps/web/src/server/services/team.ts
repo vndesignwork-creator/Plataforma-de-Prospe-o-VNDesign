@@ -22,6 +22,7 @@ import {
   type TeamActivityGroup,
   type TeamStats,
 } from '@vndesign/core';
+import { selectAllPages } from '../batch';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
 import { isMailConfigured, sendMail, sendWithAccount } from '../mailer';
@@ -306,25 +307,59 @@ export async function teamStats(ctx: ApiContext, days = 30): Promise<TeamStats> 
   const since = new Date(Date.now() - days * 86_400_000).toISOString();
   const today = todayIso();
   const admin = createSupabaseAdminClient();
-  const [{ data: acts, error }, { data: created }, { data: open }] = await Promise.all([
-    admin
-      .from('lead_activities')
-      .select('actor_user_id, type, payload, created_at')
-      .eq('workspace_id', ctx.workspaceId)
-      .in('actor_user_id', ids)
-      .gte('created_at', since)
-      .limit(20_000),
-    admin.from('leads').select('created_by').eq('workspace_id', ctx.workspaceId).in('created_by', ids).gte('created_at', since).limit(20_000),
-    admin
-      .from('leads')
-      .select('assigned_to')
-      .eq('workspace_id', ctx.workspaceId)
-      .in('assigned_to', ids)
-      .not('status', 'in', '(cliente,sem_interesse)')
-      .is('archived_at', null)
-      .limit(20_000),
+  type Act = { id: string; actor_user_id: string; type: string; payload: Record<string, unknown> | null; created_at: string };
+  type Moved = { lead_id: string; actor_user_id: string | null; to: string | null; lead: { assigned_to: string | null } | null };
+  // Tudo página a página: o Supabase devolve no máximo 1000 linhas por pedido.
+  const [contactActs, moved, created, open] = await Promise.all([
+    // Contactos registados por cada pessoa.
+    selectAllPages<Act>((from, to) =>
+      admin
+        .from('lead_activities')
+        .select('id, actor_user_id, type, payload, created_at')
+        .eq('workspace_id', ctx.workspaceId)
+        .in('actor_user_id', ids)
+        .or(`type.in.(${[...CONTACT_TYPES].join(',')}),payload->>via.eq.prospecting`)
+        .gte('created_at', since)
+        .order('id')
+        .range(from, to),
+    ),
+    // Leads que avançaram: contam para o responsável do lead (uma resposta detetada
+    // na caixa de entrada fica em nome de quem ligou o email, não de quem trabalha o lead).
+    selectAllPages<Moved>((from, to) =>
+      admin
+        .from('lead_activities')
+        .select('lead_id, actor_user_id, to:payload->>to, lead:leads!inner(assigned_to)')
+        .eq('workspace_id', ctx.workspaceId)
+        .eq('type', 'status_changed')
+        .in('payload->>to', ['respondeu', 'reuniao', 'cliente'])
+        .gte('created_at', since)
+        .order('id')
+        .range(from, to),
+    ),
+    selectAllPages<{ created_by: string }>((from, to) =>
+      admin
+        .from('leads')
+        .select('created_by')
+        .eq('workspace_id', ctx.workspaceId)
+        .in('created_by', ids)
+        .is('client_of', null)
+        .gte('created_at', since)
+        .order('id')
+        .range(from, to),
+    ),
+    selectAllPages<{ assigned_to: string }>((from, to) =>
+      admin
+        .from('leads')
+        .select('assigned_to')
+        .eq('workspace_id', ctx.workspaceId)
+        .in('assigned_to', ids)
+        .not('status', 'in', '(cliente,sem_interesse)')
+        .is('archived_at', null)
+        .is('anonymized_at', null)
+        .order('id')
+        .range(from, to),
+    ),
   ]);
-  if (error) throw fromPostgrest(error);
   const count = <T,>(rows: T[] | null, key: (r: T) => string | null) => {
     const m = new Map<string, number>();
     for (const r of rows ?? []) {
@@ -333,17 +368,26 @@ export async function teamStats(ctx: ApiContext, days = 30): Promise<TeamStats> 
     }
     return m;
   };
-  type Act = { actor_user_id: string; type: string; payload: Record<string, unknown> | null; created_at: string };
-  const list = (acts ?? []) as Act[];
   const isContact = (a: Act) => CONTACT_TYPES.has(a.type) || a.payload?.via === 'prospecting';
-  const to = (a: Act, status: string) => a.type === 'status_changed' && a.payload?.to === status;
-  const contacts = count(list.filter(isContact), (a) => a.actor_user_id);
-  const contactsToday = count(list.filter((a) => isContact(a) && todayIso(new Date(a.created_at)) === today), (a) => a.actor_user_id);
-  const replied = count(list.filter((a) => to(a, 'respondeu')), (a) => a.actor_user_id);
-  const meetings = count(list.filter((a) => to(a, 'reuniao')), (a) => a.actor_user_id);
-  const won = count(list.filter((a) => to(a, 'cliente')), (a) => a.actor_user_id);
-  const generated = count((created ?? []) as { created_by: string }[], (r) => r.created_by);
-  const assigned = count((open ?? []) as { assigned_to: string }[], (r) => r.assigned_to);
+  const contacts = count(contactActs.filter(isContact), (a) => a.actor_user_id);
+  const contactsToday = count(
+    contactActs.filter((a) => isContact(a) && todayIso(new Date(a.created_at)) === today),
+    (a) => a.actor_user_id,
+  );
+  // Cada lead conta uma vez por fase (ir e voltar a "Respondeu" não conta duas vezes).
+  const leadsTo = (status: string) => {
+    const seen = new Map<string, string>();
+    for (const m of moved) {
+      const person = m.lead?.assigned_to ?? m.actor_user_id;
+      if (m.to === status && person) seen.set(m.lead_id, person);
+    }
+    return count([...seen.values()], (person) => person);
+  };
+  const replied = leadsTo('respondeu');
+  const meetings = leadsTo('reuniao');
+  const won = leadsTo('cliente');
+  const generated = count(created, (r) => r.created_by);
+  const assigned = count(open, (r) => r.assigned_to);
   const limit = (await getSettings(ctx)).team.generation_weekly_limit;
 
   const members = [];

@@ -11,7 +11,6 @@ import {
 } from '@vndesign/core';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ApiContext } from '../context';
-import { selectInBatches } from '../batch';
 import { fromPostgrest } from '../http';
 import { LEAD_SELECT } from './leads';
 import { fetchTodayTasks } from './tasks';
@@ -45,33 +44,41 @@ export async function getDashboardPeriod(ctx: ApiContext, period: DashboardPerio
   return { period, from: r.from, to: r.to, current, previous };
 }
 
+/**
+ * Leads novos, contactados e clientes ganhos de um período (stats_period: leads distintos,
+ * dias de Lisboa, sem anonimizados nem os projetos novos de clientes que voltam). As
+ * Estatísticas → Comparar usam a mesma função, para os números baterem certo.
+ */
 async function periodNumbers(ctx: ApiContext, from: string, to: string): Promise<DashboardPeriodNumbers['current']> {
-  const end = addDays(to, 1);
-  const leads = () => ctx.supabase.from('leads').select('id', { count: 'exact', head: true }).eq('workspace_id', ctx.workspaceId).is('anonymized_at', null);
-  const [created, contacted, wonRows] = await Promise.all([
-    leads().gte('created_at', from).lt('created_at', end),
-    leads().gte('first_contact_on', from).lte('first_contact_on', to),
-    // Quem passou a Cliente no período (pela linha do tempo; conta cada lead uma vez).
-    ctx.supabase
-      .from('lead_activities')
-      .select('lead_id')
-      .eq('workspace_id', ctx.workspaceId)
-      .eq('type', 'status_changed')
-      .eq('payload->>to', 'cliente')
-      .gte('created_at', from)
-      .lt('created_at', end)
-      .limit(5000),
-  ]);
-  for (const res of [created, contacted, wonRows]) if (res.error) throw fromPostgrest(res.error);
-  const wonIds = [...new Set(((wonRows.data ?? []) as { lead_id: string }[]).map((w) => w.lead_id))];
-  const values = await selectInBatches<{ estimated_value: number | null }>(wonIds, (batch) =>
-    ctx.supabase.from('leads').select('estimated_value').in('id', batch),
-  );
+  const n = await statsPeriod(ctx, from, to);
+  return { new_leads: n.new_leads, contacted: n.contacted, won: n.won, value_won: n.value_won };
+}
+
+export type StatsPeriod = {
+  new_leads: number;
+  contacted: number;
+  replied: number;
+  proposals: number;
+  won: number;
+  value_won: number;
+  meetings: number;
+  received: number;
+};
+
+export async function statsPeriod(ctx: ApiContext, from: string, to: string): Promise<StatsPeriod> {
+  const { data, error } = await ctx.supabase.rpc('stats_period', { p_workspace_id: ctx.workspaceId, p_from: from, p_to: to });
+  if (error) throw fromPostgrest(error);
+  const d = (data ?? {}) as Record<keyof StatsPeriod, number | string | null>;
+  const n = (k: keyof StatsPeriod) => Number(d[k] ?? 0);
   return {
-    new_leads: created.count ?? 0,
-    contacted: contacted.count ?? 0,
-    won: wonIds.length,
-    value_won: values.reduce((sum, l) => sum + Number(l.estimated_value ?? 0), 0),
+    new_leads: n('new_leads'),
+    contacted: n('contacted'),
+    replied: n('replied'),
+    proposals: n('proposals'),
+    won: n('won'),
+    value_won: n('value_won'),
+    meetings: n('meetings'),
+    received: n('received'),
   };
 }
 

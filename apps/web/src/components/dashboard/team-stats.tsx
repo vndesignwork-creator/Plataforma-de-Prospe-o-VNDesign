@@ -44,7 +44,7 @@ export function TeamStatsSection({ bare }: { bare?: boolean } = {}) {
         </div>
       )}
       <Card>
-        <CardHeader title="Por pessoa" description="Contactos registados, leads que avançaram e leads criados." />
+        <CardHeader title="Por pessoa" description="Contactos que cada pessoa registou; leads de que é responsável que responderam, tiveram reunião ou passaram a cliente (cada lead conta uma vez); leads criados." />
         <div className="relative overflow-x-auto">
           <table className="w-full min-w-[44rem] text-sm">
             <caption className="sr-only">Trabalho de cada pessoa da equipa</caption>

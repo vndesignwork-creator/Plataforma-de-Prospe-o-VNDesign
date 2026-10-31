@@ -185,6 +185,20 @@ Em **Novo lead**, **📷 Ler cartão de visita**: no telemóvel abre a câmara. 
 
 No topo de **Estatísticas**, "**Este mês vs. o mês passado**" (ou **Semana**): leads novos, primeiros contactos, respostas, reuniões marcadas, propostas enviadas, clientes ganhos e recebido, comparados **até ao mesmo dia** (1–24 de outubro contra 1–24 de setembro), com ↑/↓ e a percentagem. Não são metas: mostra só se estás a melhorar. API: `GET /api/v1/stats/compare?period=month|week`.
 
+### Como se contam os números (iguais no Dashboard e nas Estatísticas)
+
+Uma só definição na base de dados (`stats_period`), usada pelo Dashboard ("Este mês"/"30 dias") e por Estatísticas → Comparar:
+
+- **Leads novos** — criados no período (dias de Lisboa). Não contam os projetos novos de clientes que voltam nem os leads anonimizados.
+- **Contactados** — leads com a data do 1.º contacto no período.
+- **Respostas, propostas, clientes ganhos** — leads que passaram a essa fase no período, pela linha do tempo; **cada lead conta uma vez** (ir e voltar não conta duas vezes). Um lead criado já como Cliente conta como ganho, menos os que vêm de uma importação (clientes antigos).
+- **Desde sempre / Pipeline / por setor, serviço e canal** — sem os anonimizados (como a lista). Os números do Pipeline incluem os arquivados; ao clicar, a lista abre com os arquivados, para bater certo.
+- **Contactados (taxa de conversão)** — leads com 1.º contacto ou que já passaram de "Identificado"; "Em pausa" sem contacto não conta.
+- **Funis** — quem saltou fases conta também nas anteriores; com menos de 10 leads numa fase mostra "x de y" em vez de uma percentagem.
+- **Equipa** — contactos: o que cada pessoa registou; responderam/reuniões/clientes: leads de que a pessoa é responsável (sem responsável, quem mudou o estado), cada lead uma vez.
+- **Emails** — % abertos e % com clique só sobre os emails enviados com o rastreio ligado.
+- Todos os totais leem os registos página a página (o Supabase devolve no máximo 1000 linhas por pedido).
+
 ## Emails: o que resulta e quando abrem
 
 Em **Estatísticas**, dois cartões sobre os emails enviados pela plataforma (últimos 30, 90, 180 ou 365 dias):

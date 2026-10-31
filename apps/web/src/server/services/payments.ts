@@ -12,6 +12,7 @@ import {
   type LeadPaymentUpdate,
   type PaymentPlan,
 } from '@vndesign/core';
+import { PAGE_SIZE, selectAllPages } from '../batch';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
 import { getLead } from './leads';
@@ -106,13 +107,21 @@ export async function deletePayment(ctx: ApiContext, id: string): Promise<void> 
 export async function billingSummary(ctx: ApiContext): Promise<BillingSummary> {
   const today = todayIso();
   const monthStart = `${today.slice(0, 7)}-01`;
-  const [payments, projects] = await Promise.all([
+  // Os pagamentos página a página (o Supabase devolve no máximo 1000 linhas por pedido).
+  const paymentsPage = (from: number, to: number) =>
     ctx.supabase
       .from('lead_payments')
       .select('amount, due_on, paid_on, lead:leads!inner(archived_at, anonymized_at)')
       .eq('workspace_id', ctx.workspaceId)
       .or(`paid_on.is.null,paid_on.gte.${monthStart}`)
-      .limit(10_000),
+      .order('id')
+      .range(from, to);
+  const [payments, projects] = await Promise.all([
+    paymentsPage(0, PAGE_SIZE - 1).then(async (first) => {
+      if (first.error || (first.data?.length ?? 0) < PAGE_SIZE) return first;
+      const rest = await selectAllPages<unknown>((from, to) => paymentsPage(from + PAGE_SIZE, to + PAGE_SIZE));
+      return { ...first, data: [...(first.data ?? []), ...rest] as typeof first.data };
+    }),
     ctx.supabase
       .from('leads')
       .select('id', { count: 'exact', head: true })

@@ -684,7 +684,8 @@ function PipelineCard({ byStatus, className }: { byStatus: { status: LeadStatus;
           return (
             <li key={status}>
               <Link
-                href={`/leads?status=${status}`}
+                // Com os arquivados: a lista mostra os mesmos leads que a contagem.
+                href={`/leads?status=${status}&archived=include`}
                 className="grid grid-cols-[1rem_minmax(0,9.5rem)_2.25rem_minmax(0,1fr)] items-center gap-x-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-surface-2 sm:grid-cols-[1rem_minmax(0,9.5rem)_2.25rem_minmax(0,1fr)_8.5rem]"
               >
                 <StatusIcon status={status} className="h-3.5 w-3.5 shrink-0" />
@@ -709,7 +710,7 @@ function PipelineCard({ byStatus, className }: { byStatus: { status: LeadStatus;
           </span>
         ) : null}
         {aside.map((s) => (
-          <Link key={s} href={`/leads?status=${s}`} className="inline-flex items-center gap-1 hover:text-fg hover:underline">
+          <Link key={s} href={`/leads?status=${s}&archived=include`} className="inline-flex items-center gap-1 hover:text-fg hover:underline">
             <StatusIcon status={s} className="h-3 w-3" />
             {LEAD_STATUS_META[s].label}: <span className="tabular">{count(s)}</span>
           </Link>

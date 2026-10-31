@@ -65,8 +65,8 @@ export function EmailStatsSection() {
                           {t.template ?? <span className="text-muted">Escrito à mão</span>}
                         </th>
                         <td className="py-2 text-right tabular">{t.sent}</td>
-                        <td className="py-2 text-right tabular">{data.tracked ? pct(t.opened, t.sent) : '—'}</td>
-                        <td className="py-2 text-right tabular">{data.tracked ? pct(t.clicked, t.sent) : '—'}</td>
+                        <td className="py-2 text-right tabular">{t.tracked ? pct(t.opened, t.tracked) : '—'}</td>
+                        <td className="py-2 text-right tabular">{t.tracked ? pct(t.clicked, t.tracked) : '—'}</td>
                         <td className={cn('py-2 text-right tabular', best && 'font-semibold text-success')} title={`${t.replied} de ${t.sent}`}>
                           {pct(t.replied, t.sent)}
                           {best ? ' ★' : ''}
@@ -79,6 +79,7 @@ export function EmailStatsSection() {
               <p className="mt-3 text-xs text-muted">
                 {totals.sent} emails · {pct(totals.replied, totals.sent)} com resposta. A resposta conta para o último email enviado ao lead (até 30 dias antes).
                 {bestReply > 0 ? ' ★ = o modelo com mais respostas (com 5 envios ou mais).' : ''}
+                {data.tracked ? ' Aberturas e cliques: em percentagem dos emails enviados com o rastreio ligado.' : ''}
                 {!data.tracked ? (
                   <>
                     {' '}

@@ -4,7 +4,7 @@
  */
 import { daysBetween, entrySeconds, hourlyRate, lastMonths, projectProfit, todayIso, type Profitability } from '@vndesign/core';
 import type { ApiContext } from '../context';
-import { fromPostgrest } from '../http';
+import { selectAllPages } from '../batch';
 import { expenseTotals, projectValues } from './project-tools';
 
 type LeadRow = {
@@ -24,34 +24,40 @@ export async function profitability(ctx: ApiContext): Promise<Profitability> {
   const ws = ctx.workspaceId;
   const today = todayIso();
   const months = lastMonths(today, 12);
-  const from = `${months[0]}-01`;
-  const [leadsRes, timeRes, paidRes] = await Promise.all([
-    ctx.supabase
-      .from('leads')
-      .select('id, number, company_name, client_of, services, estimated_value, status_changed_at, project_completed_at')
-      .eq('workspace_id', ws)
-      .eq('status', 'cliente')
-      .is('archived_at', null)
-      .is('anonymized_at', null)
-      .limit(2000),
-    ctx.supabase.from('project_time_entries').select('lead_id, started_at, ended_at').eq('workspace_id', ws).not('ended_at', 'is', null).limit(20_000),
-    ctx.supabase.from('lead_payments').select('amount, paid_on').eq('workspace_id', ws).gte('paid_on', from).limit(10_000),
+  const from_ = `${months[0]}-01`;
+  // Página a página: o Supabase devolve no máximo 1000 linhas por pedido.
+  const [leads, timeRows, paidRows] = await Promise.all([
+    selectAllPages<LeadRow>((from, to) =>
+      ctx.supabase
+        .from('leads')
+        .select('id, number, company_name, client_of, services, estimated_value, status_changed_at, project_completed_at')
+        .eq('workspace_id', ws)
+        .eq('status', 'cliente')
+        .is('archived_at', null)
+        .is('anonymized_at', null)
+        .order('id')
+        .range(from, to),
+    ),
+    selectAllPages<{ lead_id: string; started_at: string; ended_at: string }>((from, to) =>
+      ctx.supabase.from('project_time_entries').select('lead_id, started_at, ended_at').eq('workspace_id', ws).not('ended_at', 'is', null).order('id').range(from, to),
+    ),
+    selectAllPages<{ amount: number | string; paid_on: string }>((from, to) =>
+      ctx.supabase.from('lead_payments').select('amount, paid_on').eq('workspace_id', ws).gte('paid_on', from_).order('id').range(from, to),
+    ),
   ]);
-  for (const r of [leadsRes, timeRes, paidRes]) if (r.error) throw fromPostgrest(r.error);
-  const leads = (leadsRes.data ?? []) as LeadRow[];
   const [values, expenses] = await Promise.all([projectValues(ctx, leads), expenseTotals(ctx, leads.map((l) => l.id))]);
 
   // Minutos por lead e por mês (hora de Lisboa).
   const minutesByLead = new Map<string, number>();
   const minutesByMonth = new Map<string, number>();
-  for (const e of (timeRes.data ?? []) as { lead_id: string; started_at: string; ended_at: string }[]) {
+  for (const e of timeRows) {
     const min = entrySeconds(e) / 60;
     minutesByLead.set(e.lead_id, (minutesByLead.get(e.lead_id) ?? 0) + min);
     const month = todayIso(new Date(e.started_at)).slice(0, 7);
     minutesByMonth.set(month, (minutesByMonth.get(month) ?? 0) + min);
   }
   const receivedByMonth = new Map<string, number>();
-  for (const p of (paidRes.data ?? []) as { amount: number | string; paid_on: string }[]) {
+  for (const p of paidRows) {
     const month = p.paid_on.slice(0, 7);
     receivedByMonth.set(month, (receivedByMonth.get(month) ?? 0) + Number(p.amount));
   }
@@ -124,7 +130,7 @@ export async function profitability(ctx: ApiContext): Promise<Profitability> {
       net_rate: rateMinutes >= 15 ? round2((rateValue - rateExpenses) / (rateMinutes / 60)) : null,
       projects: leads.length,
       completed: leads.filter((l) => l.project_completed_at).length,
-      minutes: Math.round([...minutesByLead.entries()].filter(([id]) => leads.some((l) => l.id === id)).reduce((a, [, m]) => a + m, 0)),
+      minutes: Math.round(leads.reduce((a, l) => a + (minutesByLead.get(l.id) ?? 0), 0)),
       rate: rateMinutes >= 15 ? round2(rateValue / (rateMinutes / 60)) : null,
       avg_days: avg(completedDays),
       avg_minutes: avg(completedMinutes),

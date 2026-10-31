@@ -7,6 +7,7 @@ import { z } from 'zod';
 export const EmailTemplateStatSchema = z.object({
   template: z.string().nullable().meta({ description: 'Nome do modelo (null = escrito à mão / sem modelo)' }),
   sent: z.int(),
+  tracked: z.int().meta({ description: 'Enviados com o rastreio de aberturas ligado (base das percentagens de abertura e clique)' }),
   opened: z.int(),
   clicked: z.int(),
   replied: z.int(),
@@ -52,9 +53,10 @@ export function statsByTemplate(
   const rows = new Map<string, EmailTemplateStat>();
   for (const s of sent) {
     const key = s.template?.trim() || '';
-    const row = rows.get(key) ?? { template: key || null, sent: 0, opened: 0, clicked: 0, replied: 0 };
+    const row = rows.get(key) ?? { template: key || null, sent: 0, tracked: 0, opened: 0, clicked: 0, replied: 0 };
     row.sent++;
     const t = s.tracking_id ? tracking.get(s.tracking_id) : undefined;
+    if (t) row.tracked++;
     if (t && t.opens > 0) row.opened++;
     if (t && t.clicks > 0) row.clicked++;
     if (repliedTo.has(s)) row.replied++;
