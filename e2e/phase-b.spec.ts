@@ -120,7 +120,7 @@ test('Dashboard: o essencial e "Hoje"; o resto em Estatísticas', async ({ page 
   // Pipeline com ligação à lista filtrada.
   await expect(page.getByRole('list', { name: 'Leads por estado' }).getByRole('link', { name: /Contactado/ })).toHaveAttribute(
     'href',
-    '/leads?status=contactado',
+    '/leads?status=contactado&archived=include',
   );
   await expect(page.getByRole('heading', { name: 'Funil de todos os leads' })).toHaveCount(0);
 

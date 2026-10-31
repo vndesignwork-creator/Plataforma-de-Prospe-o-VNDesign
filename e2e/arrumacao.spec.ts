@@ -172,7 +172,7 @@ test('pesquisa rápida (Ctrl+K): leads, tarefas e páginas', async ({ page }) =>
   await expect(page).toHaveURL(/\/definicoes\/setores$/);
   await page.keyboard.press('Control+k');
   await box.fill('palavra-passe');
-  await expect(page.getByRole('option', { name: 'Definições → Conta' })).toBeVisible();
+  await expect(page.getByRole('option', { name: 'Definições → Conta', exact: true })).toBeVisible();
 
   // Estado, setor e serviço: a lista de leads filtrada.
   await box.fill('Respondeu');
