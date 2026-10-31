@@ -313,7 +313,7 @@ export function ProjectsView() {
             );
           })}
         </div>
-        <div role="group" aria-label="Vista" className="mb-2 inline-flex h-10 items-center rounded-lg border border-border-input bg-surface-2 p-0.5">
+        <div role="group" aria-label="Vista" className="mb-2 ml-auto inline-flex h-10 items-center rounded-lg border border-border-input bg-surface-2 p-0.5">
           {VIEWS.map(({ value: v, label: l, icon: Icon }) => (
             <button
               key={v}
@@ -355,7 +355,8 @@ export function ProjectsView() {
               ))}
             </div>
           ) : null}
-          <div className="flex items-center gap-1 sm:ml-auto">
+          {/* Ordenar e recolher: à direita (também no telemóvel). */}
+          <div className="ml-auto flex items-center gap-1">
             <ArrowDownUp className="h-4 w-4 text-muted" aria-hidden />
             <Select id="projects-sort" aria-label="Ordenar por" title="Ordenar por" value={sort} onChange={(e) => changeSort(e.target.value as ProjectSort)} className="h-9 w-auto text-sm">
               {PROJECT_SORTS.map((s) => (
