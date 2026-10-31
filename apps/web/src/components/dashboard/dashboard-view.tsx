@@ -552,7 +552,7 @@ function HotLeadsCard({ className, fitToday }: { className?: string; fitToday?: 
   const hot = rows === null ? (data?.hot ?? []) : (data?.hot ?? []).slice(0, rows);
   const common = hot.length > 1 ? (hot[0]!.score_reasons ?? []).filter((r) => hot.every((l) => l.score_reasons?.includes(r))) : [];
   return (
-    <Card className={cn('flex flex-col', className)}>
+    <Card className={cn('flex flex-col', className, rows !== null && 'lg:self-stretch')}>
       <CardHeader
         title="Leads mais quentes"
         className="py-2.5"
@@ -571,7 +571,7 @@ function HotLeadsCard({ className, fitToday }: { className?: string; fitToday?: 
       {data && !hot.length ? (
         <p className="flex flex-1 items-center justify-center p-4 text-center text-sm text-muted">Sem leads quentes de momento.</p>
       ) : null}
-      <ul ref={list} className="flex flex-col p-2 empty:hidden" aria-label="Leads mais quentes">
+      <ul ref={list} className={cn('flex flex-col p-2 empty:hidden', rows !== null && 'flex-1 justify-evenly')} aria-label="Leads mais quentes">
         {hot.map((l) => {
           const own = (l.score_reasons ?? []).filter((r) => !common.includes(r));
           const detail = own.slice(0, 2).join(' · ') || [l.city, LEAD_STATUS_META[l.status].label].filter(Boolean).join(' · ');
@@ -608,9 +608,10 @@ function HotLeadsCard({ className, fitToday }: { className?: string; fitToday?: 
 }
 
 /**
- * No computador, ao lado do "Hoje": os quentes mostram só as linhas que cabem na altura do
- * conteúdo do "Hoje" (pelo menos 3), para o "Hoje" não ficar com um espaço vazio por baixo.
- * Os outros estão em "Ver todos". null = mostrar todos (telemóvel, ou sem o "Hoje").
+ * No computador, ao lado do "Hoje": os dois cartões ficam sempre com a mesma altura. Os quentes
+ * mostram as linhas que cabem na altura do conteúdo do "Hoje" (pelo menos 3; vêm até 15) e o
+ * cartão estica até ao fundo, com a sobra (menos de uma linha) repartida entre as linhas.
+ * Os outros estão em "Ver todos". null = mostrar todos (telemóvel, ou sem o "Hoje" ao lado).
  */
 function useRowsThatFit(list: RefObject<HTMLUListElement | null>, count: number, enabled: boolean): number | null {
   const [rows, setRows] = useState<number | null>(null);

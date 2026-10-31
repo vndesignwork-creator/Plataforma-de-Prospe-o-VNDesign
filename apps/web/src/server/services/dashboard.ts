@@ -123,7 +123,7 @@ export async function fetchToday(client: SupabaseClient, workspaceId: string): P
  * Os leads com maior prioridade (pontuação), em pipeline. Com a mesma pontuação: primeiro os que
  * nunca foram contactados e, entre esses, os que esperam há mais tempo.
  */
-export async function fetchHotLeads(client: SupabaseClient, workspaceId: string, limit = 8): Promise<Lead[]> {
+export async function fetchHotLeads(client: SupabaseClient, workspaceId: string, limit = 15): Promise<Lead[]> {
   const { data, error } = await client
     .from('leads')
     .select(LEAD_SELECT)
