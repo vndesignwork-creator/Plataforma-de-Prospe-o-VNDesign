@@ -52,13 +52,13 @@ export function DailyGoal({ mode, done }: { mode: ProspectingMode; done: number 
           <Pencil className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" aria-hidden />
         </button>
       ) : (
-        // Com ar de botão (antes parecia só texto); no telemóvel fica à direita.
+        // Discreto mas com ar de botão (contorno tracejado); no telemóvel fica à direita.
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-accent/50 bg-accent-soft px-2.5 py-1 text-sm font-medium text-accent-text hover:border-accent hover:bg-accent/20 max-sm:self-end"
+          className="inline-flex w-fit items-center gap-1.5 rounded-md border border-dashed border-border-strong px-2 py-0.5 text-xs text-muted hover:border-accent hover:text-accent-text max-sm:self-end"
         >
-          <Target className="h-3.5 w-3.5" aria-hidden /> Definir objetivo do dia
+          <Target className="h-3 w-3" aria-hidden /> Definir objetivo do dia
         </button>
       )}
       {open ? <GoalDialog mode={mode} goals={goals ?? {}} onClose={() => setOpen(false)} /> : null}
