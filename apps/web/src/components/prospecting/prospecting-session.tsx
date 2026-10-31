@@ -579,10 +579,14 @@ function LeadRow({
       ) : null}
 
       {mode === 'email' ? (
-        // Os botões e o "Registar" na mesma linha quando cabem (no telemóvel não ficam cada um na sua linha).
+        // Os botões e o "Registar" no mesmo grupo e alinhados: o "Registar" fica na linha dos
+        // outros quando cabe (encostado à direita) e só passa para baixo quando não cabe.
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div role="group" aria-label="Contactar" className="flex flex-wrap gap-2">
-            <EmailAction lead={lead} onSent={onEmailed} />
+          <div role="group" aria-label="Contactar" className="flex w-full flex-wrap items-center gap-2">
+            {/* Telemóvel, com outros botões: o email numa linha; por baixo "Ligar"/WhatsApp à esquerda e "Registar" à direita. */}
+            <span className={cn('inline-flex', (lead.phone || wa || !lead.email || lead.email_bounced_at) && 'max-sm:basis-full')}>
+              <EmailAction lead={lead} onSent={onEmailed} />
+            </span>
             {!lead.email || lead.email_bounced_at ? (
               <Button size="sm" variant="soft" aria-expanded={finder} onClick={() => setFinder(!finder)}>
                 <Search className="h-3.5 w-3.5" aria-hidden /> Procurar email
@@ -598,7 +602,6 @@ function LeadRow({
                 <MessageCircle className="h-3.5 w-3.5" aria-hidden /> WhatsApp
               </a>
             ) : null}
-          </div>
           {/* Uma chamada ou uma resposta por outra via: regista-se aqui (o email enviado já fica registado sozinho). */}
           <DropdownRoot>
             <DropdownTrigger asChild>
@@ -630,6 +633,7 @@ function LeadRow({
               </DropdownItem>
             </DropdownContent>
           </DropdownRoot>
+          </div>
         </div>
       ) : (
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
