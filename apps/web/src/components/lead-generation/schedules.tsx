@@ -16,6 +16,7 @@ import { DropdownContent, DropdownItem, DropdownRoot, DropdownSeparator, Dropdow
 import { Field } from '@/components/ui/field';
 import { Select } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
 import { errorMessage } from '@/lib/api-client';
 import { formatReminder } from '@/lib/local-datetime';
 import {
@@ -213,14 +214,35 @@ function ScheduleRow({
   }
 
   return (
-    <li className="flex items-start gap-3 px-4 py-3">
-      <Switch
-        checked={s.enabled}
-        onCheckedChange={toggle}
-        disabled={save.isPending}
-        label={`${s.enabled ? 'Desativar' : 'Ativar'} a pesquisa automática “${s.query}”`}
-        className="mt-0.5"
-      />
+    // Em cima: ligar/desligar e o menu; por baixo, o texto com a largura toda (no telemóvel não fica espremido).
+    <li className="flex flex-col gap-1.5 px-4 py-3">
+      <div className="flex items-center gap-2">
+        <Switch
+          checked={s.enabled}
+          onCheckedChange={toggle}
+          disabled={save.isPending}
+          label={`${s.enabled ? 'Desativar' : 'Ativar'} a pesquisa automática “${s.query}”`}
+        />
+        <span className={cn('text-xs font-medium', s.enabled ? 'text-success' : 'text-muted')}>{s.enabled ? 'Ativa' : 'Desativada'}</span>
+        <span className="ml-auto" />
+        <DropdownRoot>
+          <DropdownTrigger className={buttonClasses('ghost', 'sm')} aria-label={`Mais ações: ${s.query}`}>
+            <MoreHorizontal className="h-4 w-4" aria-hidden />
+          </DropdownTrigger>
+          <DropdownContent>
+            <DropdownItem onSelect={runNow} disabled={run.isPending}>
+              <Play className="h-4 w-4" aria-hidden /> Correr agora
+            </DropdownItem>
+            <DropdownItem onSelect={onEdit}>
+              <Pencil className="h-4 w-4" aria-hidden /> Editar
+            </DropdownItem>
+            <DropdownSeparator />
+            <DropdownItem danger onSelect={() => setConfirmDelete(true)}>
+              <Trash2 className="h-4 w-4" aria-hidden /> Apagar
+            </DropdownItem>
+          </DropdownContent>
+        </DropdownRoot>
+      </div>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <p className="font-medium break-words">{s.query}</p>
         <p className="text-sm text-muted">{[s.city, sectorName, `até ${s.max_results} empresas`].filter(Boolean).join(' · ')}</p>
@@ -229,34 +251,18 @@ function ScheduleRow({
             <CalendarClock className="h-3.5 w-3.5" aria-hidden />
             {describeWeeklyRun(s.weekday, s.hour)}
           </span>
-          <span>{s.enabled && s.next_run_at ? `Próxima: ${when(s.next_run_at)}` : 'Desativada'}</span>
+          {/* "Desativada" já está ao lado do interruptor. */}
+          {s.enabled && s.next_run_at ? <span>Próxima: {when(s.next_run_at)}</span> : null}
           <Badge tone={s.auto_add ? 'accent' : 'neutral'}>{s.auto_add ? 'Adiciona os leads sozinha' : 'Fica para rever'}</Badge>
         </p>
         {s.last_error ? (
           <p className="text-xs text-danger">Na última vez não arrancou: {s.last_error}</p>
         ) : s.last_run_id && s.last_run_at ? (
-          <button type="button" onClick={() => onOpenRun(s.last_run_id!)} className="w-fit text-xs text-accent-text hover:underline">
+          <button type="button" onClick={() => onOpenRun(s.last_run_id!)} className="w-fit text-left text-xs text-accent-text hover:underline">
             Ver a última pesquisa ({when(s.last_run_at)})
           </button>
         ) : null}
       </div>
-      <DropdownRoot>
-        <DropdownTrigger className={buttonClasses('ghost', 'sm')} aria-label={`Mais ações: ${s.query}`}>
-          <MoreHorizontal className="h-4 w-4" aria-hidden />
-        </DropdownTrigger>
-        <DropdownContent>
-          <DropdownItem onSelect={runNow} disabled={run.isPending}>
-            <Play className="h-4 w-4" aria-hidden /> Correr agora
-          </DropdownItem>
-          <DropdownItem onSelect={onEdit}>
-            <Pencil className="h-4 w-4" aria-hidden /> Editar
-          </DropdownItem>
-          <DropdownSeparator />
-          <DropdownItem danger onSelect={() => setConfirmDelete(true)}>
-            <Trash2 className="h-4 w-4" aria-hidden /> Apagar
-          </DropdownItem>
-        </DropdownContent>
-      </DropdownRoot>
       <Dialog
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
