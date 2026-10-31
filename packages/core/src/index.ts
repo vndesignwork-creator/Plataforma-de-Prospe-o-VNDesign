@@ -1,3 +1,4 @@
+import './zod-setup';
 export * from './enums';
 export * from './normalize';
 export * from './parse';

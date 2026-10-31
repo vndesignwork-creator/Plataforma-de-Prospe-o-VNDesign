@@ -31,60 +31,106 @@ export interface ApiContext {
 const UNAUTHORIZED = () =>
   new ApiError(401, 'Não autenticado', 'Inicia sessão ou envia um token Bearer válido.');
 
+type Membership = { workspace_id: string; role: string; created_at: string };
+type Verified = { user: { id: string; email: string | null }; memberships: Membership[] };
+
+/**
+ * Verificação da sessão guardada uns segundos, por token: uma página abre 15–35 pedidos
+ * à API ao mesmo tempo e cada um confirmava a sessão no Supabase Auth e lia os
+ * workspaces (2 idas à rede por pedido). Agora os pedidos com o mesmo token partilham a
+ * mesma verificação (também enquanto ainda está a decorrer). A chave é o próprio token:
+ * só entra depois de o Supabase o validar, por isso um token inventado nunca a encontra.
+ * 30 s: terminar sessão ou sair da equipa demora no máximo isso a valer na API.
+ */
+const VERIFY_TTL_MS = 30_000;
+const VERIFY_MAX = 500;
+const verified = new Map<string, { at: number; value: Promise<Verified | null> }>();
+
+function verifyOnce(token: string, verify: () => Promise<Verified | null>): Promise<Verified | null> {
+  const now = Date.now();
+  const hit = verified.get(token);
+  if (hit && now - hit.at < VERIFY_TTL_MS) return hit.value;
+  if (verified.size >= VERIFY_MAX) {
+    for (const [k, v] of verified) if (now - v.at >= VERIFY_TTL_MS) verified.delete(k);
+    if (verified.size >= VERIFY_MAX) verified.clear();
+  }
+  const value = verify().catch((error: unknown) => {
+    verified.delete(token);
+    throw error;
+  });
+  verified.set(token, { at: now, value });
+  // Um token recusado (ou ainda sem workspace) não fica guardado.
+  void value.then(
+    (v) => {
+      if (!v || !v.memberships.length) verified.delete(token);
+    },
+    () => undefined,
+  );
+  return value;
+}
+
+/** Esquece as verificações guardadas (ex.: ao terminar a sessão ou mudar a equipa). */
+export function forgetVerifiedSessions(): void {
+  verified.clear();
+}
+
 export async function getApiContext(req: Request): Promise<ApiContext> {
   const authorization = req.headers.get('authorization');
   let supabase: SupabaseClient;
   let authMethod: ApiContext['authMethod'];
-  let user: { id: string; email?: string | null; factors?: { status: string }[] | null } | null;
   let accessToken: string | null = null;
 
   if (authorization?.toLowerCase().startsWith('bearer ')) {
     const token = authorization.slice(7).trim();
     if (token.startsWith('vnd_')) return getTokenContext(req, token);
     supabase = createSupabaseBearerClient(token);
-    const { data, error } = await supabase.auth.getUser(token);
-    if (error || !data.user) throw UNAUTHORIZED();
-    user = data.user;
     accessToken = token;
     authMethod = 'bearer';
   } else {
     assertSameOrigin(req);
     supabase = await createSupabaseServerClient();
-    const { data } = await supabase.auth.getUser();
-    user = data.user;
-    // O token já foi validado pelo getUser (só se lê o nível de verificação).
-    if (user) accessToken = (await supabase.auth.getSession()).data.session?.access_token ?? null;
+    // Lido dos cookies (sem ida à rede; renova o token se tiver expirado). Só serve de
+    // chave: a validação é o getUser abaixo.
+    accessToken = (await supabase.auth.getSession()).data.session?.access_token ?? null;
     authMethod = 'session';
   }
-  if (!user) throw UNAUTHORIZED();
-  // Verificação em dois passos ligada: sem o código, a API não responde.
-  if (needsMfaCode(user, accessToken)) {
-    throw new ApiError(401, 'Falta o código de verificação', 'Escreve o código da app de autenticação para continuar.', { code: MFA_REQUIRED });
-  }
+  if (!accessToken) throw UNAUTHORIZED();
+  const client = supabase;
+  const token = accessToken;
+  const result = await verifyOnce(token, async () => {
+    const { data, error } = await client.auth.getUser(token);
+    if (error || !data.user) return null;
+    // Verificação em dois passos ligada: sem o código, a API não responde.
+    if (needsMfaCode(data.user, token)) throw MFA_ERROR();
+    // Workspaces de que o utilizador é membro (o pedido escolhe com X-Workspace-Id).
+    const { data: memberships, error: membershipError } = await client
+      .from('workspace_members')
+      .select('workspace_id, role, created_at')
+      .eq('user_id', data.user.id)
+      .order('created_at', { ascending: true });
+    if (membershipError) throw new ApiError(500, 'Erro interno', 'Não foi possível carregar o workspace.');
+    return { user: { id: data.user.id, email: data.user.email ?? null }, memberships: (memberships ?? []) as Membership[] };
+  });
+  if (!result) throw UNAUTHORIZED();
 
   // Workspace: o indicado em X-Workspace-Id ou o primeiro de que o utilizador é membro.
   const requested = req.headers.get('x-workspace-id');
-  const { data: memberships, error } = await supabase
-    .from('workspace_members')
-    .select('workspace_id, role, created_at')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: true });
-  if (error) throw new ApiError(500, 'Erro interno', 'Não foi possível carregar o workspace.');
-  const membership = requested
-    ? memberships?.find((m) => m.workspace_id === requested)
-    : memberships?.[0];
+  const membership = requested ? result.memberships.find((m) => m.workspace_id === requested) : result.memberships[0];
   if (!membership) {
     throw new ApiError(403, 'Sem workspace', 'Este utilizador não pertence a nenhum workspace.');
   }
 
   return {
     supabase,
-    user: { id: user.id, email: user.email ?? null },
-    workspaceId: membership.workspace_id as string,
+    user: result.user,
+    workspaceId: membership.workspace_id,
     role: membership.role as MemberRole,
     authMethod,
   };
 }
+
+const MFA_ERROR = () =>
+  new ApiError(401, 'Falta o código de verificação', 'Escreve o código da app de autenticação para continuar.', { code: MFA_REQUIRED });
 
 const INVALID_TOKEN = () =>
   new ApiError(401, 'Token inválido', 'O token não existe, foi revogado ou expirou. Cria um novo nas Definições.');

@@ -26,10 +26,18 @@ function shownIds(): string[] {
 export function ReminderWatcher() {
   const router = useRouter();
   const [now, setNow] = useState(() => Date.now());
+  // Só uns segundos depois de abrir: a página carrega primeiro os seus dados (no
+  // Dashboard o "Hoje" já vem com eles e esta lista reaproveita-o).
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const id = window.setTimeout(() => setReady(true), 5000);
+    return () => window.clearTimeout(id);
+  }, []);
   const { data } = useQuery({
     queryKey: ['today'],
     queryFn: () => api<{ data: Today }>('/dashboard/today').then((r) => r.data),
     refetchInterval: 60_000,
+    enabled: ready,
   });
 
   // Reavalia a cada 20 s (o lembrete pode chegar à hora entre duas atualizações).

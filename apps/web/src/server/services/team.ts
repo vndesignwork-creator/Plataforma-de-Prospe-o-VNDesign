@@ -23,7 +23,7 @@ import {
   type TeamStats,
 } from '@vndesign/core';
 import { selectAllPages } from '../batch';
-import type { ApiContext } from '../context';
+import { forgetVerifiedSessions, type ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
 import { isMailConfigured, sendMail, sendWithAccount } from '../mailer';
 import { requestOrigin } from '../request-origin';
@@ -155,6 +155,7 @@ export async function updateTeamMember(ctx: ApiContext, userId: string, role: In
   if (userId === ctx.user.id) throw new ApiError(422, 'És tu', 'Não podes mudar o teu próprio papel.');
   const { error } = await createSupabaseAdminClient().from('workspace_members').update({ role }).eq('workspace_id', ctx.workspaceId).eq('user_id', userId);
   if (error) throw fromPostgrest(error);
+  forgetVerifiedSessions(); // o papel novo vale já na API
 }
 
 /** Remove da equipa (perde logo o acesso). Os leads dele ficam sem responsável. */
@@ -167,6 +168,7 @@ export async function removeTeamMember(ctx: ApiContext, userId: string): Promise
   const admin = createSupabaseAdminClient();
   const { error } = await admin.from('workspace_members').delete().eq('workspace_id', ctx.workspaceId).eq('user_id', userId);
   if (error) throw fromPostgrest(error);
+  forgetVerifiedSessions(); // perde o acesso à API logo
   await admin.from('leads').update({ assigned_to: null }).eq('workspace_id', ctx.workspaceId).eq('assigned_to', userId);
 }
 
@@ -206,6 +208,7 @@ async function join(row: InviteRow, userId: string, name: string, email: string)
   const admin = createSupabaseAdminClient();
   const { error } = await admin.from('workspace_members').upsert({ workspace_id: row.workspace_id, user_id: userId, role: row.role }, { onConflict: 'workspace_id,user_id' });
   if (error) throw fromPostgrest(error);
+  forgetVerifiedSessions(); // a equipa nova vale já na API
   const { data: owner } = await admin
     .from('signatures')
     .select('company, website, portfolio_url, design_portfolio_url, project_links')

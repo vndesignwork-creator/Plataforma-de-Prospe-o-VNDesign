@@ -32,7 +32,7 @@ import { buttonClasses } from '@/components/ui/button';
 import { DateMenu } from '@/components/ui/date-menu';
 import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
 import { api, errorMessage } from '@/lib/api-client';
-import { DueChip, ReminderChip } from '@/components/tasks/tasks-card';
+import { DueChip, ReminderChip } from '@/components/tasks/task-chips';
 import { Linkified } from '@/lib/linkify';
 import { useBilling, useDashboard, useProjects, useReschedule, useRole, useSettings, useToday } from '@/lib/queries';
 import { MyTeamTiles } from './team-stats';

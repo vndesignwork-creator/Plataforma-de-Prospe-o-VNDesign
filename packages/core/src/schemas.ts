@@ -30,8 +30,7 @@ import { DEFAULT_QUOTE_SETTINGS, QuoteSettingsSchema } from './quote';
 import { TodayMeetingSchema } from './projects';
 import { TodayTasksSchema } from './tasks';
 
-// Mensagens genéricas de validação em português (as específicas estão em cada campo).
-z.config(z.locales.pt());
+import './zod-setup';
 
 /** Etiquetas sem repetidas (maiúsculas/acentos contam como iguais; fica a primeira escrita). */
 export function normalizeTags(list: readonly string[]): string[] {

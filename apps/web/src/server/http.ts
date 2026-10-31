@@ -2,6 +2,7 @@
  * Utilitários HTTP da API /api/v1: erros no formato problem+json (RFC 9457),
  * validação com Zod e um "wrapper" que trata autenticação e erros.
  */
+import { gzipSync } from 'node:zlib';
 import type { PostgrestError } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import type { ApiTokenScope } from '@vndesign/core';
@@ -151,7 +152,7 @@ export function apiRoute<P extends RouteParams = RouteParams>(handler: Handler<P
       const ctx = await getApiContext(req);
       assertTokenScope(ctx, options.token);
       const params = await segment.params;
-      if (ctx.role !== 'prospector') return await handler(req, ctx, params);
+      if (ctx.role !== 'prospector') return await compressJson(req, await handler(req, ctx, params));
       // Equipa de prospeção: só a parte comercial, e sem valores.
       const path = new URL(req.url).pathname.replace(/^\/api\/v1/, '');
       if (!prospectorAllowed(req.method, path)) {
@@ -160,11 +161,31 @@ export function apiRoute<P extends RouteParams = RouteParams>(handler: Handler<P
       const res = await handler(req, ctx, params);
       if (!res.headers.get('content-type')?.includes('application/json')) return res;
       const body = scrubForProspector(await res.json());
-      return NextResponse.json(body, { status: res.status, headers: res.headers });
+      return await compressJson(req, NextResponse.json(body, { status: res.status, headers: res.headers }));
     } catch (error) {
       return handleError(error);
     }
   };
+}
+
+/**
+ * Respostas JSON com mais de 1 KB vão comprimidas (gzip) quando o browser aceita: o
+ * servidor do Next não comprime as respostas da API e as listas (leads, modelos, linha
+ * do tempo) ficam 5–10× mais pequenas. Se o alojamento também comprimir, vê o
+ * Content-Encoding e não volta a comprimir.
+ */
+const COMPRESS_MIN_BYTES = 1024;
+
+async function compressJson(req: Request, res: Response): Promise<Response> {
+  if (!res.body || res.headers.has('content-encoding') || !res.headers.get('content-type')?.includes('json')) return res;
+  if (!/\bgzip\b/i.test(req.headers.get('accept-encoding') ?? '')) return res;
+  const raw = Buffer.from(await res.arrayBuffer());
+  const headers = new Headers(res.headers);
+  headers.append('vary', 'Accept-Encoding');
+  if (raw.length < COMPRESS_MIN_BYTES) return new Response(raw, { status: res.status, statusText: res.statusText, headers });
+  headers.set('content-encoding', 'gzip');
+  headers.delete('content-length');
+  return new Response(gzipSync(raw), { status: res.status, statusText: res.statusText, headers });
 }
 
 export function handleError(error: unknown): Response {
