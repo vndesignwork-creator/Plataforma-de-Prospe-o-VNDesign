@@ -6,6 +6,7 @@
  *   3. commitImport  — grava (de forma atómica) e guarda o relatório.
  */
 import {
+  emailCheckWarning,
   MAX_IMPORT_ROWS,
   detectHeaderRow,
   findBatchDuplicates,
@@ -22,6 +23,7 @@ import {
 import ExcelJS from 'exceljs';
 import Papa from 'papaparse';
 import type { ApiContext } from '../context';
+import { checkEmailDomain } from '../email-check';
 import { ApiError, fromPostgrest } from '../http';
 import { listSectors } from './sectors';
 import { loadServiceCatalog } from './service-catalog';
@@ -158,6 +160,30 @@ export async function lookupConflicts(
   return { dups: (dups.data ?? []) as DupRow[], dnc: (dnc.data ?? []) as DncRow[] };
 }
 
+/** Domínios a verificar na pré-visualização (o resto fica sem verificação; nada é bloqueado). */
+const MAX_EMAIL_DOMAINS = 300;
+const EMAIL_CHECK_CONCURRENCY = 12;
+
+/**
+ * Os emails das linhas: o domínio existe e recebe emails? Um aviso por linha com
+ * problema (o mesmo do formulário do lead). Cada domínio é verificado uma vez.
+ */
+async function emailWarnings(emails: (string | null)[]): Promise<(string | null)[]> {
+  const domainOf = (e: string) => e.trim().toLowerCase().split('@')[1] ?? '';
+  const domains = [...new Set(emails.flatMap((e) => (e && e.includes('@') ? [domainOf(e)] : [])))].slice(0, MAX_EMAIL_DOMAINS);
+  const results = new Map<string, string | null>();
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(EMAIL_CHECK_CONCURRENCY, domains.length) }, async () => {
+      while (next < domains.length) {
+        const domain = domains[next++]!;
+        results.set(domain, emailCheckWarning(await checkEmailDomain(`x@${domain}`).catch(() => null)));
+      }
+    }),
+  );
+  return emails.map((e) => (e && e.includes('@') ? (results.get(domainOf(e)) ?? null) : null));
+}
+
 export async function previewImport(
   ctx: ApiContext,
   input: { rows: string[][]; mapping: ImportTarget[] },
@@ -167,7 +193,7 @@ export async function previewImport(
   const leads = mapped.map((m) => (m?.ok ? m.value.lead : null));
   const inFile = findBatchDuplicates(leads);
   const probes = leads.map((l) => (l ? { company_name: l.company_name, website: l.website ?? null, email: l.email ?? null } : {}));
-  const { dups, dnc } = await lookupConflicts(ctx, probes);
+  const [{ dups, dnc }, mailWarnings] = await Promise.all([lookupConflicts(ctx, probes), emailWarnings(leads.map((l) => l?.email ?? null))]);
 
   const rows: ImportPreviewRow[] = mapped.map((m, index) => {
     const duplicates = dups
@@ -193,7 +219,7 @@ export async function previewImport(
       status: 'ok',
       lead: m.value.lead as Record<string, unknown>,
       number: m.value.number,
-      warnings: m.value.warnings,
+      warnings: mailWarnings[index] ? [...m.value.warnings, mailWarnings[index]] : m.value.warnings,
       errors: [],
       suggested_action: blocked || strong || base.in_file_duplicate_of !== null ? 'skip' : 'create',
       blocked,
@@ -211,6 +237,7 @@ export async function previewImport(
       blocked: ok.filter((r) => r.blocked).length,
       invalid: rows.filter((r) => r.status === 'invalid').length,
       duplicates: ok.filter((r) => r.duplicates.some((d) => d.strength === 'strong') || r.in_file_duplicate_of !== null).length,
+      bad_emails: mailWarnings.filter((w, i) => w && rows[i]?.status === 'ok').length,
     },
   };
 }

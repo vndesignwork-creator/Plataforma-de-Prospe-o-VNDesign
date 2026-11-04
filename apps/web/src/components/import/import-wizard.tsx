@@ -60,6 +60,9 @@ function Stepper({ step }: { step: Step }) {
   );
 }
 
+/** O aviso do email (o domínio não existe ou não recebe emails), vindo do servidor. */
+const isEmailWarning = (w: string) => w.startsWith('O domínio “');
+
 function defaultChoice(row: ImportPreviewRow): Choice {
   return row.suggested_action === 'create' ? 'create' : 'skip';
 }
@@ -425,6 +428,11 @@ export function ImportWizard() {
             {preview.summary.duplicates ? <Badge tone="warning">{preview.summary.duplicates} duplicados</Badge> : null}
             {preview.summary.blocked ? <Badge tone="danger">{preview.summary.blocked} na lista “não contactar”</Badge> : null}
             {preview.summary.invalid ? <Badge tone="danger">{preview.summary.invalid} inválidas</Badge> : null}
+            {preview.summary.bad_emails ? (
+              <Badge tone="warning">
+                {preview.summary.bad_emails} email{preview.summary.bad_emails === 1 ? '' : 's'} que não recebe{preview.summary.bad_emails === 1 ? '' : 'm'}
+              </Badge>
+            ) : null}
           </div>
           <div className="relative max-h-[60dvh] overflow-auto">
             <table className="w-full text-sm">
@@ -476,15 +484,23 @@ export function ImportWizard() {
                               Repetido no ficheiro (linha {analysis.header_row + 2 + r.in_file_duplicate_of})
                             </span>
                           ) : null}
-                          {r.warnings.length ? (
+                          {/* Email que não recebe: à vista (os outros avisos ficam recolhidos). */}
+                          {r.warnings.filter(isEmailWarning).map((w) => (
+                            <span key={w} className="flex items-center gap-1 text-warning">
+                              <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden /> {w}
+                            </span>
+                          ))}
+                          {r.warnings.some((w) => !isEmailWarning(w)) ? (
                             <details className="text-muted">
                               <summary className="cursor-pointer">
-                                {r.warnings.length} aviso{r.warnings.length === 1 ? '' : 's'}
+                                {r.warnings.filter((w) => !isEmailWarning(w)).length} aviso{r.warnings.filter((w) => !isEmailWarning(w)).length === 1 ? '' : 's'}
                               </summary>
                               <ul className="mt-1 list-disc pl-5 text-xs">
-                                {r.warnings.map((w, i) => (
-                                  <li key={i}>{w}</li>
-                                ))}
+                                {r.warnings
+                                  .filter((w) => !isEmailWarning(w))
+                                  .map((w, i) => (
+                                    <li key={i}>{w}</li>
+                                  ))}
                               </ul>
                             </details>
                           ) : null}

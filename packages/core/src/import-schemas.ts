@@ -65,6 +65,7 @@ export const ImportPreviewSchema = z
       blocked: z.int(),
       invalid: z.int(),
       duplicates: z.int(),
+      bad_emails: z.int().optional().meta({ description: 'Linhas com um email cujo domínio não existe ou não recebe emails' }),
     }),
   })
   .meta({ id: 'ImportPreview' });
