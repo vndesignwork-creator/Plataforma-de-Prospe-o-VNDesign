@@ -73,7 +73,8 @@ export function describeNotification(n: Input, actor: string | null): Notificati
       else [label, tone, action] = ['Lembrete', 'accent', n.task_id ? 'task' : null];
       break;
     case 'daily':
-      [label, tone] = ['Para hoje', 'accent'];
+      // O aviso semanal dos leads a arrefecer também é um resumo.
+      [label, tone] = raw.startsWith('🧊') ? ['A arrefecer', 'info'] : ['Para hoje', 'accent'];
       break;
     case 'reply':
       if (raw.startsWith('📭') || /devolvido/i.test(raw)) [label, tone, icon] = ['Email devolvido', 'danger', 'bounce'];
@@ -92,7 +93,7 @@ export function describeNotification(n: Input, actor: string | null): Notificati
       [label, tone] = ['Pedido pelo site', 'violet'];
       break;
     case 'client':
-      [label, tone] = ['Cliente', 'violet'];
+      [label, tone] = raw.startsWith('📨') ? ['Ponto de situação', 'violet'] : ['Cliente', 'violet'];
       break;
     default:
       [label, tone] = ['Plataforma', 'muted'];
