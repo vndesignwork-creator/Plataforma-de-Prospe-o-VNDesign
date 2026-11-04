@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { TaskSearchQuerySchema, TimeEntryCreateSchema, projectMatches, reorderSubset, sortProjects, timeByTask } from '../src';
 
 const today = '2026-10-23';
-const project = (id: string, due: string | null, extra: { overdue?: number; value?: number | null; stage?: 'briefing' | 'producao' | 'revisoes' | 'entrega' } = {}) => ({
-  lead: { id } as never,
+const project = (
+  id: string,
+  due: string | null,
+  extra: { overdue?: number; value?: number | null; stage?: 'briefing' | 'producao' | 'revisoes' | 'entrega'; since?: string; number?: number } = {},
+) => ({
+  lead: { id, number: extra.number ?? 1, status_changed_at: extra.since ?? '2026-10-01T10:00:00Z', created_at: '2026-09-01T10:00:00Z', client_of: null } as never,
   info: { due_on: due, stage: extra.stage ?? 'producao' } as never,
   payments: { total: 0, paid: 0, outstanding: 0, overdue: extra.overdue ?? 0, overdue_count: 0 },
   value: extra.value ?? null,
@@ -30,10 +34,18 @@ describe('filtros e ordem dos Projetos', () => {
     expect(ids(sortProjects([none, later, week, late], 'fase'))).toEqual(['c', 'a', 'b', 'd']);
   });
 
-  it('a minha ordem (arrastar): os que não estão na ordem guardada ficam no fim, pelo prazo', () => {
+  it('a minha ordem (arrastar): os projetos novos (fora da ordem guardada) entram em cima', () => {
     const ids = (list: { lead: unknown }[]) => list.map((p) => (p.lead as { id: string }).id);
-    expect(ids(sortProjects([none, later, week, late], 'manual', ['c', 'a']))).toEqual(['c', 'a', 'b', 'd']);
-    expect(ids(sortProjects([none, later, week, late], 'manual'))).toEqual(['a', 'b', 'c', 'd']);
+    const fresh = project('n', null, { since: '2026-10-22T09:00:00Z', number: 50 });
+    expect(ids(sortProjects([late, week, fresh], 'manual', ['b', 'a']))).toEqual(['n', 'b', 'a']);
+  });
+
+  it('mais recentes: o projeto que passou a cliente há menos tempo primeiro', () => {
+    const ids = (list: { lead: unknown }[]) => list.map((p) => (p.lead as { id: string }).id);
+    const old = project('o', '2026-10-25', { since: '2026-09-10T09:00:00Z', number: 3 });
+    const mid = project('m', null, { since: '2026-10-05T09:00:00Z', number: 9 });
+    const fresh = project('n', '2027-01-01', { since: '2026-10-22T09:00:00Z', number: 12 });
+    expect(ids(sortProjects([old, fresh, mid], 'recentes'))).toEqual(['n', 'm', 'o']);
   });
 
   it('arrastar numa lista filtrada mexe só nos projetos que se veem', () => {

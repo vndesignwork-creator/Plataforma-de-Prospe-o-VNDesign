@@ -228,6 +228,10 @@ test('Projetos: mover os blocos (pega ⠿) passa a "A minha ordem" e fica guarda
     const names = await list.getByRole('button', { name: /^Mover o projeto/ }).evaluateAll((els) => els.map((e) => e.getAttribute('aria-label') ?? ''));
     return names.findIndex((n) => n.includes(`Bloco A ${run}`)) < names.findIndex((n) => n.includes(`Bloco B ${run}`)) ? 'A,B' : 'B,A';
   };
+  // Por omissão: os mais recentes em cima (B foi criado depois de A).
+  await expect(page.getByLabel('Ordenar por')).toHaveValue('recentes');
+  await expect.poll(order).toBe('B,A');
+  await page.getByLabel('Ordenar por').selectOption('prazo');
   await expect.poll(order).toBe('A,B');
 
   // Teclado: Espaço, seta para cima, Espaço.

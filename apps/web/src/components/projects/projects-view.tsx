@@ -60,7 +60,8 @@ const VIEWS = [
   { value: 'calendar', label: 'Calendário', icon: CalendarDays },
 ] as const;
 const VIEW_KEY = 'vnd.projects.view';
-const SORT_KEY = 'vnd.projects.sort';
+// v2: a ordem por omissão passou a "Mais recentes" (os projetos novos em cima).
+const SORT_KEY = 'vnd.projects.sort.v2';
 
 const norm = (t: string) => t.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 
@@ -111,7 +112,7 @@ export function ProjectsView() {
   const [today] = useState(() => todayIso());
   const [wrapUp, setWrapUp] = useState<Lead | null>(null);
   const [filter, setFilter] = useState<ProjectFilter>('todos');
-  const [sort, setSort] = useState<ProjectSort>('prazo');
+  const [sort, setSort] = useState<ProjectSort>('recentes');
   const [search, setSearch] = useState('');
   // Contagens dos separadores (os concluídos só para o número).
   const { data: completedList } = useProjects('completed');

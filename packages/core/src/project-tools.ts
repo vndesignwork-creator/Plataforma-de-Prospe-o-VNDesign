@@ -620,9 +620,15 @@ export const PROJECT_FILTER_LABELS: Record<ProjectFilter, string> = {
   semana: 'Entregam esta semana',
 };
 
-export const PROJECT_SORTS = ['prazo', 'valor', 'fase', 'manual'] as const;
+export const PROJECT_SORTS = ['recentes', 'prazo', 'valor', 'fase', 'manual'] as const;
 export type ProjectSort = (typeof PROJECT_SORTS)[number];
-export const PROJECT_SORT_LABELS: Record<ProjectSort, string> = { prazo: 'Prazo', valor: 'Valor', fase: 'Fase', manual: 'A minha ordem' };
+export const PROJECT_SORT_LABELS: Record<ProjectSort, string> = {
+  recentes: 'Mais recentes',
+  prazo: 'Prazo',
+  valor: 'Valor',
+  fase: 'Fase',
+  manual: 'A minha ordem',
+};
 /** "A minha ordem" (arrastar os projetos): ids pela ordem escolhida, guardados na conta. */
 export const PROJECTS_ORDER_PREFERENCE = 'projects.order';
 
@@ -637,17 +643,23 @@ export function projectMatches<P extends Filterable>(p: P, filter: ProjectFilter
   return true;
 }
 
+/** Quando o projeto começou: o lead passou a Cliente (ou, num projeto extra, foi criado). */
+const projectStart = (p: Filterable) => (p.lead.client_of ? p.lead.created_at : (p.lead.status_changed_at ?? p.lead.created_at)) ?? '';
+
 /**
- * Ordena: prazo (sem prazo no fim), valor (maior primeiro), fase (Entrega primeiro, depois prazo)
- * ou "a minha ordem" (a que se arrastou; os projetos novos ficam no fim, pelo prazo).
+ * Ordena: mais recentes (os projetos novos em cima), prazo (sem prazo no fim), valor (maior
+ * primeiro), fase (Entrega primeiro, depois prazo) ou "a minha ordem" (a que se arrastou; os
+ * projetos novos, que ainda não estão nela, entram em cima, o mais recente primeiro).
  */
 export function sortProjects<P extends Filterable>(projects: readonly P[], sort: ProjectSort, manual: readonly string[] = []): P[] {
   const byDue = (a: P, b: P) => (a.info.due_on ?? '9999-12-31').localeCompare(b.info.due_on ?? '9999-12-31');
+  const newest = (a: P, b: P) => projectStart(b).localeCompare(projectStart(a)) || b.lead.number - a.lead.number;
   const list = [...projects];
+  if (sort === 'recentes') return list.sort(newest);
   if (sort === 'manual') {
     const pos = new Map(manual.map((id, i) => [id, i]));
-    const at = (p: P) => pos.get(p.lead.id) ?? Number.MAX_SAFE_INTEGER;
-    return list.sort((a, b) => at(a) - at(b) || byDue(a, b));
+    const at = (p: P) => pos.get(p.lead.id) ?? -1;
+    return list.sort((a, b) => (at(a) === -1 && at(b) === -1 ? newest(a, b) : at(a) - at(b)));
   }
   if (sort === 'valor') return list.sort((a, b) => (b.value ?? -1) - (a.value ?? -1) || byDue(a, b));
   if (sort === 'fase') return list.sort((a, b) => PROJECT_STAGES.indexOf(b.info.stage) - PROJECT_STAGES.indexOf(a.info.stage) || byDue(a, b));
