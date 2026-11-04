@@ -2,7 +2,7 @@
 
 /**
  * Ajuda: um guia curto por secção da plataforma. Abre no guia do endereço
- * (/ajuda#leads), que é para onde aponta o "?" ao lado do título de cada página.
+ * (/ajuda#leads). Abre-se a partir das Definições, da pesquisa rápida e da ajuda do Kanban e da Prospeção.
  */
 import { ArrowRight, Search } from 'lucide-react';
 import Link from 'next/link';
@@ -46,7 +46,16 @@ export function HelpView() {
 
   return (
     <>
-      <PageHeader title="Ajuda" description="Guias curtos de cada parte da plataforma. O “?” ao lado do título de cada página traz aqui." />
+      <PageHeader
+        eyebrow={
+          <Link href="/definicoes" className="hover:text-fg hover:underline">
+            Definições
+          </Link>
+        }
+        title="Ajuda"
+        description="O que é a plataforma e um guia curto de cada parte."
+      />
+      <About />
       <div className="relative mb-4 max-w-md">
         <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
         <Input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Procurar na ajuda…" aria-label="Procurar na ajuda" className="pl-9" />
@@ -75,6 +84,42 @@ export function HelpView() {
         <p className="text-sm text-muted">Nada encontrado para “{q}”. Experimenta outra palavra, ou Ctrl K para procurar na plataforma.</p>
       )}
     </>
+  );
+}
+
+/** O que é a plataforma e para que serve (antes dos guias). */
+function About() {
+  const steps = [
+    { title: 'Encontrar', text: 'Importar, criar ou gerar com IA leads de empresas que precisam de um site.' },
+    { title: 'Contactar', text: 'Email, telefone ou WhatsApp com mensagens prontas, numa sessão de prospeção.' },
+    { title: 'Acompanhar', text: 'Follow-ups, respostas e tarefas no dia certo, sem nada esquecido.' },
+    { title: 'Fechar', text: 'Reuniões, diagnóstico do site atual, propostas e contratos.' },
+    { title: 'Entregar', text: 'O projeto do cliente: fases, prazos, pagamentos, horas e entregas.' },
+  ];
+  return (
+    <section aria-labelledby="ajuda-sobre" className="mb-6 rounded-xl border border-border bg-surface p-4 sm:p-5">
+      <h2 id="ajuda-sobre" className="text-lg font-semibold">
+        O que é o VNDesign Leads
+      </h2>
+      <p className="mt-1 text-sm text-muted">
+        É a plataforma de prospeção e gestão de clientes da VNDesign: junta num só sítio tudo o que vai desde encontrar uma empresa que pode precisar de um
+        site novo até entregar o projeto e receber o pagamento.
+      </p>
+      <p className="mt-2 text-sm">
+        <span className="font-medium">O objetivo:</span> <span className="text-muted">conseguir mais clientes com menos trabalho manual — saber sempre quem contactar hoje, não perder nenhum follow-up, perceber o que resulta (e o que não) e acompanhar cada projeto até ao fim.</span>
+      </p>
+      <ol className="mt-4 grid gap-2 sm:grid-cols-5">
+        {steps.map((s, i) => (
+          <li key={s.title} className="rounded-lg bg-surface-2 p-3">
+            <p className="text-sm font-semibold">
+              <span className="mr-1.5 text-accent-text tabular">{i + 1}.</span>
+              {s.title}
+            </p>
+            <p className="mt-1 text-xs text-muted">{s.text}</p>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
 

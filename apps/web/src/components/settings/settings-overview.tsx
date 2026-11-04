@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, CircleHelp } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { useCustomFields } from '@/components/leads/custom-fields';
@@ -187,6 +187,24 @@ export function SettingsOverview() {
           </section>
         );
       })}
+      {/* Os guias da plataforma: o que é, para que serve e como usar cada parte. */}
+      <section aria-labelledby="grupo-ajuda">
+        <h2 id="grupo-ajuda" className="mb-2 text-xs font-medium tracking-wide text-muted uppercase">
+          Ajuda
+        </h2>
+        <Card className="overflow-hidden">
+          <Link href="/ajuda" className="group flex items-center gap-3 bg-surface px-4 py-3 transition-colors hover:bg-surface-2">
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-muted group-hover:text-accent-text">
+              <CircleHelp className="h-4 w-4" aria-hidden />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col gap-1">
+              <span className="text-sm font-medium">Ajuda e guias</span>
+              <span className="text-xs text-muted">O que é a plataforma, para que serve e um guia curto de cada parte.</span>
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted" aria-hidden />
+          </Link>
+        </Card>
+      </section>
     </div>
   );
 }

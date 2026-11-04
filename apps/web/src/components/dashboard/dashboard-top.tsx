@@ -66,7 +66,6 @@ export function DashboardHeader({ organize }: { organize?: ReactNode }) {
         ) : undefined
       }
       title="Dashboard"
-      help="dashboard"
       description={
         !today ? (
           'O que há para fazer hoje e como está o pipeline.'

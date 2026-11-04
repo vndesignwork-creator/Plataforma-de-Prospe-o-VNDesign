@@ -11,7 +11,6 @@ export default function ImportPage() {
       <PageHeader
         eyebrow={<Breadcrumbs items={[{ label: 'Leads', href: '/leads' }]} />}
         title="Importar leads"
-        help="importar"
         description="CSV ou Excel — incluindo a tua folha “Leads_Prospeccao_VNDesign”. Os duplicados são detetados antes de gravar."
       />
       <ImportWizard />

@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  CircleHelp,
   Ban,
   BellRing,
   Building2,
@@ -274,6 +275,20 @@ export function SettingsNav() {
               </div>
             );
           })}
+          {/* Os guias da plataforma (página /ajuda). */}
+          <div>
+            <p className="mb-1.5 px-1 text-xs font-medium tracking-wide text-muted uppercase">Ajuda</p>
+            <ul className="flex flex-col gap-0.5 rounded-xl border border-border bg-surface p-1.5 text-sm">
+              <li>
+                <Link href="/ajuda" className="flex min-h-10 items-center gap-2.5 rounded-lg px-2 transition-colors hover:bg-surface-2">
+                  <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-muted">
+                    <CircleHelp className="h-3.5 w-3.5" aria-hidden />
+                  </span>
+                  <span className="truncate">Ajuda e guias</span>
+                </Link>
+              </li>
+            </ul>
+          </div>
         </div>
       </nav>
     </>

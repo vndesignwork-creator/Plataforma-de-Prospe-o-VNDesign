@@ -1,6 +1,6 @@
 /**
- * Guias da página Ajuda (/ajuda): um por secção da plataforma. O "?" ao lado do
- * título de cada página leva a /ajuda#<id>.
+ * Guias da página Ajuda (/ajuda, aberta a partir das Definições): um por secção
+ * da plataforma; /ajuda#<id> abre logo esse guia.
  */
 export interface HelpGuide {
   id: string;

@@ -394,7 +394,7 @@ export function LeadGenerator({ initialRunId }: { initialRunId?: string | null }
 
   return (
     <>
-      <PageHeader help="gerar-leads" title="Gerar leads" description={<GeneratorSummary runs={runs} prospector={prospector} />} />
+      <PageHeader title="Gerar leads" description={<GeneratorSummary runs={runs} prospector={prospector} />} />
       <div className="flex flex-col gap-5">
         {prospector ? <Allowance /> : null}
         <SearchForm draft={draft} setDraft={setDraft} ideas={searchIdeas(runs)} onStarted={(run) => openRun(run.id)} busy={!!running} prospector={prospector} />

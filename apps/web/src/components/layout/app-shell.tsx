@@ -122,10 +122,6 @@ function SidebarFooter({ email }: { email: string | null }) {
         <Settings className="h-4 w-4 shrink-0 text-muted group-hover:text-fg" aria-hidden />
       </Link>
       <div className="flex flex-col">
-        <Link href="/ajuda" className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-muted hover:bg-surface-2 hover:text-fg">
-          <CircleHelp className="h-4 w-4 shrink-0" aria-hidden />
-          Ajuda
-        </Link>
         <button
           type="button"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}

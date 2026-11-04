@@ -9,7 +9,6 @@ export default function ScriptsPage() {
     <>
       <PageHeader
         title="Scripts"
-        help="scripts"
         description="Mensagens prontas que se preenchem com os dados de cada lead."
       />
       <TemplateLibrary />

@@ -58,7 +58,7 @@ export function StatsView() {
   if (role === 'prospector') {
     return (
       <>
-        <PageHeader help="estatisticas" title="Estatísticas" description="O teu trabalho de prospeção." />
+        <PageHeader title="Estatísticas" description="O teu trabalho de prospeção." />
         <TeamStatsSection />
       </>
     );
@@ -156,7 +156,6 @@ function OwnerStats() {
   const header = (
     <PageHeader
       title="Estatísticas"
-      help="estatisticas"
       description={
         t && t.total
           ? `${t.total.toLocaleString('pt-PT')} leads · ${formatPercent(t.conversion_rate)} de conversão · ${euros(t.value_won)} ganhos · ${euros(t.value_pipeline)} em pipeline`

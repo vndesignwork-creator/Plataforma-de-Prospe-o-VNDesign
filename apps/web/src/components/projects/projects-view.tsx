@@ -267,7 +267,7 @@ export function ProjectsView() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader help="projetos" title="Projetos" description={<ProjectsSummary projects={view === 'list' && state === 'completed' ? undefined : projects} today={today} />} />
+      <PageHeader title="Projetos" description={<ProjectsSummary projects={view === 'list' && state === 'completed' ? undefined : projects} today={today} />} />
 
       {/* Números do mês numa faixa baixa; os que levam a projetos filtram a lista. Organizam-se como no Dashboard. */}
       {showPayments && billing ? (
