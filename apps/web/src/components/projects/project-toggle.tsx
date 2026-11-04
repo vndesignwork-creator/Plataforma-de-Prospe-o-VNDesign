@@ -7,7 +7,7 @@
  * (mensagem pronta por WhatsApp ou email).
  */
 import { useQueryClient } from '@tanstack/react-query';
-import { UPSELL_MONTHS, renderTemplate, templateVariablesIn, type Lead, toPlainText } from '@vndesign/core';
+import { UPSELL_MONTHS, renderTemplate, templateVariablesIn, type Lead, toPlainText, pickTemplateVariant } from '@vndesign/core';
 import { CheckCircle2, MessageCircle, RotateCcw, Star } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -74,7 +74,9 @@ function ReviewRequest({ lead }: { lead: Lead }) {
     );
   }
 
-  const waText = waTemplate ? toPlainText(renderTemplate(waTemplate.body, context).text) : null;
+  const waVersion = waTemplate ? pickTemplateVariant(waTemplate, lead) : null;
+  const emailVersion = emailTemplate ? pickTemplateVariant(emailTemplate, lead) : null;
+  const waText = waVersion ? toPlainText(renderTemplate(waVersion.body, context).text) : null;
   const wa = waText ? whatsappUrl(lead.phone, waText) : null;
   return (
     <div className="flex flex-wrap gap-2">
@@ -83,7 +85,7 @@ function ReviewRequest({ lead }: { lead: Lead }) {
           href={wa}
           target="_blank"
           rel="noreferrer"
-          onClick={() => log.mutate({ type: 'template_used', payload: { template: waTemplate.name, template_id: waTemplate.id, via: 'whatsapp' } })}
+          onClick={() => log.mutate({ type: 'template_used', payload: { template: waVersion?.name ?? waTemplate.name, template_id: waTemplate.id, via: 'whatsapp' } })}
           className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-border-strong px-3 py-1 text-sm hover:bg-surface-2 pointer-coarse:min-h-10"
         >
           <MessageCircle className="h-3.5 w-3.5" aria-hidden /> Pedir por WhatsApp
@@ -92,9 +94,9 @@ function ReviewRequest({ lead }: { lead: Lead }) {
       {emailTemplate && lead.email ? (
         <SendEmailButton
           lead={lead}
-          subject={renderTemplate(emailTemplate.subject, context).text}
-          body={renderTemplate(emailTemplate.body, context).text}
-          template={emailTemplate.name}
+          subject={renderTemplate(emailVersion!.subject, context).text}
+          body={renderTemplate(emailVersion!.body, context).text}
+          template={emailVersion!.name}
           label="Pedir por email"
           variant="outline"
         />

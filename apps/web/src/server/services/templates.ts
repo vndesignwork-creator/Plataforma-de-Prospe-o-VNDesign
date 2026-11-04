@@ -1,5 +1,6 @@
 import {
   buildTemplateContext,
+  pickTemplateVariant,
   renderTemplate,
   todayIso,
   type ContactTemplate,
@@ -13,9 +14,10 @@ import { loadServiceCategories } from './service-categories';
 import { getSignature, getSettings } from './workspace';
 import { listVisibilityChecks } from './ai-visibility';
 
-const TEMPLATE_SELECT = 'id, kind, name, subject, body, sector_id, category, is_default, sort_order, updated_at';
-// Antes da migração 20261023000100 (sem categoria): continua a funcionar.
-const LEGACY_SELECT = TEMPLATE_SELECT.replace(' category,', '');
+const TEMPLATE_SELECT = 'id, kind, name, subject, body, subject_b, body_b, sector_id, category, is_default, sort_order, updated_at';
+// Antes da migração 20261108002100 (sem versão B) e da 20261023000100 (sem categoria): continua a funcionar.
+const NO_AB_SELECT = TEMPLATE_SELECT.replace(' subject_b, body_b,', '');
+const LEGACY_SELECT = NO_AB_SELECT.replace(' category,', '');
 const missingColumn = (error: { code?: string } | null) => error?.code === '42703';
 const withCategory = (t: Omit<ContactTemplate, 'category'> & { category?: string | null }): ContactTemplate => ({
   ...t,
@@ -27,6 +29,7 @@ export async function listTemplates(ctx: ApiContext): Promise<ContactTemplate[]>
   const query = (select: string) =>
     ctx.supabase.from('contact_templates').select(select).eq('workspace_id', ctx.workspaceId).order('sort_order').order('name');
   let { data, error } = await query(TEMPLATE_SELECT);
+  if (missingColumn(error)) ({ data, error } = await query(NO_AB_SELECT));
   if (missingColumn(error)) ({ data, error } = await query(LEGACY_SELECT));
   if (error) throw fromPostgrest(error);
   return ((data ?? []) as unknown as ContactTemplate[]).map(withCategory);
@@ -36,6 +39,7 @@ export async function getTemplate(ctx: ApiContext, id: string): Promise<ContactT
   const query = (select: string) =>
     ctx.supabase.from('contact_templates').select(select).eq('workspace_id', ctx.workspaceId).eq('id', id).maybeSingle();
   let result = await query(TEMPLATE_SELECT);
+  if (missingColumn(result.error)) result = await query(NO_AB_SELECT);
   if (missingColumn(result.error)) result = await query(LEGACY_SELECT);
   return withCategory(unwrap(result, NOT_FOUND) as unknown as ContactTemplate);
 }
@@ -116,10 +120,13 @@ export async function renderForLead(
     reviewUrl: settings.google_review_url,
     aiVisibility: checks.find((c) => c.status === 'done')?.summary ?? null,
   });
-  const subject = renderTemplate(input.subject ?? template?.subject ?? '', context);
-  const body = renderTemplate(input.body ?? template?.body ?? '', context);
+  // Modelo com versão B: A ou B conforme o lead (sempre a mesma para o mesmo lead).
+  const version = template ? pickTemplateVariant(template, lead) : null;
+  const subject = renderTemplate(input.subject ?? version?.subject ?? '', context);
+  const body = renderTemplate(input.body ?? version?.body ?? '', context);
   return {
     template_id: template?.id ?? null,
+    template_name: version?.name ?? null,
     subject: subject.text,
     body: body.text,
     missing: [...new Set([...subject.missing, ...body.missing])],

@@ -10,7 +10,7 @@
  * arrumada ("Olá {{contacto}}," → "Olá,").
  */
 import { TIME_ZONE, addDays, formatDate } from './format';
-import { isRichHtml, richInline } from './rich-text';
+import { isRichHtml, richInline, toPlainText } from './rich-text';
 import {
   DEFAULT_SERVICE_CATEGORIES,
   DEFAULT_SERVICES,
@@ -326,4 +326,39 @@ export function planNextFollowUp(
 export function replySubject(subject: string): string {
   const clean = subject.replace(/^(\s*(re|res|fw|fwd|enc)\s*:\s*)+/i, '').trim();
   return clean ? `Re: ${clean}` : '';
+}
+
+// -----------------------------------------------------------------------------
+// Modelos A/B
+// -----------------------------------------------------------------------------
+export type TemplateVariant = 'A' | 'B';
+
+interface VariantTemplate {
+  name: string;
+  subject: string | null;
+  body: string;
+  subject_b?: string | null;
+  body_b?: string | null;
+}
+
+/** O modelo tem versão B (texto B com conteúdo)? */
+export function hasVariantB(t: Pick<VariantTemplate, 'body_b'>): boolean {
+  return !!t.body_b && toPlainText(t.body_b).trim() !== '';
+}
+
+/**
+ * A versão do modelo para este lead: com versão B, os leads alternam pelo número
+ * (par = A, ímpar = B), por isso o mesmo lead recebe sempre a mesma versão. O nome
+ * leva "(A)"/"(B)" para as estatísticas por modelo compararem as duas.
+ * Sem versão B, devolve o modelo tal como está (variant null).
+ */
+export function pickTemplateVariant(
+  t: VariantTemplate,
+  lead: { number: number } | null | undefined,
+): { name: string; subject: string | null; body: string; variant: TemplateVariant | null } {
+  if (!hasVariantB(t) || !lead) return { name: t.name, subject: t.subject, body: t.body, variant: null };
+  const variant: TemplateVariant = lead.number % 2 === 0 ? 'A' : 'B';
+  if (variant === 'A') return { name: `${t.name} (A)`, subject: t.subject, body: t.body, variant };
+  // Sem assunto B, o assunto é o mesmo (só o texto muda).
+  return { name: `${t.name} (B)`, subject: t.subject_b?.trim() ? t.subject_b : t.subject, body: t.body_b!, variant };
 }

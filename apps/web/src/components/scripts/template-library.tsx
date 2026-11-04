@@ -6,6 +6,7 @@ import {
   ContactTemplateCreateSchema,
   TEMPLATE_KIND_LABELS,
   TEMPLATE_KINDS,
+  hasVariantB,
   isRichHtml,
   renderTemplate,
   richInline,
@@ -15,6 +16,7 @@ import {
   type ContactTemplate,
   type ContactTemplateCreateInput,
   type EmailStats,
+  type EmailTemplateStat,
   type TemplateContext,
   type TemplateKind,
 } from '@vndesign/core';
@@ -22,6 +24,7 @@ import {
   Briefcase,
   ChevronRight,
   Copy,
+  FlaskConical,
   FileText,
   Mail,
   MessageCircle,
@@ -55,7 +58,7 @@ import { TemplateBodyEditor } from './template-body-editor';
 
 type FormOutput = z.output<typeof ContactTemplateCreateSchema>;
 
-const EMPTY: ContactTemplateCreateInput = { kind: 'cold_email', name: '', subject: '', body: '', sector_id: null, category: null };
+const EMPTY: ContactTemplateCreateInput = { kind: 'cold_email', name: '', subject: '', body: '', subject_b: null, body_b: null, sector_id: null, category: null };
 const CHAT_KINDS = new Set<string>(['whatsapp', 'short_message', 'social_dm', 'linkedin']);
 const KIND_ICONS: Record<TemplateKind, LucideIcon> = {
   cold_email: Mail,
@@ -72,7 +75,16 @@ const LEAVE = 'Tens alterações por guardar neste modelo. Sair sem guardar?';
 
 function toForm(t: ContactTemplate | null): ContactTemplateCreateInput {
   if (!t) return EMPTY;
-  return { kind: t.kind, name: t.name, subject: t.subject ?? '', body: t.body, sector_id: t.sector_id, category: t.category };
+  return {
+    kind: t.kind,
+    name: t.name,
+    subject: t.subject ?? '',
+    body: t.body,
+    subject_b: t.subject_b ?? null,
+    body_b: hasVariantB(t) ? (t.body_b ?? null) : null,
+    sector_id: t.sector_id,
+    category: t.category,
+  };
 }
 
 const PLACEHOLDER = /\{\{\s*([a-z_]+)\s*(?:\|([^}]*))?\}\}/gi;
@@ -200,8 +212,13 @@ function Editor({
   useEffect(() => {
     onDirty(isDirty);
   }, [isDirty, onDirty]);
-  const [kind, subject, body] = useWatch({ control, name: ['kind', 'subject', 'body'] });
+  const [kind, subject, body, subjectB, bodyB] = useWatch({ control, name: ['kind', 'subject', 'body', 'subject_b', 'body_b'] });
   const isEmail = EMAIL_KINDS.has(kind);
+  // Teste A/B: ligado quando há texto B (null = desligado).
+  const abOn = bodyB !== null && bodyB !== undefined;
+  const [previewB, setPreviewB] = useState(false);
+  const stats = useTemplateStats();
+  const abStats = template && abOn ? ([stats.get(`${template.name} (A)`), stats.get(`${template.name} (B)`)] as const) : null;
 
   // Email → WhatsApp/chamada: a formatação sai (estas mensagens são só texto).
   const lastKind = useRef(kind);
@@ -210,11 +227,22 @@ function Editor({
     lastKind.current = kind;
     const current = getValues('body') ?? '';
     if (!EMAIL_KINDS.has(kind) && isRichHtml(current)) setValue('body', toPlainText(current), { shouldDirty: true });
+    const currentB = getValues('body_b');
+    if (currentB && !EMAIL_KINDS.has(kind) && isRichHtml(currentB)) setValue('body_b', toPlainText(currentB), { shouldDirty: true });
   }, [kind, getValues, setValue]);
 
   const save = handleSubmit(async (values) => {
     try {
-      const payload = { ...values, subject: isEmail ? values.subject : null };
+      if (abOn && !hasVariantB({ body_b: values.body_b })) {
+        toast.error('Escreve o texto da versão B (ou desliga o teste A/B).');
+        return;
+      }
+      const payload = {
+        ...values,
+        subject: isEmail ? values.subject : null,
+        subject_b: isEmail && abOn ? values.subject_b : null,
+        body_b: abOn ? values.body_b : null,
+      };
       const { data } = template
         ? await api<{ data: ContactTemplate }>(`/templates/${template.id}`, { method: 'PATCH', body: payload })
         : await api<{ data: ContactTemplate }>('/templates', { method: 'POST', body: payload });
@@ -347,9 +375,75 @@ function Editor({
                 </p>
               ) : null}
             </div>
+            {abOn ? (
+              <div className="flex flex-col gap-3 rounded-lg border border-dashed border-border-strong p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <FlaskConical className="h-4 w-4 text-accent-text" aria-hidden />
+                  <p className="flex-1 text-sm font-semibold">Versão B</p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setValue('body_b', null, { shouldDirty: true });
+                      setValue('subject_b', null, { shouldDirty: true });
+                      setPreviewB(false);
+                    }}
+                  >
+                    Desligar o teste
+                  </Button>
+                </div>
+                <p className="-mt-2 text-xs text-muted">
+                  Os leads recebem a versão A ou a B alternadamente (sempre a mesma para o mesmo lead). Nas Estatísticas → Emails aparecem como “{template?.name || 'Modelo'} (A)” e “(B)”.
+                </p>
+                {isEmail ? (
+                  <Field label="Assunto B" hint="Vazio = o mesmo assunto da versão A.">
+                    <Input {...register('subject_b')} placeholder={subject || 'O mesmo assunto da versão A'} />
+                  </Field>
+                ) : null}
+                <div className="flex flex-col gap-1.5">
+                  <p className="text-sm font-medium">Texto B</p>
+                  <Controller
+                    control={control}
+                    name="body_b"
+                    render={({ field }) => <TemplateBodyEditor rich={isEmail} value={field.value ?? ''} onChange={field.onChange} />}
+                  />
+                </div>
+                {abStats ? <AbComparison a={abStats[0]} b={abStats[1]} /> : null}
+              </div>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="self-start"
+                onClick={() => setValue('body_b', getValues('body') ?? '', { shouldDirty: true })}
+              >
+                <FlaskConical className="h-3.5 w-3.5" aria-hidden /> Testar uma versão B
+              </Button>
+            )}
           </div>
           <div className="min-w-0 @3xl:sticky @3xl:top-4 @3xl:self-start">
-            <Preview subject={subject ?? ''} body={body ?? ''} kind={kind} />
+            {abOn ? (
+              <div role="group" aria-label="Versão na pré-visualização" className="mb-2 inline-flex rounded-lg border border-border p-0.5 text-sm">
+                {(['A', 'B'] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    aria-pressed={(v === 'B') === previewB}
+                    onClick={() => setPreviewB(v === 'B')}
+                    className={cn('rounded-md px-3 py-1', (v === 'B') === previewB ? 'bg-accent-soft text-accent-text' : 'text-muted hover:text-fg')}
+                  >
+                    Versão {v}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            <Preview
+              subject={abOn && previewB ? (subjectB?.trim() ? subjectB : (subject ?? '')) : (subject ?? '')}
+              body={abOn && previewB ? (bodyB ?? '') : (body ?? '')}
+              kind={kind}
+            />
           </div>
         </div>
         <div className="px-4 pb-4">
@@ -381,6 +475,40 @@ function Editor({
 const norm = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 
 /** Envios, aberturas e respostas por modelo (últimos 90 dias), para escolher o que resulta. */
+/** Versão A contra versão B (últimos 90 dias): enviados, aberturas e respostas. */
+function AbComparison({ a, b }: { a: EmailTemplateStat | undefined; b: EmailTemplateStat | undefined }) {
+  if (!a?.sent && !b?.sent) return <p className="text-xs text-muted">Ainda sem envios das duas versões: os números aparecem aqui depois dos primeiros emails.</p>;
+  const pct = (n: number, d: number) => (d ? `${Math.round((n / d) * 100)}%` : '—');
+  const rows = [
+    { label: 'Enviados', a: String(a?.sent ?? 0), b: String(b?.sent ?? 0) },
+    { label: 'Abertos', a: pct(a?.opened ?? 0, a?.tracked ?? 0), b: pct(b?.opened ?? 0, b?.tracked ?? 0) },
+    { label: 'Respostas', a: pct(a?.replied ?? 0, a?.sent ?? 0), b: pct(b?.replied ?? 0, b?.sent ?? 0) },
+  ];
+  return (
+    <table className="w-full text-sm">
+      <caption className="mb-1 text-left text-xs text-muted">Resultados (últimos 90 dias)</caption>
+      <thead>
+        <tr className="text-xs text-muted">
+          <th scope="col" className="text-left font-normal" />
+          <th scope="col" className="text-right font-medium">A</th>
+          <th scope="col" className="text-right font-medium">B</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.label} className="border-t border-border">
+            <th scope="row" className="py-1 text-left font-normal text-muted">
+              {r.label}
+            </th>
+            <td className="py-1 text-right tabular-nums">{r.a}</td>
+            <td className="py-1 text-right tabular-nums">{r.b}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 function useTemplateStats() {
   const { data } = useQuery({
     queryKey: ['stats-emails', 90],
@@ -389,6 +517,13 @@ function useTemplateStats() {
     staleTime: 5 * 60_000,
   });
   return useMemo(() => new Map((data?.templates ?? []).flatMap((t) => (t.template ? [[t.template, t] as const] : []))), [data]);
+}
+
+/** Os números do modelo na lista: a soma do modelo e das versões A e B. */
+function templateStat(stats: Map<string, EmailTemplateStat>, name: string): { sent: number; replied: number } | undefined {
+  const parts = [stats.get(name), stats.get(`${name} (A)`), stats.get(`${name} (B)`)].filter((s): s is EmailTemplateStat => !!s);
+  if (!parts.length) return undefined;
+  return { sent: parts.reduce((n, s) => n + s.sent, 0), replied: parts.reduce((n, s) => n + s.replied, 0) };
 }
 
 export function TemplateLibrary() {
@@ -485,7 +620,7 @@ export function TemplateLibrary() {
                   {group.map((t) => {
                     const active = selected !== 'new' && current?.id === t.id;
                     const sector = sectors?.find((s) => s.id === t.sector_id);
-                    const stat = stats.get(t.name);
+                    const stat = templateStat(stats, t.name);
                     const meta = [
                       !category && t.category ? catalog.categoryLabel(t.category) : null,
                       stat?.sent ? `${stat.sent} ${stat.sent === 1 ? 'enviado' : 'enviados'}` : null,
@@ -502,7 +637,14 @@ export function TemplateLibrary() {
                             active ? 'bg-accent-soft text-accent-text' : 'hover:bg-surface-2',
                           )}
                         >
-                          <span className="leading-snug">{t.name}</span>
+                          <span className="leading-snug">
+                            {t.name}
+                            {hasVariantB(t) ? (
+                              <span className="ml-1.5 rounded bg-surface-2 px-1 py-px text-[10px] font-semibold text-muted" title="Com teste A/B">
+                                A/B
+                              </span>
+                            ) : null}
+                          </span>
                           {meta.length || sector ? (
                             <span className={cn('flex flex-wrap items-center gap-x-1.5 text-xs', active ? 'text-accent-text/80' : 'text-muted')}>
                               {meta.join(' · ')}

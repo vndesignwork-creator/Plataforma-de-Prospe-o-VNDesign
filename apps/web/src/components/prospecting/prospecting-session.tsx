@@ -30,6 +30,7 @@ import {
   type ProspectingItem,
   type ProspectingOutcome,
   type ProspectingResult,
+  pickTemplateVariant,
 } from '@vndesign/core';
 import {
   CalendarClock,
@@ -816,9 +817,10 @@ function EmailAction({ lead, onSent }: { lead: Lead; onSent: (result: LeadEmailS
   let body = lead.email_body ?? '';
   let template = 'Email de prospeção';
   if (t) {
-    subject = t.subject ? renderTemplate(t.subject, context).text : '';
-    body = renderTemplate(t.body, context).text;
-    template = t.name;
+    const version = pickTemplateVariant(t, lead);
+    subject = version.subject ? renderTemplate(version.subject, context).text : '';
+    body = renderTemplate(version.body, context).text;
+    template = version.name;
   }
   return (
     <SendEmailButton

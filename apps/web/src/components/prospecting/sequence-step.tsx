@@ -14,6 +14,7 @@ import {
   type Lead,
   type ProspectingItem,
   toPlainText,
+  pickTemplateVariant,
 } from '@vndesign/core';
 import { Copy, Mail, MessageCircle, MessagesSquare, Phone, Route } from 'lucide-react';
 import { toast } from 'sonner';
@@ -47,8 +48,9 @@ export function SequenceStep({ lead, step }: { lead: Lead; step: NonNullable<Pro
   const template = templates ? pickTemplate(templates, step, category) : null;
   // Só pede o teste "Aparece nas IAs?" se o modelo o usar (um pedido por lead, na lista toda).
   const context = useTemplateContext(lead, null, { aiVisibility: usesAiVisibility(template?.subject, template?.body) });
-  const subject = template?.subject ? renderTemplate(template.subject, context).text : '';
-  const body = template ? renderTemplate(template.body, context).text : '';
+  const version = template ? pickTemplateVariant(template, lead) : null;
+  const subject = version?.subject ? renderTemplate(version.subject, context).text : '';
+  const body = version ? renderTemplate(version.body, context).text : '';
   // O email vai formatado; WhatsApp, a cópia e o que se mostra aqui vão em texto simples.
   const plain = toPlainText(body);
   const Icon = ICONS[step.channel];
@@ -88,7 +90,7 @@ export function SequenceStep({ lead, step }: { lead: Lead; step: NonNullable<Pro
           </a>
         ) : null}
         {step.channel === 'email' && lead.email ? (
-          <SendEmailButton lead={lead} label="Enviar este email" subject={subject} body={body} template={template?.name ?? 'Sequência'} />
+          <SendEmailButton lead={lead} label="Enviar este email" subject={subject} body={body} template={version?.name ?? 'Sequência'} />
         ) : null}
         {step.channel === 'call' && lead.phone ? (
           <a href={telUrl(lead.phone)} className={buttonClasses('primary', 'sm')}>

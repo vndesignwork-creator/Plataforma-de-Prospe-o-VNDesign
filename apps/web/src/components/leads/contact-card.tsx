@@ -28,6 +28,7 @@ import {
   type AiEmailTone,
   type ContactTemplate,
   type Lead,
+  pickTemplateVariant,
 } from '@vndesign/core';
 import { Check, Copy, Mail, MessageCircle, MessageSquareText, Phone, RefreshCw, RotateCcw, Save, Send, Sparkles, X } from 'lucide-react';
 import Link from 'next/link';
@@ -236,12 +237,14 @@ export function ContactCard({ lead }: { lead: Lead }) {
     if (current?.type === 'saved') return { subject: lead.email_subject ?? '', body: lead.email_body ?? '', missing: [] as string[] };
     if (current?.type === 'ai') return aiEmail ? { ...aiEmail, missing: [] as string[] } : null;
     if (!template) return null;
-    const subject = renderTemplate(template.subject, context);
-    const body = renderTemplate(template.body, context);
+    // Modelo com versão B: A ou B conforme o lead.
+    const version = pickTemplateVariant(template, lead);
+    const subject = renderTemplate(version.subject, context);
+    const body = renderTemplate(version.body, context);
     // WhatsApp e chamada: sempre texto simples (um modelo pode ter mudado de tipo depois de formatado).
     const text = EMAIL_KINDS.has(template.kind) ? body.text : toPlainText(body.text);
     return { subject: subject.text, body: text, missing: [...new Set([...subject.missing, ...body.missing])] };
-  }, [current, template, context, aiEmail, lead.email_subject, lead.email_body]);
+  }, [current, template, context, aiEmail, lead]);
 
   if (lead.anonymized_at || !templates) return null;
 
@@ -251,8 +254,8 @@ export function ContactCard({ lead }: { lead: Lead }) {
   const subject = draft?.subject ?? base?.subject ?? '';
   const body = draft?.body ?? base?.body ?? '';
   const edited = draft !== null;
-  const sourceName = current?.type === 'saved' ? 'Email de prospeção' : current?.type === 'ai' ? 'Email com IA' : (template?.name ?? '');
-  const payload = current?.type === 'template' || (!current && template) ? { template: template!.name, template_id: template!.id } : { template: sourceName };
+  const sourceName = current?.type === 'saved' ? 'Email de prospeção' : current?.type === 'ai' ? 'Email com IA' : (template ? pickTemplateVariant(template, lead).name : '');
+  const payload = current?.type === 'template' || (!current && template) ? { template: sourceName, template_id: template!.id } : { template: sourceName };
   // Compara pelo HTML normalizado (o email guardado pode estar em texto simples).
   const savedNow = hasSaved && subject === (lead.email_subject ?? '') && toRichHtml(body) === toRichHtml(lead.email_body);
   const selectValue = current?.type === 'saved' ? SAVED_VALUE : current?.type === 'ai' ? AI_VALUE : (template?.id ?? '');

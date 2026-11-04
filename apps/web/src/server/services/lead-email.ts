@@ -229,7 +229,7 @@ export async function followUpDraft(ctx: ApiContext, leadId: string): Promise<Fo
     subject: subject || rendered.subject,
     body: rendered.body,
     template_id: template?.id ?? null,
-    template_name: template?.name ?? null,
+    template_name: rendered.template_name ?? template?.name ?? null,
     in_reply_to: last?.messageId ?? null,
   };
 }

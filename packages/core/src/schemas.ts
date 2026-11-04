@@ -919,6 +919,8 @@ export const ContactTemplateSchema = z
     name: z.string(),
     subject: z.string().nullable(),
     body: z.string(),
+    subject_b: z.string().nullable().optional().meta({ description: 'Versão B do assunto (teste A/B)' }),
+    body_b: z.string().nullable().optional().meta({ description: 'Versão B do texto (teste A/B; vazio = sem teste)' }),
     sector_id: z.uuid().nullable(),
     category: z.string().nullable().meta({ description: 'Categoria de serviço (vazio = todas)' }),
     is_default: z.boolean(),
@@ -933,6 +935,8 @@ const templateFields = {
   name: z.string().trim().min(1, { error: 'Indica o nome do modelo.' }).max(120),
   subject: nullableText(300),
   body: z.string().max(20_000, { error: 'Texto demasiado longo.' }),
+  subject_b: nullableText(300),
+  body_b: nullableText(20_000),
   sector_id: z.uuid().nullable(),
   category: ServiceCategoryKeySchema.nullable(),
   is_default: z.boolean(),
@@ -997,6 +1001,7 @@ export const RenderTemplateRequestSchema = z
 export const RenderedTemplateSchema = z
   .object({
     template_id: z.uuid().nullable(),
+    template_name: z.string().nullable().optional().meta({ description: 'Nome do modelo; com versão B leva "(A)" ou "(B)"' }),
     subject: z.string(),
     body: z.string(),
     missing: z.array(z.string()),
