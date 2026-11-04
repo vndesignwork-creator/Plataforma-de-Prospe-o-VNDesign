@@ -809,6 +809,9 @@ function KanbanHelp() {
         <DropdownLabel>Como mover os cartões</DropdownLabel>
         <p className="px-2 pb-2 text-sm text-muted pointer-coarse:hidden">{HELP_MOUSE}</p>
         <p className="hidden px-2 pb-2 text-sm text-muted pointer-coarse:block">{HELP_TOUCH}</p>
+        <Link href="/ajuda#kanban" className="block px-2 pb-2 text-sm font-medium text-accent-text hover:underline">
+          Ver o guia completo
+        </Link>
       </DropdownContent>
     </DropdownRoot>
   );

@@ -186,6 +186,7 @@ export function MyTasksView() {
     <>
       <PageHeader
         title="Tarefas"
+        help="tarefas"
         description={
           <>
             {data ? (

@@ -6,6 +6,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     <div className="mx-auto max-w-6xl">
       <PageHeader
         title="Definições"
+        help="definicoes"
         description="O teu perfil, o email, o negócio e a forma como a plataforma funciona."
         actions={<SettingsSearch />}
         actionsClassName="max-sm:w-full"

@@ -6,6 +6,7 @@
  */
 import type { ProspectingMode } from '@vndesign/core';
 import { HelpCircle, Pencil, Target } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Button, HoverHint } from '@/components/ui/button';
@@ -163,7 +164,12 @@ export function HelpNote({ children, onClose }: { children: ReactNode; onClose: 
   return (
     <div id="prospecao-ajuda" role="note" className="flex items-start gap-3 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm">
       <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-accent-text" aria-hidden />
-      <p className="flex-1 text-muted">{children}</p>
+      <p className="flex-1 text-muted">
+        {children}{' '}
+        <Link href="/ajuda#prospecao" className="font-medium text-accent-text hover:underline">
+          Ver o guia completo
+        </Link>
+      </p>
       <Button size="sm" variant="ghost" onClick={onClose}>
         Percebi
       </Button>

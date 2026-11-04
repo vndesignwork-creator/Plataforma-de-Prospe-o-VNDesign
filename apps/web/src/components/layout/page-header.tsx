@@ -1,3 +1,5 @@
+import { HelpCircle } from 'lucide-react';
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -8,6 +10,7 @@ export function PageHeader({
   eyebrow,
   aside,
   actionsClassName,
+  help,
 }: {
   title: ReactNode;
   description?: ReactNode;
@@ -17,6 +20,8 @@ export function PageHeader({
   aside?: ReactNode;
   /** Classes do contentor das ações (ex.: alinhar à direita ou grelha no telemóvel). */
   actionsClassName?: string;
+  /** Guia desta página em /ajuda (o id, ex.: 'leads'): mostra um "?" ao lado do título. */
+  help?: string;
 }) {
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
@@ -29,7 +34,19 @@ export function PageHeader({
       ) : null}
       <div className="min-w-0">
         {eyebrow && !aside ? <div className="mb-1 text-sm text-muted">{eyebrow}</div> : null}
-        <h1 className="text-2xl font-bold break-words sm:text-3xl">{title}</h1>
+        <h1 className="text-2xl font-bold break-words sm:text-3xl">
+          {title}
+          {help ? (
+            <Link
+              href={`/ajuda#${help}`}
+              className="ml-2 inline-flex translate-y-[-0.15em] rounded-full p-1 align-middle text-muted hover:bg-surface-2 hover:text-fg"
+              aria-label="Ajuda desta página"
+              title="Ajuda desta página"
+            >
+              <HelpCircle className="h-4 w-4" aria-hidden />
+            </Link>
+          ) : null}
+        </h1>
         {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
       </div>
       {actions ? <div className={cn('ml-auto flex flex-wrap items-center justify-end gap-2', actionsClassName)}>{actions}</div> : null}

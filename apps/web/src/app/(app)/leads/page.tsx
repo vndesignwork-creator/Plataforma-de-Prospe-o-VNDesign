@@ -14,6 +14,7 @@ export default function LeadsPage() {
     <div className="lg:flex lg:h-[calc(100dvh-3.5rem)] lg:min-h-[32rem] lg:flex-col">
       <PageHeader
         title="Leads"
+        help="leads"
         description={<LeadsSummary />}
         actionsClassName="ml-auto"
         actions={

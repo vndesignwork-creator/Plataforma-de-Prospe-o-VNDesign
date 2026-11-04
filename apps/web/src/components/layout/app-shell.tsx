@@ -1,7 +1,7 @@
 'use client';
 
 import * as RadixDialog from '@radix-ui/react-dialog';
-import { BarChart3, BriefcaseBusiness, Columns3, Handshake, LayoutDashboard, ListChecks, LogOut, Menu, MessageSquareText, Moon, Search, Settings, Sparkles, Sun, Target, Users, X } from 'lucide-react';
+import { BarChart3, BriefcaseBusiness, CircleHelp, Columns3, Handshake, LayoutDashboard, ListChecks, LogOut, Menu, MessageSquareText, Moon, Search, Settings, Sparkles, Sun, Target, Users, X } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -122,6 +122,10 @@ function SidebarFooter({ email }: { email: string | null }) {
         <Settings className="h-4 w-4 shrink-0 text-muted group-hover:text-fg" aria-hidden />
       </Link>
       <div className="flex flex-col">
+        <Link href="/ajuda" className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-muted hover:bg-surface-2 hover:text-fg">
+          <CircleHelp className="h-4 w-4 shrink-0" aria-hidden />
+          Ajuda
+        </Link>
         <button
           type="button"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -156,7 +160,7 @@ export function AppShell({ email, children }: { email: string | null; children: 
   const [searching, setSearching] = useState(false);
   const openSearch = useCallback(() => setSearching(true), []);
   useQuickSearchShortcut(openSearch);
-  const pages = useNavItems().map(({ href, label, icon }) => ({ href, label, icon }));
+  const pages = [...useNavItems().map(({ href, label, icon }) => ({ href, label, icon })), { href: '/ajuda', label: 'Ajuda', icon: CircleHelp }];
   // Atalhos de teclado: só para as páginas do menu (o novo lead e o mapa vão com a lista de leads).
   const [showShortcuts, setShowShortcuts] = useState(false);
   const canOpen = (href: string) =>
