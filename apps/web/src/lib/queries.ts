@@ -186,25 +186,44 @@ export function useLeadCities() {
   });
 }
 
-export function useLead(id: string) {
+export function useLead(id: string, enabled = true) {
   return useQuery({
     queryKey: qk.lead(id),
     queryFn: () => api<{ data: Lead }>(`/leads/${id}`).then((r) => r.data),
-    enabled: Boolean(id),
+    enabled: Boolean(id) && enabled,
+  });
+}
+
+/** Partes da ficha que vêm no bundle (cada uma com a chave da cache do cartão: [parte, id]). */
+const BUNDLE_PARTS = ['tasks', 'activities', 'audits', 'proposals', 'meetings', 'project', 'payments', 'contracts', 'client-projects', 'revisions', 'time'] as const;
+const BUNDLE_PROJECT_PARTS = ['deliverables', 'expenses', 'launch', 'collaborators', 'brand-kit', 'accesses', 'briefing'] as const;
+
+function fetchLeadBundle(qc: ReturnType<typeof useQueryClient>, id: string) {
+  return api<{ data: { lead: Lead; parts: Record<string, unknown> } }>(`/leads/${id}/bundle`).then(({ data }) => {
+    qc.setQueryData(qk.lead(id), data.lead);
+    for (const part of [...BUNDLE_PARTS, ...BUNDLE_PROJECT_PARTS]) if (part in data.parts) qc.setQueryData([part, id], data.parts[part]);
+    return true;
   });
 }
 
 /**
- * Prepara a ficha de um lead (dados, tarefas e linha do tempo) antes de lá chegar:
+ * A ficha do lead num só pedido: guarda o lead e cada cartão na cache (com a chave
+ * de cada um), para os cartões abrirem já com dados em vez de 20 pedidos.
+ * Se falhar, cada cartão pede o seu como antes.
+ */
+export function useLeadBundle(id: string) {
+  const qc = useQueryClient();
+  return useQuery({ queryKey: ['lead-bundle', id], queryFn: () => fetchLeadBundle(qc, id), enabled: Boolean(id), staleTime: 30_000, retry: false });
+}
+
+/**
+ * Prepara a ficha de um lead (tudo, num pedido) antes de lá chegar:
  * o "Lead seguinte" abre logo. Os dados ficam frescos 30 s (não pede outra vez ao abrir).
  */
 export function usePrefetchLead() {
   const qc = useQueryClient();
   return (id: string) => {
-    const opts = { staleTime: 30_000 };
-    void qc.prefetchQuery({ queryKey: qk.lead(id), queryFn: () => api<{ data: Lead }>(`/leads/${id}`).then((r) => r.data), ...opts });
-    void qc.prefetchQuery({ queryKey: ['tasks', id], queryFn: () => api<{ data: LeadTask[] }>(`/leads/${id}/tasks`).then((r) => r.data), ...opts });
-    void qc.prefetchQuery({ queryKey: qk.activities(id), queryFn: () => api<{ data: Activity[] }>(`/leads/${id}/activities`).then((r) => r.data), ...opts });
+    void qc.prefetchQuery({ queryKey: ['lead-bundle', id], queryFn: () => fetchLeadBundle(qc, id), staleTime: 30_000, retry: false });
   };
 }
 
@@ -619,10 +638,11 @@ export function useMapData(query: Record<string, string | string[] | undefined>)
 // -----------------------------------------------------------------------------
 // Tarefas
 // -----------------------------------------------------------------------------
-export function useLeadTasks(leadId: string) {
+export function useLeadTasks(leadId: string, enabled = true) {
   return useQuery({
     queryKey: ['tasks', leadId],
     queryFn: () => api<{ data: LeadTask[] }>(`/leads/${leadId}/tasks`).then((r) => r.data),
+    enabled,
   });
 }
 

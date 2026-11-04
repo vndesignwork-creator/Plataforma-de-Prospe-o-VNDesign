@@ -459,6 +459,14 @@ export function getOpenApiDocument() {
           responses: { '204': { description: 'Apagado' }, ...withNotFound },
         }),
       },
+      '/leads/{id}/bundle': {
+        get: op({
+          tags: ['Leads'],
+          summary: 'Ficha do lead num só pedido: o lead e os cartões (tarefas, atividades, propostas, projeto…); uma parte que falhe fica de fora (só com sessão)',
+          requestParams: { path: leadId },
+          responses: { '200': ok(data(z.object({ lead: LeadSchema, parts: z.record(z.string(), z.unknown()) }))), ...withNotFound },
+        }),
+      },
       '/leads/{id}/move': {
         post: op({
           tags: ['Kanban'],

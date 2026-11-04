@@ -33,6 +33,7 @@ const RULES: Rule[] = [
   ['GET', /^\/custom-fields$/],
   ['GET', /^\/leads\/(tags|cities)$/],
   ['GET PATCH', new RegExp(`^/leads/${ID}$`)],
+  ['GET', new RegExp(`^/leads/${ID}/bundle$`)],
   ['GET POST', new RegExp(`^/leads/${ID}/(activities|ai-visibility|audits|meetings|tasks)$`)],
   ['POST', new RegExp(`^/leads/${ID}/comments$`)],
   ['DELETE', new RegExp(`^/leads/${ID}/activities/${ID}$`)],

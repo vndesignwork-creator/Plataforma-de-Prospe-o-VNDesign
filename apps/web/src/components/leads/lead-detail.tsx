@@ -67,6 +67,7 @@ import {
   useBulkLeadAction,
   useInvalidateLead,
   useLead,
+  useLeadBundle,
   useLeads,
   useLeadTasks,
   useActivities,
@@ -432,12 +433,16 @@ function AssignedField({ lead, staff, myId }: { lead: Lead; staff: boolean; myId
 
 export function LeadDetail({ id }: { id: string }) {
   const router = useRouter();
-  const { data: lead, isLoading, error } = useLead(id);
+  // Primeiro a ficha toda num pedido; os cartões abrem já com os dados na cache.
+  const bundle = useLeadBundle(id);
+  const bundleDone = !bundle.isPending;
+  const { data: lead, isLoading: leadLoading, error } = useLead(id, bundleDone);
+  const isLoading = !bundleDone || leadLoading;
   const { data: me } = useMe();
   const { data: settings } = useSettings();
   // Coluna principal: no computador, a linha do tempo (coluna lateral) não passa do fim dela.
   const mainColumn = useRef<HTMLDivElement>(null);
-  const { data: tasks } = useLeadTasks(id);
+  const { data: tasks } = useLeadTasks(id, bundleDone);
   const update = useUpdateLead(id);
   const bulk = useBulkLeadAction();
   const invalidate = useInvalidateLead();

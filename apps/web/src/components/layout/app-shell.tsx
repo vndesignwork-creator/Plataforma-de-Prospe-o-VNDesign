@@ -2,11 +2,11 @@
 
 import * as RadixDialog from '@radix-ui/react-dialog';
 import { BarChart3, BriefcaseBusiness, Columns3, Handshake, LayoutDashboard, ListChecks, LogOut, Menu, MessageSquareText, Moon, Search, Settings, Sparkles, Sun, Target, Users, X } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { FollowUpNotifier } from '@/components/follow-up/follow-up-notifier';
-import { PomodoroWatcher } from '@/components/projects/pomodoro';
 import { RunningTimer } from '@/components/projects/running-timer';
 import { ReminderWatcher } from '@/components/tasks/reminder-watcher';
 import { NavigationTracker } from './back-link';
@@ -17,9 +17,13 @@ import { prospectorPageAllowed } from '@/lib/role-access';
 import { cn } from '@/lib/utils';
 import { Logo } from './logo';
 import { NotificationsBell } from './notifications-bell';
-import { QuickSearch, shortcutLabel, useQuickSearchShortcut } from './quick-search';
+import { shortcutLabel, useQuickSearchShortcut } from './quick-search-shortcut';
 import { ShortcutsDialog, useKeyboardShortcuts } from './keyboard-shortcuts';
 import { useTheme } from './theme';
+
+// Carregados à parte (não atrasam a primeira página): a pesquisa rápida e o Pomodoro.
+const QuickSearch = dynamic(() => import('./quick-search').then((m) => m.QuickSearch), { ssr: false });
+const PomodoroWatcher = dynamic(() => import('@/components/projects/pomodoro').then((m) => m.PomodoroWatcher), { ssr: false });
 
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, match: (p: string) => p.startsWith('/dashboard') },
