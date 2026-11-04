@@ -8,6 +8,8 @@ import {
   formatDateTime,
   relativeDay,
   todayIso,
+  workingDay,
+  addDays,
   type TodayOpenedEmail,
   type Lead,
   type LeadStatus,
@@ -25,7 +27,8 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { Fragment, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { FollowUpEmailButton } from '@/components/email/send-email-dialog';
-import { FollowUpActions } from '@/components/follow-up/follow-up-actions';
+import { FollowUpActions, useFollowUpCommands } from '@/components/follow-up/follow-up-actions';
+import { SwipeRow } from '@/components/ui/swipe-row';
 import { StatusBadge } from '@/components/leads/badges';
 import { LeadScoreBadge } from '@/components/leads/lead-score';
 import { buttonClasses } from '@/components/ui/button';
@@ -65,6 +68,23 @@ function ShowAll({ total, open, onToggle, what }: { total: number; open: boolean
  * Follow-ups de um grupo do "Hoje". O que é igual em todas as linhas (ex.: "Primeiro contacto ·
  * Identificado") aparece uma vez por cima, e cada linha fica só com o que muda.
  */
+/** Follow-up do "Hoje" que se desliza (telemóvel): direita = Feito, esquerda = Adiar (os mesmos dos botões). */
+function FollowUpSwipe({ lead, className, children }: { lead: Lead; className?: string; children: ReactNode }) {
+  const { run, days, doneLabel, pending } = useFollowUpCommands(lead);
+  return (
+    <SwipeRow
+      disabled={pending}
+      onRight={() => void run('done', null)}
+      onLeft={() => void run('snooze', days)}
+      rightLabel={doneLabel}
+      leftLabel={`Adiar ${days} dias`}
+      className={className}
+    >
+      {children}
+    </SwipeRow>
+  );
+}
+
 function TodayGroup({
   title,
   icon,
@@ -113,7 +133,7 @@ function TodayGroup({
           ].filter(Boolean);
           return (
             // Sem espaço (telemóvel), os botões passam para baixo do nome, encostados à direita.
-            <li key={l.id} className="flex flex-wrap items-center gap-x-1">
+            <FollowUpSwipe key={l.id} lead={l} className="flex flex-wrap items-center gap-x-1">
               <Link href={leadPath(l)} className="min-w-[12rem] flex-1 rounded-md px-2 py-2 hover:bg-surface-2">
                 <span className="block truncate text-sm font-medium">
                   <span className="text-muted tabular">#{l.number}</span> {l.company_name}
@@ -124,7 +144,7 @@ function TodayGroup({
                 <FollowUpEmailButton lead={l} compact />
                 <FollowUpActions lead={l} compact />
               </span>
-            </li>
+            </FollowUpSwipe>
           );
         })}
       </ul>
@@ -281,6 +301,7 @@ function ProjectsCard({ className }: { className?: string }) {
 /** Tarefas com prazo (em atraso, hoje e próximos 7 dias): marcar como feita aqui mesmo. */
 function TodayTasks({ title, today, tasks }: { title: string; today: string; tasks: TodayTask[] }) {
   const qc = useQueryClient();
+  const workWeekends = useSettings().data?.work_weekends ?? false;
   const [doneIds, setDoneIds] = useState<string[]>([]);
   const [all, setAll] = useState(false);
   if (!tasks.length) return null;
@@ -313,6 +334,27 @@ function TodayTasks({ title, today, tasks }: { title: string; today: string; tas
       void qc.invalidateQueries({ queryKey: ['leads'] });
     }
   }
+  /** Deslizar para a esquerda: a tarefa passa para o próximo dia útil (com Anular). */
+  async function postpone(task: TodayTask) {
+    const next = workingDay(addDays(today, 1), workWeekends);
+    try {
+      await api(`/tasks/${task.id}`, { method: 'PATCH', body: { due_on: next } });
+      toast.success(`Adiada para ${formatDate(next)}: ${task.title}`, {
+        action: {
+          label: 'Anular',
+          onClick: () =>
+            void api(`/tasks/${task.id}`, { method: 'PATCH', body: { due_on: task.due_on } })
+              .catch((error: unknown) => toast.error(errorMessage(error)))
+              .finally(() => void qc.invalidateQueries({ queryKey: ['today'] })),
+        },
+      });
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      void qc.invalidateQueries({ queryKey: ['today'] });
+      void qc.invalidateQueries({ queryKey: ['tasks', task.lead.id] });
+    }
+  }
   return (
     <section aria-label={title}>
       <h3 className={`mb-1 flex items-center gap-1.5 text-sm font-semibold ${overdue ? 'text-danger' : ''}`}>
@@ -323,7 +365,14 @@ function TodayTasks({ title, today, tasks }: { title: string; today: string; tas
         {(all ? tasks : tasks.slice(0, SHOWN)).map((t) => {
           const done = doneIds.includes(t.id);
           return (
-            <li key={t.id} className="flex items-start gap-2 px-2 py-2">
+            <SwipeRow
+              key={t.id}
+              disabled={done}
+              onRight={() => void complete(t)}
+              onLeft={() => void postpone(t)}
+              rightLabel="Feita"
+              className="flex items-start gap-2 px-2 py-2"
+            >
               <input
                 type="checkbox"
                 checked={done}
@@ -342,7 +391,7 @@ function TodayTasks({ title, today, tasks }: { title: string; today: string; tas
                   </Link>
                 </span>
               </span>
-            </li>
+            </SwipeRow>
           );
         })}
       </ul>

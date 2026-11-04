@@ -12,8 +12,8 @@ import { useFollowUp, useInvalidateLead, useReschedule, useSettings } from '@/li
  * Concluir ou adiar a próxima ação de um lead.
  * compact: dois botões pequenos (lista "Hoje"); normal: menu com mais opções.
  */
-/** `quickDone`: com um botão "Feito" (follow-up nos dias por omissão) antes do menu. */
-export function FollowUpActions({ lead, compact, quickDone }: { lead: Lead; compact?: boolean; quickDone?: boolean }) {
+/** Feito / Adiar a próxima ação de um lead (com "Anular" na mensagem); usado nos botões e ao deslizar a linha. */
+export function useFollowUpCommands(lead: Lead) {
   const followUp = useFollowUp(lead.id);
   const reschedule = useReschedule();
   const invalidate = useInvalidateLead();
@@ -66,6 +66,13 @@ export function FollowUpActions({ lead, compact, quickDone }: { lead: Lead; comp
     }
   }
 
+  return { run, days, first, doneLabel, pending: followUp.isPending };
+}
+
+/** `quickDone`: com um botão "Feito" (follow-up nos dias por omissão) antes do menu. */
+export function FollowUpActions({ lead, compact, quickDone }: { lead: Lead; compact?: boolean; quickDone?: boolean }) {
+  const { run, days, first, doneLabel, pending } = useFollowUpCommands(lead);
+
   if (compact) {
     // Com o nome à vista ("Contactado", "Adiar"): só o ícone não dizia o que fazia.
     return (
@@ -75,7 +82,7 @@ export function FollowUpActions({ lead, compact, quickDone }: { lead: Lead; comp
           variant="ghost"
           className="h-8 px-2 pointer-coarse:h-10"
           onClick={() => run('done', null)}
-          disabled={followUp.isPending}
+          disabled={pending}
           aria-label={`${first ? 'Marcar como contactado' : 'Marcar como feito'}: #${lead.number} ${lead.company_name}`}
           title={first ? 'Contactado (passa a Contactado)' : 'Feito'}
         >
@@ -86,7 +93,7 @@ export function FollowUpActions({ lead, compact, quickDone }: { lead: Lead; comp
           variant="ghost"
           className="h-8 px-2 pointer-coarse:h-10"
           onClick={() => run('snooze', days)}
-          disabled={followUp.isPending}
+          disabled={pending}
           aria-label={`Adiar ${days} dias: #${lead.number} ${lead.company_name}`}
           title={`Adiar ${days} dias`}
         >
@@ -103,7 +110,7 @@ export function FollowUpActions({ lead, compact, quickDone }: { lead: Lead; comp
         size="sm"
         variant="outline"
         onClick={() => void run('done', days)}
-        disabled={followUp.isPending}
+        disabled={pending}
         aria-label={`${first ? 'Marcar como contactado' : 'Marcar como feito'} — follow-up em ${days} dias`}
         title={`${doneLabel} — o próximo follow-up fica daqui a ${days} dias`}
       >
@@ -111,7 +118,7 @@ export function FollowUpActions({ lead, compact, quickDone }: { lead: Lead; comp
       </Button>
     ) : null}
     <DropdownRoot>
-      <DropdownTrigger className={buttonClasses('outline', 'sm')} disabled={followUp.isPending}>
+      <DropdownTrigger className={buttonClasses('outline', 'sm')} disabled={pending}>
         <Check className="h-3.5 w-3.5" aria-hidden /> {first ? 'Primeiro contacto' : 'Follow-up'} <ChevronDown className="h-3.5 w-3.5" aria-hidden />
       </DropdownTrigger>
       <DropdownContent>

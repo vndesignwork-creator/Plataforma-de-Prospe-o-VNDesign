@@ -7,7 +7,7 @@
  * uma pessoa, e dar uma tarefa a alguém daqui mesmo. No topo: o resumo (leva à
  * secção), "Nova tarefa", pesquisa e o filtro Leads | Projetos.
  */
-import { TASK_GROUP_LABELS, addDays, formatDate, leadPath, taskGroup, todayIso, type TaskGroup, type TaskListItem } from '@vndesign/core';
+import { TASK_GROUP_LABELS, addDays, formatDate, leadPath, taskGroup, todayIso, workingDay, type TaskGroup, type TaskListItem } from '@vndesign/core';
 import { useQuery } from '@tanstack/react-query';
 import { ListChecks, Plus, Search, UserRound } from 'lucide-react';
 import Link from 'next/link';
@@ -25,6 +25,7 @@ import { Linkified } from '@/lib/linkify';
 import { useInvalidateTasks, useMe, useSettings, useTeamNames } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 import { DateInput } from '@/components/ui/date-input';
+import { SwipeRow } from '@/components/ui/swipe-row';
 import { NewTaskDialog } from './new-task-dialog';
 import { DueChip, DuePicker } from './tasks-card';
 
@@ -309,7 +310,15 @@ export function MyTasksView() {
           groups.map(({ group, tasks }) => (
             <TaskSection key={group} group={group} count={tasks.length} defaultCollapsed={urgent && (group === 'later' || group === 'none')} forceOpen={!!q}>
               {tasks.map((t) => (
-                <li key={t.id} className="flex flex-wrap items-start gap-x-2 gap-y-2 px-4 py-2.5 sm:flex-nowrap sm:gap-3">
+                // Telemóvel: deslizar para a direita = feita; para a esquerda = adiar para o próximo dia útil.
+                <SwipeRow
+                  key={t.id}
+                  onRight={() => void complete(t)}
+                  onLeft={() => void setDue(t, workingDay(addDays(today, 1), settings?.work_weekends ?? false))}
+                  rightLabel="Feita"
+                  leftLabel="Adiar"
+                  className="flex flex-wrap items-start gap-x-2 gap-y-2 px-4 py-2.5 sm:flex-nowrap sm:gap-3"
+                >
                   <input
                     type="checkbox"
                     onChange={() => void complete(t)}
@@ -379,7 +388,7 @@ export function MyTasksView() {
                       </DropdownRoot>
                     ) : null}
                   </div>
-                </li>
+                </SwipeRow>
               ))}
             </TaskSection>
           ))

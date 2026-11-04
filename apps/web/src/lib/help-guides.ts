@@ -33,7 +33,7 @@ export const HELP_GUIDES: HelpGuide[] = [
     href: '/dashboard',
     summary: 'O dia de hoje num ecrã: o que fazer, quem respondeu e como está o pipeline.',
     steps: [
-      '"Hoje" junta os follow-ups, as tarefas e as reuniões do dia. Marca como feito ou adia diretamente na lista.',
+      '"Hoje" junta os follow-ups, as tarefas e as reuniões do dia. Marca como feito ou adia diretamente na lista (no telemóvel, desliza a linha: direita = feito, esquerda = adiar).',
       '"Respostas" mostra os leads que responderam e ainda não foram tratados.',
       '"Leads quentes" são os que abriram emails ou clicaram em links nos últimos dias: bom momento para ligar.',
       'Os números de cima comparam o período escolhido com o anterior; carrega num número para ver os leads.',
