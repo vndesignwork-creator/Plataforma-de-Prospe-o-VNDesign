@@ -305,7 +305,8 @@ function TaskRow({
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
-        'group relative flex items-start gap-1.5 px-2 py-2 transition-opacity duration-300 hover:bg-surface-2 sm:gap-2 sm:px-3',
+        // Telemóvel: em cima a pega, o visto e o "⋯"; o texto por baixo, com a largura toda.
+        'group relative flex items-start gap-1.5 px-2 py-2 transition-opacity duration-300 hover:bg-surface-2 max-sm:flex-wrap max-sm:items-center max-sm:gap-y-1 sm:gap-2 sm:px-3',
         isDragging && 'z-10 bg-surface-2 opacity-80 shadow-card',
         completing && 'opacity-50',
       )}
@@ -335,7 +336,7 @@ function TaskRow({
           });
         }}
         aria-label={done ? `Reabrir: ${task.title}` : `Concluir: ${task.title}`}
-        className="mt-1 h-4 w-4 shrink-0 cursor-pointer transition-transform checked:scale-110"
+        className="mt-1 h-4 w-4 shrink-0 cursor-pointer transition-transform checked:scale-110 max-sm:mt-0"
       />
       {editing ? <TaskEditor task={task} onSave={onSave} onCancel={onCancelEdit} /> : null}
       {/* Tocar no texto edita; os links do texto abrem (com o teclado: Tab até ao lápis). */}
@@ -343,7 +344,10 @@ function TaskRow({
         onClick={(e) => {
           if (!(e.target as HTMLElement).closest('a')) onEdit();
         }}
-        className={cn('min-w-0 flex-1 cursor-text text-sm break-words whitespace-pre-line transition-colors', shownDone && 'text-muted line-through')}
+        className={cn(
+          'min-w-0 flex-1 cursor-text text-sm break-words whitespace-pre-line transition-colors max-sm:order-last max-sm:basis-full max-sm:px-1',
+          shownDone && 'text-muted line-through',
+        )}
       >
         <Linkified text={task.title} />
         {task.due_on ? (
@@ -419,7 +423,7 @@ function TaskRow({
       </span>
       {/* Telemóvel: um só botão "⋯" (o texto fica com a largura toda). */}
       <DropdownRoot>
-        <DropdownTrigger aria-label={`Mais ações: ${task.title}`} className="-my-0.5 shrink-0 rounded p-1.5 text-muted hover:bg-surface-3 hover:text-fg sm:hidden">
+        <DropdownTrigger aria-label={`Mais ações: ${task.title}`} className="-my-0.5 shrink-0 rounded p-1.5 text-muted hover:bg-surface-3 hover:text-fg max-sm:ml-auto sm:hidden">
           <MoreVertical className="h-4 w-4" aria-hidden />
         </DropdownTrigger>
         <DropdownContent align="end">
