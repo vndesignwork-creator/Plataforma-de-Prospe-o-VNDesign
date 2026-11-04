@@ -116,6 +116,14 @@ export async function createTask(ctx: ApiContext, leadId: string | null, input: 
     })
     .select(TASK_SELECT)
     .single();
+  // Tarefa solta antes da migração 20261108002200 (lead_id ainda obrigatório na base de dados).
+  if (!leadId && result.error?.code === '23502') {
+    throw new ApiError(
+      503,
+      'Tarefas sem lead ainda não estão ativas',
+      'A base de dados ainda não foi atualizada para aceitar tarefas sem lead. Escolhe um lead ou projeto, ou atualiza a base de dados (npx supabase db push).',
+    );
+  }
   const task = unwrap(result) as LeadTask;
   if (task.assigned_to) await notifyTaskAssigned(ctx, task);
   return task;
