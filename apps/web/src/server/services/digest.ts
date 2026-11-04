@@ -117,7 +117,11 @@ export function buildDigestEmail(input: { workspaceName: string; today: Today; a
   if (tasksAll.length) {
     textParts.push(`TAREFAS (${tasksAll.length})`);
     for (const t of tasksAll) {
-      textParts.push(`- ${t.title} — #${t.lead.number} ${t.lead.company_name} (${formatDate(t.due_on)}) ${appUrl}${leadPath(t.lead)}`);
+      textParts.push(
+        t.lead
+          ? `- ${t.title} — #${t.lead.number} ${t.lead.company_name} (${formatDate(t.due_on)}) ${appUrl}${leadPath(t.lead)}`
+          : `- ${t.title} (${formatDate(t.due_on)}) ${appUrl}/tarefas`,
+      );
     }
     textParts.push('');
   }
@@ -141,7 +145,11 @@ export function buildDigestEmail(input: { workspaceName: string; today: Today; a
       (t) => `<tr>
   <td style="padding:8px 0;border-bottom:1px solid #e7e3db;">
     <span style="color:#141414;font-weight:600;">☐ ${esc(t.title)}</span><br>
-    <a href="${esc(`${appUrl}${leadPath(t.lead)}`)}" style="color:#5f5b53;font-size:13px;text-decoration:none;">#${t.lead.number} ${esc(t.lead.company_name)}</a>
+    ${
+      t.lead
+        ? `<a href="${esc(`${appUrl}${leadPath(t.lead)}`)}" style="color:#5f5b53;font-size:13px;text-decoration:none;">#${t.lead.number} ${esc(t.lead.company_name)}</a>`
+        : `<a href="${esc(`${appUrl}/tarefas`)}" style="color:#5f5b53;font-size:13px;text-decoration:none;">Tarefa sem lead</a>`
+    }
   </td>
   <td style="padding:8px 0;border-bottom:1px solid #e7e3db;text-align:right;white-space:nowrap;color:${taskColor(t)};font-weight:600;font-size:13px;">${esc(formatDate(t.due_on))}</td>
 </tr>`,

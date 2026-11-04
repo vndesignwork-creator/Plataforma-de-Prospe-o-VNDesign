@@ -7,9 +7,23 @@
  * uma pessoa, e dar uma tarefa a alguém daqui mesmo. No topo: o resumo (leva à
  * secção), "Nova tarefa", pesquisa e o filtro Leads | Projetos.
  */
-import { TASK_GROUP_LABELS, addDays, formatDate, leadPath, taskGroup, todayIso, workingDay, type TaskGroup, type TaskListItem } from '@vndesign/core';
+import {
+  TASK_GROUP_LABELS,
+  TASK_ORIGIN_LABELS,
+  addDays,
+  formatDate,
+  formatDateTime,
+  leadPath,
+  taskGroup,
+  taskOrigin,
+  todayIso,
+  workingDay,
+  type TaskGroup,
+  type TaskListItem,
+  type TaskOrigin,
+} from '@vndesign/core';
 import { useQuery } from '@tanstack/react-query';
-import { ListChecks, Plus, Search, UserRound } from 'lucide-react';
+import { BriefcaseBusiness, ChevronRight, CircleDot, ListChecks, Plus, Search, UserRound, Users, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Fragment, useState, type ReactNode } from 'react';
@@ -27,16 +41,44 @@ import { cn } from '@/lib/utils';
 import { DateInput } from '@/components/ui/date-input';
 import { SwipeRow } from '@/components/ui/swipe-row';
 import { NewTaskDialog } from './new-task-dialog';
-import { DueChip, DuePicker } from './tasks-card';
+import { DueChip, DuePicker, TaskEditor, type TaskPatch } from './tasks-card';
 
 const GROUPS: TaskGroup[] = ['overdue', 'today', 'week', 'later', 'none'];
 
-type TaskKind = 'all' | 'leads' | 'projetos';
+type TaskKind = 'all' | 'leads' | 'projetos' | 'soltas';
 const KINDS: { value: TaskKind; label: string }[] = [
   { value: 'all', label: 'Tudo' },
   { value: 'leads', label: 'Leads' },
   { value: 'projetos', label: 'Projetos' },
+  { value: 'soltas', label: 'Sem lead' },
 ];
+const KIND_ORIGIN: Record<Exclude<TaskKind, 'all'>, TaskOrigin> = { leads: 'lead', projetos: 'project', soltas: 'personal' };
+
+const ORIGIN_ICONS: Record<TaskOrigin, LucideIcon> = { project: BriefcaseBusiness, lead: Users, personal: CircleDot };
+const ORIGIN_TONES: Record<TaskOrigin, string> = {
+  project: 'bg-success/15 text-success',
+  lead: 'bg-info/15 text-info',
+  personal: 'bg-surface-3 text-muted',
+};
+
+/** De onde vem a tarefa: "Projeto · #39 Empresa", "Lead · #42 Empresa" ou "Sem lead". */
+function TaskOriginLine({ task }: { task: TaskListItem }) {
+  const origin = taskOrigin(task.lead);
+  const Icon = ORIGIN_ICONS[origin];
+  return (
+    <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+      <span className={cn('inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-px text-[11px] font-medium', ORIGIN_TONES[origin])}>
+        <Icon className="h-3 w-3" aria-hidden /> {TASK_ORIGIN_LABELS[origin]}
+      </span>
+      {task.lead ? (
+        <Link href={`${leadPath(task.lead)}#tarefas`} className="min-w-0 hover:text-fg hover:underline">
+          #{task.lead.number} {task.lead.company_name}
+          {task.lead.project_title ? ` · ${task.lead.project_title}` : ''}
+        </Link>
+      ) : null}
+    </span>
+  );
+}
 
 const SEGMENTED = 'inline-flex h-9 max-w-full items-center overflow-x-auto rounded-lg border border-border-input bg-surface-2 p-0.5 [scrollbar-width:none]';
 const segment = (on: boolean, extra?: string) =>
@@ -65,6 +107,41 @@ export function MyTasksView() {
     queryFn: () => api<{ data: TaskListItem[] }>('/tasks', { query: { assigned } }).then((r) => r.data),
     enabled: !teamPending,
   });
+  // Concluídas (últimos 30 dias): só se pedem quando se abre a secção.
+  const [showDone, setShowDone] = useState(false);
+  const doneQuery = useQuery({
+    queryKey: ['my-tasks', assigned, 'done'],
+    queryFn: () => api<{ data: TaskListItem[] }>('/tasks', { query: { assigned, state: 'done', limit: 100 } }).then((r) => r.data),
+    enabled: !teamPending && showDone,
+  });
+  // Acabada de marcar: fica com o visto e riscada até sair da lista.
+  const [completing, setCompleting] = useState<string[]>([]);
+  // Tocar no texto abre a janela de editar.
+  const [editing, setEditing] = useState<TaskListItem | null>(null);
+  async function saveEdit(task: TaskListItem, patch: TaskPatch) {
+    try {
+      await api(`/tasks/${task.id}`, { method: 'PATCH', body: patch });
+      toast.success('Tarefa guardada.');
+      setEditing(null);
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      invalidate(task.lead_id);
+    }
+  }
+  const [reopening, setReopening] = useState<string[]>([]);
+  async function reopen(task: TaskListItem) {
+    setReopening((ids) => [...ids, task.id]);
+    try {
+      await api(`/tasks/${task.id}`, { method: 'PATCH', body: { done: false } });
+      toast.success('Tarefa reaberta.');
+    } catch (e) {
+      toast.error(errorMessage(e));
+      setReopening((ids) => ids.filter((id) => id !== task.id));
+    } finally {
+      invalidate(task.lead_id);
+    }
+  }
   const nameOf = (id: string | null | undefined) => (id ? (id === me?.user.id ? 'Tu' : (team?.find((m) => m.user_id === id)?.name ?? 'Antigo membro')) : null);
 
   function setAssigned(value: string) {
@@ -74,9 +151,12 @@ export function MyTasksView() {
   }
 
   async function complete(task: TaskListItem) {
+    setCompleting((ids) => [...ids, task.id]);
     try {
       await api(`/tasks/${task.id}`, { method: 'PATCH', body: { done: true } });
-      toast.success('Tarefa concluída.', {
+      // Um instante com o visto e riscada; depois passa para "Concluídas".
+      await new Promise((r) => setTimeout(r, 700));
+      toast.success('Tarefa concluída. Está em “Concluídas”, no fim da lista.', {
         action: {
           label: 'Anular',
           onClick: () =>
@@ -88,6 +168,7 @@ export function MyTasksView() {
     } catch (e) {
       toast.error(errorMessage(e));
     } finally {
+      setCompleting((ids) => ids.filter((id) => id !== task.id));
       invalidate(task.lead_id);
     }
   }
@@ -139,10 +220,12 @@ export function MyTasksView() {
   const kind = showKind ? ((params.get('tipo') as TaskKind | null) ?? 'all') : 'all';
   const [search, setSearch] = useState('');
   const q = search.trim().toLowerCase();
-  const ofKind = (data ?? []).filter((t) => kind === 'all' || (t.lead.status === 'cliente') === (kind === 'projetos'));
-  const shown = q
-    ? ofKind.filter((t) => `${t.title} ${t.lead.company_name} ${t.lead.project_title ?? ''} #${t.lead.number}`.toLowerCase().includes(q))
-    : ofKind;
+  const matchesKind = (t: TaskListItem) => kind === 'all' || taskOrigin(t.lead) === KIND_ORIGIN[kind];
+  const matchesSearch = (t: TaskListItem) =>
+    !q || `${t.title} ${t.lead ? `${t.lead.company_name} ${t.lead.project_title ?? ''} #${t.lead.number}` : 'sem lead'}`.toLowerCase().includes(q);
+  const ofKind = (data ?? []).filter(matchesKind);
+  const shown = ofKind.filter(matchesSearch);
+  const doneShown = (doneQuery.data ?? []).filter((t) => matchesKind(t) && matchesSearch(t));
   const groups = GROUPS.map((g) => ({
     group: g,
     tasks: shown.filter((t) => taskGroup(t.due_on, today, weekEnd) === g),
@@ -212,7 +295,7 @@ export function MyTasksView() {
               'As tarefas por fazer dos leads e projetos, pelo prazo.'
             )}
             <span className="mt-0.5 flex items-center gap-1 text-xs">
-              <ListChecks className="h-3.5 w-3.5" aria-hidden /> Só as por fazer, dos leads e projetos que não estão arquivados.
+              <ListChecks className="h-3.5 w-3.5" aria-hidden /> As por fazer dos leads e projetos (não arquivados) e as sem lead; as concluídas estão no fim.
             </span>
           </>
         }
@@ -320,19 +403,35 @@ export function MyTasksView() {
                 >
                   <input
                     type="checkbox"
+                    checked={completing.includes(t.id)}
+                    disabled={completing.includes(t.id)}
                     onChange={() => void complete(t)}
                     aria-label={`Concluir: ${t.title}`}
-                    className="mt-1 h-4 w-4 shrink-0 cursor-pointer"
+                    className="mt-1 h-4 w-4 shrink-0 cursor-pointer transition-transform checked:scale-110"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm break-words whitespace-pre-line">
-                      <Linkified text={t.title} /> {t.due_on ? <DueChip due={t.due_on} today={today} /> : null}
+                    {/* Tocar no texto edita (os links do texto abrem). */}
+                    <p
+                      onClick={(e) => {
+                        if (!(e.target as HTMLElement).closest('a')) setEditing(t);
+                      }}
+                      className={cn(
+                        'cursor-text text-sm break-words whitespace-pre-line transition-colors',
+                        completing.includes(t.id) && 'text-muted line-through',
+                      )}
+                    >
+                      <Linkified text={t.title} /> {t.due_on ? <DueChip due={t.due_on} today={today} done={completing.includes(t.id)} /> : null}
                     </p>
-                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted">
-                      <Link href={`${leadPath(t.lead)}#tarefas`} className="hover:text-fg hover:underline">
-                        #{t.lead.number} {t.lead.company_name}
-                        {t.lead.project_title ? ` · ${t.lead.project_title}` : ''}
-                      </Link>
+                    <button
+                      type="button"
+                      onClick={() => setEditing(t)}
+                      aria-label={`Editar: ${t.title}`}
+                      className="sr-only focus-visible:not-sr-only focus-visible:text-xs"
+                    >
+                      Editar
+                    </button>
+                    <p className="mt-1 text-xs text-muted">
+                      <TaskOriginLine task={t} />
                     </p>
                     {picking === t.id ? (
                       <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
@@ -392,6 +491,54 @@ export function MyTasksView() {
             </TaskSection>
           ))
         )}
+        {/* Concluídas (últimos 30 dias): recolhidas; a caixa desmarcada reabre a tarefa. */}
+        {!isLoading && !error ? (
+          <Card className="overflow-hidden">
+            <button
+              type="button"
+              aria-expanded={showDone}
+              onClick={() => setShowDone(!showDone)}
+              className="flex min-h-11 w-full items-center gap-2 px-4 py-1 text-left text-sm font-semibold text-muted hover:text-fg"
+            >
+              <ChevronRight className={cn('h-4 w-4 transition-transform', showDone && 'rotate-90')} aria-hidden />
+              Concluídas <span className="font-normal">(últimos 30 dias{doneQuery.data ? `: ${doneShown.length}` : ''})</span>
+            </button>
+            {showDone ? (
+              doneQuery.isLoading ? (
+                <div className="p-4">
+                  <Skeleton className="h-16" />
+                </div>
+              ) : doneShown.length ? (
+                <ul className="divide-y divide-border border-t border-border" aria-label="Concluídas">
+                  {doneShown.map((t) => (
+                    <li key={t.id} className="flex items-start gap-2 px-4 py-2.5 sm:gap-3">
+                      <input
+                        type="checkbox"
+                        checked={!reopening.includes(t.id)}
+                        disabled={reopening.includes(t.id)}
+                        onChange={() => void reopen(t)}
+                        aria-label={`Reabrir: ${t.title}`}
+                        className="mt-1 h-4 w-4 shrink-0 cursor-pointer"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm break-words whitespace-pre-line text-muted line-through">
+                          <Linkified text={t.title} />
+                        </p>
+                        <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted">
+                          <TaskOriginLine task={t} />
+                          {t.done_at ? <span>· concluída a {formatDateTime(t.done_at)}</span> : null}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="border-t border-border px-4 py-3 text-sm text-muted">Nenhuma tarefa concluída nos últimos 30 dias.</p>
+              )
+            ) : null}
+          </Card>
+        ) : null}
+        {editing ? <TaskEditor task={editing} onSave={(patch) => saveEdit(editing, patch)} onCancel={() => setEditing(null)} /> : null}
         {(data?.length ?? 0) >= 500 ? (
           <p role="status" className="rounded-lg bg-warning/10 px-3 py-2 text-sm">
             Estão aqui as primeiras 500 tarefas (por prazo). Conclui ou apaga as que já não fazem sentido para veres as restantes.

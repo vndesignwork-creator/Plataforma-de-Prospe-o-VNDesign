@@ -89,21 +89,20 @@ async function nextPosition(ctx: ApiContext, leadId: string): Promise<number> {
   return ((data?.[0]?.position as number | undefined) ?? 0) + 1;
 }
 
-/** Posição antes da primeira tarefa do lead (uma tarefa nova fica em cima da lista). */
-async function firstPosition(ctx: ApiContext, leadId: string): Promise<number> {
-  const { data, error } = await ctx.supabase
-    .from('lead_tasks')
-    .select('position')
-    .eq('workspace_id', ctx.workspaceId)
-    .eq('lead_id', leadId)
+/** Posição antes da primeira tarefa do lead (ou das tarefas soltas): uma tarefa nova fica em cima da lista. */
+async function firstPosition(ctx: ApiContext, leadId: string | null): Promise<number> {
+  let q = ctx.supabase.from('lead_tasks').select('position').eq('workspace_id', ctx.workspaceId);
+  q = leadId ? q.eq('lead_id', leadId) : q.is('lead_id', null);
+  const { data, error } = await q
     .order('position', { ascending: true })
     .limit(1);
   if (error) throw fromPostgrest(error);
   return ((data?.[0]?.position as number | undefined) ?? 1) - 1;
 }
 
-export async function createTask(ctx: ApiContext, leadId: string, input: LeadTaskCreate): Promise<LeadTask> {
-  await getLead(ctx, leadId);
+export async function createTask(ctx: ApiContext, leadId: string | null, input: LeadTaskCreate): Promise<LeadTask> {
+  // Sem lead: uma tarefa solta (página Tarefas).
+  if (leadId) await getLead(ctx, leadId);
   const result = await ctx.supabase
     .from('lead_tasks')
     .insert({
@@ -161,30 +160,49 @@ export async function updateTask(ctx: ApiContext, id: string, patch: LeadTaskUpd
   return task;
 }
 
-/** "As minhas tarefas": as por fazer de todos os leads (sem arquivados nem anonimizados), pelo prazo. */
+/**
+ * Página Tarefas: as por fazer (pelo prazo) ou as concluídas nos últimos 30 dias (as mais
+ * recentes primeiro), dos leads e projetos (sem arquivados nem anonimizados) e as soltas.
+ */
 export async function listOpenTasks(ctx: ApiContext, query: TaskListQuery): Promise<TaskListItem[]> {
-  let q = ctx.supabase
-    .from('lead_tasks')
-    .select(`${TASK_SELECT}, lead:leads!inner(id, number, company_name, project_title, status, archived_at, anonymized_at)`)
-    .eq('workspace_id', ctx.workspaceId)
-    .is('done_at', null)
-    .is('lead.archived_at', null)
-    .is('lead.anonymized_at', null);
-  // Como nos leads: sem responsável é do dono, por isso entram nas "minhas" dele.
-  if (query.assigned === 'me') q = ctx.role === 'owner' ? q.or(`assigned_to.eq.${ctx.user.id},assigned_to.is.null`) : q.eq('assigned_to', ctx.user.id);
-  else if (query.assigned === 'none') q = q.is('assigned_to', null);
-  else if (query.assigned !== 'all') q = q.eq('assigned_to', query.assigned);
-  const { data, error } = await q
-    .order('due_on', { ascending: true, nullsFirst: false })
-    // No mesmo dia (e nas sem prazo), as mais recentes primeiro.
-    .order('created_at', { ascending: false })
-    .limit(query.limit);
-  if (error) throw fromPostgrest(error);
-  type Row = LeadTask & { lead: TaskListItem['lead'] & { archived_at: unknown; anonymized_at: unknown } };
-  return ((data ?? []) as unknown as Row[]).map(({ lead, ...task }) => ({
-    ...task,
-    lead: { id: lead.id, number: lead.number, company_name: lead.company_name, project_title: lead.project_title, status: lead.status },
-  }));
+  const done = query.state === 'done';
+  const base = (select: string) => {
+    let q = ctx.supabase.from('lead_tasks').select(select).eq('workspace_id', ctx.workspaceId);
+    q = done ? q.not('done_at', 'is', null).gte('done_at', new Date(Date.now() - 30 * 86_400_000).toISOString()) : q.is('done_at', null);
+    // Como nos leads: sem responsável é do dono, por isso entram nas "minhas" dele.
+    if (query.assigned === 'me') q = ctx.role === 'owner' ? q.or(`assigned_to.eq.${ctx.user.id},assigned_to.is.null`) : q.eq('assigned_to', ctx.user.id);
+    else if (query.assigned === 'none') q = q.is('assigned_to', null);
+    else if (query.assigned !== 'all') q = q.eq('assigned_to', query.assigned);
+    return done
+      ? q.order('done_at', { ascending: false }).limit(query.limit)
+      : q
+          .order('due_on', { ascending: true, nullsFirst: false })
+          // No mesmo dia (e nas sem prazo), as mais recentes primeiro.
+          .order('created_at', { ascending: false })
+          .limit(query.limit);
+  };
+  const [withLead, personal] = await Promise.all([
+    base(`${TASK_SELECT}, lead:leads!inner(id, number, company_name, project_title, status, archived_at, anonymized_at)`)
+      .is('lead.archived_at', null)
+      .is('lead.anonymized_at', null),
+    // Tarefas soltas: o prospetor só vê as que são dele.
+    (ctx.role === 'prospector' ? base(TASK_SELECT).eq('assigned_to', ctx.user.id) : base(TASK_SELECT)).is('lead_id', null),
+  ]);
+  if (withLead.error) throw fromPostgrest(withLead.error);
+  // Antes da migração 20261108002200 não há tarefas soltas (a consulta pode só não devolver nada).
+  if (personal.error) console.warn('[tarefas] tarefas soltas', personal.error.message);
+  type Row = LeadTask & { lead: NonNullable<TaskListItem['lead']> & { archived_at: unknown; anonymized_at: unknown } };
+  const items: TaskListItem[] = [
+    ...((withLead.data ?? []) as unknown as Row[]).map(({ lead, ...task }) => ({
+      ...task,
+      lead: { id: lead.id, number: lead.number, company_name: lead.company_name, project_title: lead.project_title, status: lead.status },
+    })),
+    ...((personal.error ? [] : (personal.data ?? [])) as unknown as LeadTask[]).map((task) => ({ ...task, lead: null })),
+  ];
+  const order = done
+    ? (a: TaskListItem, b: TaskListItem) => (b.done_at ?? '').localeCompare(a.done_at ?? '')
+    : (a: TaskListItem, b: TaskListItem) => (a.due_on ?? '9999-12-31').localeCompare(b.due_on ?? '9999-12-31') || b.created_at.localeCompare(a.created_at);
+  return items.sort(order).slice(0, query.limit);
 }
 
 export async function deleteTask(ctx: ApiContext, id: string): Promise<void> {
@@ -288,9 +306,26 @@ export async function fetchTodayTasks(client: SupabaseClient, workspaceId: strin
     console.error('[tarefas] "Hoje" sem tarefas', error);
     return { overdue: [], due_today: [], upcoming: [] };
   }
-  const tasks = ((data ?? []) as unknown as (LeadTask & { lead: TodayTask['lead'] & Record<string, unknown> })[]).map(
-    ({ lead, ...t }) => ({ ...t, lead: { id: lead.id, number: lead.number, company_name: lead.company_name, status: lead.status } }),
-  );
+  // Tarefas soltas (sem lead) com prazo também entram em "Hoje".
+  const personal = await client
+    .from('lead_tasks')
+    .select(TASK_SELECT)
+    .eq('workspace_id', workspaceId)
+    .is('lead_id', null)
+    .is('done_at', null)
+    .not('due_on', 'is', null)
+    .lte('due_on', addDays(today, 7))
+    .order('due_on')
+    .order('position')
+    .limit(200);
+  type LeadRow = LeadTask & { lead: NonNullable<TodayTask['lead']> & Record<string, unknown> };
+  const tasks: TodayTask[] = [
+    ...((data ?? []) as unknown as LeadRow[]).map(({ lead, ...t }) => ({
+      ...t,
+      lead: { id: lead.id, number: lead.number, company_name: lead.company_name, status: lead.status },
+    })),
+    ...((personal.error ? [] : (personal.data ?? [])) as unknown as LeadTask[]).map((t) => ({ ...t, lead: null })),
+  ].sort((a, b) => a.due_on!.localeCompare(b.due_on!) || a.position - b.position);
   return {
     overdue: tasks.filter((t) => t.due_on! < today),
     due_today: tasks.filter((t) => t.due_on === today),

@@ -197,9 +197,13 @@ export function buildDailyPush(today: Today): PushPayload | null {
     today.due_today.length ? `${today.due_today.length} para hoje` : null,
     tasks.length ? `${tasks.length} tarefa${tasks.length === 1 ? '' : 's'}` : null,
   ].filter(Boolean);
-  const names = [...new Set([...urgent.map((l) => l.company_name), ...tasks.map((t) => t.lead.company_name)])];
+  const names = [...new Set([...urgent.map((l) => l.company_name), ...tasks.flatMap((t) => (t.lead ? [t.lead.company_name] : []))])];
   const single =
-    urgent.length === 1 && !tasks.length ? urgent[0]! : !urgent.length && new Set(tasks.map((t) => t.lead.id)).size === 1 ? tasks[0]!.lead : null;
+    urgent.length === 1 && !tasks.length
+      ? urgent[0]!
+      : !urgent.length && tasks.every((t) => t.lead) && new Set(tasks.map((t) => t.lead!.id)).size === 1
+        ? tasks[0]!.lead
+        : null;
   const title = !urgent.length
     ? tasks.length === 1
       ? '1 tarefa para hoje'

@@ -216,7 +216,8 @@ test('Tarefas: topo com resumo, Nova tarefa, pesquisa, Leads | Projetos e secç�
   const dialog = page.getByRole('dialog', { name: 'Nova tarefa' });
   await dialog.getByRole('button', { name: 'Criar tarefa' }).click();
   await expect(dialog.getByText('Escreve a tarefa.')).toBeVisible();
-  await expect(dialog.getByText('Escolhe o lead ou projeto.')).toBeVisible();
+  // O lead é opcional: sem ele, a tarefa fica solta.
+  await expect(dialog.getByText(/Sem escolher nenhum, a tarefa fica solta/)).toBeVisible();
   await dialog.getByLabel('Tarefa').fill(`Nova daqui ${run}`);
   await dialog.getByLabel('Procurar o lead ou projeto').fill(`Topo Tarefas ${run}`);
   await dialog.getByRole('button', { name: new RegExp(`Topo Tarefas ${run}`) }).click();

@@ -24,7 +24,7 @@ const taskTitle = z
 export const LeadTaskSchema = z
   .object({
     id: z.uuid(),
-    lead_id: z.uuid(),
+    lead_id: z.uuid().nullable().meta({ description: 'Lead ou projeto (null = tarefa solta, sem lead)' }),
     title: z.string(),
     due_on: z.string().nullable().meta({ description: 'Prazo (AAAA-MM-DD)' }),
     done_at: z.string().nullable().meta({ description: 'Quando foi concluída (null = por fazer)' }),
@@ -53,6 +53,12 @@ export const LeadTaskCreateSchema = z
   })
   .meta({ id: 'LeadTaskCreate' });
 export type LeadTaskCreate = z.output<typeof LeadTaskCreateSchema>;
+
+/** Nova tarefa na página Tarefas: num lead/projeto (lead_id) ou solta (sem lead_id). */
+export const TaskCreateSchema = LeadTaskCreateSchema.extend({
+  lead_id: z.uuid({ error: 'Lead inválido.' }).nullable().optional().meta({ description: 'Lead ou projeto (vazio = tarefa solta)' }),
+}).meta({ id: 'TaskCreate' });
+export type TaskCreate = z.output<typeof TaskCreateSchema>;
 
 export const LeadTaskUpdateSchema = z
   .object({
@@ -83,7 +89,10 @@ export type TaskProgress = z.infer<typeof TaskProgressSchema>;
 
 /** Tarefa com prazo para "Hoje" (com o lead a que pertence). */
 export const TodayTaskSchema = LeadTaskSchema.extend({
-  lead: z.object({ id: z.uuid(), number: z.int(), company_name: z.string(), status: z.enum(LEAD_STATUSES) }),
+  lead: z
+    .object({ id: z.uuid(), number: z.int(), company_name: z.string(), status: z.enum(LEAD_STATUSES) })
+    .nullable()
+    .meta({ description: 'null = tarefa solta (sem lead)' }),
 }).meta({ id: 'TodayTask' });
 export type TodayTask = z.infer<typeof TodayTaskSchema>;
 

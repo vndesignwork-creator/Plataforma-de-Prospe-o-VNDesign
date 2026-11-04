@@ -1,8 +1,9 @@
 'use client';
 
 /**
- * "Nova tarefa" na página Tarefas: título, o lead ou projeto (com pesquisa),
- * prazo e responsável — sem ter de abrir a ficha.
+ * "Nova tarefa" na página Tarefas: título, o lead ou projeto (opcional, com
+ * pesquisa), prazo e responsável — sem ter de abrir a ficha. Sem lead, fica uma
+ * tarefa solta (só aqui e em "Hoje").
  */
 import { formatDate, todayIso, type Lead } from '@vndesign/core';
 import { BriefcaseBusiness, Search, Users } from 'lucide-react';
@@ -21,7 +22,7 @@ import { DuePicker } from './tasks-card';
 type Picked = Pick<Lead, 'id' | 'number' | 'company_name' | 'project_title' | 'status'>;
 
 /** Procura o lead ou projeto da tarefa (pelo nome ou número). */
-function LeadPicker({ value, onChange, error }: { value: Picked | null; onChange: (lead: Picked | null) => void; error?: string }) {
+function LeadPicker({ value, onChange }: { value: Picked | null; onChange: (lead: Picked | null) => void }) {
   const [q, setQ] = useState('');
   const deferred = useDeferredValue(q.trim());
   const { data, isFetching } = useLeads({ q: deferred || undefined, limit: 8 });
@@ -47,7 +48,6 @@ function LeadPicker({ value, onChange, error }: { value: Picked | null; onChange
           onChange={(e) => setQ(e.target.value)}
           placeholder="Nome da empresa, projeto ou n.º…"
           aria-label="Procurar o lead ou projeto"
-          aria-invalid={error ? true : undefined}
           className="pl-9"
         />
       </div>
@@ -68,7 +68,7 @@ function LeadPicker({ value, onChange, error }: { value: Picked | null; onChange
           <li className="px-3 py-2 text-sm text-muted">{data ? 'Nenhum lead encontrado.' : 'A procurar…'}</li>
         )}
       </ul>
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
+      <p className="text-xs text-muted">Sem escolher nenhum, a tarefa fica solta (não pertence a nenhum lead).</p>
     </div>
   );
 }
@@ -101,29 +101,28 @@ export function NewTaskDialog({ onClose }: { onClose: () => void }) {
   // Com equipa, a tarefa é de quem a cria (pode dar-se a outra pessoa).
   const [assignee, setAssignee] = useState<string | null>(null);
   const assigned = assignee ?? (hasTeam ? (me?.user.id ?? '') : '');
-  const [errors, setErrors] = useState<{ title?: string; lead?: string }>({});
+  const [errors, setErrors] = useState<{ title?: string }>({});
   const [saving, setSaving] = useState(false);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    const next = {
-      title: title.trim() ? undefined : 'Escreve a tarefa.',
-      lead: lead ? undefined : 'Escolhe o lead ou projeto.',
-    };
+    const next = { title: title.trim() ? undefined : 'Escreve a tarefa.' };
     setErrors(next);
-    if (next.title || next.lead || !lead) return;
+    if (next.title) return;
     setSaving(true);
     try {
-      await api(`/leads/${lead.id}/tasks`, {
+      await api('/tasks', {
         method: 'POST',
         body: {
           title: title.trim(),
+          lead_id: lead?.id ?? null,
           due_on: due || null,
           ...(hasTeam ? { assigned_to: assigned || null } : {}),
         },
       });
-      toast.success(`Tarefa criada em ${lead.company_name}${due ? `, para ${formatDate(due)}` : ''}.`);
-      invalidate(lead.id);
+      const when = due ? `, para ${formatDate(due)}` : '';
+      toast.success(lead ? `Tarefa criada em ${lead.company_name}${when}.` : `Tarefa criada (sem lead)${when}.`);
+      invalidate(lead?.id ?? null);
       onClose();
     } catch (err) {
       toast.error(errorMessage(err));
@@ -137,7 +136,7 @@ export function NewTaskDialog({ onClose }: { onClose: () => void }) {
       open
       onOpenChange={(o) => (!o ? onClose() : undefined)}
       title="Nova tarefa"
-      description="Fica na ficha do lead ou projeto (cartão Tarefas) e aqui, pelo prazo."
+      description="Com um lead ou projeto, fica também na ficha dele (cartão Tarefas). Sem lead, fica só aqui e em “Hoje”."
       className="max-w-lg"
       footer={
         <>
@@ -155,8 +154,10 @@ export function NewTaskDialog({ onClose }: { onClose: () => void }) {
           <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Enviar proposta revista" maxLength={300} autoFocus />
         </Field>
         <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium">Lead ou projeto</span>
-          <LeadPicker value={lead} onChange={setLead} error={errors.lead} />
+          <span className="text-sm font-medium">
+            Lead ou projeto <span className="font-normal text-muted">(opcional)</span>
+          </span>
+          <LeadPicker value={lead} onChange={setLead} />
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1.5">

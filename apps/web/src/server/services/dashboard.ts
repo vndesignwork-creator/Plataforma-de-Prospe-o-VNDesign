@@ -164,6 +164,9 @@ export async function getToday(ctx: ApiContext): Promise<Today> {
   const mine = new Set(((own ?? []) as { id: string }[]).map((l) => l.id));
   const byLead = <T extends { id: string }>(list: T[]) => list.filter((l) => mine.has(l.id));
   const byRef = <T extends { lead: { id: string } }>(list: T[]) => list.filter((x) => mine.has(x.lead.id));
+  // Tarefas: as dos leads dele e as soltas que lhe foram dadas.
+  const byTask = <T extends { lead: { id: string } | null; assigned_to?: string | null }>(list: T[]) =>
+    list.filter((t) => (t.lead ? mine.has(t.lead.id) : t.assigned_to === ctx.user.id));
   return {
     ...today,
     overdue: byLead(today.overdue),
@@ -171,7 +174,7 @@ export async function getToday(ctx: ApiContext): Promise<Today> {
     upcoming: byLead(today.upcoming),
     stalled: byLead(today.stalled ?? []),
     tasks: today.tasks
-      ? { ...today.tasks, overdue: byRef(today.tasks.overdue), due_today: byRef(today.tasks.due_today), upcoming: byRef(today.tasks.upcoming) }
+      ? { ...today.tasks, overdue: byTask(today.tasks.overdue), due_today: byTask(today.tasks.due_today), upcoming: byTask(today.tasks.upcoming) }
       : today.tasks,
     hot: byLead(hot),
     meetings: byRef(meetings),

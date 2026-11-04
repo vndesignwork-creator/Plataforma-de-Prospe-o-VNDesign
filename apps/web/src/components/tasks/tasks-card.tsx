@@ -44,7 +44,7 @@ import { cn } from '@/lib/utils';
 import { DueChip, ReminderChip } from './task-chips';
 import { TaskProgress } from './task-progress';
 
-type TaskPatch = { title: string; due_on: string | null; remind_at: string | null; assigned_to?: string | null };
+export type TaskPatch = { title: string; due_on: string | null; remind_at: string | null; assigned_to?: string | null };
 
 // Os selos de prazo e lembrete estão num ficheiro à parte (o Dashboard usa-os sem
 // trazer o cartão inteiro, com o arrastar e largar).
@@ -157,7 +157,7 @@ function PushHint() {
 }
 
 /** Editar uma tarefa numa janela: o texto todo à vista (várias linhas), prazo e lembrete. */
-function TaskEditor({
+export function TaskEditor({
   task,
   onSave,
   onCancel,

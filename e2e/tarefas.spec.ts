@@ -355,3 +355,35 @@ test('concluir uma tarefa: o visto e o risco veem-se antes de passar para Conclu
   await page.getByRole('button', { name: 'Anular' }).click();
   await expect(card.getByRole('list', { name: 'Tarefas por fazer' }).getByText('Segunda')).toBeVisible();
 });
+
+test('Tarefas: tarefa sem lead, de onde vem, editar ao tocar no texto e Concluídas', async ({ page }) => {
+  const run = Date.now().toString(36);
+  const created = await page.request.post('/api/v1/tasks', { data: { title: `Solta ${run}` } });
+  expect(created.status()).toBe(201);
+  const task = (await created.json()).data as { id: string; lead_id: string | null };
+  expect(task.lead_id).toBeNull();
+
+  await page.goto('/tarefas');
+  await page.getByLabel('Procurar tarefa ou lead').fill(run);
+  const row = page.locator('main li').filter({ hasText: `Solta ${run}` }).first();
+  await expect(row.getByText('Sem lead')).toBeVisible();
+
+  // Tocar no texto abre a janela de editar.
+  await row.getByText(`Solta ${run}`).click();
+  const dialog = page.getByRole('dialog', { name: 'Editar tarefa' });
+  await dialog.getByLabel('Texto da tarefa').fill(`Solta editada ${run}`);
+  await dialog.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await expect(page.getByText('Tarefa guardada.')).toBeVisible();
+
+  // Concluir: passa para "Concluídas" (e reabre-se de lá).
+  await page.getByRole('checkbox', { name: `Concluir: Solta editada ${run}` }).check();
+  await expect(page.getByText(/Está em “Concluídas”/)).toBeVisible();
+  await page.getByRole('button', { name: /^Concluídas/ }).click();
+  const done = page.getByRole('list', { name: 'Concluídas' });
+  await expect(done.getByText(`Solta editada ${run}`)).toBeVisible();
+  await done.getByRole('checkbox', { name: `Reabrir: Solta editada ${run}` }).click();
+  await expect(page.getByText('Tarefa reaberta.')).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: `Concluir: Solta editada ${run}` })).toBeVisible();
+
+  await page.request.delete(`/api/v1/tasks/${task.id}`);
+});

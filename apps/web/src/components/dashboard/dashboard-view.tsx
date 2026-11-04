@@ -319,7 +319,7 @@ function TodayTasks({ title, today, tasks }: { title: string; today: string; tas
               .catch((error: unknown) => toast.error(errorMessage(error)))
               .finally(() => {
                 void qc.invalidateQueries({ queryKey: ['today'] });
-                void qc.invalidateQueries({ queryKey: ['tasks', task.lead.id] });
+                if (task.lead) void qc.invalidateQueries({ queryKey: ['tasks', task.lead.id] });
               });
           },
         },
@@ -329,7 +329,7 @@ function TodayTasks({ title, today, tasks }: { title: string; today: string; tas
       toast.error(errorMessage(error));
     } finally {
       void qc.invalidateQueries({ queryKey: ['today'] });
-      void qc.invalidateQueries({ queryKey: ['tasks', task.lead.id] });
+      if (task.lead) void qc.invalidateQueries({ queryKey: ['tasks', task.lead.id] });
       void qc.invalidateQueries({ queryKey: ['board'] });
       void qc.invalidateQueries({ queryKey: ['leads'] });
     }
@@ -352,7 +352,7 @@ function TodayTasks({ title, today, tasks }: { title: string; today: string; tas
       toast.error(errorMessage(error));
     } finally {
       void qc.invalidateQueries({ queryKey: ['today'] });
-      void qc.invalidateQueries({ queryKey: ['tasks', task.lead.id] });
+      if (task.lead) void qc.invalidateQueries({ queryKey: ['tasks', task.lead.id] });
     }
   }
   return (
@@ -386,9 +386,15 @@ function TodayTasks({ title, today, tasks }: { title: string; today: string; tas
                 <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
                   <DueChip due={t.due_on} today={today} done={done} />
                   <ReminderChip task={t} />
-                  <Link href={`${leadPath(t.lead)}#tarefas`} className="hover:text-fg hover:underline">
-                    <span className="tabular">#{t.lead.number}</span> {t.lead.company_name}
-                  </Link>
+                  {t.lead ? (
+                    <Link href={`${leadPath(t.lead)}#tarefas`} className="hover:text-fg hover:underline">
+                      <span className="tabular">#{t.lead.number}</span> {t.lead.company_name}
+                    </Link>
+                  ) : (
+                    <Link href="/tarefas" className="hover:text-fg hover:underline">
+                      Sem lead
+                    </Link>
+                  )}
                 </span>
               </span>
             </SwipeRow>

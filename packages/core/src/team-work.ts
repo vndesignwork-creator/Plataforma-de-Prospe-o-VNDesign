@@ -170,6 +170,7 @@ export function notificationTitle(n: Pick<Notification, 'kind'> & { title?: stri
 // -----------------------------------------------------------------------------
 export const TaskListQuerySchema = z
   .object({
+    state: z.enum(['open', 'done']).default('open').meta({ description: 'open = por fazer; done = concluídas nos últimos 30 dias (as mais recentes primeiro)' }),
     assigned: z
       .union([z.enum(['me', 'none', 'all']), z.uuid()])
       .default('me')
@@ -180,8 +181,19 @@ export const TaskListQuerySchema = z
 export type TaskListQuery = z.output<typeof TaskListQuerySchema>;
 
 export const TaskListItemSchema = LeadTaskSchema.extend({
-  lead: z.object({ id: z.uuid(), number: z.int(), company_name: z.string(), project_title: z.string().nullable(), status: z.string() }),
+  lead: z
+    .object({ id: z.uuid(), number: z.int(), company_name: z.string(), project_title: z.string().nullable(), status: z.string() })
+    .nullable()
+    .meta({ description: 'null = tarefa solta (sem lead)' }),
 }).meta({ id: 'TaskListItem' });
+
+/** De onde vem a tarefa: de um projeto (cliente), de um lead ou solta. */
+export type TaskOrigin = 'project' | 'lead' | 'personal';
+export const TASK_ORIGIN_LABELS: Record<TaskOrigin, string> = { project: 'Projeto', lead: 'Lead', personal: 'Sem lead' };
+export function taskOrigin(lead: { status: string } | null | undefined): TaskOrigin {
+  if (!lead) return 'personal';
+  return lead.status === 'cliente' ? 'project' : 'lead';
+}
 export type TaskListItem = z.infer<typeof TaskListItemSchema>;
 
 /** Grupos da página Tarefas, pelo prazo. */

@@ -102,11 +102,11 @@ async function push(ctx: ApiContext, userId: string, payload: { title: string; b
 /** Deram uma tarefa a alguém (o aviso no sino foi criado pelo trigger): push para essa pessoa. */
 export async function notifyTaskAssigned(ctx: ApiContext, task: LeadTask) {
   if (!task.assigned_to || task.assigned_to === ctx.user.id || task.done_at) return;
-  const lead = await getLead(ctx, task.lead_id);
+  const lead = task.lead_id ? await getLead(ctx, task.lead_id) : null;
   await push(ctx, task.assigned_to, {
     title: notificationTitle({ kind: 'task_assigned' }, await actorName(ctx)),
-    body: `${task.title} · #${lead.number} ${lead.company_name}`,
-    url: `${leadPath(lead)}#tarefas`,
+    body: lead ? `${task.title} · #${lead.number} ${lead.company_name}` : task.title,
+    url: lead ? `${leadPath(lead)}#tarefas` : '/tarefas',
     tag: `task-${task.id}`,
   });
 }

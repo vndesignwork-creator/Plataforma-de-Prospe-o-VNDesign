@@ -657,9 +657,12 @@ export function useTaskTemplates() {
 /** Depois de mudar tarefas: o progresso aparece na lista e no Kanban, e as datas em "Hoje". */
 export function useInvalidateTasks() {
   const qc = useQueryClient();
-  return (leadId: string) => {
-    void qc.invalidateQueries({ queryKey: ['tasks', leadId] });
-    void qc.invalidateQueries({ queryKey: qk.activities(leadId) });
+  /** leadId null: uma tarefa solta (sem lead). */
+  return (leadId: string | null) => {
+    if (leadId) {
+      void qc.invalidateQueries({ queryKey: ['tasks', leadId] });
+      void qc.invalidateQueries({ queryKey: qk.activities(leadId) });
+    }
     void qc.invalidateQueries({ queryKey: ['leads'] });
     void qc.invalidateQueries({ queryKey: ['board'] });
     void qc.invalidateQueries({ queryKey: ['today'] });

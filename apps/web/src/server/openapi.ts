@@ -136,6 +136,7 @@ import {
   TaskSearchQuerySchema,
   TaskListQuerySchema,
   TaskListItemSchema,
+  TaskCreateSchema,
   NotificationClearQuerySchema,
   NotificationListSchema,
   NotificationReadSchema,
@@ -1197,6 +1198,12 @@ export function getOpenApiDocument() {
           summary: 'Com ?q=: pesquisa rápida nas tarefas (Ctrl+K). Sem q: tarefas por fazer de todos os leads (página Tarefas), filtradas por responsável',
           requestParams: { query: TaskListQuerySchema.extend({ q: TaskSearchQuerySchema.shape.q.optional() }) },
           responses: { '200': ok(data(z.union([z.array(TaskListItemSchema), z.array(TaskSearchResultSchema)]))), ...common },
+        }),
+        post: op({
+          tags: ['Tarefas'],
+          summary: 'Nova tarefa: num lead ou projeto (lead_id) ou solta, sem lead (só com sessão)',
+          requestBody: body(TaskCreateSchema),
+          responses: { '201': ok(data(LeadTaskSchema)), ...common },
         }),
       },
       '/notifications': {
