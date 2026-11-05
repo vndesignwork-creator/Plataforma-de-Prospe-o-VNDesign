@@ -13,7 +13,7 @@ import { Check, Loader2, Mic, Pause, Play, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
-import { appendDictation } from '@/lib/dictation';
+import { appendDictation, newDictationPart } from '@/lib/dictation';
 import { cn } from '@/lib/utils';
 import { AudioWaveform } from './audio-waveform';
 
@@ -181,14 +181,23 @@ export function DictateButton({
     r.lang = 'pt-PT';
     r.continuous = true;
     r.interimResults = true;
+    // Cada frase final entra uma só vez (o Android repete resultados e frases já ditas).
+    const handled = new Set<number>();
+    let committed = '';
     r.onresult = (e) => {
       let partial = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const result = e.results[i]!;
-        if (result.isFinal) live.current?.insert(result[0].transcript);
-        else partial += result[0].transcript;
+        if (result.isFinal) {
+          if (handled.has(i)) continue;
+          handled.add(i);
+          const part = newDictationPart(committed, result[0].transcript);
+          committed = part.committed;
+          if (part.add) live.current?.insert(part.add);
+        } else partial += result[0].transcript;
       }
-      setInterim(partial);
+      // A frase a meio, sem o que já entrou (no Android vem com o que já foi dito).
+      setInterim(partial && committed ? newDictationPart(committed, partial).add : partial);
     };
     r.onerror = (e) => {
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {

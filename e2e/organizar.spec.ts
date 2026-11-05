@@ -275,3 +275,46 @@ test('ditar no novo lead (empresa e notas recolhíveis), na prospeção e no ger
   await page.getByRole('button', { name: 'Ditar (falar em vez de escrever)' }).first().click();
   await expect(query).toHaveValue('Padaria do bairro');
 });
+
+test('ditado no telemóvel (Android): frases repetidas ou cumulativas não duplicam palavras', async ({ page }) => {
+  // Como o Chrome do Android: cada resultado final repete o que já foi dito, e o último vem duas vezes.
+  await page.addInitScript(() => {
+    class AndroidRecognition {
+      lang = '';
+      continuous = false;
+      interimResults = false;
+      onresult: ((e: unknown) => void) | null = null;
+      onerror: ((e: unknown) => void) | null = null;
+      onend: (() => void) | null = null;
+      start() {
+        const finals = ['querem', 'querem loja', 'querem loja online'];
+        const results: unknown[] = [];
+        finals.forEach((t, i) => {
+          setTimeout(() => {
+            results.push(Object.assign([{ transcript: t }], { isFinal: true }));
+            this.onresult?.({ resultIndex: i, results: [...results] });
+          }, 40 * (i + 1));
+        });
+        setTimeout(() => {
+          results.push(Object.assign([{ transcript: 'querem loja online' }], { isFinal: true }));
+          this.onresult?.({ resultIndex: 3, results: [...results] });
+        }, 220);
+      }
+      stop() {
+        this.onend?.();
+      }
+      abort() {
+        this.onend?.();
+      }
+    }
+    Object.assign(window, { SpeechRecognition: AndroidRecognition, webkitSpeechRecognition: AndroidRecognition });
+  });
+  const lead = await createLead(page.request, { company_name: `Ditado Android ${run}` });
+  await page.goto(`/leads/${lead.id}`);
+  await page.getByRole('button', { name: 'Notas com IA' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Notas com IA' });
+  await dialog.getByRole('button', { name: 'Ditar (falar em vez de escrever)' }).click();
+  await page.waitForTimeout(600);
+  await expect(dialog.getByLabel('Apontamentos')).toHaveValue('Querem loja online');
+  await dialog.getByRole('button', { name: 'Concluir o ditado' }).click();
+});
