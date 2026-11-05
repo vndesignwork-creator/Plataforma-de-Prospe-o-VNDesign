@@ -123,7 +123,8 @@ test('dashboard: a página acaba nos cartões (sem espaço vazio por baixo, mesm
     });
   }
   await page.goto('/dashboard');
-  await expect(page.getByText(`Atrasado ${run} 0`).first()).toBeAttached();
+  // A base de testes pode ter atrasados de corridas antigas (vêm primeiro): basta haver a lista cheia.
+  await expect(page.getByText(/^Atrasado /).first()).toBeAttached();
   const { doc, main, inner } = await page.evaluate(() => ({
     doc: document.documentElement.scrollHeight,
     inner: window.innerHeight,

@@ -83,7 +83,7 @@ test('reciclagem: apagar na ficha, repor com tudo; apagar de vez', async ({ page
   expect((await page.request.post(`/api/v1/leads/${lead.id}/payments`, { data: { description: 'Sinal', amount: 300, due_on: iso(5) } })).status()).toBe(201);
 
   await page.goto(`/leads/${lead.id}`);
-  await page.getByRole('button', { name: 'Mais ações' }).click();
+  await page.getByRole('button', { name: 'Mais ações', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Apagar lead…' }).click();
   const dialog = page.getByRole('dialog', { name: `Apagar #${lead.number}?` });
   await expect(dialog.getByText(/vai para Leads → Apagados/)).toBeVisible();
@@ -138,7 +138,7 @@ test('resumo com IA: abre na ficha; próximo passo e "Afixar na ficha"', async (
 test('nota afixada: afixar pelo menu, aparece na Prospeção, editar e tirar', async ({ page }) => {
   const lead = await createLead(page.request, { company_name: `Afixado ${run}` });
   await page.goto(`/leads/${lead.id}`);
-  await page.getByRole('button', { name: 'Mais ações' }).click();
+  await page.getByRole('button', { name: 'Mais ações', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Afixar uma nota…' }).click();
   await page.getByRole('dialog', { name: 'Nota afixada' }).getByLabel('Nota afixada').fill('Falar com a Marta, não com o sócio');
   await page.getByRole('button', { name: 'Afixar' }).click();
