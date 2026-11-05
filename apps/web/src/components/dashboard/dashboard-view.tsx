@@ -43,6 +43,8 @@ import { DashboardHeader, SummaryStrip } from './dashboard-top';
 import { ReconnectCard } from './reconnect-card';
 import { RepliesCard } from './replies-card';
 import { CardLayoutButton, DASHBOARD_BOARD, useCardLayout, visibleCards } from '@/components/leads/card-layout';
+import { GoalsCard } from './goals-card';
+import { SitesCard } from './sites-card';
 import { cn, telUrl } from '@/lib/utils';
 import { DueBadge, StageLabel } from '@/components/projects/project-bits';
 import { meetingLabel } from '@/components/meetings/meetings-card';
@@ -791,6 +793,7 @@ function ProspectorDashboard() {
     <div className="flex flex-col gap-5">
       <DashboardHeader />
       <MyTeamTiles />
+      <GoalsCard />
       <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
         <TodayCard />
         <HotLeadsCard fitToday className="lg:self-start" />
@@ -805,7 +808,7 @@ function OwnerDashboard() {
   const { data: settings } = useSettings();
   const projectsOn = settings?.features.projects ?? false;
   const layout = useCardLayout(DASHBOARD_CARDS_PREFERENCE);
-  const available = DASHBOARD_CARDS.filter((k) => projectsOn || (k !== 'projects' && k !== 'reconnect'));
+  const available = DASHBOARD_CARDS.filter((k) => projectsOn || (k !== 'projects' && k !== 'reconnect' && k !== 'sites'));
   // "Organizar cartões" no topo (antes estava no fundo da página).
   const header = <DashboardHeader organize={<CardLayoutButton board={DASHBOARD_BOARD} available={available} className="self-center" />} />;
 
@@ -863,6 +866,7 @@ function OwnerDashboard() {
       <div className="flex flex-col gap-5">
         {header}
         {summary}
+        <GoalsCard />
         <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
           <TodayCard className="lg:col-start-1 lg:row-start-1" />
           {/* Os quentes mostram só as linhas que cabem ao lado do "Hoje" (sem espaço vazio em nenhum dos dois). */}
@@ -874,6 +878,7 @@ function OwnerDashboard() {
           />
           <ProjectsCard className="lg:col-start-2 lg:row-start-3" />
         </div>
+        {projectsOn ? <SitesCard /> : null}
         {projectsOn ? <ReconnectCard /> : null}
       </div>
     );
@@ -882,15 +887,17 @@ function OwnerDashboard() {
   // Organizado à medida: pela ordem escolhida (o Resumo e os Clientes antigos a toda a largura; os outros em duas colunas).
   const cards: Record<DashboardCard, ReactNode> = {
     summary,
+    goals: <GoalsCard />,
     today: <TodayCard />,
     // Ao lado do "Hoje" (se calhar na mesma fila), mostra só as linhas que cabem.
     hot: <HotLeadsCard fitToday className="lg:self-start" />,
     replies: <RepliesCard />,
     pipeline: <PipelineCard byStatus={data.by_status} />,
     projects: <ProjectsCard />,
+    sites: <SitesCard />,
     reconnect: <ReconnectCard />,
   };
-  const wide = new Set<DashboardCard>(['summary', 'replies', 'reconnect']);
+  const wide = new Set<DashboardCard>(['summary', 'goals', 'replies', 'sites', 'reconnect']);
   const blocks: DashboardCard[][] = [];
   for (const key of visibleCards(DASHBOARD_BOARD, layout, (k) => available.includes(k))) {
     const last = blocks[blocks.length - 1];

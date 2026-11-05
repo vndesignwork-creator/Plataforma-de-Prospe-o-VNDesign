@@ -4,6 +4,7 @@
  */
 import type { Features } from '@vndesign/core';
 import {
+  Activity,
   BadgeCheck,
   BriefcaseBusiness,
   Calculator,
@@ -197,6 +198,18 @@ FEATURES.push(
     description: 'Nas Estatísticas: o que recebeste, gastaste e tens por receber em cada mês, em PDF ou Excel.',
     icon: FileSpreadsheet,
   },
+  {
+    key: 'site_monitoring',
+    label: 'Vigiar os sites dos clientes',
+    description: 'Verifica de hora a hora se o site está no ar e quando expiram o certificado SSL e o domínio. Avisa antes e cria uma tarefa.',
+    icon: Activity,
+  },
+  {
+    key: 'monthly_goals',
+    label: 'Metas do mês',
+    description: 'Recebido, propostas, clientes novos, emails, chamadas e WhatsApp: a barra de cada meta no Dashboard e na Prospeção.',
+    icon: Target,
+  },
 );
 
 export const FEATURE_BY_KEY = new Map(FEATURES.map((f) => [f.key, f]));
@@ -213,7 +226,7 @@ export const FEATURE_GROUPS: { title: string; description: string; master?: keyo
   {
     title: 'Leads e prospeção',
     description: 'Encontrar, analisar e contactar leads.',
-    parts: [{ keys: ['prospecting_session', 'email_tracking', 'whatsapp_templates', 'meetings', 'diagnosis_report', 'site_screenshots'] }],
+    parts: [{ keys: ['prospecting_session', 'monthly_goals', 'email_tracking', 'whatsapp_templates', 'meetings', 'diagnosis_report', 'site_screenshots'] }],
   },
   {
     title: 'Vendas e faturação',
@@ -229,7 +242,7 @@ export const FEATURE_GROUPS: { title: string; description: string; master?: keyo
       { title: 'Arranque', keys: ['project_kickoff', 'briefing'] },
       { title: 'Tempo', keys: ['time_tracking', 'time_value', 'pomodoro'] },
       { title: 'Trabalho e entregas', keys: ['revisions', 'deliverables', 'launch_checklist', 'expenses'] },
-      { title: 'Cliente e equipa', keys: ['client_page', 'client_approvals', 'collaborators', 'brand_kit'] },
+      { title: 'Cliente e equipa', keys: ['site_monitoring', 'client_page', 'client_approvals', 'collaborators', 'brand_kit'] },
     ],
   },
 ];

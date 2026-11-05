@@ -4,7 +4,7 @@ import { deleteTaskList, updateTaskList } from '@/server/services/tasks';
 
 type Params = { id: string };
 
-/** PATCH /api/v1/task-lists/{id} — mudar o título ou a posição da lista. */
+/** PATCH /api/v1/task-lists/{id} — mudar o título ou a posição, partilhar com a equipa (shared) ou arquivar (archived). */
 export const PATCH = apiRoute<Params>(async (req, ctx, { id }) => json({ data: await updateTaskList(ctx, parseId(id, 'Lista não encontrada'), await parseJson(req, TaskListUpdateSchema)) }));
 
 /** DELETE /api/v1/task-lists/{id} — apagar a lista e as tarefas dela. */

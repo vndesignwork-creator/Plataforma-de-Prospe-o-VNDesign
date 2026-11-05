@@ -32,21 +32,29 @@ import {
   type LeadTask,
   type TaskList,
   type TaskListItem,
+  type TaskListWithTasks,
 } from "@vndesign/core";
 import {
   ArrowDown,
   ArrowDownToLine,
   ArrowUp,
   ArrowUpToLine,
+  Archive,
+  ArchiveRestore,
   BriefcaseBusiness,
+  Check,
   ChevronRight,
   CircleDot,
   Copy,
   ExternalLink,
   GripVertical,
   MoreVertical,
+  Palette,
   Pencil,
+  Pin,
+  PinOff,
   Plus,
+  Share2,
   Trash2,
   Users,
 } from "lucide-react";
@@ -60,6 +68,7 @@ import { DictateButton } from "@/components/ui/dictate-button";
 import {
   DropdownContent,
   DropdownItem,
+  DropdownLabel,
   DropdownRoot,
   DropdownSeparator,
   DropdownTrigger,
@@ -69,6 +78,7 @@ import { api, errorMessage } from "@/lib/api-client";
 import { verticalOnly } from "@/lib/dnd";
 import {
   useInvalidateTasks,
+  useMe,
   usePreference,
   useSetPreference,
 } from "@/lib/queries";
@@ -76,6 +86,7 @@ import { cn } from "@/lib/utils";
 import {
   TaskRow,
   copyText,
+  doneMessage,
   type MoveTarget,
   type TaskPatch,
 } from "./tasks-card";
@@ -108,6 +119,28 @@ const containerBody = (c: Container) =>
 
 const BOARD_ORDER_KEY = "tasks.board.order";
 
+/** Cores dos cartões (de cada pessoa, como a ordem e o "afixar"). Tons leves que servem no claro e no escuro. */
+const CARD_COLORS = {
+  red: { label: "Vermelho", card: "border-red-500/40 bg-red-500/10", dot: "bg-red-500" },
+  orange: { label: "Laranja", card: "border-orange-500/40 bg-orange-500/10", dot: "bg-orange-500" },
+  yellow: { label: "Amarelo", card: "border-amber-400/50 bg-amber-400/15", dot: "bg-amber-400" },
+  green: { label: "Verde", card: "border-emerald-500/40 bg-emerald-500/10", dot: "bg-emerald-500" },
+  teal: { label: "Azul-petróleo", card: "border-teal-500/40 bg-teal-500/10", dot: "bg-teal-500" },
+  blue: { label: "Azul", card: "border-sky-500/40 bg-sky-500/10", dot: "bg-sky-500" },
+  purple: { label: "Roxo", card: "border-violet-500/40 bg-violet-500/10", dot: "bg-violet-500" },
+  pink: { label: "Rosa", card: "border-pink-500/40 bg-pink-500/10", dot: "bg-pink-500" },
+  gray: { label: "Cinzento", card: "border-zinc-500/40 bg-zinc-500/10", dot: "bg-zinc-500" },
+} as const;
+type CardColor = keyof typeof CARD_COLORS;
+const isCardColor = (v: unknown): v is CardColor =>
+  typeof v === "string" && v in CARD_COLORS;
+/** Preferência do quadro: a ordem, os afixados e as cores (por cartão). */
+type BoardPrefs = {
+  order?: string[];
+  pinned?: string[];
+  colors?: Record<string, string>;
+};
+
 export function useTaskLists() {
   return useQuery({
     queryKey: ["task-lists"],
@@ -116,11 +149,18 @@ export function useTaskLists() {
 }
 
 /** "Nova lista": título e as primeiras tarefas (uma por linha), como uma nota do Keep. */
-function NewListComposer({ assignTo }: { assignTo: string | null }) {
+function NewListComposer({
+  assignTo,
+  hasTeam,
+}: {
+  assignTo: string | null;
+  hasTeam: boolean;
+}) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [items, setItems] = useState("");
+  const [shared, setShared] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function create(e?: FormEvent) {
@@ -138,11 +178,17 @@ function NewListComposer({ assignTo }: { assignTo: string | null }) {
             .filter(Boolean),
           // Com equipa ("as minhas"): as tarefas da lista nova ficam com quem a criou.
           assigned_to: assignTo,
+          ...(shared ? { shared: true } : {}),
         },
       });
-      toast.success(`Lista “${list.title}” criada.`);
+      toast.success(
+        shared
+          ? `Lista “${list.title}” criada e partilhada com a equipa.`
+          : `Lista “${list.title}” criada.`,
+      );
       setTitle("");
       setItems("");
+      setShared(false);
       setOpen(false);
     } catch (error) {
       toast.error(errorMessage(error));
@@ -189,6 +235,17 @@ function NewListComposer({ assignTo }: { assignTo: string | null }) {
       />
       <div className="flex flex-wrap items-center gap-2">
         <DictateButton size="sm" value={items} onChange={setItems} />
+        {hasTeam ? (
+          <label className="flex items-center gap-1.5 text-sm text-muted">
+            <input
+              type="checkbox"
+              checked={shared}
+              onChange={(e) => setShared(e.target.checked)}
+              className="h-4 w-4"
+            />
+            Partilhar com a equipa
+          </label>
+        ) : null}
         <Button
           type="button"
           variant="ghost"
@@ -298,10 +355,24 @@ function BoardCardView({
   index,
   count,
   onMoveCard,
+  color,
+  pinned,
+  onPin,
+  onColor,
+  viewer,
+  archived = false,
 }: {
   index: number;
   count: number;
   onMoveCard: (move: CardMove) => void;
+  color: CardColor | null;
+  pinned: boolean;
+  onPin: (pin: boolean) => void;
+  onColor: (color: CardColor | null) => void;
+  /** Quem está a ver: partilhar/apagar só quem criou a lista, o dono ou um administrador. */
+  viewer: { id: string | null; role: string | null; hasTeam: boolean };
+  /** No arquivo: sem caixa de nova tarefa; o menu desarquiva ou apaga. */
+  archived?: boolean;
   card: BoardCard;
   today: string;
   targets: { key: string; label: string; container: Container }[];
@@ -319,7 +390,7 @@ function BoardCardView({
     listeners,
     isDragging,
     isOver,
-  } = useSortable({ id: card.key });
+  } = useSortable({ id: card.key, disabled: archived });
   const [title, setTitle] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
@@ -366,6 +437,7 @@ function BoardCardView({
             phrase.time && phrase.due_on
               ? new Date(`${phrase.due_on}T${phrase.time}:00`).toISOString()
               : null,
+          ...(phrase.repeat ? { repeat: phrase.repeat } : {}),
           ...(assignTo ? { assigned_to: assignTo } : {}),
         },
       });
@@ -384,7 +456,7 @@ function BoardCardView({
       if (done) {
         await new Promise((r) => setTimeout(r, 450));
         toast.success(
-          `Concluída: ${task.title.length > 60 ? `${task.title.slice(0, 60)}…` : task.title}`,
+          doneMessage(task),
           {
             action: {
               label: "Anular",
@@ -450,6 +522,7 @@ function BoardCardView({
           title: task.title,
           due_on: task.due_on,
           assigned_to: task.assigned_to ?? null,
+          ...(task.repeat ? { repeat: task.repeat } : {}),
         },
       });
       // A cópia fica logo a seguir à original.
@@ -518,6 +591,32 @@ function BoardCardView({
     }
   }
 
+  async function patchList(body: { shared?: boolean; archived?: boolean }) {
+    if (!card.list) return;
+    try {
+      await api(`/task-lists/${card.list.id}`, { method: "PATCH", body });
+      if (body.archived === true)
+        toast.success(`Lista “${card.title}” arquivada.`, {
+          action: {
+            label: "Anular",
+            onClick: () => void patchList({ archived: false }),
+          },
+        });
+      else if (body.archived === false)
+        toast.success(`Lista “${card.title}” de volta ao quadro.`);
+      else if (body.shared)
+        toast.success(
+          `Lista “${card.title}” partilhada: toda a equipa a vê e pode mexer.`,
+        );
+      else toast.success(`Lista “${card.title}” deixou de ser partilhada.`);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      void qc.invalidateQueries({ queryKey: ["task-lists"] });
+      void qc.invalidateQueries({ queryKey: ["my-tasks"] });
+    }
+  }
+
   async function deleteList() {
     if (!card.list) return;
     const n = card.pending.length + card.done.length;
@@ -543,6 +642,7 @@ function BoardCardView({
     today,
     sortable,
     assigneeName: assigneeName(task.assigned_to),
+    doneByName: assigneeName(task.done_by),
     editing: editingId === task.id,
     onToggle: (done: boolean) => toggle(task, done),
     onEdit: () => setEditingId(task.id),
@@ -561,6 +661,15 @@ function BoardCardView({
       ),
   });
 
+  const canManage =
+    !card.list?.created_by ||
+    card.list.created_by === viewer.id ||
+    viewer.role === "owner" ||
+    viewer.role === "admin";
+  const sharedBy =
+    card.list?.shared && card.list.created_by && card.list.created_by !== viewer.id
+      ? assigneeName(card.list.created_by)
+      : null;
   const allText = [
     card.title,
     ...pending.map((t) => `☐ ${t.title}`),
@@ -572,13 +681,15 @@ function BoardCardView({
         role="region"
         className={cn(
           "overflow-hidden",
+          color && CARD_COLORS[color].card,
           isDragging && "opacity-40",
           isOver && !isDragging && "ring-2 ring-accent",
         )}
         aria-label={card.title}
+        data-color={color ?? undefined}
       >
         <div className="flex items-start gap-2 px-4 pt-3 pb-2 text-sm">
-          {count > 1 ? (
+          {count > 1 && !archived ? (
             <button
               type="button"
               ref={setActivatorNodeRef}
@@ -593,6 +704,25 @@ function BoardCardView({
             </button>
           ) : null}
           <CardTitle card={card} onRename={renameList} />
+          {pinned ? (
+            <Pin
+              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted"
+              aria-label="Afixado"
+            />
+          ) : null}
+          {card.list?.shared && viewer.hasTeam ? (
+            <span
+              className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded bg-surface-3 px-1.5 text-xs text-muted"
+              title={
+                sharedBy
+                  ? `Partilhada por ${sharedBy}: toda a equipa vê e pode mexer`
+                  : "Partilhada com a equipa: todos veem e podem mexer"
+              }
+            >
+              <Users className="h-3 w-3" aria-hidden />
+              {sharedBy ? `de ${sharedBy}` : "Partilhada"}
+            </span>
+          ) : null}
           <DropdownRoot>
             <DropdownTrigger
               aria-label={`Mais ações: ${card.title}`}
@@ -613,7 +743,54 @@ function BoardCardView({
               <DropdownItem onSelect={() => void copyText(allText)}>
                 <Copy className="h-4 w-4" aria-hidden /> Copiar a lista
               </DropdownItem>
-              {count > 1 ? (
+              {!archived ? (
+                <DropdownItem onSelect={() => onPin(!pinned)}>
+                  {pinned ? (
+                    <>
+                      <PinOff className="h-4 w-4" aria-hidden /> Desafixar
+                    </>
+                  ) : (
+                    <>
+                      <Pin className="h-4 w-4" aria-hidden /> Afixar no topo
+                    </>
+                  )}
+                </DropdownItem>
+              ) : null}
+              <DropdownSeparator />
+              <DropdownLabel>
+                <span className="inline-flex items-center gap-1.5">
+                  <Palette className="h-3.5 w-3.5" aria-hidden /> Cor
+                </span>
+              </DropdownLabel>
+              <div className="flex max-w-56 flex-wrap gap-1 px-1.5 pb-1">
+                <DropdownItem
+                  aria-label="Cor: sem cor"
+                  onSelect={() => onColor(null)}
+                  className="h-7 w-7 justify-center rounded-full border border-border-strong p-0"
+                >
+                  {!color ? <Check className="h-3.5 w-3.5" aria-hidden /> : null}
+                </DropdownItem>
+                {(Object.keys(CARD_COLORS) as CardColor[]).map((c) => (
+                  <DropdownItem
+                    key={c}
+                    aria-label={`Cor: ${CARD_COLORS[c].label}`}
+                    onSelect={() => onColor(c)}
+                    className="h-7 w-7 justify-center rounded-full p-0"
+                  >
+                    <span
+                      className={cn(
+                        "flex h-5 w-5 items-center justify-center rounded-full text-white",
+                        CARD_COLORS[c].dot,
+                      )}
+                    >
+                      {color === c ? (
+                        <Check className="h-3 w-3" aria-hidden />
+                      ) : null}
+                    </span>
+                  </DropdownItem>
+                ))}
+              </div>
+              {count > 1 && !archived ? (
                 <>
                   <DropdownSeparator />
                   <DropdownItem
@@ -648,15 +825,44 @@ function BoardCardView({
               {card.list ? (
                 <>
                   <DropdownSeparator />
-                  <DropdownItem danger onSelect={() => void deleteList()}>
-                    <Trash2 className="h-4 w-4" aria-hidden /> Apagar a lista
+                  {viewer.hasTeam && canManage && !archived ? (
+                    <DropdownItem
+                      onSelect={() =>
+                        void patchList({ shared: !card.list!.shared })
+                      }
+                    >
+                      <Share2 className="h-4 w-4" aria-hidden />
+                      {card.list.shared
+                        ? "Deixar de partilhar"
+                        : "Partilhar com a equipa"}
+                    </DropdownItem>
+                  ) : null}
+                  <DropdownItem
+                    onSelect={() => void patchList({ archived: !archived })}
+                  >
+                    {archived ? (
+                      <>
+                        <ArchiveRestore className="h-4 w-4" aria-hidden />{" "}
+                        Desarquivar
+                      </>
+                    ) : (
+                      <>
+                        <Archive className="h-4 w-4" aria-hidden /> Arquivar
+                      </>
+                    )}
                   </DropdownItem>
+                  {canManage ? (
+                    <DropdownItem danger onSelect={() => void deleteList()}>
+                      <Trash2 className="h-4 w-4" aria-hidden /> Apagar a lista
+                    </DropdownItem>
+                  ) : null}
                 </>
               ) : null}
             </DropdownContent>
           </DropdownRoot>
         </div>
         {/* Escrever e Enter: a tarefa entra em cima (aceita "sexta às 10h"). */}
+        {archived ? null : (
         <form
           onSubmit={add}
           className="flex flex-wrap items-center gap-1.5 border-y border-border px-2 py-1.5"
@@ -678,6 +884,7 @@ function BoardCardView({
             className="border-0"
           />
         </form>
+        )}
         {pending.length ? (
           <DndContext
             sensors={sensors}
@@ -754,9 +961,12 @@ export function TaskBoard({
   query,
   assigneeName,
   assignTo,
+  hasTeam = false,
   loading,
   empty,
 }: {
+  /** Há equipa (mais de uma pessoa): partilhar listas e "quem marcou". */
+  hasTeam?: boolean;
   pending: TaskListItem[];
   done: TaskListItem[];
   today: string;
@@ -859,11 +1069,19 @@ export function TaskBoard({
     return items;
   }, [lists, cards]);
 
-  // A ordem dos cartões é de cada pessoa (preferência). Os que ainda não estão nela (ex.: lista nova) vêm primeiro.
-  const { data: savedOrder } = usePreference<{ order?: string[] }>(
-    BOARD_ORDER_KEY,
+  // A ordem, os afixados e as cores dos cartões são de cada pessoa (preferência).
+  // Os que ainda não estão na ordem (ex.: lista nova) vêm primeiro; os afixados ficam em cima.
+  const { data: me } = useMe();
+  const { data: savedOrder } = usePreference<BoardPrefs>(BOARD_ORDER_KEY);
+  const saveOrder = useSetPreference<BoardPrefs>(BOARD_ORDER_KEY);
+  const pinnedKeys = useMemo(
+    () => new Set(Array.isArray(savedOrder?.pinned) ? savedOrder.pinned : []),
+    [savedOrder],
   );
-  const saveOrder = useSetPreference<{ order: string[] }>(BOARD_ORDER_KEY);
+  const colorOf = (key: string): CardColor | null => {
+    const c = savedOrder?.colors?.[key];
+    return isCardColor(c) ? c : null;
+  };
   const ordered = useMemo(() => {
     const order = Array.isArray(savedOrder?.order) ? savedOrder.order : [];
     const at = new Map(order.map((k, i) => [k, i]));
@@ -871,30 +1089,64 @@ export function TaskBoard({
     const known = cards
       .filter((c) => at.has(c.key))
       .sort((a, b) => at.get(a.key)! - at.get(b.key)!);
-    return [...fresh, ...known];
-  }, [cards, savedOrder]);
+    const all = [...fresh, ...known];
+    return [
+      ...all.filter((c) => pinnedKeys.has(c.key)),
+      ...all.filter((c) => !pinnedKeys.has(c.key)),
+    ];
+  }, [cards, savedOrder, pinnedKeys]);
+  const pinnedCards = ordered.filter((c) => pinnedKeys.has(c.key));
+  const otherCards = ordered.filter((c) => !pinnedKeys.has(c.key));
+  function savePrefs(next: Partial<BoardPrefs>) {
+    saveOrder.mutate(
+      {
+        order: Array.isArray(savedOrder?.order) ? savedOrder.order : [],
+        pinned: [...pinnedKeys],
+        colors: savedOrder?.colors ?? {},
+        ...next,
+      },
+      { onError: (e) => toast.error(errorMessage(e)) },
+    );
+  }
   function storeOrder(keys: string[]) {
     // Guarda também os cartões que agora não se veem (filtros), para não perderem o lugar.
     const previous = Array.isArray(savedOrder?.order) ? savedOrder.order : [];
     const hidden = previous.filter((k) => !keys.includes(k));
-    saveOrder.mutate(
-      { order: [...keys, ...hidden].slice(0, 500) },
-      { onError: (e) => toast.error(errorMessage(e)) },
-    );
+    savePrefs({ order: [...keys, ...hidden].slice(0, 500) });
+  }
+  function pinCard(key: string, pin: boolean) {
+    const next = new Set(pinnedKeys);
+    if (pin) next.add(key);
+    else next.delete(key);
+    savePrefs({ pinned: [...next].slice(0, 200) });
+  }
+  function colorCard(key: string, color: CardColor | null) {
+    const colors = { ...(savedOrder?.colors ?? {}) };
+    if (color) colors[key] = color;
+    else delete colors[key];
+    savePrefs({ colors });
   }
   function moveCard(key: string, move: CardMove) {
-    const keys = ordered.map((c) => c.key);
-    const from = keys.indexOf(key);
+    // Cada grupo (afixados / outros) muda de ordem dentro de si.
+    const group = pinnedKeys.has(key) ? pinnedCards : otherCards;
+    const groupKeys = group.map((c) => c.key);
+    const allKeys = ordered.map((c) => c.key);
+    const from = groupKeys.indexOf(key);
     const to =
       move === "first"
         ? 0
         : move === "last"
-          ? keys.length - 1
+          ? groupKeys.length - 1
           : move === "up"
             ? Math.max(0, from - 1)
-            : Math.min(keys.length - 1, from + 1);
+            : Math.min(groupKeys.length - 1, from + 1);
     if (from < 0 || from === to) return;
-    storeOrder(arrayMove(keys, from, to));
+    const moved = arrayMove(groupKeys, from, to);
+    storeOrder(
+      pinnedKeys.has(key)
+        ? [...moved, ...allKeys.filter((k) => !pinnedKeys.has(k))]
+        : [...allKeys.filter((k) => pinnedKeys.has(k)), ...moved],
+    );
   }
   const cardSensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
@@ -909,16 +1161,58 @@ export function TaskBoard({
   function onCardDragEnd({ active, over }: DragEndEvent) {
     setDragging(null);
     if (!over || active.id === over.id) return;
+    // Só dentro do mesmo grupo (afixados com afixados).
+    if (pinnedKeys.has(String(active.id)) !== pinnedKeys.has(String(over.id)))
+      return;
     const keys = ordered.map((c) => c.key);
     const from = keys.indexOf(String(active.id));
     const to = keys.indexOf(String(over.id));
     if (from >= 0 && to >= 0) storeOrder(arrayMove(keys, from, to));
   }
+  const viewer = {
+    id: me?.user.id ?? null,
+    role: me?.role ?? null,
+    hasTeam,
+  };
+  const [showArchive, setShowArchive] = useState(false);
+  const archive = useQuery({
+    queryKey: ["task-lists", "archived"],
+    queryFn: () =>
+      api<{ data: TaskListWithTasks[] }>("/task-lists", {
+        query: { archived: "1" },
+      }).then((r) => r.data),
+    enabled: showArchive,
+  });
+
+  const renderCards = (group: BoardCard[]) => (
+    <div className="columns-1 gap-4 md:columns-2 2xl:columns-3">
+      {group.map((card, i) => (
+        <BoardCardView
+          key={card.key}
+          card={card}
+          today={today}
+          targets={targets}
+          assigneeName={assigneeName}
+          assignTo={assignTo}
+          index={i}
+          count={group.length}
+          onMoveCard={(move) => moveCard(card.key, move)}
+          color={colorOf(card.key)}
+          pinned={pinnedKeys.has(card.key)}
+          onPin={(pin) => pinCard(card.key, pin)}
+          onColor={(color) => colorCard(card.key, color)}
+          viewer={viewer}
+        />
+      ))}
+    </div>
+  );
 
   if (loading || listsLoading) return <Skeleton className="h-40" />;
   return (
     <div className="flex flex-col gap-4">
-      {showLists ? <NewListComposer assignTo={assignTo} /> : null}
+      {showLists ? (
+        <NewListComposer assignTo={assignTo} hasTeam={viewer.hasTeam} />
+      ) : null}
       {ordered.length ? (
         <DndContext
           sensors={cardSensors}
@@ -940,21 +1234,26 @@ export function TaskBoard({
             items={ordered.map((c) => c.key)}
             strategy={() => null}
           >
-            <div className="columns-1 gap-4 md:columns-2 2xl:columns-3">
-              {ordered.map((card, i) => (
-                <BoardCardView
-                  key={card.key}
-                  card={card}
-                  today={today}
-                  targets={targets}
-                  assigneeName={assigneeName}
-                  assignTo={assignTo}
-                  index={i}
-                  count={ordered.length}
-                  onMoveCard={(move) => moveCard(card.key, move)}
-                />
-              ))}
-            </div>
+            {pinnedCards.length ? (
+              <div role="group" aria-label="Afixados" className="flex flex-col gap-2">
+                <h2 className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted uppercase">
+                  <Pin className="h-3 w-3" aria-hidden /> Afixados
+                </h2>
+                {renderCards(pinnedCards)}
+              </div>
+            ) : null}
+            {otherCards.length ? (
+              pinnedCards.length ? (
+                <div role="group" aria-label="Outros" className="flex flex-col gap-2">
+                  <h2 className="text-xs font-semibold tracking-wide text-muted uppercase">
+                    Outros
+                  </h2>
+                  {renderCards(otherCards)}
+                </div>
+              ) : (
+                renderCards(otherCards)
+              )
+            ) : null}
           </SortableContext>
           <DragOverlay>
             {dragging ? (
@@ -967,11 +1266,74 @@ export function TaskBoard({
       ) : (
         empty
       )}
+      {showLists ? (
+        <div className="flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={() => setShowArchive((v) => !v)}
+            aria-expanded={showArchive}
+            className="flex w-fit items-center gap-1.5 text-sm text-muted hover:text-fg"
+          >
+            <ChevronRight
+              className={cn(
+                "h-4 w-4 transition-transform",
+                showArchive && "rotate-90",
+              )}
+              aria-hidden
+            />
+            <Archive className="h-4 w-4" aria-hidden /> Listas arquivadas
+            {archive.data ? ` (${archive.data.length})` : ""}
+          </button>
+          {showArchive ? (
+            archive.isLoading ? (
+              <Skeleton className="h-24" />
+            ) : archive.data?.length ? (
+              <div className="columns-1 gap-4 opacity-90 md:columns-2 2xl:columns-3">
+                {archive.data.map((list, i) => {
+                  const tasks = list.tasks.map((t) => ({ ...t, lead: null }));
+                  const card: BoardCard = {
+                    key: `list:${list.id}`,
+                    container: { kind: "list", listId: list.id },
+                    title: list.title,
+                    list,
+                    pending: tasks.filter((t) => !t.done_at).sort(byPosition),
+                    done: tasks.filter((t) => t.done_at),
+                  };
+                  return (
+                    <BoardCardView
+                      key={card.key}
+                      card={card}
+                      today={today}
+                      targets={[]}
+                      assigneeName={assigneeName}
+                      assignTo={assignTo}
+                      index={i}
+                      count={1}
+                      onMoveCard={() => undefined}
+                      color={colorOf(card.key)}
+                      pinned={false}
+                      onPin={() => undefined}
+                      onColor={(color) => colorCard(card.key, color)}
+                      viewer={viewer}
+                      archived
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted">
+                Sem listas arquivadas. No ⋯ de uma lista, “Arquivar” tira-a do
+                quadro sem a apagar.
+              </p>
+            )
+          ) : null}
+        </div>
+      ) : null}
       <p className="flex items-center gap-1.5 text-xs text-muted">
         <Pencil className="h-3 w-3" aria-hidden /> Toca no texto de uma tarefa
         para a editar; arrasta pela pega para mudar a ordem (a pega do título
-        muda o cartão de lugar, ou usa o ⋯ do cartão). As concluídas dos últimos
-        30 dias ficam no fim de cada cartão.
+        muda o cartão de lugar, ou usa o ⋯ do cartão: afixar, cor, arquivar).
+        As concluídas dos últimos 30 dias ficam no fim de cada cartão.
       </p>
     </div>
   );

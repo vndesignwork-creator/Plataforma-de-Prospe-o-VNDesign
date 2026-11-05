@@ -42,7 +42,7 @@ import { DateInput } from '@/components/ui/date-input';
 import { SwipeRow } from '@/components/ui/swipe-row';
 import { NewTaskDialog } from './new-task-dialog';
 import { TaskBoard } from './task-board';
-import { DueChip, DuePicker, TaskEditor, copyText, type TaskPatch } from './tasks-card';
+import { DueChip, DuePicker, TaskEditor, copyText, doneMessage, type TaskPatch } from './tasks-card';
 
 const GROUPS: TaskGroup[] = ['overdue', 'today', 'week', 'later', 'none'];
 
@@ -133,14 +133,15 @@ export function MyTasksView() {
   const invalidate = useInvalidateTasks();
   const { data, isLoading, error } = useQuery({
     queryKey: ['my-tasks', assigned],
-    queryFn: () => api<{ data: TaskListItem[] }>('/tasks', { query: { assigned } }).then((r) => r.data),
+    // As tarefas das listas vêm todas (um cartão partilhado mostra as de toda a equipa); "Por prazo" filtra-as aqui.
+    queryFn: () => api<{ data: TaskListItem[] }>('/tasks', { query: { assigned, lists: 'all' } }).then((r) => r.data),
     enabled: !teamPending,
   });
   // Concluídas (últimos 30 dias): só se pedem quando se abre a secção.
   const [showDone, setShowDone] = useState(false);
   const doneQuery = useQuery({
     queryKey: ['my-tasks', assigned, 'done'],
-    queryFn: () => api<{ data: TaskListItem[] }>('/tasks', { query: { assigned, state: 'done', limit: 100 } }).then((r) => r.data),
+    queryFn: () => api<{ data: TaskListItem[] }>('/tasks', { query: { assigned, state: 'done', limit: 100, lists: 'all' } }).then((r) => r.data),
     // Nos cartões, as concluídas ficam no fim de cada cartão.
     enabled: !teamPending && (showDone || view === 'cartoes'),
   });
@@ -186,7 +187,7 @@ export function MyTasksView() {
       await api(`/tasks/${task.id}`, { method: 'PATCH', body: { done: true } });
       // Um instante com o visto e riscada; depois passa para "Concluídas".
       await new Promise((r) => setTimeout(r, 700));
-      toast.success('Tarefa concluída. Está em “Concluídas”, no fim da lista.', {
+      toast.success(task.repeat ? doneMessage(task) : 'Tarefa concluída. Está em “Concluídas”, no fim da lista.', {
         action: {
           label: 'Anular',
           onClick: () =>
@@ -278,9 +279,16 @@ export function MyTasksView() {
   const matchesKind = (t: TaskListItem) => kind === 'all' || taskOrigin(t.lead) === KIND_ORIGIN[kind];
   const matchesSearch = (t: TaskListItem) =>
     !q || `${t.title} ${t.lead ? `${t.lead.company_name} ${t.lead.project_title ?? ''} #${t.lead.number}` : 'sem lead'}`.toLowerCase().includes(q);
-  const ofKind = (data ?? []).filter(matchesKind);
+  // As tarefas das listas vêm todas: em "Por prazo", só as da pessoa escolhida (como as outras).
+  const matchesPerson = (t: TaskListItem) => {
+    if (view === 'cartoes' || !t.list_id || assigned === 'all') return true;
+    if (assigned === 'none') return !t.assigned_to;
+    if (assigned === 'me') return t.assigned_to === me?.user.id || (me?.role === 'owner' && !t.assigned_to);
+    return t.assigned_to === assigned;
+  };
+  const ofKind = (data ?? []).filter((t) => matchesKind(t) && matchesPerson(t));
   const shown = ofKind.filter(matchesSearch);
-  const doneShown = (doneQuery.data ?? []).filter((t) => matchesKind(t) && matchesSearch(t));
+  const doneShown = (doneQuery.data ?? []).filter((t) => matchesKind(t) && matchesPerson(t) && matchesSearch(t));
   const groups = GROUPS.map((g) => ({
     group: g,
     tasks: shown.filter((t) => taskGroup(t.due_on, today, weekEnd) === g),
@@ -439,6 +447,7 @@ export function MyTasksView() {
             showLeads={kind !== 'soltas'}
             query={q}
             assigneeName={(id) => (hasTeam ? nameOf(id) : null)}
+            hasTeam={hasTeam}
             assignTo={hasTeam ? (assigned === 'me' ? (me?.user.id ?? null) : (team?.some((m) => m.user_id === assigned) ? assigned : null)) : null}
             loading={isLoading || teamPending}
             empty={

@@ -265,9 +265,9 @@ test('Projetos: mover os blocos (pega ⠿) passa a "A minha ordem" e fica guarda
   await expect.poll(order).toBe('A,B');
 });
 
-test('Prospeção: topo com o objetivo do dia (por modo), ajuda recolhida e separadores numa linha', async ({ page }) => {
+test('Prospeção: topo com as metas do mês (por modo), ajuda recolhida e separadores numa linha', async ({ page }) => {
   await page.request.put('/api/v1/preferences/prospecting.mode', { data: { value: 'phone' } });
-  await page.request.put('/api/v1/preferences/prospecting.goal', { data: { value: {} } });
+  await page.request.patch('/api/v1/settings', { data: { goals: {} } });
   await page.goto('/prospecao');
   await expect(page.getByRole('heading', { name: 'Prospeção', level: 1 })).toBeVisible();
   await expect(page.getByRole('radio', { name: 'Telefone' })).toHaveAttribute('aria-checked', 'true');
@@ -281,20 +281,22 @@ test('Prospeção: topo com o objetivo do dia (por modo), ajuda recolhida e sepa
   await expect(page.getByRole('note').filter({ hasText: 'Contacta e regista o resultado' })).toBeVisible();
   await page.getByRole('button', { name: 'Percebi' }).click();
 
-  // Objetivo do dia (a telefonar): número inválido, depois 20.
-  await page.getByRole('button', { name: 'Definir objetivo do dia' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Objetivo do dia' });
-  await dialog.getByLabel('Contactos por dia').fill('0');
+  // Metas do mês (a telefonar: chamadas e WhatsApp): número inválido, depois 200 e 80.
+  await page.getByRole('button', { name: 'Definir metas do mês' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Metas do mês' });
+  await dialog.getByLabel('Chamadas').fill('0');
   await dialog.getByRole('button', { name: 'Guardar' }).click();
-  await expect(dialog.getByText('Indica um número inteiro entre 1 e 500.')).toBeVisible();
-  await dialog.getByLabel('Contactos por dia').fill('20');
+  await expect(dialog.getByText('Um número inteiro maior que 0 (vazio = sem meta).')).toBeVisible();
+  await dialog.getByLabel('Chamadas').fill('200');
+  await dialog.getByLabel('WhatsApp enviados').fill('80');
   await dialog.getByRole('button', { name: 'Guardar' }).click();
-  await expect(page.getByText('Objetivo do dia: 20 contactos.')).toBeVisible();
-  await expect(page.getByRole('progressbar', { name: 'Objetivo do dia' })).toHaveAttribute('aria-valuemax', '20');
-  expect((await (await page.request.get('/api/v1/preferences/prospecting.goal')).json()).data.value).toEqual({ phone: 20 });
+  await expect(page.getByText('Metas do mês guardadas.')).toBeVisible();
+  await expect(page.getByRole('progressbar', { name: /^Chamadas: \d+ de 200$/ })).toHaveAttribute('aria-valuemax', '200');
+  await expect(page.getByRole('progressbar', { name: /^WhatsApp enviados: \d+ de 80$/ })).toBeVisible();
+  expect((await (await page.request.get('/api/v1/goals')).json()).data.goals).toMatchObject({ calls: 200, whatsapp: 80 });
 
-  // Por email, o objetivo é outro (ainda nenhum).
+  // Por email, a meta é outra (ainda nenhuma).
   await page.getByRole('radio', { name: 'Email' }).click();
-  await expect(page.getByRole('button', { name: 'Definir objetivo do dia' })).toBeVisible();
-  await page.request.put('/api/v1/preferences/prospecting.goal', { data: { value: {} } });
+  await expect(page.getByRole('button', { name: 'Definir metas do mês' })).toBeVisible();
+  await page.request.patch('/api/v1/settings', { data: { goals: {} } });
 });

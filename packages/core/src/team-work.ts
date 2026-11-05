@@ -176,6 +176,10 @@ export const TaskListQuerySchema = z
       .default('me')
       .meta({ description: 'De quem: "me" (as minhas; para o dono, também as sem responsável), "none" (sem responsável), "all" ou o id de uma pessoa' }),
     limit: z.coerce.number().int().min(1).max(500).default(500),
+    lists: z
+      .enum(['all'])
+      .optional()
+      .meta({ description: '"all" = as tarefas das listas (cartões) vêm todas, de qualquer pessoa (o filtro "de quem" só vale para as outras)' }),
   })
   .meta({ id: 'TaskListQuery' });
 export type TaskListQuery = z.output<typeof TaskListQuerySchema>;
@@ -266,15 +270,17 @@ export function isCardHidden(layout: Partial<LeadCardLayout> | null | undefined,
 // -----------------------------------------------------------------------------
 // Cartões do Dashboard (dono/administrador)
 // -----------------------------------------------------------------------------
-export const DASHBOARD_CARDS = ['summary', 'today', 'hot', 'replies', 'pipeline', 'projects', 'reconnect'] as const;
+export const DASHBOARD_CARDS = ['summary', 'goals', 'today', 'hot', 'replies', 'pipeline', 'projects', 'sites', 'reconnect'] as const;
 export type DashboardCard = (typeof DASHBOARD_CARDS)[number];
 export const DASHBOARD_CARD_LABELS: Record<DashboardCard, string> = {
   summary: 'Resumo (4 números)',
+  goals: 'Metas do mês',
   today: 'Hoje',
   hot: 'Leads mais quentes',
   replies: 'Respostas',
   pipeline: 'Pipeline',
   projects: 'Projetos',
+  sites: 'Sites dos clientes',
   reconnect: 'Clientes antigos',
 };
 export const DASHBOARD_CARDS_PREFERENCE = 'dashboard.cards';

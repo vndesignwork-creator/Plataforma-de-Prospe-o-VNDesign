@@ -4,6 +4,7 @@
  * Convenção da API: snake_case, datas "AAAA-MM-DD", timestamps ISO 8601,
  * valores em euros com 2 casas decimais.
  */
+import { MonthlyGoalsSchema } from './goals';
 import { CallAvoidSchema } from './call-windows';
 import { z } from 'zod';
 import { ProfileSchema } from './profile';
@@ -594,6 +595,8 @@ export const FeaturesSchema = z.object({
   time_value: z.boolean().default(true).meta({ description: 'Projetos: valor do tempo em dinheiro (horas × valor por hora)' }),
   renewals: z.boolean().default(true).meta({ description: 'Renovações e avenças (domínio, alojamento, manutenção) com aviso antes' }),
   accounting_report: z.boolean().default(true).meta({ description: 'Relatório mensal para a contabilidade (PDF e Excel)' }),
+  site_monitoring: z.boolean().default(true).meta({ description: 'Vigiar os sites dos clientes (no ar, certificado SSL e domínio)' }),
+  monthly_goals: z.boolean().default(true).meta({ description: 'Metas do mês (Dashboard e Prospeção)' }),
 });
 export type Features = z.infer<typeof FeaturesSchema>;
 export const DEFAULT_FEATURES: Features = {
@@ -622,6 +625,8 @@ export const DEFAULT_FEATURES: Features = {
   time_value: true,
   renewals: true,
   accounting_report: true,
+  site_monitoring: true,
+  monthly_goals: true,
 };
 
 /** Arranque do projeto: plano de pagamentos criado ao passar a Cliente ([] = sem plano). */
@@ -725,6 +730,8 @@ export const WorkspaceSettingsSchema = z
     prospecting_sequence: ProspectingSequenceSchema.default(DEFAULT_PROSPECTING_SEQUENCE),
     /** Horas a evitar para ligar, por setor (id do setor → intervalos). */
     call_avoid: CallAvoidSchema.default({}),
+    /** Metas do mês (valem todos os meses até serem mudadas). */
+    goals: MonthlyGoalsSchema.default({}),
     /** Fornecedor e modelo de IA de cada função (Definições → Inteligência artificial). */
     ai: AiSettingsSchema.default({
       email: { provider: SERVER_AI_PROVIDER, model: null },
@@ -786,6 +793,7 @@ export const WorkspaceSettingsUpdateSchema = z
     pomodoro: PomodoroSettingsSchema,
     team: TeamSettingsSchema,
     call_avoid: CallAvoidSchema,
+    goals: MonthlyGoalsSchema,
   })
   .partial()
   .meta({ id: 'WorkspaceSettingsUpdate' });

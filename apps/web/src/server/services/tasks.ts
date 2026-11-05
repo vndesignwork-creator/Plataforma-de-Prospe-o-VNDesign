@@ -4,7 +4,9 @@
  */
 import {
   addDays,
+  daysBetween,
   entrySeconds,
+  nextRepeatDate,
   todayIso,
   type Lead,
   type LeadTask,
@@ -12,6 +14,9 @@ import {
   type LeadTaskUpdate,
   type TaskList,
   type TaskListItem,
+  type TaskListUpdate,
+  type TaskListWithTasks,
+  type TaskRepeat,
   type TaskListQuery,
   type TaskSearchQuery,
   type TaskSearchResult,
@@ -38,7 +43,16 @@ export async function taskListsReady(): Promise<boolean> {
   hasListColumn = { value: !error, at: Date.now() };
   return !error;
 }
-const taskSelect = async () => ((await taskListsReady()) ? `${TASK_FIELDS}, list_id` : TASK_FIELDS);
+// Repetir, quem marcou e cartões partilhados/arquivados: depois da migração 20261108002900.
+let hasExtras: { value: boolean; at: number } | null = null;
+export async function taskExtrasReady(): Promise<boolean> {
+  if (hasExtras && (hasExtras.value || Date.now() - hasExtras.at < 60_000)) return hasExtras.value;
+  const { error } = await createSupabaseAdminClient().from('lead_tasks').select('repeat, done_by').limit(0);
+  hasExtras = { value: !error, at: Date.now() };
+  return !error;
+}
+const taskSelect = async () =>
+  `${TASK_FIELDS}${(await taskListsReady()) ? ', list_id' : ''}${(await taskExtrasReady()) ? ', repeat, done_by, next_task_id, created_by' : ''}`;
 const TEMPLATE_SELECT = 'id, name, service, items, sort_order';
 const TASK_NOT_FOUND = 'Tarefa não encontrada';
 
@@ -114,14 +128,16 @@ async function firstPosition(ctx: ApiContext, leadId: string | null, listId: str
 export async function createTask(ctx: ApiContext, leadId: string | null, input: LeadTaskCreate & { list_id?: string | null }): Promise<LeadTask> {
   // Sem lead: uma tarefa solta (página Tarefas), sozinha ou numa lista.
   if (leadId) await getLead(ctx, leadId);
-  const { list_id: requestedList, ...fields } = input;
+  const { list_id: requestedList, repeat, ...fields } = input;
   const listId = leadId ? null : (requestedList ?? null);
+  if (repeat && !(await taskExtrasReady())) throw extrasNotReady();
   if (listId) await getTaskList(ctx, listId);
   const result = await ctx.supabase
     .from('lead_tasks')
     .insert({
       ...fields,
       ...(listId ? { list_id: listId } : {}),
+      ...(repeat ? { repeat } : {}),
       // Um lembrete sem prazo põe a tarefa nesse dia (aparece em "Hoje").
       due_on: input.due_on ?? (input.remind_at ? todayIso(new Date(input.remind_at)) : null),
       workspace_id: ctx.workspaceId,
@@ -146,6 +162,11 @@ export async function createTask(ctx: ApiContext, leadId: string | null, input: 
 
 export async function updateTask(ctx: ApiContext, id: string, patch: LeadTaskUpdate): Promise<LeadTask> {
   const { done, lead_id: toLead, list_id: toList, ...rest } = patch;
+  const extras = await taskExtrasReady();
+  if (rest.repeat !== undefined && !extras) {
+    if (rest.repeat) throw extrasNotReady();
+    delete rest.repeat;
+  }
   const update: Record<string, unknown> = { ...rest };
   // Mover para outro cartão (lead/projeto, lista ou soltas): fica em cima no destino.
   if (toLead !== undefined || toList !== undefined) {
@@ -167,14 +188,31 @@ export async function updateTask(ctx: ApiContext, id: string, patch: LeadTaskUpd
           assigned_to: string | null;
         } | null)
       : null;
+  let spawnFrom: RepeatSource | null = null;
+  let undoNext: string | null = null;
   if (done !== undefined || (rest.remind_at && rest.due_on === undefined)) {
     const current = unwrap(
-      await ctx.supabase.from('lead_tasks').select('done_at, due_on').eq('workspace_id', ctx.workspaceId).eq('id', id).maybeSingle(),
+      await ctx.supabase
+        .from('lead_tasks')
+        .select(extras ? REPEAT_SOURCE_FIELDS : 'done_at, due_on')
+        .eq('workspace_id', ctx.workspaceId)
+        .eq('id', id)
+        .maybeSingle(),
       TASK_NOT_FOUND,
-    ) as { done_at: string | null; due_on: string | null };
+    ) as unknown as RepeatSource;
     // Só muda a data quando o estado muda (voltar a marcar não regista outra vez).
-    if (done && !current.done_at) update.done_at = new Date().toISOString();
-    if (done === false) update.done_at = null;
+    if (done && !current.done_at) {
+      update.done_at = new Date().toISOString();
+      if (extras) update.done_by = ctx.user.id;
+      // Repetir: ao concluir cria-se a seguinte (uma só vez).
+      if (extras && current.repeat && !current.next_task_id) spawnFrom = { ...current, ...rest } as RepeatSource;
+    }
+    if (done === false) {
+      update.done_at = null;
+      if (extras) update.done_by = null;
+      // "Anular" logo a seguir: a seguinte (ainda por fazer) sai.
+      if (extras && current.done_at && current.next_task_id) undoNext = current.next_task_id;
+    }
     // Lembrete numa tarefa sem prazo: o prazo passa a ser o dia do lembrete.
     if (rest.remind_at && rest.due_on === undefined && !current.due_on) update.due_on = todayIso(new Date(rest.remind_at));
   }
@@ -191,9 +229,71 @@ export async function updateTask(ctx: ApiContext, id: string, patch: LeadTaskUpd
     .eq('id', id)
     .select(await taskSelect())
     .maybeSingle();
-  const task = unwrap(result, TASK_NOT_FOUND) as unknown as LeadTask;
+  let task = unwrap(result, TASK_NOT_FOUND) as unknown as LeadTask;
   if (before && task.assigned_to && task.assigned_to !== before.assigned_to) await notifyTaskAssigned(ctx, task);
+  if (spawnFrom) task = await spawnRepeat(ctx, task, spawnFrom);
+  if (undoNext) {
+    const { data: removed } = await ctx.supabase
+      .from('lead_tasks')
+      .delete()
+      .eq('workspace_id', ctx.workspaceId)
+      .eq('id', undoNext)
+      .is('done_at', null)
+      .select('id');
+    if (removed?.length) {
+      await ctx.supabase.from('lead_tasks').update({ next_task_id: null }).eq('workspace_id', ctx.workspaceId).eq('id', task.id);
+      task = { ...task, next_task_id: null } as LeadTask;
+    }
+  }
   return task;
+}
+
+const extrasNotReady = () =>
+  new ApiError(503, 'Ainda não disponível', 'A base de dados ainda não foi atualizada para as tarefas que se repetem (npx supabase db push).');
+
+const REPEAT_SOURCE_FIELDS = 'done_at, due_on, repeat, next_task_id, lead_id, list_id, title, assigned_to, remind_at, position';
+type RepeatSource = {
+  done_at: string | null;
+  due_on: string | null;
+  repeat?: TaskRepeat | null;
+  next_task_id?: string | null;
+  lead_id?: string | null;
+  list_id?: string | null;
+  title?: string;
+  assigned_to?: string | null;
+  remind_at?: string | null;
+  position?: number;
+};
+
+/** Cria a próxima vez de uma tarefa que se repete (no lugar dela, com a data seguinte). */
+async function spawnRepeat(ctx: ApiContext, task: LeadTask, source: RepeatSource): Promise<LeadTask> {
+  const today = todayIso();
+  const due = nextRepeatDate(source.due_on ?? null, source.repeat!, today);
+  // O lembrete anda os mesmos dias (mantém a hora).
+  const shift = daysBetween(source.due_on ?? today, due);
+  const remindAt = source.remind_at ? new Date(new Date(source.remind_at).getTime() + shift * 86_400_000).toISOString() : null;
+  const { data, error } = await ctx.supabase
+    .from('lead_tasks')
+    .insert({
+      workspace_id: ctx.workspaceId,
+      lead_id: task.lead_id,
+      list_id: task.list_id ?? null,
+      title: task.title,
+      due_on: due,
+      remind_at: remindAt,
+      assigned_to: task.assigned_to ?? null,
+      repeat: source.repeat,
+      position: task.position,
+    })
+    .select('id')
+    .single();
+  if (error) {
+    // A tarefa fica concluída na mesma; só a seguinte não foi criada.
+    console.warn('[tarefas] repetir', error.message);
+    return task;
+  }
+  await ctx.supabase.from('lead_tasks').update({ next_task_id: data.id }).eq('workspace_id', ctx.workspaceId).eq('id', task.id);
+  return { ...task, next_task_id: data.id } as LeadTask;
 }
 
 /**
@@ -203,11 +303,13 @@ export async function updateTask(ctx: ApiContext, id: string, patch: LeadTaskUpd
 export async function listOpenTasks(ctx: ApiContext, query: TaskListQuery): Promise<TaskListItem[]> {
   const done = query.state === 'done';
   const TASK_SELECT = await taskSelect();
-  const base = (select: string) => {
+  const base = (select: string, byPerson = true) => {
     let q = ctx.supabase.from('lead_tasks').select(select).eq('workspace_id', ctx.workspaceId);
     q = done ? q.not('done_at', 'is', null).gte('done_at', new Date(Date.now() - 30 * 86_400_000).toISOString()) : q.is('done_at', null);
     // Como nos leads: sem responsável é do dono, por isso entram nas "minhas" dele.
-    if (query.assigned === 'me') q = ctx.role === 'owner' ? q.or(`assigned_to.eq.${ctx.user.id},assigned_to.is.null`) : q.eq('assigned_to', ctx.user.id);
+    if (!byPerson) {
+      // (as tarefas das listas vêm todas)
+    } else if (query.assigned === 'me') q = ctx.role === 'owner' ? q.or(`assigned_to.eq.${ctx.user.id},assigned_to.is.null`) : q.eq('assigned_to', ctx.user.id);
     else if (query.assigned === 'none') q = q.is('assigned_to', null);
     else if (query.assigned !== 'all') q = q.eq('assigned_to', query.assigned);
     return done
@@ -218,16 +320,27 @@ export async function listOpenTasks(ctx: ApiContext, query: TaskListQuery): Prom
           .order('created_at', { ascending: false })
           .limit(query.limit);
   };
-  const [withLead, personal] = await Promise.all([
+  // Listas (cartões): só as que a pessoa vê (as dela e as partilhadas), sem as arquivadas.
+  const withLists = (await taskListsReady()) && (await taskExtrasReady());
+  const visibleLists = withLists ? (await listTaskLists(ctx)).map((l) => l.id) : [];
+  const loose = () => {
+    // Tarefas soltas: o prospetor só vê as que são dele.
+    const q = (ctx.role === 'prospector' ? base(TASK_SELECT).eq('assigned_to', ctx.user.id) : base(TASK_SELECT)).is('lead_id', null);
+    return withLists ? q.is('list_id', null) : q;
+  };
+  const [withLead, personal, inLists] = await Promise.all([
     base(`${TASK_SELECT}, lead:leads!inner(id, number, company_name, project_title, status, archived_at, anonymized_at)`)
       .is('lead.archived_at', null)
       .is('lead.anonymized_at', null),
-    // Tarefas soltas: o prospetor só vê as que são dele.
-    (ctx.role === 'prospector' ? base(TASK_SELECT).eq('assigned_to', ctx.user.id) : base(TASK_SELECT)).is('lead_id', null),
+    loose(),
+    withLists && visibleLists.length
+      ? base(TASK_SELECT, query.lists !== 'all' && ctx.role !== 'prospector').in('list_id', visibleLists)
+      : Promise.resolve({ data: [], error: null }),
   ]);
   if (withLead.error) throw fromPostgrest(withLead.error);
   // Antes da migração 20261108002200 não há tarefas soltas (a consulta pode só não devolver nada).
   if (personal.error) console.warn('[tarefas] tarefas soltas', personal.error.message);
+  if (inLists.error) console.warn('[tarefas] tarefas das listas', inLists.error.message);
   type Row = LeadTask & { lead: NonNullable<TaskListItem['lead']> & { archived_at: unknown; anonymized_at: unknown } };
   const items: TaskListItem[] = [
     ...((withLead.data ?? []) as unknown as Row[]).map(({ lead, ...task }) => ({
@@ -235,6 +348,7 @@ export async function listOpenTasks(ctx: ApiContext, query: TaskListQuery): Prom
       lead: { id: lead.id, number: lead.number, company_name: lead.company_name, project_title: lead.project_title, status: lead.status },
     })),
     ...((personal.error ? [] : (personal.data ?? [])) as unknown as LeadTask[]).map((task) => ({ ...task, lead: null })),
+    ...((inLists.error ? [] : (inLists.data ?? [])) as unknown as LeadTask[]).map((task) => ({ ...task, lead: null })),
   ];
   const order = done
     ? (a: TaskListItem, b: TaskListItem) => (b.done_at ?? '').localeCompare(a.done_at ?? '')
@@ -282,38 +396,81 @@ export async function reorderAnyTasks(ctx: ApiContext, ids: string[]): Promise<v
 // -----------------------------------------------------------------------------
 // Listas (cartões com título, página Tarefas)
 // -----------------------------------------------------------------------------
-const LIST_SELECT = 'id, title, position, created_at, updated_at';
+const LIST_BASE = 'id, title, position, created_at, updated_at';
+const listSelect = async () => ((await taskExtrasReady()) ? `${LIST_BASE}, shared, archived_at, created_by` : LIST_BASE);
 const LIST_NOT_FOUND = 'Lista não encontrada';
 const missingLists = (e: { code?: string } | null) => e?.code === '42P01' || e?.code === 'PGRST205';
+const listsNotReady = () => new ApiError(503, 'Listas ainda não disponíveis', 'A base de dados ainda não foi atualizada (npx supabase db push).');
+
+/**
+ * As listas que a pessoa vê: as dela, as partilhadas e as antigas (sem autor).
+ * (Síncrona: uma consulta devolvida por uma função async era logo executada.)
+ */
+function visibleListsQuery(ctx: ApiContext, extras: boolean) {
+  const q = ctx.supabase.from('task_lists').select(extras ? `${LIST_BASE}, shared, archived_at, created_by` : LIST_BASE).eq('workspace_id', ctx.workspaceId);
+  if (extras) return q.or(`created_by.eq.${ctx.user.id},shared.is.true,created_by.is.null`);
+  // Antes da migração: o prospetor vê só as listas dele.
+  return ctx.role === 'prospector' ? q.eq('created_by', ctx.user.id) : q;
+}
 
 export async function listTaskLists(ctx: ApiContext): Promise<TaskList[]> {
-  let q = ctx.supabase.from('task_lists').select(LIST_SELECT).eq('workspace_id', ctx.workspaceId);
-  // O prospetor vê só as listas dele.
-  if (ctx.role === 'prospector') q = q.eq('created_by', ctx.user.id);
+  const extras = await taskExtrasReady();
+  let q = visibleListsQuery(ctx, extras);
+  if (extras) q = q.is('archived_at', null);
   const { data, error } = await q.order('position').order('created_at');
   if (missingLists(error)) return [];
   if (error) throw fromPostgrest(error);
-  return (data ?? []) as TaskList[];
+  return (data ?? []) as unknown as TaskList[];
+}
+
+/** As listas arquivadas (com as tarefas delas), as mais recentes primeiro. */
+export async function listArchivedTaskLists(ctx: ApiContext): Promise<TaskListWithTasks[]> {
+  if (!(await taskExtrasReady())) return [];
+  const { data, error } = await visibleListsQuery(ctx, true).not('archived_at', 'is', null).order('archived_at', { ascending: false }).limit(100);
+  if (missingLists(error)) return [];
+  if (error) throw fromPostgrest(error);
+  const lists = (data ?? []) as unknown as TaskList[];
+  if (!lists.length) return [];
+  const tasks = await ctx.supabase
+    .from('lead_tasks')
+    .select(await taskSelect())
+    .eq('workspace_id', ctx.workspaceId)
+    .in(
+      'list_id',
+      lists.map((l) => l.id),
+    )
+    .order('position');
+  if (tasks.error) throw fromPostgrest(tasks.error);
+  const byList = new Map<string, LeadTask[]>();
+  for (const t of (tasks.data ?? []) as unknown as LeadTask[]) byList.set(t.list_id!, [...(byList.get(t.list_id!) ?? []), t]);
+  return lists.map((l) => ({ ...l, tasks: byList.get(l.id) ?? [] }));
 }
 
 async function getTaskList(ctx: ApiContext, id: string): Promise<TaskList> {
-  const result = await ctx.supabase.from('task_lists').select(LIST_SELECT).eq('workspace_id', ctx.workspaceId).eq('id', id).maybeSingle();
-  if (missingLists(result.error)) throw new ApiError(503, 'Listas ainda não disponíveis', 'A base de dados ainda não foi atualizada (npx supabase db push).');
-  return unwrap(result, LIST_NOT_FOUND) as TaskList;
+  const result = await visibleListsQuery(ctx, await taskExtrasReady()).eq('id', id).maybeSingle();
+  if (missingLists(result.error)) throw listsNotReady();
+  return unwrap(result, LIST_NOT_FOUND) as unknown as TaskList;
 }
 
 /** Nova lista (em primeiro lugar), já com as tarefas escritas, pela ordem. */
-export async function createTaskList(ctx: ApiContext, input: { title: string; items: string[]; assigned_to?: string | null }): Promise<TaskList> {
+export async function createTaskList(ctx: ApiContext, input: { title: string; items: string[]; assigned_to?: string | null; shared?: boolean }): Promise<TaskList> {
   const { data: first } = await ctx.supabase.from('task_lists').select('position').eq('workspace_id', ctx.workspaceId).order('position').limit(1);
+  const extras = await taskExtrasReady();
   const result = await ctx.supabase
     .from('task_lists')
-    .insert({ workspace_id: ctx.workspaceId, title: input.title, position: ((first?.[0]?.position as number | undefined) ?? 1) - 1 })
-    .select(LIST_SELECT)
+    .insert({
+      workspace_id: ctx.workspaceId,
+      title: input.title,
+      position: ((first?.[0]?.position as number | undefined) ?? 1) - 1,
+      ...(extras && input.shared ? { shared: true } : {}),
+    })
+    .select(await listSelect())
     .single();
-  if (missingLists(result.error)) throw new ApiError(503, 'Listas ainda não disponíveis', 'A base de dados ainda não foi atualizada (npx supabase db push).');
-  const list = unwrap(result) as TaskList;
+  if (missingLists(result.error)) throw listsNotReady();
+  const list = unwrap(result) as unknown as TaskList;
   if (input.items.length) {
-    const assigned = ctx.role === 'prospector' ? ctx.user.id : (input.assigned_to ?? null);
+    // Numa lista partilhada as tarefas ficam sem responsável (são da equipa).
+    const assigned = input.shared ? null : ctx.role === 'prospector' ? ctx.user.id : (input.assigned_to ?? null);
     const { error } = await ctx.supabase
       .from('lead_tasks')
       .insert(input.items.map((title, i) => ({ workspace_id: ctx.workspaceId, lead_id: null, list_id: list.id, title, position: i + 1, assigned_to: assigned })));
@@ -322,14 +479,34 @@ export async function createTaskList(ctx: ApiContext, input: { title: string; it
   return list;
 }
 
-export async function updateTaskList(ctx: ApiContext, id: string, patch: { title?: string; position?: number }): Promise<TaskList> {
-  const update = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
-  if (!Object.keys(update).length) return getTaskList(ctx, id);
-  return unwrap(await ctx.supabase.from('task_lists').update(update).eq('workspace_id', ctx.workspaceId).eq('id', id).select(LIST_SELECT).maybeSingle(), LIST_NOT_FOUND) as TaskList;
+/** Quem pode partilhar, deixar de partilhar ou apagar: quem a criou, o dono e os administradores. */
+function canManageList(ctx: ApiContext, list: TaskList): boolean {
+  return ctx.role === 'owner' || ctx.role === 'admin' || !list.created_by || list.created_by === ctx.user.id;
+}
+
+export async function updateTaskList(ctx: ApiContext, id: string, patch: TaskListUpdate): Promise<TaskList> {
+  const { archived, shared, ...rest } = patch;
+  const update: Record<string, unknown> = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined));
+  const list = await getTaskList(ctx, id);
+  if (archived !== undefined || shared !== undefined) {
+    if (!(await taskExtrasReady())) throw listsNotReady();
+    if (archived !== undefined) update.archived_at = archived ? new Date().toISOString() : null;
+    if (shared !== undefined) {
+      if (!canManageList(ctx, list)) throw new ApiError(403, 'Sem permissão', 'Só quem criou a lista (ou o dono) a pode partilhar ou deixar de partilhar.');
+      update.shared = shared;
+    }
+  }
+  if (!Object.keys(update).length) return list;
+  return unwrap(
+    await ctx.supabase.from('task_lists').update(update).eq('workspace_id', ctx.workspaceId).eq('id', id).select(await listSelect()).maybeSingle(),
+    LIST_NOT_FOUND,
+  ) as unknown as TaskList;
 }
 
 /** Apaga a lista e as tarefas dela. */
 export async function deleteTaskList(ctx: ApiContext, id: string): Promise<void> {
+  const list = await getTaskList(ctx, id);
+  if (!canManageList(ctx, list)) throw new ApiError(403, 'Sem permissão', 'Só quem criou a lista (ou o dono) a pode apagar.');
   const { data, error } = await ctx.supabase.from('task_lists').delete().eq('workspace_id', ctx.workspaceId).eq('id', id).select('id');
   if (error) throw fromPostgrest(error);
   if (!data?.length) throw new ApiError(404, LIST_NOT_FOUND);
@@ -424,13 +601,21 @@ export async function fetchTodayTasks(client: SupabaseClient, workspaceId: strin
     .order('due_on')
     .order('position')
     .limit(200);
+  // Sem as tarefas das listas arquivadas.
+  let archivedLists = new Set<string>();
+  if (await taskExtrasReady()) {
+    const { data: archived } = await client.from('task_lists').select('id').eq('workspace_id', workspaceId).not('archived_at', 'is', null);
+    archivedLists = new Set(((archived ?? []) as { id: string }[]).map((l) => l.id));
+  }
   type LeadRow = LeadTask & { lead: NonNullable<TodayTask['lead']> & Record<string, unknown> };
   const tasks: TodayTask[] = [
     ...((data ?? []) as unknown as LeadRow[]).map(({ lead, ...t }) => ({
       ...t,
       lead: { id: lead.id, number: lead.number, company_name: lead.company_name, status: lead.status },
     })),
-    ...((personal.error ? [] : (personal.data ?? [])) as unknown as LeadTask[]).map((t) => ({ ...t, lead: null })),
+    ...((personal.error ? [] : (personal.data ?? [])) as unknown as LeadTask[])
+      .filter((t) => !t.list_id || !archivedLists.has(t.list_id))
+      .map((t) => ({ ...t, lead: null })),
   ].sort((a, b) => a.due_on!.localeCompare(b.due_on!) || a.position - b.position);
   return {
     overdue: tasks.filter((t) => t.due_on! < today),

@@ -4,6 +4,7 @@
  * do lead ("Clínica Sorriso"). Só reconhece formas claras; o resto fica no título.
  */
 import { addDays } from './format';
+import type { TaskRepeat } from './tasks';
 
 export interface ParsedTaskPhrase {
   /** O texto sem a data e a hora reconhecidas. */
@@ -16,6 +17,8 @@ export interface ParsedTaskPhrase {
   leadHint: string | null;
   /** O que foi reconhecido (para mostrar). */
   matched: string[];
+  /** Repetição reconhecida ("todas as segundas", "todos os meses"…) ou null. */
+  repeat: TaskRepeat | null;
 }
 
 const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
@@ -164,12 +167,61 @@ function findLeadHint(title: string): string | null {
   return m ? m[1]!.replace(/[.,;:]+$/, '') : null;
 }
 
+type RepeatRule = { re: RegExp; repeat: TaskRepeat; date?: (m: RegExpExecArray, today: string) => string | null };
+const PLURAL_WEEKDAYS: Record<string, number> = { domingos: 0, segundas: 1, tercas: 2, quartas: 3, quintas: 4, sextas: 5, sabados: 6 };
+const REPEAT_RULES: RepeatRule[] = [
+  { re: R(/\b(?:todos os dias [uú]teis|nos dias [uú]teis|de segunda a sexta)\b/iu), repeat: 'weekdays' },
+  {
+    // "todo o dia 5" / "todos os dias 1": mensal, no próximo dia N.
+    re: R(/\btodos? os? dias? (\d{1,2})\b/iu),
+    repeat: 'monthly',
+    date: (m, t) => {
+      const day = Number(m[1]);
+      if (!(day >= 1 && day <= 31)) return null;
+      const [y, mo] = t.split('-').map(Number) as [number, number];
+      for (let i = 0; i < 3; i++) {
+        const yy = y + Math.floor((mo - 1 + i) / 12);
+        const mm = (mo - 1 + i) % 12;
+        const d = iso(yy, mm, Math.min(day, daysInMonth(yy, mm)));
+        if (d >= t) return d;
+      }
+      return null;
+    },
+  },
+  { re: R(/\b(?:todos os dias|diariamente)\b/iu), repeat: 'daily' },
+  {
+    // "todas as segundas" / "às sextas-feiras": semanal, a começar no próximo desses dias (hoje conta).
+    re: R(/\b(?:todas as|[àa]s)\s+(segundas|ter[çc]as|quartas|quintas|sextas|s[áa]bados|domingos)(?:-feiras)?\b/iu),
+    repeat: 'weekly',
+    date: (m, t) => {
+      const target = PLURAL_WEEKDAYS[fold(m[1]!)];
+      if (target === undefined) return null;
+      return addDays(t, (target - weekday(t) + 7) % 7);
+    },
+  },
+  { re: R(/\b(?:todas as semanas|semanalmente|cada semana)\b/iu), repeat: 'weekly' },
+  { re: R(/\b(?:todos os meses|mensalmente|cada m[êe]s)\b/iu), repeat: 'monthly' },
+  { re: R(/\b(?:todos os anos|anualmente|cada ano)\b/iu), repeat: 'yearly' },
+];
+
 export function parseTaskPhrase(text: string, today: string): ParsedTaskPhrase {
   let rest = ` ${text} `;
   let due: string | null = null;
   let time: string | null = null;
+  let repeat: TaskRepeat | null = null;
   const matched: string[] = [];
-  outer: for (const rule of DATE_RULES) {
+  for (const rule of REPEAT_RULES) {
+    const m = rule.re.exec(rest);
+    if (!m) continue;
+    const date = rule.date ? rule.date(m, today) : null;
+    if (rule.date && !date) continue;
+    repeat = rule.repeat;
+    if (date) due = date;
+    matched.push(m[0].trim());
+    rest = cut(rest, m);
+    break;
+  }
+  outer: for (const rule of due ? [] : DATE_RULES) {
     // Todas as ocorrências: a primeira pode não contar ("Segunda versão até sexta").
     const re = new RegExp(rule.re.source, rule.re.flags.includes('g') ? rule.re.flags : `${rule.re.flags}g`);
     for (const m of rest.matchAll(re) as IterableIterator<RegExpExecArray>) {
@@ -191,8 +243,8 @@ export function parseTaskPhrase(text: string, today: string): ParsedTaskPhrase {
     rest = cut(rest, m);
     break;
   }
-  // Hora sem dia: é para hoje.
-  if (time && !due) due = today;
+  // Hora sem dia (ou só "todos os dias"): é para hoje.
+  if ((time || repeat) && !due) due = today;
   const title = matched.length ? tidy(rest) || text.trim() : text.trim();
-  return { title, due_on: due, time, leadHint: findLeadHint(title), matched };
+  return { title, due_on: due, time, leadHint: findLeadHint(title), matched, repeat };
 }

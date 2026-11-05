@@ -18,6 +18,56 @@ const nullableDate = z
 /** Texto máximo de uma tarefa (era 300). */
 export const TASK_TITLE_MAX = 2000;
 
+/** Repetir: ao concluir, cria-se a seguinte com a data seguinte. */
+export const TASK_REPEATS = ['daily', 'weekdays', 'weekly', 'monthly', 'yearly'] as const;
+export type TaskRepeat = (typeof TASK_REPEATS)[number];
+export const TASK_REPEAT_LABELS: Record<TaskRepeat, string> = {
+  daily: 'Todos os dias',
+  weekdays: 'Dias úteis (seg. a sex.)',
+  weekly: 'Todas as semanas',
+  monthly: 'Todos os meses',
+  yearly: 'Todos os anos',
+};
+/** Curto, ao lado da tarefa ("🔁 Semanal"). */
+export const TASK_REPEAT_SHORT: Record<TaskRepeat, string> = {
+  daily: 'Diária',
+  weekdays: 'Dias úteis',
+  weekly: 'Semanal',
+  monthly: 'Mensal',
+  yearly: 'Anual',
+};
+const repeatField = z.enum(TASK_REPEATS, { error: 'Repetição inválida.' }).nullable();
+
+/** Um passo da repetição a partir de `iso` (o fim do mês fica no último dia: 31/01 → 28/02). */
+function stepRepeat(iso: string, repeat: TaskRepeat, anchorDay: number): string {
+  const d = new Date(`${iso}T12:00:00Z`);
+  if (repeat === 'daily') d.setUTCDate(d.getUTCDate() + 1);
+  else if (repeat === 'weekdays') {
+    do d.setUTCDate(d.getUTCDate() + 1);
+    while (d.getUTCDay() === 0 || d.getUTCDay() === 6);
+  } else if (repeat === 'weekly') d.setUTCDate(d.getUTCDate() + 7);
+  else {
+    const months = repeat === 'monthly' ? 1 : 12;
+    const y = d.getUTCFullYear();
+    const m = d.getUTCMonth() + months;
+    const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    return new Date(Date.UTC(y, m, Math.min(anchorDay, last), 12)).toISOString().slice(0, 10);
+  }
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Data da próxima vez: a seguir ao prazo (ou a hoje, sem prazo), sempre depois de hoje
+ * (concluir atrasada salta as vezes que já passaram). Mensal no dia 31 → último dia do mês.
+ */
+export function nextRepeatDate(due: string | null, repeat: TaskRepeat, today: string): string {
+  const base = due ?? today;
+  const anchor = Number(base.slice(8, 10));
+  let next = stepRepeat(base, repeat, anchor);
+  for (let i = 0; next <= today && i < 3700; i++) next = stepRepeat(next, repeat, anchor);
+  return next;
+}
+
 const taskTitle = z
   .string({ error: 'Escreve a tarefa.' })
   .trim()
@@ -37,6 +87,10 @@ export const LeadTaskSchema = z
     position: z.number().meta({ description: 'Ordem na lista (menor = mais acima)' }),
     assigned_to: z.uuid().nullable().optional().meta({ description: 'Responsável (membro da equipa; null = ninguém)' }),
     time_seconds: z.int().optional().meta({ description: 'Tempo registado nesta tarefa (Pomodoro ou registos à mão)' }),
+    repeat: repeatField.optional().meta({ description: 'Repetir (ao concluir, cria-se a seguinte); null = não se repete' }),
+    done_by: z.uuid().nullable().optional().meta({ description: 'Quem a marcou como feita' }),
+    next_task_id: z.uuid().nullable().optional().meta({ description: 'A próxima vez (tarefa que se repete, já criada)' }),
+    created_by: z.uuid().nullable().optional().meta({ description: 'Quem a criou' }),
     created_at: z.string(),
     updated_at: z.string(),
   })
@@ -54,6 +108,7 @@ export const LeadTaskCreateSchema = z
     due_on: nullableDate.optional().transform((v) => v ?? null),
     remind_at: remindAt.optional().transform((v) => v ?? null),
     assigned_to: z.uuid({ error: 'Responsável inválido.' }).nullable().optional().meta({ description: 'Responsável (recebe um aviso)' }),
+    repeat: repeatField.optional().meta({ description: 'Repetir (ao concluir, cria-se a seguinte)' }),
   })
   .meta({ id: 'LeadTaskCreate' });
 export type LeadTaskCreate = z.output<typeof LeadTaskCreateSchema>;
@@ -74,6 +129,7 @@ export const LeadTaskUpdateSchema = z
     assigned_to: z.uuid({ error: 'Responsável inválido.' }).nullable().optional().meta({ description: 'Responsável (null = ninguém); recebe um aviso' }),
     lead_id: z.uuid({ error: 'Lead inválido.' }).nullable().optional().meta({ description: 'Mover para outro lead/projeto (null = tarefa solta)' }),
     list_id: z.uuid({ error: 'Lista inválida.' }).nullable().optional().meta({ description: 'Mover para uma lista (tira a tarefa do lead)' }),
+    repeat: repeatField.optional().meta({ description: 'Repetir (null = deixa de se repetir)' }),
   })
   .meta({ id: 'LeadTaskUpdate' });
 export type LeadTaskUpdate = z.output<typeof LeadTaskUpdateSchema>;
@@ -188,7 +244,16 @@ export type TaskSearchResult = z.infer<typeof TaskSearchResultSchema>;
 // Listas (cartões com título, como no Google Keep)
 // -----------------------------------------------------------------------------
 export const TaskListSchema = z
-  .object({ id: z.uuid(), title: z.string(), position: z.number(), created_at: z.string(), updated_at: z.string() })
+  .object({
+    id: z.uuid(),
+    title: z.string(),
+    position: z.number(),
+    shared: z.boolean().optional().meta({ description: 'Partilhada: toda a equipa vê e mexe (senão, só quem a criou)' }),
+    archived_at: z.string().nullable().optional().meta({ description: 'Arquivada (sai do quadro; as tarefas também)' }),
+    created_by: z.uuid().nullable().optional(),
+    created_at: z.string(),
+    updated_at: z.string(),
+  })
   .meta({ id: 'TaskList' });
 export type TaskList = z.infer<typeof TaskListSchema>;
 
@@ -203,9 +268,28 @@ export const TaskListCreateSchema = z
       .transform((items) => (items ?? []).filter(Boolean))
       .meta({ description: 'Tarefas para criar já na lista (pela ordem)' }),
     assigned_to: z.uuid().nullable().optional().meta({ description: 'Responsável das tarefas criadas já' }),
+    shared: z.boolean().optional().meta({ description: 'Partilhada com a equipa' }),
   })
   .meta({ id: 'TaskListCreate' });
-export const TaskListUpdateSchema = z.object({ title: listTitle.optional(), position: z.number().optional() }).meta({ id: 'TaskListUpdate' });
+export const TaskListUpdateSchema = z
+  .object({
+    title: listTitle.optional(),
+    position: z.number().optional(),
+    shared: z.boolean().optional().meta({ description: 'Partilhar com a equipa (só quem a criou, o dono ou um administrador)' }),
+    archived: z.boolean().optional().meta({ description: 'true = arquivar; false = desarquivar' }),
+  })
+  .meta({ id: 'TaskListUpdate' });
+export type TaskListUpdate = z.infer<typeof TaskListUpdateSchema>;
+
+export const TaskListsQuerySchema = z.object({
+  archived: z
+    .enum(['0', '1'])
+    .optional()
+    .transform((v) => v === '1')
+    .meta({ description: '1 = as arquivadas (com as tarefas delas)' }),
+});
+export const TaskListWithTasksSchema = TaskListSchema.extend({ tasks: z.array(LeadTaskSchema) }).meta({ id: 'TaskListWithTasks' });
+export type TaskListWithTasks = z.infer<typeof TaskListWithTasksSchema>;
 
 /** Nova ordem de tarefas (de um mesmo cartão: lead, lista ou soltas). */
 export const TaskReorderSchema = LeadTaskReorderSchema.meta({ id: 'TaskReorder' });

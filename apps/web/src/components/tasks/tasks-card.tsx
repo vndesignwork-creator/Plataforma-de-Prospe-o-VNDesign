@@ -15,8 +15,12 @@ import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities';
 import { useQueryClient } from '@tanstack/react-query';
 import {
+  TASK_REPEATS,
+  TASK_REPEAT_LABELS,
+  TASK_REPEAT_SHORT,
   TASK_TITLE_MAX,
   addDays,
+  nextRepeatDate,
   formatDate,
   formatDuration,
   splitTasks,
@@ -24,10 +28,11 @@ import {
   todayIso,
   type Lead,
   type LeadTask,
+  type TaskRepeat,
   type TaskTemplate,
   parseTaskPhrase,
 } from '@vndesign/core';
-import { ArrowRightLeft, Bell, CalendarDays, Check, ChevronRight, Clock, Copy, CopyPlus, GripVertical, ListPlus, MoreVertical, Pencil, Plus, UserRound, X } from 'lucide-react';
+import { ArrowRightLeft, Bell, CalendarDays, Check, CheckCheck, ChevronRight, Clock, Copy, CopyPlus, GripVertical, ListPlus, MoreVertical, Pencil, Plus, Repeat, UserRound, X } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -47,7 +52,7 @@ import { cn } from '@/lib/utils';
 import { DueChip, ReminderChip } from './task-chips';
 import { TaskProgress } from './task-progress';
 
-export type TaskPatch = { title: string; due_on: string | null; remind_at: string | null; assigned_to?: string | null };
+export type TaskPatch = { title: string; due_on: string | null; remind_at: string | null; assigned_to?: string | null; repeat?: TaskRepeat | null };
 
 // Os selos de prazo e lembrete estão num ficheiro à parte (o Dashboard usa-os sem
 // trazer o cartão inteiro, com o arrastar e largar).
@@ -173,6 +178,7 @@ export function TaskEditor({
   const [due, setDue] = useState(task.due_on ?? '');
   const [remind, setRemind] = useState(isoToLocalInput(task.remind_at));
   const [assignee, setAssignee] = useState(task.assigned_to ?? '');
+  const [repeat, setRepeat] = useState<TaskRepeat | ''>(task.repeat ?? '');
   const { data: team } = useTeamNames();
   const { data: me } = useMe();
   const [saving, setSaving] = useState(false);
@@ -185,6 +191,7 @@ export function TaskEditor({
       due_on: due || null,
       remind_at: localInputToIso(remind),
       ...(assignee !== (task.assigned_to ?? '') ? { assigned_to: assignee || null } : {}),
+      ...(repeat !== (task.repeat ?? '') ? { repeat: repeat || null } : {}),
     });
     setSaving(false);
   }
@@ -249,6 +256,24 @@ export function TaskEditor({
             </label>
             <DateTimeInput id={`task-remind-${task.id}`} value={remind} onChange={setRemind} aria-label="Lembrete (dia e hora)" placeholder="🔔 dia e hora" />
           </div>
+          <div className="sm:col-span-2">
+            <label htmlFor={`task-repeat-${task.id}`} className="mb-1.5 block text-sm font-medium">
+              Repetir
+            </label>
+            <Select id={`task-repeat-${task.id}`} value={repeat} onChange={(e) => setRepeat(e.target.value as TaskRepeat | '')}>
+              <option value="">Não se repete</option>
+              {TASK_REPEATS.map((r) => (
+                <option key={r} value={r}>
+                  {TASK_REPEAT_LABELS[r]}
+                </option>
+              ))}
+            </Select>
+            <p className="mt-1 text-xs text-muted">
+              {repeat
+                ? `Ao concluir, a próxima fica para ${formatDate(nextRepeatDate(due || null, repeat, todayIso()))}.`
+                : 'Ao concluir uma tarefa que se repete, a próxima é criada sozinha.'}
+            </p>
+          </div>
         </div>
         {/* Com equipa: a quem fica a tarefa (essa pessoa recebe um aviso). */}
         {(team?.length ?? 0) > 1 ? (
@@ -273,6 +298,13 @@ export function TaskEditor({
   );
 }
 
+/** "Concluída: …" (e, se se repetir, quando fica a próxima). */
+export function doneMessage(task: Pick<LeadTask, 'title' | 'repeat' | 'due_on'>, prefix = 'Concluída'): string {
+  const title = task.title.length > 60 ? `${task.title.slice(0, 60)}…` : task.title;
+  const next = task.repeat ? ` · 🔁 a próxima fica para ${formatDate(nextRepeatDate(task.due_on, task.repeat, todayIso()))}` : '';
+  return `${prefix}: ${title}${next}`;
+}
+
 /** Para onde se pode mover a tarefa (outros cartões da página Tarefas). */
 export type MoveTarget = { key: string; label: string; onSelect: () => void };
 
@@ -288,11 +320,14 @@ export function TaskRow({
   onDuplicate,
   onDelete,
   assigneeName,
+  doneByName,
   moveTargets,
 }: {
   moveTargets?: MoveTarget[];
   task: LeadTask;
   assigneeName?: string | null;
+  /** Com equipa: quem a marcou como feita. */
+  doneByName?: string | null;
   today: string;
   editing: boolean;
   sortable: boolean;
@@ -371,6 +406,26 @@ export function TaskRow({
           <>
             {' '}
             <ReminderChip task={task} />
+          </>
+        ) : null}
+        {task.repeat ? (
+          <>
+            {' '}
+            <span className="inline-flex items-center gap-1 text-xs whitespace-nowrap text-muted" title={`Repete-se: ${TASK_REPEAT_LABELS[task.repeat]}`}>
+              <Repeat className="h-3 w-3" aria-hidden />
+              <span className="sr-only">Repete-se: </span>
+              {TASK_REPEAT_SHORT[task.repeat]}
+            </span>
+          </>
+        ) : null}
+        {done && doneByName ? (
+          <>
+            {' '}
+            <span className="inline-flex items-center gap-1 text-xs whitespace-nowrap text-success no-underline" title="Quem a marcou como feita">
+              <CheckCheck className="h-3 w-3" aria-hidden />
+              <span className="sr-only">Feita por </span>
+              {doneByName}
+            </span>
           </>
         ) : null}
         {assigneeName ? (
@@ -493,6 +548,7 @@ export function PhraseHint({ text, today, manualDue }: { text: string; today: st
       ✨ Fica “{phrase.title}”
       {phrase.due_on && !manualDue ? ` · 📅 ${formatDate(phrase.due_on)}` : ''}
       {phrase.time ? ` · 🔔 ${phrase.time}` : ''}
+      {phrase.repeat ? ` · 🔁 ${TASK_REPEAT_SHORT[phrase.repeat]}` : ''}
     </p>
   );
 }
@@ -618,7 +674,7 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
     try {
       await api(`/leads/${lead.id}/tasks`, {
         method: 'POST',
-        body: { title: value, due_on: dueValue || null, remind_at: localInputToIso(remindValue) },
+        body: { title: value, due_on: dueValue || null, remind_at: localInputToIso(remindValue), ...(phrase.repeat ? { repeat: phrase.repeat } : {}) },
       });
       if (remindValue) toast.success(`Lembrete marcado para ${formatReminder(localInputToIso(remindValue)!)}.`);
     } catch (error) {
@@ -641,9 +697,9 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
       if (isDone) {
         await Promise.all([request, new Promise((r) => setTimeout(r, 450))]);
         move();
-        if (pending.length === 1 && pending[0]!.id === task.id && total > 1) toast.success('Todas as tarefas concluídas. 🎉');
+        if (pending.length === 1 && pending[0]!.id === task.id && total > 1 && !task.repeat) toast.success('Todas as tarefas concluídas. 🎉');
         else {
-          toast.success(`Concluída: ${task.title.length > 60 ? `${task.title.slice(0, 60)}…` : task.title}`, {
+          toast.success(doneMessage(task), {
             action: { label: 'Anular', onClick: () => void toggle(task, false) },
           });
         }
@@ -685,7 +741,7 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
     try {
       const { data: copy } = await api<{ data: LeadTask }>(`/leads/${lead.id}/tasks`, {
         method: 'POST',
-        body: { title: task.title, due_on: task.due_on, assigned_to: task.assigned_to ?? null },
+        body: { title: task.title, due_on: task.due_on, assigned_to: task.assigned_to ?? null, ...(task.repeat ? { repeat: task.repeat } : {}) },
       });
       // As novas entram em cima: a cópia passa para logo a seguir à original.
       const at = pending.findIndex((t) => t.id === task.id);
@@ -746,6 +802,7 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
   const rowProps = (task: LeadTask, sortable: boolean) => ({
     task,
     assigneeName: task.assigned_to && hasTeam ? (task.assigned_to === me?.user.id ? 'Tu' : (team?.find((m) => m.user_id === task.assigned_to)?.name ?? null)) : null,
+    doneByName: task.done_by && hasTeam ? (task.done_by === me?.user.id ? 'Tu' : (team?.find((m) => m.user_id === task.done_by)?.name ?? null)) : null,
     today,
     sortable,
     editing: editingId === task.id,

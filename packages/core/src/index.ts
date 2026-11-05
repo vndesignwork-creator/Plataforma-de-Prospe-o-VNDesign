@@ -71,3 +71,5 @@ export * from './reach-out';
 export * from './quiet-hours';
 export * from './replies';
 export * from './rich-text';
+export * from './goals';
+export * from './site-monitor';

@@ -80,7 +80,8 @@ import { usePreference, useProspectingOutcome, useProspectingQueue, useSetPrefer
 import { usesAiVisibility, useTemplateContext } from '@/lib/template-context';
 import { cn, displayHost, telUrl, whatsappUrl } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/page-header';
-import { DailyGoal, HelpButton, HelpNote, useProspectingHelp } from './prospecting-header';
+import { ProspectingGoals } from '@/components/dashboard/goals-card';
+import { HelpButton, HelpNote, useProspectingHelp } from './prospecting-header';
 import { SequenceStep, pickTemplate } from './sequence-step';
 import { rovingKeyDown, rovingTabIndex } from '@/lib/roving';
 
@@ -264,7 +265,6 @@ export function ProspectingSession() {
       : mode === 'email'
         ? 'Cada linha tem o email pronto a rever e enviar (o 1.º ou o follow-up seguinte). Ao enviar, o lead passa a Contactado e o próximo follow-up fica marcado — não precisas de registar nada. Ligaste? Usa “Registar”.'
         : 'Contacta e regista o resultado na própria linha. O lead passa para “Feito nesta sessão”, onde vês a contagem (1×, 2×…) e podes registar outra tentativa.';
-  const doneCount = mode === 'email' ? emailsToday : today;
 
   return (
     <div className="flex flex-col gap-4">
@@ -310,7 +310,7 @@ export function ProspectingSession() {
                 </>
               ) : null}
             </span>
-            <DailyGoal mode={mode} done={doneCount} />
+            <ProspectingGoals mode={mode} />
           </span>
         }
         actions={
@@ -506,6 +506,8 @@ function LeadRow({
   const [finder, setFinder] = useState(false);
   const [askLost, setAskLost] = useState(false);
   const [askGiveUp, setAskGiveUp] = useState(false);
+  // Por onde foi o contacto (o último botão usado): conta nas metas do mês (chamadas / WhatsApp).
+  const [channel, setChannel] = useState<'phone' | 'whatsapp' | 'email' | null>(null);
   const attempts = item.attempts ?? NO_ATTEMPTS;
   const streak = attempts.no_answer_streak;
   const KindIcon = KIND_ICON[item.kind];
@@ -524,6 +526,7 @@ function LeadRow({
         ...(days ? { days } : {}),
         ...(lostReason ? { lost_reason: lostReason } : {}),
         ...(retryOn ? { retry_on: retryOn } : {}),
+        ...((channel ?? (mode === 'phone' ? 'phone' : null)) ? { channel: channel ?? 'phone' } : {}),
       });
       const next = result.lead.next_action_on ? ` Próxima ação a ${formatDate(result.lead.next_action_on)}.` : '';
       const times =
@@ -612,12 +615,12 @@ function LeadRow({
               </Button>
             ) : null}
             {lead.phone ? (
-              <a href={telUrl(lead.phone)} className={buttonClasses('ghost', 'sm')}>
+              <a href={telUrl(lead.phone)} onClick={() => setChannel('phone')} className={buttonClasses('ghost', 'sm')}>
                 <Phone className="h-3.5 w-3.5" aria-hidden /> Ligar
               </a>
             ) : null}
             {wa ? (
-              <a href={wa} target="_blank" rel="noreferrer" className={buttonClasses('ghost', 'sm')}>
+              <a href={wa} target="_blank" rel="noreferrer" onClick={() => setChannel('whatsapp')} className={buttonClasses('ghost', 'sm')}>
                 <MessageCircle className="h-3.5 w-3.5" aria-hidden /> WhatsApp
               </a>
             ) : null}
@@ -658,15 +661,18 @@ function LeadRow({
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div role="group" aria-label="Contactar" className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap [&>*]:justify-center">
             {lead.phone ? (
-              <a href={telUrl(lead.phone)} className={buttonClasses('soft', 'sm')}>
+              <a href={telUrl(lead.phone)} onClick={() => setChannel('phone')} className={buttonClasses('soft', 'sm')}>
                 <Phone className="h-3.5 w-3.5" aria-hidden /> Ligar
               </a>
             ) : null}
             {wa ? (
               settings?.features.whatsapp_templates ? (
-                <WhatsAppMenu lead={lead} className={buttonClasses('outline', 'sm')} />
+                // (display: contents — fica no lugar da grelha; o clique marca o canal)
+                <span className="contents" onClickCapture={() => setChannel('whatsapp')}>
+                  <WhatsAppMenu lead={lead} className={buttonClasses('outline', 'sm')} />
+                </span>
               ) : (
-                <a href={wa} target="_blank" rel="noreferrer" className={buttonClasses('outline', 'sm')}>
+                <a href={wa} target="_blank" rel="noreferrer" onClick={() => setChannel('whatsapp')} className={buttonClasses('outline', 'sm')}>
                   <MessageCircle className="h-3.5 w-3.5" aria-hidden /> WhatsApp
                 </a>
               )

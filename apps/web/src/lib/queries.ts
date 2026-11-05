@@ -12,6 +12,9 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import type {
+  GoalProgress,
+  SiteMonitor,
+  SiteMonitorListItem,
   LeadBulkActionInput,
   LeadBulkResult,
   RescheduleInput,
@@ -536,10 +539,24 @@ export function useProspectingQueue(filter: ProspectingView, mode: ProspectingMo
 
 export function useProspectingOutcome() {
   const invalidate = useInvalidateLead();
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ leadId, ...body }: { leadId: string; outcome: ProspectingOutcome; note?: string; days?: number; lost_reason?: LostReason | null; retry_on?: string | null }) =>
-      api<{ data: ProspectingResult }>(`/leads/${leadId}/prospecting`, { method: 'POST', body }).then((r) => r.data),
-    onSuccess: (result) => invalidate(result.lead.id),
+    mutationFn: ({
+      leadId,
+      ...body
+    }: {
+      leadId: string;
+      outcome: ProspectingOutcome;
+      note?: string;
+      days?: number;
+      lost_reason?: LostReason | null;
+      retry_on?: string | null;
+      channel?: 'phone' | 'whatsapp' | 'email';
+    }) => api<{ data: ProspectingResult }>(`/leads/${leadId}/prospecting`, { method: 'POST', body }).then((r) => r.data),
+    onSuccess: (result) => {
+      invalidate(result.lead.id);
+      void qc.invalidateQueries({ queryKey: ['goals'] });
+    },
   });
 }
 
@@ -1572,4 +1589,62 @@ export function useTeamStats(enabled = true) {
 export function useRole(): MemberRole | null {
   const { data } = useMe();
   return data?.role ?? null;
+}
+
+// -----------------------------------------------------------------------------
+// Metas do mês
+// -----------------------------------------------------------------------------
+export function useGoals(month?: string, enabled = true) {
+  return useQuery({
+    queryKey: ['goals', month ?? 'now'],
+    queryFn: () => api<{ data: GoalProgress }>('/goals', { query: month ? { month } : {} }).then((r) => r.data),
+    staleTime: 60_000,
+    enabled,
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Sites dos clientes (vigiar)
+// -----------------------------------------------------------------------------
+type LeadSiteMonitor = SiteMonitor & { domain_renewal_on: string | null };
+export function useSiteMonitor(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['site-monitor', leadId],
+    queryFn: () => api<{ data: LeadSiteMonitor | null }>(`/leads/${leadId}/site-monitor`).then((r) => r.data),
+    enabled,
+  });
+}
+export function useSiteMonitors(enabled = true) {
+  return useQuery({
+    queryKey: ['site-monitors'],
+    queryFn: () => api<{ data: SiteMonitorListItem[] }>('/site-monitors').then((r) => r.data),
+    staleTime: 5 * 60_000,
+    enabled,
+  });
+}
+export function useSiteMonitorActions(leadId: string) {
+  const qc = useQueryClient();
+  const done = () => {
+    void qc.invalidateQueries({ queryKey: ['site-monitor', leadId] });
+    void qc.invalidateQueries({ queryKey: ['site-monitors'] });
+  };
+  return {
+    create: useMutation({
+      mutationFn: (body: { url?: string }) => api<{ data: SiteMonitor }>(`/leads/${leadId}/site-monitor`, { method: 'POST', body }).then((r) => r.data),
+      onSettled: done,
+    }),
+    update: useMutation({
+      mutationFn: ({ id, ...body }: { id: string; url?: string; active?: boolean; domain_expires_on?: string | null }) =>
+        api<{ data: SiteMonitor }>(`/site-monitors/${id}`, { method: 'PATCH', body }).then((r) => r.data),
+      onSettled: done,
+    }),
+    check: useMutation({
+      mutationFn: (id: string) => api<{ data: SiteMonitor }>(`/site-monitors/${id}/check`, { method: 'POST' }).then((r) => r.data),
+      onSettled: done,
+    }),
+    remove: useMutation({
+      mutationFn: (id: string) => api(`/site-monitors/${id}`, { method: 'DELETE' }),
+      onSettled: done,
+    }),
+  };
 }

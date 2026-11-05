@@ -43,6 +43,8 @@ export const ProspectingOutcomeSchema = z
     lost_reason: z.enum(LOST_REASONS, { error: 'Motivo inválido.' }).nullable().optional(),
     /** "Sem interesse" com "Agora não": dia em que volta à prospeção. */
     retry_on: z.iso.date({ error: 'Data inválida.' }).nullable().optional(),
+    /** Por onde foi o contacto (conta nas metas do mês: chamadas, WhatsApp, emails). */
+    channel: z.enum(['phone', 'whatsapp', 'email']).optional().meta({ description: 'Canal do contacto (para as metas do mês)' }),
   })
   .meta({ id: 'ProspectingOutcome' });
 export type ProspectingOutcomeInput = z.output<typeof ProspectingOutcomeSchema>;

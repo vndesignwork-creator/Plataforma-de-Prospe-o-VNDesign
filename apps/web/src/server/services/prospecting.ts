@@ -299,7 +299,7 @@ export async function recordProspectingOutcome(ctx: ApiContext, leadId: string, 
     lead_id: leadId,
     type: input.outcome === 'no_answer' ? 'call_logged' : 'note',
     body: input.note ? `${label}: ${input.note}` : label,
-    payload: { via: 'prospecting', outcome: input.outcome, ...(input.days ? { days: input.days } : {}) },
+    payload: { via: 'prospecting', outcome: input.outcome, ...(input.days ? { days: input.days } : {}), ...(input.channel ? { channel: input.channel } : {}) },
     actor_user_id: ctx.user.id,
   });
   if (error) throw fromPostgrest(error);

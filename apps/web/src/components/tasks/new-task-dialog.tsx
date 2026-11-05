@@ -5,7 +5,7 @@
  * pesquisa), prazo e responsável — sem ter de abrir a ficha. Sem lead, fica uma
  * tarefa solta (só aqui e em "Hoje").
  */
-import { TASK_TITLE_MAX, formatDate, normalizeText, parseTaskPhrase, todayIso, type Lead } from '@vndesign/core';
+import { TASK_REPEATS, TASK_REPEAT_LABELS, TASK_TITLE_MAX, formatDate, normalizeText, parseTaskPhrase, todayIso, type Lead, type TaskRepeat } from '@vndesign/core';
 import { BriefcaseBusiness, Search, Sparkles, Users } from 'lucide-react';
 import { useDeferredValue, useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
@@ -116,6 +116,7 @@ export function NewTaskDialog({ onClose }: { onClose: () => void }) {
   const [title, setTitle] = useState('');
   const [lead, setLead] = useState<Picked | null>(null);
   const [due, setDue] = useState('');
+  const [repeat, setRepeat] = useState<TaskRepeat | ''>('');
   const [picking, setPicking] = useState(false);
   // Com equipa, a tarefa é de quem a cria (pode dar-se a outra pessoa).
   const [assignee, setAssignee] = useState<string | null>(null);
@@ -137,6 +138,8 @@ export function NewTaskDialog({ onClose }: { onClose: () => void }) {
     // A data escolhida à mão ganha à do texto.
     const dueOn = due || (recognized ? parsed.due_on : null) || null;
     const remindAt = recognized && parsed.time && dueOn ? localInputToIso(`${dueOn}T${parsed.time}`) : null;
+    // A repetição escolhida ganha à do texto ("todas as segundas").
+    const repeatValue = repeat || (recognized ? parsed.repeat : null) || null;
     try {
       await api('/tasks', {
         method: 'POST',
@@ -145,11 +148,13 @@ export function NewTaskDialog({ onClose }: { onClose: () => void }) {
           lead_id: lead?.id ?? null,
           due_on: dueOn,
           remind_at: remindAt,
+          ...(repeatValue ? { repeat: repeatValue } : {}),
           ...(hasTeam ? { assigned_to: assigned || null } : {}),
         },
       });
       const when = dueOn ? `, para ${formatDate(dueOn)}${remindAt ? ` às ${parsed.time}` : ''}` : '';
-      toast.success(lead ? `Tarefa criada em ${lead.company_name}${when}.` : `Tarefa criada (sem lead)${when}.`);
+      const repeats = repeatValue ? ` Repete-se: ${TASK_REPEAT_LABELS[repeatValue].toLowerCase()}.` : '';
+      toast.success(lead ? `Tarefa criada em ${lead.company_name}${when}.${repeats}` : `Tarefa criada (sem lead)${when}.${repeats}`);
       invalidate(lead?.id ?? null);
       onClose();
     } catch (err) {
@@ -190,6 +195,7 @@ export function NewTaskDialog({ onClose }: { onClose: () => void }) {
                 Fica: <strong className="font-semibold">“{parsed.title}”</strong>
                 {parsed.due_on && !due ? <> · 📅 {formatDate(parsed.due_on)}</> : null}
                 {parsed.time && (due || parsed.due_on) ? <> · 🔔 {parsed.time}</> : null}
+                {parsed.repeat && !repeat ? <> · 🔁 {TASK_REPEAT_LABELS[parsed.repeat]}</> : null}
               </span>
               <button type="button" onClick={() => setSmart(false)} className="ml-auto font-medium underline">
                 Não usar
@@ -224,6 +230,16 @@ export function NewTaskDialog({ onClose }: { onClose: () => void }) {
               {picking ? <DateInput value={due} onChange={setDue} aria-label="Data do prazo" className="w-40" /> : null}
             </div>
           </div>
+          <Field label="Repetir" className="min-w-40">
+            <Select value={repeat} onChange={(e) => setRepeat(e.target.value as TaskRepeat | '')}>
+              <option value="">Não se repete</option>
+              {TASK_REPEATS.map((r) => (
+                <option key={r} value={r}>
+                  {TASK_REPEAT_LABELS[r]}
+                </option>
+              ))}
+            </Select>
+          </Field>
           {hasTeam ? (
             <Field label="Responsável" className="min-w-40 flex-1">
               <Select value={assigned} onChange={(e) => setAssignee(e.target.value)}>

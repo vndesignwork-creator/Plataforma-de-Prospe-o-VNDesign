@@ -45,6 +45,14 @@ import {
   TaskListSchema,
   TaskListCreateSchema,
   TaskListUpdateSchema,
+  SiteMonitorSchema,
+  SiteMonitorCreateSchema,
+  SiteMonitorUpdateSchema,
+  SiteMonitorListItemSchema,
+  GoalProgressSchema,
+  GoalProgressQuerySchema,
+  TaskListsQuerySchema,
+  TaskListWithTasksSchema,
   TaskReorderSchema,
   AutomationRuleSchema,
   AutomationRuleCreateSchema,
@@ -1216,11 +1224,16 @@ export function getOpenApiDocument() {
         post: op({ tags: ['Tarefas'], summary: 'Nova ordem das tarefas de um cartão (lead, lista ou soltas)', requestBody: body(TaskReorderSchema), responses: { '204': { description: 'Reordenadas' }, ...withNotFound } }),
       },
       '/task-lists': {
-        get: op({ tags: ['Tarefas'], summary: 'Listas da página Tarefas (cartões com título)', responses: { '200': ok(data(z.array(TaskListSchema))), ...common } }),
+        get: op({
+          tags: ['Tarefas'],
+          summary: 'Listas da página Tarefas (as da pessoa e as partilhadas); ?archived=1 = as arquivadas, com as tarefas',
+          requestParams: { query: TaskListsQuerySchema },
+          responses: { '200': ok(data(z.union([z.array(TaskListSchema), z.array(TaskListWithTasksSchema)]))), ...common },
+        }),
         post: op({ tags: ['Tarefas'], summary: 'Nova lista com título (e as primeiras tarefas)', requestBody: body(TaskListCreateSchema), responses: { '201': ok(data(TaskListSchema), 'Criada'), ...common } }),
       },
       '/task-lists/{id}': {
-        patch: op({ tags: ['Tarefas'], summary: 'Mudar o título ou a posição da lista', requestParams: { path: idParam }, requestBody: body(TaskListUpdateSchema), responses: { '200': ok(data(TaskListSchema)), ...withNotFound } }),
+        patch: op({ tags: ['Tarefas'], summary: 'Mudar o título ou a posição, partilhar com a equipa ou arquivar', requestParams: { path: idParam }, requestBody: body(TaskListUpdateSchema), responses: { '200': ok(data(TaskListSchema)), ...withNotFound } }),
         delete: op({ tags: ['Tarefas'], summary: 'Apagar a lista e as tarefas dela', requestParams: { path: idParam }, responses: { '204': { description: 'Apagada' }, ...withNotFound } }),
       },
       '/tasks': {
@@ -2141,6 +2154,40 @@ export function getOpenApiDocument() {
           summary: 'Relatório do mês para a contabilidade (recebido, despesas, por receber); format=pdf ou xlsx para descarregar',
           requestParams: { query: z.object({ month: z.string().meta({ example: '2026-11' }), format: z.enum(['json', 'pdf', 'xlsx']).optional() }) },
           responses: { '200': ok(data(AccountingReportSchema)), '404': problem('Relatório desligado'), '422': problem('Mês inválido'), ...common },
+        }),
+      },
+      '/leads/{id}/site-monitor': {
+        get: op({ tags: ['Projetos'], summary: 'Site vigiado do cliente (null = não está a ser vigiado)', requestParams: { path: idParam }, responses: { '200': ok(data(SiteMonitorSchema.nullable())), ...withNotFound } }),
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Começar a vigiar o site (no ar, certificado SSL e domínio) e verificar já',
+          requestParams: { path: idParam },
+          requestBody: body(SiteMonitorCreateSchema),
+          responses: { '201': ok(data(SiteMonitorSchema), 'Criada'), ...withNotFound },
+        }),
+      },
+      '/site-monitors': {
+        get: op({ tags: ['Projetos'], summary: 'Sites dos clientes vigiados', responses: { '200': ok(data(z.array(SiteMonitorListItemSchema))), ...common } }),
+      },
+      '/site-monitors/{id}': {
+        patch: op({
+          tags: ['Projetos'],
+          summary: 'Mudar o endereço, pausar ou escrever à mão a data do domínio',
+          requestParams: { path: idParam },
+          requestBody: body(SiteMonitorUpdateSchema),
+          responses: { '200': ok(data(SiteMonitorSchema)), ...withNotFound },
+        }),
+        delete: op({ tags: ['Projetos'], summary: 'Deixar de vigiar o site', requestParams: { path: idParam }, responses: { '204': { description: 'Apagada' }, ...withNotFound } }),
+      },
+      '/site-monitors/{id}/check': {
+        post: op({ tags: ['Projetos'], summary: 'Verificar o site agora', requestParams: { path: idParam }, responses: { '200': ok(data(SiteMonitorSchema)), ...withNotFound } }),
+      },
+      '/goals': {
+        get: op({
+          tags: ['Dashboard'],
+          summary: 'Metas do mês e o progresso (equipa e pessoa); as metas mudam-se em PATCH /settings { goals }',
+          requestParams: { query: GoalProgressQuerySchema },
+          responses: { '200': ok(data(GoalProgressSchema)), ...common },
         }),
       },
       '/renewals/summary': {

@@ -27,6 +27,7 @@ import { LaunchSection } from './launch-section';
 import { ExpensesSection } from './expenses-section';
 import { DueBadge, ProgressBar, StagePicker, SummaryStat } from './project-bits';
 import { RenewalsSection } from './renewals-section';
+import { SiteMonitorSection } from './site-monitor-section';
 import { RevisionsSection } from './revisions-section';
 import { ShareSection } from './share-section';
 import { PomodoroBox } from './pomodoro';
@@ -190,6 +191,7 @@ export function ProjectCard({ lead }: { lead: Lead }) {
       features?.renewals ? <RenewalsSection key="renewals" lead={lead} /> : null,
     ].filter(Boolean),
     cliente: [
+      features?.site_monitoring ? <SiteMonitorSection key="site" lead={lead} /> : null,
       features?.client_page ? <ShareSection key="share" lead={lead} /> : null,
       features?.collaborators ? <CollaboratorsSection key="collab" lead={lead} /> : null,
     ].filter(Boolean),
