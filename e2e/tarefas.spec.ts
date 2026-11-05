@@ -59,7 +59,7 @@ test('ficha: acrescentar, reordenar com o teclado, concluir e editar tarefas', a
   await edit.getByLabel('Texto da tarefa').fill(long);
   await edit.getByLabel('Texto da tarefa').press('Shift+Enter');
   await edit.getByLabel('Texto da tarefa').pressSequentially('Confirmar cores com o cliente');
-  await expect(edit.getByText(/^\d+\/300$/)).toBeVisible();
+  await expect(edit.getByText(/^\d+\/2000$/)).toBeVisible();
   await edit.getByLabel('Texto da tarefa').press('Enter');
   await expect(edit).toHaveCount(0);
   await expect(card.getByText(/formulário de contacto\s*Confirmar cores com o cliente/)).toBeVisible();
