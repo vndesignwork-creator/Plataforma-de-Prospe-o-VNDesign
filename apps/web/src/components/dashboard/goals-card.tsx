@@ -24,6 +24,7 @@ import {
 } from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { Pencil, Target } from 'lucide-react';
+import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -236,8 +237,12 @@ export function ProspectingGoals({ mode }: { mode: ProspectingMode }) {
   const canEdit = me?.role === 'owner' || me?.role === 'admin';
   const [editing, setEditing] = useState(false);
   if (!enabled || !data) return null;
-  const metrics = PROSPECTING_GOALS[mode].filter((m) => data.goals[m]);
-  if (!metrics.length) {
+  // As do modo (emails; ou chamadas e WhatsApp) e as que a prospeção faz crescer (propostas, clientes).
+  const metrics = [...PROSPECTING_GOALS[mode], 'proposals', 'clients'].filter((m): m is GoalMetric => !!data.goals[m as GoalMetric]);
+  const others = GOAL_METRICS.filter((m) => data.goals[m] && !metrics.includes(m));
+  const missing = PROSPECTING_GOALS[mode].filter((m) => !data.goals[m]);
+  const dialog = editing ? <GoalsDialog goals={data.goals} onClose={() => setEditing(false)} /> : null;
+  if (!metrics.length && !others.length) {
     return canEdit ? (
       <>
         <button
@@ -247,7 +252,7 @@ export function ProspectingGoals({ mode }: { mode: ProspectingMode }) {
         >
           <Target className="h-3 w-3" aria-hidden /> Definir metas do mês
         </button>
-        {editing ? <GoalsDialog goals={data.goals} onClose={() => setEditing(false)} /> : null}
+        {dialog}
       </>
     ) : null;
   }
@@ -256,12 +261,29 @@ export function ProspectingGoals({ mode }: { mode: ProspectingMode }) {
       {metrics.map((m) => (
         <GoalBar key={m} metric={m} data={data} compact />
       ))}
-      {canEdit ? (
-        <button type="button" onClick={() => setEditing(true)} className="rounded p-1 text-muted hover:text-fg" aria-label="Mudar as metas do mês" title="Mudar as metas do mês">
-          <Pencil className="h-3.5 w-3.5" aria-hidden />
-        </button>
-      ) : null}
-      {editing ? <GoalsDialog goals={data.goals} onClose={() => setEditing(false)} /> : null}
+      {/* Há metas, mas nenhuma deste modo: diz-se quais há (ficam no Dashboard) e dá para juntar a do modo. */}
+      <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+        {!metrics.length ? (
+          <Link href="/dashboard" className="inline-flex items-center gap-1 hover:text-fg hover:underline">
+            <Target className="h-3 w-3" aria-hidden />
+            Metas do mês: {others.map((m) => GOAL_LABELS[m].toLowerCase()).join(', ')}
+          </Link>
+        ) : others.length ? (
+          <Link href="/dashboard" className="hover:text-fg hover:underline">
+            +{others.length} no Dashboard
+          </Link>
+        ) : null}
+        {canEdit && missing.length ? (
+          <button type="button" onClick={() => setEditing(true)} className="rounded-md border border-dashed border-border-strong px-2 py-0.5 hover:border-accent hover:text-accent-text">
+            + Meta de {missing.map((m) => GOAL_LABELS[m].toLowerCase()).join(' e ')}
+          </button>
+        ) : canEdit ? (
+          <button type="button" onClick={() => setEditing(true)} className="rounded p-1 hover:text-fg" aria-label="Mudar as metas do mês" title="Mudar as metas do mês">
+            <Pencil className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        ) : null}
+      </span>
+      {dialog}
     </span>
   );
 }

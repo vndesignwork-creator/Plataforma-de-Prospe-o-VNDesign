@@ -295,8 +295,15 @@ test('Prospeção: topo com as metas do mês (por modo), ajuda recolhida e separ
   await expect(page.getByRole('progressbar', { name: /^WhatsApp enviados: \d+ de 80$/ })).toBeVisible();
   expect((await (await page.request.get('/api/v1/goals')).json()).data.goals).toMatchObject({ calls: 200, whatsapp: 80 });
 
-  // Por email, a meta é outra (ainda nenhuma).
+  // Por email: as metas que há aparecem (com o link para o Dashboard) e dá para juntar a de emails.
   await page.getByRole('radio', { name: 'Email' }).click();
-  await expect(page.getByRole('button', { name: 'Definir metas do mês' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Metas do mês: chamadas, whatsapp enviados' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Definir metas do mês' })).toHaveCount(0);
+  // Uma meta de propostas aparece em qualquer modo.
+  await page.request.patch('/api/v1/settings', { data: { goals: { proposals: 6 } } });
+  await page.reload();
+  await expect(page.getByRole('progressbar', { name: /^Propostas enviadas: \d+ de 6$/ })).toBeVisible();
+  await page.getByRole('button', { name: '+ Meta de emails enviados' }).click();
+  await expect(page.getByRole('dialog', { name: 'Metas do mês' }).getByLabel('Propostas enviadas')).toHaveValue('6');
   await page.request.patch('/api/v1/settings', { data: { goals: {} } });
 });
