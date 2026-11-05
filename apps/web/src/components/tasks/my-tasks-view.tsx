@@ -23,10 +23,10 @@ import {
   type TaskOrigin,
 } from '@vndesign/core';
 import { useQuery } from '@tanstack/react-query';
-import { BriefcaseBusiness, ChevronRight, CircleDot, ListChecks, Plus, Search, UserRound, Users, type LucideIcon } from 'lucide-react';
+import { BriefcaseBusiness, CalendarDays, ChevronRight, CircleDot, Copy, CopyPlus, LayoutGrid, ListChecks, MoreVertical, Plus, Search, UserRound, Users, X, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Fragment, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
@@ -41,7 +41,8 @@ import { cn } from '@/lib/utils';
 import { DateInput } from '@/components/ui/date-input';
 import { SwipeRow } from '@/components/ui/swipe-row';
 import { NewTaskDialog } from './new-task-dialog';
-import { DueChip, DuePicker, TaskEditor, type TaskPatch } from './tasks-card';
+import { TaskBoard } from './task-board';
+import { DueChip, DuePicker, TaskEditor, copyText, type TaskPatch } from './tasks-card';
 
 const GROUPS: TaskGroup[] = ['overdue', 'today', 'week', 'later', 'none'];
 
@@ -88,7 +89,35 @@ const segment = (on: boolean, extra?: string) =>
     extra,
   );
 
+type TasksView = 'cartoes' | 'prazo';
+const VIEW_KEY = 'vnd.tarefas.vista';
+
 export function MyTasksView() {
+  // Cartões (como o Google Keep) ou a lista pelo prazo; a escolha fica lembrada neste browser.
+  const [view, setViewState] = useState<TasksView>('cartoes');
+  const params0 = useSearchParams();
+  const fromUrl = params0.get('vista');
+  useEffect(() => {
+    // ?vista=prazo|cartoes no endereço ganha; senão, a última escolha.
+    if (fromUrl === 'prazo' || fromUrl === 'cartoes') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- vem do endereço
+      setViewState(fromUrl);
+      return;
+    }
+    try {
+      if (localStorage.getItem(VIEW_KEY) === 'prazo') setViewState('prazo');
+    } catch {
+      // sem armazenamento: fica nos cartões
+    }
+  }, [fromUrl]);
+  const setView = (v: TasksView) => {
+    setViewState(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      // sem armazenamento
+    }
+  };
   const { data: me } = useMe();
   const { data: team, isPending: teamPending } = useTeamNames();
   const { data: settings } = useSettings();
@@ -112,7 +141,8 @@ export function MyTasksView() {
   const doneQuery = useQuery({
     queryKey: ['my-tasks', assigned, 'done'],
     queryFn: () => api<{ data: TaskListItem[] }>('/tasks', { query: { assigned, state: 'done', limit: 100 } }).then((r) => r.data),
-    enabled: !teamPending && showDone,
+    // Nos cartões, as concluídas ficam no fim de cada cartão.
+    enabled: !teamPending && (showDone || view === 'cartoes'),
   });
   // Acabada de marcar: fica com o visto e riscada até sair da lista.
   const [completing, setCompleting] = useState<string[]>([]);
@@ -192,6 +222,31 @@ export function MyTasksView() {
               .finally(() => invalidate(task.lead_id)),
         },
       });
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      invalidate(task.lead_id);
+    }
+  }
+
+  async function duplicateTask(task: TaskListItem) {
+    try {
+      await api('/tasks', {
+        method: 'POST',
+        body: { lead_id: task.lead_id, list_id: task.list_id ?? null, title: task.title, due_on: task.due_on, assigned_to: task.assigned_to ?? null },
+      });
+      toast.success('Tarefa duplicada.');
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      invalidate(task.lead_id);
+    }
+  }
+
+  async function deleteTask(task: TaskListItem) {
+    try {
+      await api(`/tasks/${task.id}`, { method: 'DELETE' });
+      toast.success('Tarefa apagada.');
     } catch (e) {
       toast.error(errorMessage(e));
     } finally {
@@ -292,10 +347,13 @@ export function MyTasksView() {
                 ))}
               </span>
             ) : (
-              'As tarefas por fazer dos leads e projetos, pelo prazo.'
+              'As tarefas dos leads, dos projetos e as tuas listas.'
             )}
             <span className="mt-0.5 flex items-center gap-1 text-xs">
-              <ListChecks className="h-3.5 w-3.5" aria-hidden /> As por fazer dos leads e projetos (não arquivados) e as sem lead; as concluídas estão no fim.
+              <ListChecks className="h-3.5 w-3.5" aria-hidden />
+              {view === 'cartoes'
+                ? 'Cada lista é um cartão, e cada lead ou projeto com tarefas tem o seu. As concluídas ficam no fim de cada cartão.'
+                : 'As por fazer dos leads e projetos (não arquivados) e as sem lead; as concluídas estão no fim.'}
             </span>
           </>
         }
@@ -348,6 +406,14 @@ export function MyTasksView() {
               </DropdownRoot>
             </div>
           ) : null}
+          <div role="group" aria-label="Vista" className={SEGMENTED}>
+            <button type="button" aria-pressed={view === 'cartoes'} onClick={() => setView('cartoes')} className={segment(view === 'cartoes', 'gap-1.5')}>
+              <LayoutGrid className="h-3.5 w-3.5" aria-hidden /> Cartões
+            </button>
+            <button type="button" aria-pressed={view === 'prazo'} onClick={() => setView('prazo')} className={segment(view === 'prazo', 'gap-1.5')}>
+              <CalendarDays className="h-3.5 w-3.5" aria-hidden /> Por prazo
+            </button>
+          </div>
           {showKind ? (
             // À direita (no telemóvel, quando passa para a linha de baixo, também).
             <div role="group" aria-label="Tipo de tarefa" className={cn(SEGMENTED, 'ml-auto')}>
@@ -364,6 +430,30 @@ export function MyTasksView() {
           <p role="alert" className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">
             {errorMessage(error)}
           </p>
+        ) : view === 'cartoes' ? (
+          <TaskBoard
+            pending={shown}
+            done={doneShown}
+            today={today}
+            showLists={kind === 'all' || kind === 'soltas'}
+            showLeads={kind !== 'soltas'}
+            query={q}
+            assigneeName={(id) => (hasTeam ? nameOf(id) : null)}
+            assignTo={hasTeam ? (assigned === 'me' ? (me?.user.id ?? null) : (team?.some((m) => m.user_id === assigned) ? assigned : null)) : null}
+            loading={isLoading || teamPending}
+            empty={
+              <Card>
+                <EmptyState title={filtered ? 'Nenhuma tarefa encontrada' : 'Sem tarefas por fazer'}>
+                  <p>{filtered ? 'Não há tarefas com esta pesquisa ou filtros.' : 'Cria uma lista acima, ou tarefas na ficha de cada lead ou projeto.'}</p>
+                  {filtered ? (
+                    <Button variant="outline" className="mt-3" onClick={clearFilters}>
+                      Limpar filtros
+                    </Button>
+                  ) : null}
+                </EmptyState>
+              </Card>
+            }
+          />
         ) : isLoading || teamPending ? (
           <Skeleton className="h-40" />
         ) : !groups.length ? (
@@ -409,7 +499,7 @@ export function MyTasksView() {
                     aria-label={`Concluir: ${t.title}`}
                     className="mt-1 h-4 w-4 shrink-0 cursor-pointer transition-transform checked:scale-110"
                   />
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 max-sm:order-last max-sm:basis-full">
                     {/* Tocar no texto edita (os links do texto abrem). */}
                     <p
                       onClick={(e) => {
@@ -451,8 +541,8 @@ export function MyTasksView() {
                       </div>
                     ) : null}
                   </div>
-                  {/* Telemóvel: os botões passam para baixo do texto (alinhados com ele), em vez de o espremerem. */}
-                  <div className="flex shrink-0 items-center gap-2 max-sm:basis-full max-sm:pl-6">
+                  {/* Telemóvel: a caixa e os botões em cima, o texto por baixo com a largura toda (como no Projeto). */}
+                  <div className="flex shrink-0 items-center gap-2 max-sm:ml-auto">
                     <DuePicker
                       value={t.due_on ?? ''}
                       today={today}
@@ -485,6 +575,23 @@ export function MyTasksView() {
                         </DropdownContent>
                       </DropdownRoot>
                     ) : null}
+                    <DropdownRoot>
+                      <DropdownTrigger aria-label={`Mais ações: ${t.title}`} className="shrink-0 rounded p-1 text-muted hover:bg-surface-3 hover:text-fg">
+                        <MoreVertical className="h-4 w-4" aria-hidden />
+                      </DropdownTrigger>
+                      <DropdownContent align="end">
+                        <DropdownItem onSelect={() => void copyText(t.title)}>
+                          <Copy className="h-4 w-4" aria-hidden /> Copiar o texto
+                        </DropdownItem>
+                        <DropdownItem onSelect={() => void duplicateTask(t)}>
+                          <CopyPlus className="h-4 w-4" aria-hidden /> Duplicar
+                        </DropdownItem>
+                        <DropdownSeparator />
+                        <DropdownItem danger onSelect={() => void deleteTask(t)}>
+                          <X className="h-4 w-4" aria-hidden /> Apagar
+                        </DropdownItem>
+                      </DropdownContent>
+                    </DropdownRoot>
                   </div>
                 </SwipeRow>
               ))}
@@ -492,7 +599,7 @@ export function MyTasksView() {
           ))
         )}
         {/* Concluídas (últimos 30 dias): recolhidas; a caixa desmarcada reabre a tarefa. */}
-        {!isLoading && !error ? (
+        {!isLoading && !error && view === 'prazo' ? (
           <Card className="overflow-hidden">
             <button
               type="button"

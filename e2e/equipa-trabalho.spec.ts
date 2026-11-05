@@ -55,7 +55,7 @@ test('equipa: dar uma tarefa, aviso no sino, página Tarefas e comentário com @
     await expect(tasks.getByText(name)).toBeVisible();
 
     // A outra pessoa: aviso no sino, abre o lead; e vê-a em Tarefas → As minhas.
-    await other.goto('/tarefas');
+    await other.goto('/tarefas?vista=prazo');
     const bell = other.getByRole('button', { name: /^Avisos: 1 por ler$/ }).first();
     await expect(bell).toBeVisible({ timeout: 15_000 });
     await expect(other.getByRole('list', { name: 'Sem prazo' }).getByText(`Ligar ao dono ${run}`)).toBeVisible();
@@ -65,7 +65,7 @@ test('equipa: dar uma tarefa, aviso no sino, página Tarefas e comentário com @
     await expect(other.getByRole('button', { name: /^Avisos$/ }).first()).toBeVisible();
 
     // Concluir na página Tarefas (com Anular).
-    await other.goto('/tarefas');
+    await other.goto('/tarefas?vista=prazo');
     await other.getByLabel(`Concluir: Ligar ao dono ${run}`).check();
     await expect(other.getByText('Tarefa concluída.')).toBeVisible();
     await expect(other.getByText('Não tens tarefas por fazer')).toBeVisible();
@@ -169,6 +169,8 @@ test('Tarefas: as do dono (sem responsável) aparecem, pelo prazo, e concluem-se
   await page.goto('/dashboard');
   await page.getByRole('navigation', { name: 'Principal' }).first().getByRole('link', { name: 'Tarefas' }).click();
   await expect(page).toHaveURL(/\/tarefas$/);
+  // A vista por omissão são os cartões; esta verificação é a da lista pelo prazo.
+  await page.getByRole('button', { name: 'Por prazo' }).click();
   const overdue = page.getByRole('list', { name: 'Em atraso' });
   await expect(overdue.getByText(`Enviar maquete ${run}`)).toBeVisible();
   await expect(overdue.getByRole('link', { name: new RegExp(`Página Tarefas ${run}`) })).toBeVisible();
@@ -182,7 +184,7 @@ test('Tarefas: dar prazo a uma tarefa sem prazo daqui mesmo (com Anular)', async
   const res = await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title: `Rever textos ${run}` } });
   const task = (await res.json()).data as { id: string };
   const due = async () => ((await (await page.request.get(`/api/v1/leads/${lead.id}/tasks`)).json()).data as { id: string; due_on: string | null }[]).find((t) => t.id === task.id)!.due_on;
-  await page.goto('/tarefas?de=all');
+  await page.goto('/tarefas?de=all&vista=prazo');
   // Com muitas tarefas, "Sem prazo" pode estar recolhida: a pesquisa abre tudo.
   await page.getByLabel('Procurar tarefa ou lead').fill(`Rever textos ${run}`);
   await expect(page.getByRole('list', { name: 'Sem prazo' }).getByText(`Rever textos ${run}`)).toBeVisible();
@@ -206,7 +208,7 @@ test('Tarefas: dar prazo a uma tarefa sem prazo daqui mesmo (com Anular)', async
 test('Tarefas: topo com resumo, Nova tarefa, pesquisa, Leads | Projetos e secções que se recolhem', async ({ page }) => {
   const lead = await createLead(page.request, { company_name: `Topo Tarefas ${run}` });
   expect((await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title: `Atrasada ${run}`, due_on: '2020-01-10' } })).status()).toBe(201);
-  await page.goto('/tarefas?de=all');
+  await page.goto('/tarefas?de=all&vista=prazo');
   await expect(page.getByRole('heading', { name: 'Tarefas', level: 1 })).toBeVisible();
   await expect(page.getByText(/\d+\+? por fazer/)).toBeVisible();
   await expect(page.getByRole('button', { name: /\d+ em atraso/ })).toBeVisible();

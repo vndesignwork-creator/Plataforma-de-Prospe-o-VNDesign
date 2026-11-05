@@ -5,7 +5,7 @@
  * pesquisa), prazo e responsável — sem ter de abrir a ficha. Sem lead, fica uma
  * tarefa solta (só aqui e em "Hoje").
  */
-import { formatDate, normalizeText, parseTaskPhrase, todayIso, type Lead } from '@vndesign/core';
+import { TASK_TITLE_MAX, formatDate, normalizeText, parseTaskPhrase, todayIso, type Lead } from '@vndesign/core';
 import { BriefcaseBusiness, Search, Sparkles, Users } from 'lucide-react';
 import { useDeferredValue, useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
@@ -180,9 +180,9 @@ export function NewTaskDialog({ onClose }: { onClose: () => void }) {
       <form id="new-task" onSubmit={submit} noValidate className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <Field label="Tarefa" error={errors.title} hint={recognized ? undefined : 'Podes escrever como falas: “Ligar à Clínica Sorriso sexta às 10h”.'}>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Enviar proposta revista amanhã às 10h" maxLength={300} autoFocus />
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Enviar proposta revista amanhã às 10h" maxLength={TASK_TITLE_MAX} autoFocus />
           </Field>
-          <DictateButton value={title} onChange={setTitle} max={300} className="self-start" />
+          <DictateButton value={title} onChange={setTitle} max={TASK_TITLE_MAX} className="self-start" />
           {recognized ? (
             <p role="status" className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-accent-soft px-3 py-2 text-xs text-accent-text">
               <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />

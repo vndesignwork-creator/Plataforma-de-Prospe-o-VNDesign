@@ -11,7 +11,7 @@
  */
 import * as RadixDialog from '@radix-ui/react-dialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { LEAD_STATUSES, LEAD_STATUS_META, formatDate, leadPath, noteSnippet, type Lead, type NoteSearchResult, type TaskSearchResult } from '@vndesign/core';
+import { LEAD_STATUSES, LEAD_STATUS_META, TASK_TITLE_MAX, formatDate, leadPath, noteSnippet, type Lead, type NoteSearchResult, type TaskSearchResult } from '@vndesign/core';
 import {
   ArrowLeft,
   Bookmark,
@@ -463,7 +463,7 @@ function SearchBody({
           aria-label={compose ? placeholder : 'Pesquisar leads, projetos, tarefas e páginas'}
           placeholder={placeholder}
           value={text}
-          maxLength={compose ? 300 : undefined}
+          maxLength={compose ? TASK_TITLE_MAX : undefined}
           onChange={(e) => {
             setText(e.target.value);
             setActive(0);
@@ -494,7 +494,7 @@ function SearchBody({
           }}
           className="h-12 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted"
         />
-        {compose ? <DictateButton size="sm" value={text} onChange={setText} max={300} /> : null}
+        {compose ? <DictateButton size="sm" value={text} onChange={setText} max={TASK_TITLE_MAX} /> : null}
         <kbd className="hidden rounded border border-border px-1.5 py-0.5 text-[11px] text-muted sm:inline">Esc</kbd>
       </div>
       {compose ? (

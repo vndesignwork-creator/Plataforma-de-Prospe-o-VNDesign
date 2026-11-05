@@ -44,8 +44,10 @@ export const HELP_GUIDES: HelpGuide[] = [
     id: 'tarefas',
     title: 'Tarefas',
     href: '/tarefas',
-    summary: 'Todas as tuas tarefas, de todos os leads e projetos, numa lista.',
+    summary: 'Todas as tuas tarefas em cartões (como no Google Keep) ou numa lista pelo prazo.',
     steps: [
+      'Cartões: cada lista tem um título e as suas tarefas (em “Criar uma lista…”, uma por linha); cada lead ou projeto com tarefas tem o seu cartão.',
+      'Em cada cartão, escreve em “Nova tarefa…” e carrega em Enter; arrasta pela pega para mudar a ordem; em cada tarefa há copiar, duplicar, mover para outro cartão e apagar.',
       'Cria uma tarefa na ficha do lead (cartão Tarefas) ou aqui; escolhe o prazo e, se quiseres, um lembrete à hora.',
       'As tarefas aparecem agrupadas pelo prazo (atrasadas, hoje, próximos dias, sem prazo); filtra por Leads ou Projetos e por responsável.',
       'Marca como feita com o visto; para mudar a data, carrega no prazo da tarefa.',

@@ -15,6 +15,7 @@ import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities';
 import { useQueryClient } from '@tanstack/react-query';
 import {
+  TASK_TITLE_MAX,
   addDays,
   formatDate,
   formatDuration,
@@ -26,7 +27,7 @@ import {
   type TaskTemplate,
   parseTaskPhrase,
 } from '@vndesign/core';
-import { Bell, CalendarDays, Check, ChevronRight, Clock, Copy, CopyPlus, GripVertical, ListPlus, MoreVertical, Pencil, Plus, UserRound, X } from 'lucide-react';
+import { ArrowRightLeft, Bell, CalendarDays, Check, ChevronRight, Clock, Copy, CopyPlus, GripVertical, ListPlus, MoreVertical, Pencil, Plus, UserRound, X } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -212,7 +213,7 @@ export function TaskEditor({
           <Textarea
             id={`task-title-${task.id}`}
             value={title}
-            maxLength={300}
+            maxLength={TASK_TITLE_MAX}
             rows={3}
             // A caixa cresce com o texto (todo à vista, também no telemóvel): o ref corre a cada render.
             ref={(el) => {
@@ -231,8 +232,8 @@ export function TaskEditor({
             className="leading-relaxed"
           />
           <div className="mt-1.5 flex flex-wrap items-start gap-2">
-            <DictateButton size="md" value={title} onChange={setTitle} max={300} />
-            <p className="ml-auto text-right text-xs text-muted tabular">{title.length}/300</p>
+            <DictateButton size="md" value={title} onChange={setTitle} max={TASK_TITLE_MAX} />
+            <p className="ml-auto text-right text-xs text-muted tabular">{title.length}/{TASK_TITLE_MAX}</p>
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -272,7 +273,10 @@ export function TaskEditor({
   );
 }
 
-function TaskRow({
+/** Para onde se pode mover a tarefa (outros cartões da página Tarefas). */
+export type MoveTarget = { key: string; label: string; onSelect: () => void };
+
+export function TaskRow({
   task,
   today,
   editing,
@@ -284,7 +288,9 @@ function TaskRow({
   onDuplicate,
   onDelete,
   assigneeName,
+  moveTargets,
 }: {
+  moveTargets?: MoveTarget[];
   task: LeadTask;
   assigneeName?: string | null;
   today: string;
@@ -417,6 +423,25 @@ function TaskRow({
         >
           <CopyPlus className="h-3.5 w-3.5" aria-hidden />
         </button>
+        {moveTargets?.length ? (
+          <DropdownRoot>
+            <DropdownTrigger
+              aria-label={`Mover para outro cartão: ${task.title}`}
+              title="Mover para…"
+              className="rounded p-1 text-muted hover:bg-surface-3 hover:text-fg pointer-coarse:p-1.5"
+            >
+              <ArrowRightLeft className="h-3.5 w-3.5" aria-hidden />
+            </DropdownTrigger>
+            <DropdownContent align="end" className="max-h-80 overflow-y-auto">
+              <DropdownLabel>Mover para</DropdownLabel>
+              {moveTargets.map((t) => (
+                <DropdownItem key={t.key} onSelect={t.onSelect}>
+                  {t.label}
+                </DropdownItem>
+              ))}
+            </DropdownContent>
+          </DropdownRoot>
+        ) : null}
         <button
           type="button"
           onClick={onDelete}
@@ -438,6 +463,18 @@ function TaskRow({
           <DropdownItem onSelect={onDuplicate}>
             <CopyPlus className="h-4 w-4" aria-hidden /> Duplicar
           </DropdownItem>
+          {moveTargets?.length ? (
+            <>
+              <DropdownSeparator />
+              <DropdownLabel>Mover para</DropdownLabel>
+              {moveTargets.map((t) => (
+                <DropdownItem key={t.key} onSelect={t.onSelect}>
+                  <ArrowRightLeft className="h-4 w-4" aria-hidden /> {t.label}
+                </DropdownItem>
+              ))}
+              <DropdownSeparator />
+            </>
+          ) : null}
           <DropdownItem danger onSelect={onDelete}>
             <X className="h-4 w-4" aria-hidden /> Apagar
           </DropdownItem>
@@ -448,7 +485,7 @@ function TaskRow({
 }
 
 /** O que o texto da nova tarefa vai dar: prazo e hora reconhecidos ("sexta às 10h"). */
-function PhraseHint({ text, today, manualDue }: { text: string; today: string; manualDue: boolean }) {
+export function PhraseHint({ text, today, manualDue }: { text: string; today: string; manualDue: boolean }) {
   const phrase = parseTaskPhrase(text, today);
   if (!phrase.matched.length) return null;
   return (
@@ -461,7 +498,7 @@ function PhraseHint({ text, today, manualDue }: { text: string; today: string; m
 }
 
 /** Copia o texto da tarefa (para colar num email, no WhatsApp…). */
-async function copyText(text: string) {
+export async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text);
     toast.success('Texto copiado.');
@@ -728,10 +765,10 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Nova tarefa… (ex.: Enviar maquete sexta às 10h)"
           aria-label="Nova tarefa"
-          maxLength={300}
+          maxLength={TASK_TITLE_MAX}
           className="min-w-0 basis-full sm:flex-[1_1_10rem] sm:basis-auto"
         />
-        <DictateButton size="sm" value={title} onChange={setTitle} max={300} />
+        <DictateButton size="sm" value={title} onChange={setTitle} max={TASK_TITLE_MAX} />
         <PhraseHint text={title} today={today} manualDue={!!due} />
         <DuePicker
           value={due}

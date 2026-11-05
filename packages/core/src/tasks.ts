@@ -15,16 +15,20 @@ const nullableDate = z
   .nullable()
   .meta({ description: 'Data no formato AAAA-MM-DD', example: '2026-10-08' });
 
+/** Texto máximo de uma tarefa (era 300). */
+export const TASK_TITLE_MAX = 2000;
+
 const taskTitle = z
   .string({ error: 'Escreve a tarefa.' })
   .trim()
   .min(1, { error: 'Escreve a tarefa.' })
-  .max(300, { error: 'Máximo de 300 caracteres.' });
+  .max(TASK_TITLE_MAX, { error: `Máximo de ${TASK_TITLE_MAX} caracteres.` });
 
 export const LeadTaskSchema = z
   .object({
     id: z.uuid(),
     lead_id: z.uuid().nullable().meta({ description: 'Lead ou projeto (null = tarefa solta, sem lead)' }),
+    list_id: z.uuid().nullable().optional().meta({ description: 'Lista (cartão) das tarefas soltas; null = sem lista' }),
     title: z.string(),
     due_on: z.string().nullable().meta({ description: 'Prazo (AAAA-MM-DD)' }),
     done_at: z.string().nullable().meta({ description: 'Quando foi concluída (null = por fazer)' }),
@@ -57,6 +61,7 @@ export type LeadTaskCreate = z.output<typeof LeadTaskCreateSchema>;
 /** Nova tarefa na página Tarefas: num lead/projeto (lead_id) ou solta (sem lead_id). */
 export const TaskCreateSchema = LeadTaskCreateSchema.extend({
   lead_id: z.uuid({ error: 'Lead inválido.' }).nullable().optional().meta({ description: 'Lead ou projeto (vazio = tarefa solta)' }),
+  list_id: z.uuid({ error: 'Lista inválida.' }).nullable().optional().meta({ description: 'Lista (cartão) para uma tarefa solta' }),
 }).meta({ id: 'TaskCreate' });
 export type TaskCreate = z.output<typeof TaskCreateSchema>;
 
@@ -67,6 +72,8 @@ export const LeadTaskUpdateSchema = z
     remind_at: remindAt.optional(),
     done: z.boolean().optional().meta({ description: 'true = concluída' }),
     assigned_to: z.uuid({ error: 'Responsável inválido.' }).nullable().optional().meta({ description: 'Responsável (null = ninguém); recebe um aviso' }),
+    lead_id: z.uuid({ error: 'Lead inválido.' }).nullable().optional().meta({ description: 'Mover para outro lead/projeto (null = tarefa solta)' }),
+    list_id: z.uuid({ error: 'Lista inválida.' }).nullable().optional().meta({ description: 'Mover para uma lista (tira a tarefa do lead)' }),
   })
   .meta({ id: 'LeadTaskUpdate' });
 export type LeadTaskUpdate = z.output<typeof LeadTaskUpdateSchema>;
@@ -109,7 +116,7 @@ export type TodayTasks = z.infer<typeof TodayTasksSchema>;
 // Listas-modelo
 // -----------------------------------------------------------------------------
 const templateItems = z
-  .array(z.string().trim().max(300, { error: 'Cada tarefa tem no máximo 300 caracteres.' }))
+  .array(z.string().trim().max(TASK_TITLE_MAX, { error: `Cada tarefa tem no máximo ${TASK_TITLE_MAX} caracteres.` }))
   .max(100, { error: 'Máximo de 100 tarefas por lista.' })
   .transform((items) => items.filter(Boolean));
 
@@ -176,3 +183,29 @@ export const TaskSearchResultSchema = LeadTaskSchema.extend({
   lead: z.object({ id: z.uuid(), number: z.int(), company_name: z.string(), project_title: z.string().nullable() }),
 }).meta({ id: 'TaskSearchResult' });
 export type TaskSearchResult = z.infer<typeof TaskSearchResultSchema>;
+
+// -----------------------------------------------------------------------------
+// Listas (cartões com título, como no Google Keep)
+// -----------------------------------------------------------------------------
+export const TaskListSchema = z
+  .object({ id: z.uuid(), title: z.string(), position: z.number(), created_at: z.string(), updated_at: z.string() })
+  .meta({ id: 'TaskList' });
+export type TaskList = z.infer<typeof TaskListSchema>;
+
+const listTitle = z.string().trim().min(1, { error: 'Dá um título à lista.' }).max(120, { error: 'Máximo de 120 caracteres.' });
+export const TaskListCreateSchema = z
+  .object({
+    title: listTitle,
+    items: z
+      .array(z.string().trim().max(TASK_TITLE_MAX))
+      .max(100)
+      .optional()
+      .transform((items) => (items ?? []).filter(Boolean))
+      .meta({ description: 'Tarefas para criar já na lista (pela ordem)' }),
+    assigned_to: z.uuid().nullable().optional().meta({ description: 'Responsável das tarefas criadas já' }),
+  })
+  .meta({ id: 'TaskListCreate' });
+export const TaskListUpdateSchema = z.object({ title: listTitle.optional(), position: z.number().optional() }).meta({ id: 'TaskListUpdate' });
+
+/** Nova ordem de tarefas (de um mesmo cartão: lead, lista ou soltas). */
+export const TaskReorderSchema = LeadTaskReorderSchema.meta({ id: 'TaskReorder' });

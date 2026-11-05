@@ -10,6 +10,7 @@ import {
   type LeadTask,
   type LeadTaskCreate,
   type LeadTaskUpdate,
+  type TaskList,
   type TaskListItem,
   type TaskListQuery,
   type TaskSearchQuery,
@@ -23,12 +24,21 @@ import {
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest, unwrap } from '../http';
+import { createSupabaseAdminClient } from '../supabase-admin';
 import { createActivity } from './activities';
 import { getLead, likeEscape } from './leads';
 import { notifyTaskAssigned } from './team-work';
 
 const TASK_FIELDS = 'id, lead_id, title, due_on, done_at, remind_at, reminded_at, position, assigned_to, created_at, updated_at';
-const taskSelect = async () => TASK_FIELDS;
+// Listas (cartões): a coluna list_id só existe depois da migração 20261108002800.
+let hasListColumn: { value: boolean; at: number } | null = null;
+export async function taskListsReady(): Promise<boolean> {
+  if (hasListColumn && (hasListColumn.value || Date.now() - hasListColumn.at < 60_000)) return hasListColumn.value;
+  const { error } = await createSupabaseAdminClient().from('lead_tasks').select('list_id').limit(0);
+  hasListColumn = { value: !error, at: Date.now() };
+  return !error;
+}
+const taskSelect = async () => ((await taskListsReady()) ? `${TASK_FIELDS}, list_id` : TASK_FIELDS);
 const TEMPLATE_SELECT = 'id, name, service, items, sort_order';
 const TASK_NOT_FOUND = 'Tarefa não encontrada';
 
@@ -90,10 +100,10 @@ async function nextPosition(ctx: ApiContext, leadId: string): Promise<number> {
   return ((data?.[0]?.position as number | undefined) ?? 0) + 1;
 }
 
-/** Posição antes da primeira tarefa do lead (ou das tarefas soltas): uma tarefa nova fica em cima da lista. */
-async function firstPosition(ctx: ApiContext, leadId: string | null): Promise<number> {
+/** Posição antes da primeira tarefa do lead, da lista ou das soltas: uma tarefa nova fica em cima. */
+async function firstPosition(ctx: ApiContext, leadId: string | null, listId: string | null = null): Promise<number> {
   let q = ctx.supabase.from('lead_tasks').select('position').eq('workspace_id', ctx.workspaceId);
-  q = leadId ? q.eq('lead_id', leadId) : q.is('lead_id', null);
+  q = leadId ? q.eq('lead_id', leadId) : listId ? q.eq('list_id', listId) : q.is('lead_id', null);
   const { data, error } = await q
     .order('position', { ascending: true })
     .limit(1);
@@ -101,19 +111,23 @@ async function firstPosition(ctx: ApiContext, leadId: string | null): Promise<nu
   return ((data?.[0]?.position as number | undefined) ?? 1) - 1;
 }
 
-export async function createTask(ctx: ApiContext, leadId: string | null, input: LeadTaskCreate): Promise<LeadTask> {
-  // Sem lead: uma tarefa solta (página Tarefas).
+export async function createTask(ctx: ApiContext, leadId: string | null, input: LeadTaskCreate & { list_id?: string | null }): Promise<LeadTask> {
+  // Sem lead: uma tarefa solta (página Tarefas), sozinha ou numa lista.
   if (leadId) await getLead(ctx, leadId);
+  const { list_id: requestedList, ...fields } = input;
+  const listId = leadId ? null : (requestedList ?? null);
+  if (listId) await getTaskList(ctx, listId);
   const result = await ctx.supabase
     .from('lead_tasks')
     .insert({
-      ...input,
+      ...fields,
+      ...(listId ? { list_id: listId } : {}),
       // Um lembrete sem prazo põe a tarefa nesse dia (aparece em "Hoje").
       due_on: input.due_on ?? (input.remind_at ? todayIso(new Date(input.remind_at)) : null),
       workspace_id: ctx.workspaceId,
       lead_id: leadId,
       // As novas ficam em cima (as listas prontas entram no fim, pela ordem da lista).
-      position: await firstPosition(ctx, leadId),
+      position: await firstPosition(ctx, leadId, listId),
     })
     .select(await taskSelect())
     .single();
@@ -131,8 +145,21 @@ export async function createTask(ctx: ApiContext, leadId: string | null, input: 
 }
 
 export async function updateTask(ctx: ApiContext, id: string, patch: LeadTaskUpdate): Promise<LeadTask> {
-  const { done, ...rest } = patch;
+  const { done, lead_id: toLead, list_id: toList, ...rest } = patch;
   const update: Record<string, unknown> = { ...rest };
+  // Mover para outro cartão (lead/projeto, lista ou soltas): fica em cima no destino.
+  if (toLead !== undefined || toList !== undefined) {
+    if (toLead) {
+      await getLead(ctx, toLead);
+      update.lead_id = toLead;
+      if (await taskListsReady()) update.list_id = null;
+    } else {
+      if (toList) await getTaskList(ctx, toList);
+      update.lead_id = null;
+      if (toList !== undefined || (await taskListsReady())) update.list_id = toList ?? null;
+    }
+    update.position = await firstPosition(ctx, toLead ?? null, toLead ? null : (toList ?? null));
+  }
   // Para avisar só quando o responsável muda.
   const before =
     rest.assigned_to !== undefined
@@ -238,6 +265,74 @@ export async function reorderTasks(ctx: ApiContext, leadId: string, ids: string[
   );
   for (const r of results) if (r.error) throw fromPostgrest(r.error);
   return listTasks(ctx, leadId);
+}
+
+/** Nova ordem de tarefas do mesmo cartão (lead, lista ou soltas), de qualquer página. */
+export async function reorderAnyTasks(ctx: ApiContext, ids: string[]): Promise<void> {
+  const { data, error } = await ctx.supabase.from('lead_tasks').select(`id, lead_id${(await taskListsReady()) ? ', list_id' : ''}`).eq('workspace_id', ctx.workspaceId).in('id', ids);
+  if (error) throw fromPostgrest(error);
+  const rows = (data ?? []) as unknown as { id: string; lead_id: string | null; list_id?: string | null }[];
+  if (rows.length !== ids.length) throw new ApiError(404, TASK_NOT_FOUND);
+  const containers = new Set(rows.map((r) => `${r.lead_id ?? ''}|${r.list_id ?? ''}`));
+  if (containers.size > 1) throw new ApiError(400, 'Pedido inválido', 'As tarefas têm de ser do mesmo cartão.');
+  const results = await Promise.all(ids.map((id, i) => ctx.supabase.from('lead_tasks').update({ position: i + 1 }).eq('workspace_id', ctx.workspaceId).eq('id', id)));
+  for (const r of results) if (r.error) throw fromPostgrest(r.error);
+}
+
+// -----------------------------------------------------------------------------
+// Listas (cartões com título, página Tarefas)
+// -----------------------------------------------------------------------------
+const LIST_SELECT = 'id, title, position, created_at, updated_at';
+const LIST_NOT_FOUND = 'Lista não encontrada';
+const missingLists = (e: { code?: string } | null) => e?.code === '42P01' || e?.code === 'PGRST205';
+
+export async function listTaskLists(ctx: ApiContext): Promise<TaskList[]> {
+  let q = ctx.supabase.from('task_lists').select(LIST_SELECT).eq('workspace_id', ctx.workspaceId);
+  // O prospetor vê só as listas dele.
+  if (ctx.role === 'prospector') q = q.eq('created_by', ctx.user.id);
+  const { data, error } = await q.order('position').order('created_at');
+  if (missingLists(error)) return [];
+  if (error) throw fromPostgrest(error);
+  return (data ?? []) as TaskList[];
+}
+
+async function getTaskList(ctx: ApiContext, id: string): Promise<TaskList> {
+  const result = await ctx.supabase.from('task_lists').select(LIST_SELECT).eq('workspace_id', ctx.workspaceId).eq('id', id).maybeSingle();
+  if (missingLists(result.error)) throw new ApiError(503, 'Listas ainda não disponíveis', 'A base de dados ainda não foi atualizada (npx supabase db push).');
+  return unwrap(result, LIST_NOT_FOUND) as TaskList;
+}
+
+/** Nova lista (em primeiro lugar), já com as tarefas escritas, pela ordem. */
+export async function createTaskList(ctx: ApiContext, input: { title: string; items: string[]; assigned_to?: string | null }): Promise<TaskList> {
+  const { data: first } = await ctx.supabase.from('task_lists').select('position').eq('workspace_id', ctx.workspaceId).order('position').limit(1);
+  const result = await ctx.supabase
+    .from('task_lists')
+    .insert({ workspace_id: ctx.workspaceId, title: input.title, position: ((first?.[0]?.position as number | undefined) ?? 1) - 1 })
+    .select(LIST_SELECT)
+    .single();
+  if (missingLists(result.error)) throw new ApiError(503, 'Listas ainda não disponíveis', 'A base de dados ainda não foi atualizada (npx supabase db push).');
+  const list = unwrap(result) as TaskList;
+  if (input.items.length) {
+    const assigned = ctx.role === 'prospector' ? ctx.user.id : (input.assigned_to ?? null);
+    const { error } = await ctx.supabase
+      .from('lead_tasks')
+      .insert(input.items.map((title, i) => ({ workspace_id: ctx.workspaceId, lead_id: null, list_id: list.id, title, position: i + 1, assigned_to: assigned })));
+    if (error) throw fromPostgrest(error);
+  }
+  return list;
+}
+
+export async function updateTaskList(ctx: ApiContext, id: string, patch: { title?: string; position?: number }): Promise<TaskList> {
+  const update = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
+  if (!Object.keys(update).length) return getTaskList(ctx, id);
+  return unwrap(await ctx.supabase.from('task_lists').update(update).eq('workspace_id', ctx.workspaceId).eq('id', id).select(LIST_SELECT).maybeSingle(), LIST_NOT_FOUND) as TaskList;
+}
+
+/** Apaga a lista e as tarefas dela. */
+export async function deleteTaskList(ctx: ApiContext, id: string): Promise<void> {
+  const { data, error } = await ctx.supabase.from('task_lists').delete().eq('workspace_id', ctx.workspaceId).eq('id', id).select('id');
+  if (error) throw fromPostgrest(error);
+  if (!data?.length) throw new ApiError(404, LIST_NOT_FOUND);
 }
 
 /** Acrescenta ao fim da lista as tarefas de uma lista-modelo (sem repetir as que já lá estão). */

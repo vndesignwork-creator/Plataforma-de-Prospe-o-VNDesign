@@ -81,7 +81,7 @@ test('teclado: saltar para o conteúdo, abas com setas e diálogos que devolvem 
   await expect(page.getByRole('tablist', { name: 'Equipa' }).getByRole('tab').first()).toHaveAttribute('aria-selected', 'true');
 
   // Diálogo: Esc fecha e o foco volta ao botão que o abriu.
-  await page.goto('/tarefas');
+  await page.goto('/tarefas?vista=prazo');
   const open = page.getByRole('button', { name: 'Nova tarefa' }).first();
   await open.focus();
   await page.keyboard.press('Enter');

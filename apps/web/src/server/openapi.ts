@@ -42,6 +42,10 @@ import {
   ProjectDeliverableSchema,
   ClientRequestSchema,
   RecurringSummarySchema,
+  TaskListSchema,
+  TaskListCreateSchema,
+  TaskListUpdateSchema,
+  TaskReorderSchema,
   AutomationRuleSchema,
   AutomationRuleCreateSchema,
   AutomationRuleUpdateSchema,
@@ -1207,6 +1211,17 @@ export function getOpenApiDocument() {
           requestParams: { query: NoteSearchQuerySchema },
           responses: { '200': ok(data(z.array(NoteSearchResultSchema))), ...common },
         }),
+      },
+      '/tasks/reorder': {
+        post: op({ tags: ['Tarefas'], summary: 'Nova ordem das tarefas de um cartão (lead, lista ou soltas)', requestBody: body(TaskReorderSchema), responses: { '204': { description: 'Reordenadas' }, ...withNotFound } }),
+      },
+      '/task-lists': {
+        get: op({ tags: ['Tarefas'], summary: 'Listas da página Tarefas (cartões com título)', responses: { '200': ok(data(z.array(TaskListSchema))), ...common } }),
+        post: op({ tags: ['Tarefas'], summary: 'Nova lista com título (e as primeiras tarefas)', requestBody: body(TaskListCreateSchema), responses: { '201': ok(data(TaskListSchema), 'Criada'), ...common } }),
+      },
+      '/task-lists/{id}': {
+        patch: op({ tags: ['Tarefas'], summary: 'Mudar o título ou a posição da lista', requestParams: { path: idParam }, requestBody: body(TaskListUpdateSchema), responses: { '200': ok(data(TaskListSchema)), ...withNotFound } }),
+        delete: op({ tags: ['Tarefas'], summary: 'Apagar a lista e as tarefas dela', requestParams: { path: idParam }, responses: { '204': { description: 'Apagada' }, ...withNotFound } }),
       },
       '/tasks': {
         get: op({

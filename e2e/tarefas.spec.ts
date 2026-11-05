@@ -363,7 +363,7 @@ test('Tarefas: tarefa sem lead, de onde vem, editar ao tocar no texto e Concluí
   const task = (await created.json()).data as { id: string; lead_id: string | null };
   expect(task.lead_id).toBeNull();
 
-  await page.goto('/tarefas');
+  await page.goto('/tarefas?vista=prazo');
   await page.getByLabel('Procurar tarefa ou lead').fill(run);
   const row = page.locator('main li').filter({ hasText: `Solta ${run}` }).first();
   await expect(row.getByText('Sem lead')).toBeVisible();
@@ -387,3 +387,65 @@ test('Tarefas: tarefa sem lead, de onde vem, editar ao tocar no texto e Concluí
 
   await page.request.delete(`/api/v1/tasks/${task.id}`);
 });
+
+test('Tarefas em cartões: lista com título, criar com Enter, duplicar, mover, reordenar, apagar e texto até 2000', async ({ page }) => {
+  const run2 = Date.now().toString(36);
+  const lead = await createLeadForCards(page, `Cartões ${run2}`);
+  await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title: `Tarefa do lead ${run2}` } });
+  await page.goto('/tarefas?vista=cartoes');
+
+  // Nova lista (como no Keep): título e tarefas, uma por linha.
+  await page.getByRole('button', { name: 'Criar uma lista…' }).click();
+  const composer = page.getByRole('form', { name: 'Nova lista' });
+  await composer.getByLabel('Título da lista').fill(`Escritório ${run2}`);
+  await composer.getByLabel('Tarefas da lista (uma por linha)').fill(`Primeira ${run2}\nSegunda ${run2}`);
+  await composer.getByRole('button', { name: 'Criar lista' }).click();
+  await expect(page.getByText(`Lista “Escritório ${run2}” criada.`)).toBeVisible();
+  const card = page.getByRole('region', { name: `Escritório ${run2}` });
+  await expect(card.getByText(`Primeira ${run2}`)).toBeVisible();
+
+  // Escrever e Enter cria a tarefa no cartão (em cima).
+  await card.getByLabel(`Nova tarefa em Escritório ${run2}`).fill(`Terceira ${run2}`);
+  await card.getByLabel(`Nova tarefa em Escritório ${run2}`).press('Enter');
+  await expect(card.getByText(`Terceira ${run2}`)).toBeVisible();
+
+  // Duplicar e apagar (menu ⋯ da tarefa, também usado no telemóvel).
+  await card.getByRole('button', { name: `Duplicar: Primeira ${run2}` }).click({ force: true });
+  await expect(card.getByText(`Primeira ${run2}`)).toHaveCount(2);
+  await card.getByRole('button', { name: `Apagar: Primeira ${run2}` }).first().click({ force: true });
+  await expect(card.getByText(`Primeira ${run2}`)).toHaveCount(1);
+
+  // Mover para o cartão do lead.
+  await card.getByRole('button', { name: `Mover para outro cartão: Segunda ${run2}` }).click({ force: true });
+  await page.getByRole('menuitem', { name: `#${lead.number} Cartões ${run2}` }).click();
+  await expect(page.getByText(new RegExp(`Movida para “#${lead.number} Cartões ${run2}”`))).toBeVisible();
+  const leadTasks = (await (await page.request.get(`/api/v1/leads/${lead.id}/tasks`)).json()).data as { title: string }[];
+  expect(leadTasks.map((t) => t.title)).toContain(`Segunda ${run2}`);
+
+  // Reordenar (o mesmo pedido que o arrastar faz) e mudar o título da lista.
+  const lists = (await (await page.request.get('/api/v1/task-lists')).json()).data as { id: string; title: string }[];
+  const list = lists.find((l) => l.title === `Escritório ${run2}`)!;
+  const tasks = ((await (await page.request.get('/api/v1/tasks?assigned=all')).json()).data as { id: string; list_id: string | null }[]).filter((t) => t.list_id === list.id);
+  expect(tasks.length).toBe(2);
+  expect((await page.request.post('/api/v1/tasks/reorder', { data: { ids: tasks.map((t) => t.id).reverse() } })).status()).toBe(204);
+  await card.getByRole('heading', { name: `Escritório ${run2}` }).click();
+  await card.getByLabel('Título da lista').fill(`Escritório novo ${run2}`);
+  await card.getByLabel('Título da lista').press('Enter');
+  await expect(page.getByRole('region', { name: `Escritório novo ${run2}` })).toBeVisible();
+
+  // Texto até 2000 caracteres.
+  const long = 'x'.repeat(1990);
+  expect((await page.request.post('/api/v1/tasks', { data: { title: long, list_id: list.id } })).status()).toBe(201);
+  expect((await page.request.post('/api/v1/tasks', { data: { title: 'y'.repeat(2001), list_id: list.id } })).status()).toBe(400);
+
+  // Apagar a lista apaga as tarefas dela.
+  expect((await page.request.delete(`/api/v1/task-lists/${list.id}`)).status()).toBe(204);
+  const after = ((await (await page.request.get('/api/v1/tasks?assigned=all')).json()).data as { list_id: string | null }[]).filter((t) => t.list_id === list.id);
+  expect(after).toEqual([]);
+});
+
+async function createLeadForCards(page: import('@playwright/test').Page, name: string) {
+  const res = await page.request.post('/api/v1/leads?force=true', { data: { company_name: name } });
+  expect(res.status()).toBe(201);
+  return (await res.json()).data as { id: string; number: number };
+}
