@@ -53,7 +53,6 @@ export const HELP_GUIDES: HelpGuide[] = [
     ],
     tips: [
       'Escreve como falas: “Ligar à Clínica Sorriso sexta às 10h” fica com o prazo, o lembrete e a sugestão do lead.',
-      'Tarefas maiores: abre-a (toca no texto) e divide-a em passos; a lista mostra “2/3”.',
       'Listas de tarefas prontas (ex.: arranque de projeto) ficam em Definições → Listas de tarefas.',
     ],
   },
