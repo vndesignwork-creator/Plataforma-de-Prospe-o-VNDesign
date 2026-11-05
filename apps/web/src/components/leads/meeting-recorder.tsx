@@ -4,7 +4,7 @@
  * Gravar a reunião no navegador (ou escolher um ficheiro de áudio) e passá-la a
  * texto no servidor. O áudio não fica guardado: só o texto volta.
  */
-import { FileAudio, Mic, Square } from 'lucide-react';
+import { FileAudio, Mic, Pause, Play, Square } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -13,13 +13,86 @@ import { ApiClientError, errorMessage } from '@/lib/api-client';
 const MAX_BYTES = 25 * 1024 * 1024;
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
+/** Onda do som a passar (barras do volume dos últimos segundos); parada durante a pausa. */
+function Waveform({ stream, paused }: { stream: MediaStream; paused: boolean }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const pausedRef = useRef(paused);
+  useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
+
+  useEffect(() => {
+    const el = canvas.current;
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!el || !Ctx) return;
+    const audio = new Ctx();
+    const source = audio.createMediaStreamSource(stream);
+    const analyser = audio.createAnalyser();
+    analyser.fftSize = 1024;
+    source.connect(analyser);
+    const samples = new Uint8Array(analyser.fftSize);
+    const BAR = 3;
+    const GAP = 2;
+    const levels: number[] = [];
+    let frame = 0;
+    let last = 0;
+
+    const draw = (now: number) => {
+      frame = requestAnimationFrame(draw);
+      if (now - last < 50) return;
+      last = now;
+      const dpr = window.devicePixelRatio || 1;
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (el.width !== w * dpr || el.height !== h * dpr) {
+        el.width = w * dpr;
+        el.height = h * dpr;
+      }
+      const max = Math.floor(w / (BAR + GAP));
+      if (!pausedRef.current) {
+        analyser.getByteTimeDomainData(samples);
+        let sum = 0;
+        for (const v of samples) sum += ((v - 128) / 128) ** 2;
+        // Raiz da média (volume), ampliada para a fala normal encher a altura.
+        levels.push(Math.min(1, Math.sqrt(sum / samples.length) * 4));
+        while (levels.length > max) levels.shift();
+      }
+      const g = el.getContext('2d');
+      if (!g) return;
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.clearRect(0, 0, w, h);
+      g.fillStyle = getComputedStyle(el).color;
+      g.globalAlpha = pausedRef.current ? 0.4 : 1;
+      const start = w - levels.length * (BAR + GAP);
+      levels.forEach((lvl, i) => {
+        const bh = Math.max(2, lvl * (h - 4));
+        g.beginPath();
+        g.roundRect(start + i * (BAR + GAP), (h - bh) / 2, BAR, bh, 1.5);
+        g.fill();
+      });
+    };
+    frame = requestAnimationFrame(draw);
+    return () => {
+      cancelAnimationFrame(frame);
+      source.disconnect();
+      void audio.close();
+    };
+  }, [stream]);
+
+  return <canvas ref={canvas} aria-hidden className="h-12 w-full rounded-md bg-surface-2 text-accent" />;
+}
+
 export function MeetingRecorder({ leadId, onText }: { leadId: string; onText: (text: string) => void }) {
   const [recording, setRecording] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
   const [seconds, setSeconds] = useState(0);
   const [sending, setSending] = useState(false);
   const recorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Tempo gravado: o que já passou (antes das pausas) + desde que retomou.
+  const elapsed = useRef({ before: 0, since: 0 });
   const fileInput = useRef<HTMLInputElement>(null);
   const supported = typeof window !== 'undefined' && typeof MediaRecorder !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
 
@@ -67,17 +140,43 @@ export function MeetingRecorder({ leadId, onText }: { leadId: string; onText: (t
       };
       rec.start(1000);
       recorder.current = rec;
+      setStream(stream);
       setSeconds(0);
+      elapsed.current = { before: 0, since: Date.now() };
+      setPaused(false);
       setRecording(true);
-      timer.current = setInterval(() => setSeconds((s) => s + 1), 1000);
+      tick();
     } catch {
       toast.error('Sem acesso ao microfone. Permite-o no navegador ou escolhe um ficheiro de áudio.');
+    }
+  }
+
+  function tick() {
+    if (timer.current) clearInterval(timer.current);
+    timer.current = setInterval(() => setSeconds(Math.floor((elapsed.current.before + Date.now() - elapsed.current.since) / 1000)), 250);
+  }
+
+  function togglePause() {
+    const rec = recorder.current;
+    if (!rec) return;
+    if (rec.state === 'recording') {
+      rec.pause();
+      if (timer.current) clearInterval(timer.current);
+      elapsed.current.before += Date.now() - elapsed.current.since;
+      setPaused(true);
+    } else if (rec.state === 'paused') {
+      rec.resume();
+      elapsed.current.since = Date.now();
+      tick();
+      setPaused(false);
     }
   }
 
   function stop() {
     if (timer.current) clearInterval(timer.current);
     setRecording(false);
+    setPaused(false);
+    setStream(null);
     recorder.current?.stop();
     recorder.current = null;
   }
@@ -90,9 +189,14 @@ export function MeetingRecorder({ leadId, onText }: { leadId: string; onText: (t
       </p>
       <div className="flex flex-wrap items-center gap-2">
         {recording ? (
-          <Button variant="outline" onClick={stop}>
-            <Square className="h-4 w-4 text-danger" aria-hidden /> Parar ({fmt(seconds)})
-          </Button>
+          <>
+            <Button variant="outline" onClick={togglePause}>
+              {paused ? <Play className="h-4 w-4" aria-hidden /> : <Pause className="h-4 w-4" aria-hidden />} {paused ? 'Retomar' : 'Pausa'}
+            </Button>
+            <Button variant="outline" onClick={stop}>
+              <Square className="h-4 w-4 text-danger" aria-hidden /> Terminar ({fmt(seconds)})
+            </Button>
+          </>
         ) : (
           <Button onClick={() => void start()} disabled={!supported || sending}>
             <Mic className="h-4 w-4" aria-hidden /> Gravar
@@ -113,11 +217,18 @@ export function MeetingRecorder({ leadId, onText }: { leadId: string; onText: (t
           }}
         />
         {recording ? (
-          <span role="status" className="flex items-center gap-1.5 text-sm text-danger">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-danger" aria-hidden /> A gravar
-          </span>
+          paused ? (
+            <span role="status" className="flex items-center gap-1.5 text-sm text-warning">
+              <Pause className="h-3.5 w-3.5" aria-hidden /> Em pausa
+            </span>
+          ) : (
+            <span role="status" className="flex items-center gap-1.5 text-sm text-danger">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-danger" aria-hidden /> A gravar
+            </span>
+          )
         ) : null}
       </div>
+      {recording && stream ? <Waveform stream={stream} paused={paused} /> : null}
       {!supported ? <p className="text-xs text-muted">Este navegador não grava áudio: escolhe um ficheiro.</p> : null}
       <p className="text-xs text-muted">Precisa de uma chave da OpenAI em Definições → Inteligência artificial. Até 25 MB (cerca de 1h30).</p>
     </div>
