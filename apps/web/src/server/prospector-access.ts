@@ -40,7 +40,7 @@ const RULES: Rule[] = [
   ['POST', new RegExp(`^/leads/${ID}/audits/${ID}/apply$`)],
   ['GET', new RegExp(`^/leads/${ID}/audits/${ID}/screenshots/${ID}$`)],
   ['GET', new RegExp(`^/leads/${ID}/(diagnosis-pdf|email-tracking|follow-up-draft)$`)],
-  ['POST', new RegExp(`^/leads/${ID}/(ai-email|email|find-contacts|follow-up|location|meeting-notes|move|prospecting|render-template|screenshots|summary)$`)],
+  ['POST', new RegExp(`^/leads/${ID}/(ai-email|email|find-contacts|follow-up|location|meeting-notes|move|prospecting|render-template|screenshots|summary|transcribe)$`)],
   ['POST', new RegExp(`^/leads/${ID}/tasks/(reorder|template)$`)],
   ['GET PATCH', new RegExp(`^/leads/${ID}/geo$`)],
   // Ficheiros do lead (fotos do espaço, menu…): na prospeção também.

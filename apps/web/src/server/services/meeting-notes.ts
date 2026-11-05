@@ -3,7 +3,7 @@
  * passo (usa o fornecedor do "Email com IA"). Não grava nada: a ficha mostra a
  * proposta e a pessoa escolhe o que fica.
  */
-import { MEETING_NOTES_SYSTEM_PROMPT, MeetingNotesDraftSchema, buildMeetingNotesPrompt, meetingNotesResult, todayIso, type MeetingNotesResult } from '@vndesign/core';
+import { MEETING_NOTES_SYSTEM_PROMPT, MeetingNotesDraftSchema, buildMeetingNotesPrompt, meetingNotesResult, todayIso, type MeetingNotesResult, type MeetingNotesSource } from '@vndesign/core';
 import { aiModel } from '../ai/claude';
 import { generateJson } from '../ai/generate';
 import { resolveAiFeature } from '../ai/providers';
@@ -12,7 +12,7 @@ import { ApiError } from '../http';
 import { getLead } from './leads';
 import { getSettings } from './workspace';
 
-export async function summarizeMeetingNotes(ctx: ApiContext, leadId: string, notes: string): Promise<MeetingNotesResult> {
+export async function summarizeMeetingNotes(ctx: ApiContext, leadId: string, notes: string, source: MeetingNotesSource = 'notes'): Promise<MeetingNotesResult> {
   const lead = await getLead(ctx, leadId);
   if (lead.anonymized_at) throw new ApiError(422, 'Lead anonimizado');
   const settings = await getSettings(ctx);
@@ -20,7 +20,7 @@ export async function summarizeMeetingNotes(ctx: ApiContext, leadId: string, not
   const today = todayIso();
   const { data, model: used } = await generateJson(provider, model, {
     system: MEETING_NOTES_SYSTEM_PROMPT,
-    prompt: buildMeetingNotesPrompt({ company: lead.company_name, contact: lead.contact_name, today, notes }),
+    prompt: buildMeetingNotesPrompt({ company: lead.company_name, contact: lead.contact_name, today, notes, source }),
     schema: MeetingNotesDraftSchema,
     schemaName: 'notas_reuniao',
   });

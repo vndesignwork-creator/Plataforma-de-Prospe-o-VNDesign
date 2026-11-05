@@ -201,6 +201,12 @@ export async function startStubs() {
     let raw = '';
     req.on('data', (c) => (raw += c));
     req.on('end', () => {
+      // Transcrição de áudio (OpenAI): devolve um texto fixo.
+      if ((req.url ?? '').startsWith('/v1/audio/transcriptions')) {
+        res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
+        res.end('Falámos da loja online. Querem avançar até ao Natal e o orçamento é até 2000 euros. Ficou combinado enviar a proposta.');
+        return;
+      }
       const body = raw ? JSON.parse(raw) : {};
       if (openAiCompatible(req, body, res)) return;
       // Anthropic: lista de modelos ("Testar" a chave do servidor).
@@ -284,6 +290,8 @@ export async function startStubs() {
             { titulo: 'Pedir as fotografias dos produtos', prazo_dias: null },
           ],
           proximo_passo: { texto: 'Ligar para saber a decisão', dias: 7 },
+          // Conversa colada: a fase que a conversa mostra.
+          fase: JSON.stringify(body.messages ?? '').includes('Conversa colada') ? 'reuniao' : null,
         };
         sendJson(res, 200, {
           id: 'msg_stub_notas', type: 'message', role: 'assistant', model: body.model ?? 'claude-opus-5-5',

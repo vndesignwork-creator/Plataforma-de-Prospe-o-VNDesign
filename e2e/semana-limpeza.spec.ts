@@ -124,6 +124,38 @@ test('notas de reunião com IA: resumo na linha do tempo, tarefas e próximo pas
   expect(activities.some((a) => a.type === 'note' && a.body?.includes('Resumo da reunião/chamada'))).toBe(true);
 });
 
+test('notas com IA: conversa colada (com a fase) e gravação passada a texto', async ({ page }) => {
+  test.setTimeout(90_000);
+  const lead = await createLead(page.request, { company_name: `Conversa ${run}`, status: 'respondeu' });
+  await page.goto(`/leads/${lead.id}`);
+  await page.getByRole('button', { name: 'Notas com IA' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Notas com IA' });
+  await dialog.getByRole('button', { name: 'Conversa colada' }).click();
+  await dialog.getByLabel('Conversa').fill('[10:02] Marta: Olá! Gostava de um site novo para a loja.\n[10:05] Eu: Claro! Podemos falar na quinta às 15h?\n[10:06] Marta: Combinado.');
+  await dialog.getByRole('button', { name: 'Resumir' }).click();
+  await expect(dialog.getByText(/Mudar a fase de/)).toBeVisible({ timeout: 30_000 });
+  await dialog.getByText(/Mudar a fase de/).click();
+  await dialog.getByLabel('Criar a tarefa 2').uncheck();
+  await dialog.getByRole('button', { name: 'Guardar' }).click();
+  await expect(page.getByText(/fase: Reunião/)).toBeVisible();
+  const saved = (await (await page.request.get(`/api/v1/leads/${lead.id}`)).json()).data as { status: string };
+  expect(saved.status).toBe('reuniao');
+  const activities = (await (await page.request.get(`/api/v1/leads/${lead.id}/activities`)).json()).data as { type: string; body: string | null }[];
+  expect(activities.some((a) => a.type === 'note' && a.body?.includes('Resumo da conversa'))).toBe(true);
+
+  // Gravação: sem fornecedor OpenAI, explica o que falta; com ele, passa a texto.
+  const form = { audio: { name: 'reuniao.webm', mimeType: 'audio/webm', buffer: Buffer.from('áudio de teste') } };
+  const without = await page.request.post(`/api/v1/leads/${lead.id}/transcribe`, { multipart: form });
+  if (without.status() === 422) expect((await without.json()).detail).toMatch(/OpenAI/);
+  const provider = await page.request.post('/api/v1/ai-providers', { data: { kind: 'openai', label: `OpenAI ${run}`, api_key: 'sk-teste-transcricao' } });
+  expect(provider.ok()).toBe(true);
+  const id = (await provider.json()).data.id as string;
+  const transcribed = await page.request.post(`/api/v1/leads/${lead.id}/transcribe`, { multipart: form });
+  expect(transcribed.status()).toBe(200);
+  expect((await transcribed.json()).data.text).toMatch(/loja online/);
+  await page.request.delete(`/api/v1/ai-providers/${id}`);
+});
+
 test('pesquisa rápida: recentes e ações num lead (tarefa e chamada sem abrir a ficha)', async ({ page }) => {
   test.setTimeout(90_000);
   const lead = await createLead(page.request, { company_name: `Ações Rápidas ${run}` });
