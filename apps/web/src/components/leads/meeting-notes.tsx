@@ -17,7 +17,7 @@ import {
   type MeetingNotesSource,
 } from '@vndesign/core';
 import { Sparkles } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { DateInput } from '@/components/ui/date-input';
@@ -29,7 +29,7 @@ import { consumeLeadAction } from '@/lib/lead-actions';
 import { useInvalidateLead, useInvalidateTasks } from '@/lib/queries';
 import { DictateButton, appendDictation } from '@/components/ui/dictate-button';
 import { cn } from '@/lib/utils';
-import { MeetingRecorder } from './meeting-recorder';
+import { MeetingRecorder, type RecorderControl, type RecorderState } from './meeting-recorder';
 
 type TaskDraft = { title: string; due_on: string; keep: boolean };
 
@@ -54,6 +54,8 @@ function MeetingNotesDialog({ lead, onClose }: { lead: Lead; onClose: () => void
   const [source, setSource] = useState<MeetingNotesSource>('notes');
   // Gravação já passada a texto: o texto fica para rever antes de resumir.
   const [transcribed, setTranscribed] = useState(false);
+  const [recState, setRecState] = useState<RecorderState>('idle');
+  const recorder = useRef<RecorderControl>(null);
   const [status, setStatus] = useState<{ value: LeadStatus; keep: boolean } | null>(null);
   const [busy, setBusy] = useState<'ai' | 'save' | null>(null);
   const [result, setResult] = useState<MeetingNotesResult | null>(null);
@@ -61,10 +63,10 @@ function MeetingNotesDialog({ lead, onClose }: { lead: Lead; onClose: () => void
   const [tasks, setTasks] = useState<TaskDraft[]>([]);
   const [next, setNext] = useState<{ text: string; on: string; keep: boolean } | null>(null);
 
-  async function summarize() {
+  async function summarize(text = notes) {
     setBusy('ai');
     try {
-      const { data } = await api<{ data: MeetingNotesResult }>(`/leads/${lead.id}/meeting-notes`, { method: 'POST', body: { notes, source } });
+      const { data } = await api<{ data: MeetingNotesResult }>(`/leads/${lead.id}/meeting-notes`, { method: 'POST', body: { notes: text, source } });
       setResult(data);
       setSummary(data.summary);
       setTasks(data.tasks.map((t) => ({ title: t.title, due_on: t.due_on ?? '', keep: true })));
@@ -105,10 +107,18 @@ function MeetingNotesDialog({ lead, onClose }: { lead: Lead; onClose: () => void
     }
   }
 
+  // A gravar (ou em pausa): Resumir termina a gravação, passa-a a texto e resume logo.
+  const liveRecording = source === 'recording' && !transcribed && (recState === 'recording' || recState === 'paused');
+  // Fechar a meio da gravação deita-a fora (pergunta antes, se for longa).
+  const close = () => {
+    if (liveRecording && recorder.current && !recorder.current.discard()) return;
+    onClose();
+  };
+
   return (
     <Dialog
       open
-      onOpenChange={(o) => (!o ? onClose() : undefined)}
+      onOpenChange={(o) => (!o ? close() : undefined)}
       title="Notas com IA"
       description={`${lead.company_name} — apontamentos, uma conversa colada ou a gravação da reunião.`}
       className="max-w-2xl"
@@ -124,10 +134,14 @@ function MeetingNotesDialog({ lead, onClose }: { lead: Lead; onClose: () => void
           </>
         ) : (
           <>
-            <Button variant="ghost" onClick={onClose}>
+            <Button variant="ghost" onClick={close}>
               Cancelar
             </Button>
-            <Button onClick={() => void summarize()} loading={busy === 'ai'} disabled={notes.trim().length < 20 || (source === 'recording' && !transcribed)}>
+            <Button
+              onClick={() => (liveRecording ? recorder.current?.finish('summarize') : void summarize())}
+              loading={busy === 'ai' || (source === 'recording' && recState === 'sending')}
+              disabled={!liveRecording && (notes.trim().length < 20 || (source === 'recording' && !transcribed))}
+            >
               <Sparkles className="h-4 w-4" aria-hidden /> Resumir
             </Button>
           </>
@@ -142,8 +156,10 @@ function MeetingNotesDialog({ lead, onClose }: { lead: Lead; onClose: () => void
                 key={s}
                 type="button"
                 aria-pressed={source === s}
+                disabled={liveRecording && s !== source}
+                title={liveRecording && s !== source ? 'Termina ou descarta a gravação primeiro' : undefined}
                 onClick={() => setSource(s)}
-                className={cn('rounded-md px-3 py-1.5', source === s ? 'bg-surface font-medium shadow-sm' : 'text-muted hover:text-fg')}
+                className={cn('rounded-md px-3 py-1.5', source === s ? 'bg-surface font-medium shadow-sm' : 'text-muted hover:text-fg disabled:opacity-50 disabled:hover:text-muted')}
               >
                 {MEETING_NOTES_SOURCE_LABELS[s]}
               </button>
@@ -152,9 +168,14 @@ function MeetingNotesDialog({ lead, onClose }: { lead: Lead; onClose: () => void
           {source === 'recording' && !transcribed ? (
             <MeetingRecorder
               leadId={lead.id}
-              onText={(text) => {
+              control={recorder}
+              onStateChange={setRecState}
+              onText={(text, andSummarize) => {
                 setNotes(text);
                 setTranscribed(true);
+                if (!andSummarize) return;
+                if (text.trim().length >= 20) void summarize(text);
+                else toast('A gravação tem pouco texto: revê-o e completa antes de resumir.');
               }}
             />
           ) : (
