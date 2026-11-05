@@ -9,9 +9,9 @@ import { authCookieOptions } from '@/lib/env';
 import { needsMfaCode } from '@/lib/mfa';
 import { publicUrl } from '@/lib/public-url';
 
-const PUBLIC_PATHS = ['/login', '/auth/', '/api/', '/docs/', '/offline', '/a-atualizar', '/p/', '/c/', '/b/', '/convite/', '/equipa/'];
+const PUBLIC_PATHS = ['/login', '/auth/', '/api/', '/docs/', '/offline', '/a-atualizar', '/p/', '/c/', '/b/', '/cartao/', '/convite/', '/equipa/'];
 /** Páginas dos clientes e convites: abrem mesmo com a sessão a meio da verificação. */
-const NO_MFA_PATHS = ['/auth/', '/api/', '/docs/', '/offline', '/a-atualizar', '/p/', '/c/', '/b/', '/convite/', '/verificar'];
+const NO_MFA_PATHS = ['/auth/', '/api/', '/docs/', '/offline', '/a-atualizar', '/p/', '/c/', '/b/', '/cartao/', '/convite/', '/verificar'];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });

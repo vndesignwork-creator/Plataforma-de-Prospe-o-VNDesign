@@ -204,6 +204,7 @@ export const HELP_GUIDES: HelpGuide[] = [
       'Propostas: textos, condições e aspeto do PDF.',
       'Campos e Etiquetas: informação extra e etiquetas para organizar os leads.',
       'Não contactar: emails e domínios que nunca devem receber mensagens.',
+      'Assinatura → Cartão de contacto: um link e um QR para mostrar em reuniões e feiras; quem deixa o contacto fica lead.',
     ],
   },
 ];

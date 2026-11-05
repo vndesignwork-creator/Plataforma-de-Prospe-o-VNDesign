@@ -60,6 +60,7 @@ export * from './team-work';
 export * from './notification-view';
 export * from './periodic-alerts';
 export * from './task-phrase';
+export * from './business-card';
 export * from './reach-out';
 export * from './quiet-hours';
 export * from './replies';

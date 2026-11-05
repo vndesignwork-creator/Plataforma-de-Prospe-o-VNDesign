@@ -136,6 +136,9 @@ import {
   TaskSearchQuerySchema,
   TaskListQuerySchema,
   TaskListItemSchema,
+  BusinessCardSchema,
+  BusinessCardUpdateSchema,
+  CardContactSchema,
   TaskCreateSchema,
   NotificationClearQuerySchema,
   NotificationListSchema,
@@ -1204,6 +1207,34 @@ export function getOpenApiDocument() {
           summary: 'Nova tarefa: num lead ou projeto (lead_id) ou solta, sem lead (só com sessão)',
           requestBody: body(TaskCreateSchema),
           responses: { '201': ok(data(LeadTaskSchema)), ...common },
+        }),
+      },
+      '/business-card': {
+        get: op({ tags: ['Equipa'], summary: 'O meu cartão de contacto (link /cartao/<código>, QR em SVG, se está ligado e quantas vezes foi aberto)', responses: { '200': ok(data(BusinessCardSchema)), ...common } }),
+        patch: op({
+          tags: ['Equipa'],
+          summary: 'Ligar/desligar o cartão, a frase de apresentação ou trocar o código (o link antigo deixa de abrir)',
+          requestBody: body(BusinessCardUpdateSchema),
+          responses: { '200': ok(data(BusinessCardSchema)), ...common },
+        }),
+      },
+      '/public/cards/{token}': {
+        post: op({
+          tags: ['Público'],
+          summary: 'Sem login: "Deixe o seu contacto" no cartão — cria o lead (ou junta ao do mesmo email), a tarefa para responder e um aviso',
+          security: [],
+          requestParams: { path: z.object({ token: z.string() }) },
+          requestBody: body(CardContactSchema),
+          responses: { '200': { description: 'Recebido' }, '404': { description: 'Cartão desconhecido ou desligado' }, '422': { description: 'Dados inválidos' }, '429': { description: 'Demasiados pedidos' } },
+        }),
+      },
+      '/public/cards/{token}/vcard': {
+        get: op({
+          tags: ['Público'],
+          summary: 'Sem login: "Guardar contacto" (ficheiro .vcf com os dados do cartão)',
+          security: [],
+          requestParams: { path: z.object({ token: z.string() }) },
+          responses: { '200': { description: 'vCard (text/vcard)' }, '404': { description: 'Cartão desconhecido ou desligado' } },
         }),
       },
       '/notifications': {

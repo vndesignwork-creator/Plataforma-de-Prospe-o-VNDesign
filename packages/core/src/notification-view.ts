@@ -90,7 +90,7 @@ export function describeNotification(n: Input, actor: string | null): Notificati
       [label, tone, action] = [/^Carregou/.test(title) ? 'Link clicado' : 'Email aberto', 'info', n.lead?.phone ? 'call' : null];
       break;
     case 'site_form':
-      [label, tone] = ['Pedido pelo site', 'violet'];
+      [label, tone] = raw.startsWith('📇') ? ['Cartão de contacto', 'violet'] : ['Pedido pelo site', 'violet'];
       break;
     case 'client':
       [label, tone] = raw.startsWith('📨') ? ['Ponto de situação', 'violet'] : ['Cliente', 'violet'];

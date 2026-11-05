@@ -47,6 +47,7 @@ const FEATURE_ITEMS: SettingsItem[] = FEATURE_GROUPS.flatMap((group) =>
 
 const ITEMS: Omit<SettingsItem, 'id'>[] = [
   { slug: 'assinatura', label: 'Nome', where: 'Sobre ti', keywords: 'meu_nome o meu nome' },
+  { slug: 'assinatura', label: 'Cartão de contacto', where: 'Cartão de contacto', keywords: 'cartão de visita qr código link partilhar vcard guardar contacto feiras reuniões' },
   { slug: 'assinatura', label: 'Cargo', where: 'Sobre ti' },
   { slug: 'assinatura', label: 'Telefone', where: 'Sobre ti', keywords: 'meu_telefone telemóvel' },
   { slug: 'assinatura', label: 'Link do portfólio', where: 'Portefólio', keywords: 'portefólio portfolio trabalhos' },

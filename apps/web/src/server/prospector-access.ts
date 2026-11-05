@@ -61,6 +61,7 @@ const RULES: Rule[] = [
   ['POST', /^\/share$/],
   ['GET PUT', /^\/signature$/],
   ['GET POST DELETE', /^\/signature\/logo$/],
+  ['GET PATCH', /^\/business-card$/],
   ['GET POST', /^\/tasks$/],
   ['PATCH DELETE', new RegExp(`^/tasks/${ID}$`)],
   ['GET', /^\/notifications$/],
