@@ -31,6 +31,12 @@ async function projectTab(page: import('@playwright/test').Page, name: string) {
 }
 
 test('arranque: ao passar a Cliente, prazo, revisões, tarefas e plano de pagamentos', async ({ page }) => {
+  // O prazo vem do serviço: outros testes mudam os serviços, por isso fixa-se aqui (30 dias, 2 revisões).
+  const services = (await (await page.request.get('/api/v1/services')).json()).data as { id: string; key: string }[];
+  for (const [key, days] of [['site_institucional', 30], ['identidade_visual', 21]] as const) {
+    const service = services.find((s) => s.key === key)!;
+    expect((await page.request.patch(`/api/v1/services/${service.id}`, { data: { delivery_days: days, revisions_included: 2 } })).ok()).toBe(true);
+  }
   const lead = await createLead(page.request, { company_name: `Arranque ${run}`, services: ['site_institucional'], status: 'proposta_enviada', estimated_value: 900 });
   const res = await page.request.patch(`/api/v1/leads/${lead.id}`, { data: { status: 'cliente' } });
   expect(res.status(), await res.text()).toBe(200);

@@ -45,7 +45,8 @@ test('diagnóstico do site: recolhido quando o lead só tem serviços fora do We
   await expect(page.getByText('Não é relevante para os serviços escolhidos.')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Análise automática do site' })).toHaveCount(0);
   // O ângulo de abordagem já não está dentro do diagnóstico: vê-se sempre.
-  await expect(page.getByText(`Ângulo ${run}`, { exact: true })).toBeVisible();
+  // (O modelo de email também o pode usar: vale o que está nos dados do lead.)
+  await expect(page.getByText(`Ângulo ${run}`, { exact: true }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Expandir: Diagnóstico do site' }).click();
   await expect(page.getByRole('heading', { name: 'Análise automática do site' })).toBeVisible();
   await page.getByRole('button', { name: 'Recolher: Diagnóstico do site' }).click();
