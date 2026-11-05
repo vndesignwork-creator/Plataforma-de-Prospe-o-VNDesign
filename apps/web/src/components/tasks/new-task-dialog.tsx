@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { DateInput } from '@/components/ui/date-input';
 import { Dialog } from '@/components/ui/dialog';
+import { DictateButton } from '@/components/ui/dictate-button';
 import { Field } from '@/components/ui/field';
 import { Input, Select } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
@@ -181,6 +182,7 @@ export function NewTaskDialog({ onClose }: { onClose: () => void }) {
           <Field label="Tarefa" error={errors.title} hint={recognized ? undefined : 'Podes escrever como falas: “Ligar à Clínica Sorriso sexta às 10h”.'}>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Enviar proposta revista amanhã às 10h" maxLength={300} autoFocus />
           </Field>
+          <DictateButton value={title} onChange={setTitle} max={300} className="self-start" />
           {recognized ? (
             <p role="status" className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-accent-soft px-3 py-2 text-xs text-accent-text">
               <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />

@@ -27,7 +27,7 @@ import { Input, Textarea } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
 import { consumeLeadAction } from '@/lib/lead-actions';
 import { useInvalidateLead, useInvalidateTasks } from '@/lib/queries';
-import { DictateButton, appendDictation } from '@/components/ui/dictate-button';
+import { DictateButton } from '@/components/ui/dictate-button';
 import { cn } from '@/lib/utils';
 import { MeetingRecorder, type RecorderControl, type RecorderState } from './meeting-recorder';
 
@@ -203,7 +203,7 @@ function MeetingNotesDialog({ lead, onClose }: { lead: Lead; onClose: () => void
                 />
               </Field>
               {source === 'notes' ? (
-                <DictateButton onText={(spoken) => setNotes((current) => appendDictation(current, spoken).slice(0, 60_000))} className="self-start" />
+                <DictateButton value={notes} onChange={setNotes} max={60_000} className="self-start" />
               ) : source === 'recording' ? (
                 <button type="button" onClick={() => setTranscribed(false)} className="self-start text-xs text-muted underline">
                   Gravar ou escolher outra vez

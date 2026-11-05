@@ -12,7 +12,7 @@ import { BookUser, Mic, Sparkles } from 'lucide-react';
 import { useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { DictateButton, appendDictation } from '@/components/ui/dictate-button';
+import { DictateButton } from '@/components/ui/dictate-button';
 import { Dialog } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
@@ -131,7 +131,7 @@ function TextFillDialog({ onClose, onResult }: { onClose: () => void; onResult: 
           onChange={(e) => setText(e.target.value)}
           placeholder="Ex.: Restaurante O Quintal em Braga, falei com a Ana, telefone 912 345 678, querem um site novo com reservas."
         />
-        <DictateButton size="sm" onText={(spoken) => setText((current) => appendDictation(current, spoken))} className="self-start" />
+        <DictateButton value={text} onChange={setText} className="self-start" />
       </div>
     </Dialog>
   );

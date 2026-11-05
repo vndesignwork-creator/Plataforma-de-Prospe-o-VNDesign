@@ -32,7 +32,7 @@ import {
 } from '@vndesign/core';
 import { Check, Copy, Mail, MessageCircle, MessageSquareText, Phone, RefreshCw, RotateCcw, Save, Send, Sparkles, X } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { SendEmailButton } from '@/components/email/send-email-dialog';
 import { useServiceCatalog, useServiceFilterOptions } from '@/components/services/services';
@@ -42,7 +42,8 @@ import { CollapseButton, useProspectingCollapsed } from '@/components/ui/collaps
 import { Field } from '@/components/ui/field';
 import { Input, Select, Textarea } from '@/components/ui/input';
 import { SignatureLogoPreview } from '@/components/email/signature-logo-preview';
-import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { DictateButton } from '@/components/ui/dictate-button';
+import { RichTextEditor, type RichTextEditorHandle } from '@/components/ui/rich-text-editor';
 import { errorMessage } from '@/lib/api-client';
 import { useAiEmail, useLogActivity, useSettings, useTemplates, useUpdateLead } from '@/lib/queries';
 import { EMAIL_KINDS, usesAiVisibility, useTemplateContext } from '@/lib/template-context';
@@ -246,6 +247,8 @@ export function ContactCard({ lead }: { lead: Lead }) {
     return { subject: subject.text, body: text, missing: [...new Set([...subject.missing, ...body.missing])] };
   }, [current, template, context, aiEmail, lead]);
 
+  // Ditado no editor do email (insere no sítio do cursor).
+  const editor = useRef<RichTextEditorHandle>(null);
   if (lead.anonymized_at || !templates) return null;
 
   const kind = current?.type === 'saved' || current?.type === 'ai' ? 'cold_email' : (template?.kind ?? 'cold_email');
@@ -427,10 +430,25 @@ export function ContactCard({ lead }: { lead: Lead }) {
                   label="Mensagem"
                   value={body}
                   onChange={(html) => setDraft({ subject, body: html })}
+                  handleRef={editor}
+                  toolbarEnd={
+                    <DictateButton
+                      size="sm"
+                      className="h-8 border-0"
+                      target={{
+                        insert: (spoken) => editor.current?.insertText(` ${spoken.trim()}`),
+                        snapshot: () => body,
+                        restore: (html) => setDraft({ subject, body: html }),
+                      }}
+                    />
+                  }
                   footer={<SignatureLogoPreview body={body} />}
                 />
               ) : (
-                <Textarea id="script-body" rows={12} value={body} onChange={(e) => setDraft({ subject, body: e.target.value })} className="leading-relaxed" />
+                <>
+                  <Textarea id="script-body" rows={12} value={body} onChange={(e) => setDraft({ subject, body: e.target.value })} className="leading-relaxed" />
+                  <DictateButton value={body} onChange={(text) => setDraft({ subject, body: text })} className="mt-1.5" />
+                </>
               )}
               {current?.type === 'ai' ? <p className="mt-1 text-xs text-muted">Revê sempre antes de enviar: a IA pode enganar-se.</p> : null}
             </div>

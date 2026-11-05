@@ -35,6 +35,7 @@ import { Card, Skeleton } from '@/components/ui/card';
 import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownSeparator, DropdownTrigger } from '@/components/ui/dropdown';
 import { DateInput, DateTimeInput } from '@/components/ui/date-input';
 import { Dialog } from '@/components/ui/dialog';
+import { DictateButton } from '@/components/ui/dictate-button';
 import { Input, Select, Textarea } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
 import { useInvalidateTasks, useLeadTasks, useMe, useTaskTemplates, useTeamNames } from '@/lib/queries';
@@ -229,7 +230,10 @@ export function TaskEditor({
             }}
             className="leading-relaxed"
           />
-          <p className="mt-1 text-right text-xs text-muted tabular">{title.length}/300</p>
+          <div className="mt-1.5 flex flex-wrap items-start gap-2">
+            <DictateButton size="md" value={title} onChange={setTitle} max={300} />
+            <p className="ml-auto text-right text-xs text-muted tabular">{title.length}/300</p>
+          </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -727,6 +731,7 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
           maxLength={300}
           className="min-w-0 basis-full sm:flex-[1_1_10rem] sm:basis-auto"
         />
+        <DictateButton size="sm" value={title} onChange={setTitle} max={300} />
         <PhraseHint text={title} today={today} manualDue={!!due} />
         <DuePicker
           value={due}

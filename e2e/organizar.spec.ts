@@ -185,12 +185,27 @@ test('ditado: o que se diz junta-se aos apontamentos (reconhecimento de voz simu
   const lead = await createLead(page.request, { company_name: `Ditado ${run}` });
   await page.goto(`/leads/${lead.id}`);
   await page.getByRole('button', { name: 'Notas com IA' }).click();
-  const notes = page.getByLabel('Apontamentos');
+  // A ficha tem outro "Ditar" (no editor da mensagem): tudo dentro da janela.
+  const dialog = page.getByRole('dialog', { name: 'Notas com IA' });
+  const notes = dialog.getByLabel('Apontamentos');
   await notes.fill('Falei com a Marta.');
-  await page.getByRole('button', { name: 'Ditar (falar em vez de escrever)' }).click();
+  await dialog.getByRole('button', { name: 'Ditar (falar em vez de escrever)' }).click();
   await expect(notes).toHaveValue('Falei com a Marta. Querem loja online até ao natal');
-  await page.getByRole('button', { name: 'Parar o ditado' }).click();
-  await expect(page.getByRole('button', { name: 'Ditar (falar em vez de escrever)' })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Concluir o ditado' }).click();
+  await expect(dialog.getByRole('button', { name: 'Ditar (falar em vez de escrever)' })).toBeVisible();
+  await expect(notes).toHaveValue('Falei com a Marta. Querem loja online até ao natal');
+
+  // Pausa e Retomar (volta a ouvir: mais uma frase) e Descartar (repõe o texto de antes de começar).
+  await dialog.getByRole('button', { name: 'Ditar (falar em vez de escrever)' }).click();
+  await expect(notes).toHaveValue('Falei com a Marta. Querem loja online até ao natal querem loja online até ao natal');
+  await dialog.getByRole('button', { name: 'Pausar o ditado' }).click();
+  await expect(dialog.getByRole('group', { name: 'Ditado' }).getByRole('status')).toContainText('Em pausa');
+  await dialog.getByRole('button', { name: 'Retomar o ditado' }).click();
+  await expect(notes).toHaveValue(/natal querem loja online até ao natal querem loja online até ao natal$/);
+  await dialog.getByRole('button', { name: 'Descartar o ditado' }).click();
+  await expect(notes).toHaveValue('Falei com a Marta. Querem loja online até ao natal');
+  await expect(page.getByText('Ditado descartado.')).toBeVisible();
+
 });
 
 test('atalhos de teclado: G + tecla, N, ? e nada enquanto se escreve', async ({ page }) => {

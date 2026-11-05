@@ -170,6 +170,13 @@ export function RichTextEditor({
       if (sel && saved.current && !el.contains(sel.anchorNode)) {
         sel.removeAllRanges();
         sel.addRange(saved.current);
+      } else if (sel && !saved.current) {
+        // Nunca se clicou no texto: insere no fim.
+        const end = document.createRange();
+        end.selectNodeContents(el.lastElementChild ?? el);
+        end.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(end);
       }
       for (let i = 0; i < replaceBefore; i++) sel?.modify('extend', 'backward', 'character');
       document.execCommand('insertText', false, text);

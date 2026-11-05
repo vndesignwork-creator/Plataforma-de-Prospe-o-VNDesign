@@ -70,7 +70,7 @@ import { api, errorMessage } from '@/lib/api-client';
 import { useActivities, useEmailTracking, useLead, useLogActivity, useTeamNames } from '@/lib/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import { DictateButton, appendDictation } from '@/components/ui/dictate-button';
+import { DictateButton } from '@/components/ui/dictate-button';
 import { findMentions } from '@vndesign/core';
 import { Avatar } from '@/components/ui/avatar';
 import { LeadChanges, changeLabel } from './lead-changes';
@@ -483,7 +483,7 @@ export function ActivityTimeline({
             />
           )}
           <div className="flex justify-end gap-2">
-            <DictateButton size="sm" onText={(spoken) => setBody((current) => appendDictation(current, spoken))} className="mr-auto" />
+            <DictateButton size="sm" value={body} onChange={setBody} className="mr-auto" />
             <Button type="button" size="sm" variant="ghost" onClick={close}>
               Cancelar
             </Button>

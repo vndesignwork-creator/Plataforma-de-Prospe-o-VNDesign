@@ -8,13 +8,14 @@ import { formatDate, toPlainText, type Lead, type LeadEmailSendResult } from '@v
 import { useQueryClient } from '@tanstack/react-query';
 import { Paperclip, Send } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { DictateButton } from '@/components/ui/dictate-button';
+import { RichTextEditor, type RichTextEditorHandle } from '@/components/ui/rich-text-editor';
 import { SignatureLogoPreview } from './signature-logo-preview';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { EmailCheckHint } from './email-check-hint';
@@ -62,6 +63,7 @@ export default function SendEmailDialog({
   const invalidate = useInvalidateLead();
   const qc = useQueryClient();
   const [form, setForm] = useState({ to: lead.email ?? '', subject, body });
+  const editor = useRef<RichTextEditorHandle>(null);
   const [bccSelf, setBccSelf] = useState<boolean | null>(null);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [sending, setSending] = useState(false);
@@ -178,6 +180,18 @@ export default function SendEmailDialog({
               label="Mensagem"
               value={form.body}
               onChange={(body) => setForm((f) => ({ ...f, body }))}
+              handleRef={editor}
+              toolbarEnd={
+                <DictateButton
+                  size="sm"
+                  className="h-8 border-0"
+                  target={{
+                    insert: (spoken) => editor.current?.insertText(` ${spoken.trim()}`),
+                    snapshot: () => form.body,
+                    restore: (html) => setForm((f) => ({ ...f, body: html })),
+                  }}
+                />
+              }
               minHeight="14rem"
               footer={<SignatureLogoPreview body={form.body} />}
             />

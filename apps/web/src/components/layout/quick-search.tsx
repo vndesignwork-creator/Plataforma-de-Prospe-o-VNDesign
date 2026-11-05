@@ -51,7 +51,7 @@ import { useServiceCatalog } from '@/components/services/services';
 import { toast } from 'sonner';
 import { useLeadTags } from '@/components/leads/tags';
 import { useSavedViews } from '@/components/leads/saved-views';
-import { DictateButton, appendDictation } from '@/components/ui/dictate-button';
+import { DictateButton } from '@/components/ui/dictate-button';
 import { api, errorMessage } from '@/lib/api-client';
 import { useSectors, useSettings } from '@/lib/queries';
 import { readRecentLeads } from '@/lib/recent-leads';
@@ -494,7 +494,7 @@ function SearchBody({
           }}
           className="h-12 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted"
         />
-        {compose ? <DictateButton size="sm" onText={(spoken) => setText((current) => appendDictation(current, spoken).slice(0, 300))} /> : null}
+        {compose ? <DictateButton size="sm" value={text} onChange={setText} max={300} /> : null}
         <kbd className="hidden rounded border border-border px-1.5 py-0.5 text-[11px] text-muted sm:inline">Esc</kbd>
       </div>
       {compose ? (
