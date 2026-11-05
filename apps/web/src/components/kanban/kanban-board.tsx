@@ -31,7 +31,7 @@ import {
   type LostReason,
   leadPath,
 } from '@vndesign/core';
-import { ArrowLeftRight, Eye, EyeOff, GripVertical, HelpCircle, Plus, Search, X } from 'lucide-react';
+import { ArrowLeftRight, Eye, EyeOff, GripVertical, HelpCircle, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -378,6 +378,8 @@ export function KanbanBoard() {
   const tag = getList('etiqueta');
   const assigned = searchParams.get('resp') ?? '';
   const [search, setSearch] = useState(searchParams.get('q') ?? '');
+  // Telemóvel: os filtros recolhidos num botão.
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const q = useDebouncedValue(search.trim());
   useEffect(() => {
     if (q !== (searchParams.get('q') ?? '')) setParams({ q: q || null });
@@ -669,12 +671,27 @@ export function KanbanBoard() {
           />
         </div>
         <ViewSwitch current="kanban" />
+        {/* Telemóvel: os filtros recolhidos num botão (o quadro fica logo à vista). */}
+        <Button
+          variant={filtersOpen ? 'secondary' : 'outline'}
+          className="sm:hidden"
+          aria-expanded={filtersOpen}
+          aria-controls="kanban-filtros"
+          onClick={() => setFiltersOpen((o) => !o)}
+        >
+          <SlidersHorizontal className="h-4 w-4" aria-hidden /> Filtros
+          {chips.length ? <span className="rounded-full bg-accent px-1.5 text-xs font-semibold text-white tabular">{chips.length}</span> : null}
+        </Button>
       </div>
       {/* Telemóvel: 2 por linha; o último, se ficar sozinho, ocupa a largura toda. */}
       <div
+        id="kanban-filtros"
         role="group"
         aria-label="Filtros"
-        className="flex flex-wrap items-center gap-2 max-sm:grid max-sm:grid-cols-2 max-sm:[&>*]:w-full max-sm:[&>*:last-child:nth-child(odd)]:col-span-2"
+        className={cn(
+          'flex flex-wrap items-center gap-2 max-sm:grid max-sm:grid-cols-2 max-sm:[&>*]:w-full max-sm:[&>*:last-child:nth-child(odd)]:col-span-2',
+          !filtersOpen && 'max-sm:hidden',
+        )}
       >
         <MultiSelectFilter
           label="Setor"

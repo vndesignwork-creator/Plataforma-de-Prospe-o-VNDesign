@@ -265,7 +265,7 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
 
       <Section title="Empresa" description="Só dados empresariais públicos (RGPD).">
         {/* O Field liga o rótulo ao Input (tem de ser o filho direto): o Ditar fica ao lado. */}
-        <div className="flex items-start gap-2 md:col-span-2">
+        <div className="flex flex-wrap items-end gap-2 md:col-span-2">
           <Field label="Empresa" error={e('company_name')} required className="min-w-0 flex-1">
             <Input autoComplete="off" autoFocus={!isEdit} {...register('company_name')} />
           </Field>
@@ -273,7 +273,7 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
             size="sm"
             value={name ?? ''}
             onChange={(v) => setValue('company_name', v as never, { shouldDirty: true, shouldValidate: true })}
-            className="mt-[1.875rem] pointer-coarse:mt-8"
+            className="mb-1 pointer-coarse:mb-1.5"
           />
         </div>
         {dupCheck.data && (dupCheck.data.duplicates.length || dupCheck.data.do_not_contact.length) ? (

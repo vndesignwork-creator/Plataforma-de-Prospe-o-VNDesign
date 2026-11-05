@@ -433,6 +433,13 @@ test('Tarefas em cartões: lista com título, criar com Enter, duplicar, mover, 
   await card.getByLabel('Título da lista').press('Enter');
   await expect(page.getByRole('region', { name: `Escritório novo ${run2}` })).toBeVisible();
 
+  // Mudar o cartão de lugar (menu ⋯ do cartão): fica guardado para a próxima visita.
+  await page.getByRole('button', { name: `Mais ações: #${lead.number} Cartões ${run2}` }).click();
+  await page.getByRole('menuitem', { name: 'Mover para o início' }).click();
+  await expect(page.getByRole('region').first()).toHaveAccessibleName(`#${lead.number} Cartões ${run2}`);
+  await page.reload();
+  await expect(page.getByRole('region').first()).toHaveAccessibleName(`#${lead.number} Cartões ${run2}`);
+
   // Texto até 2000 caracteres.
   const long = 'x'.repeat(1990);
   expect((await page.request.post('/api/v1/tasks', { data: { title: long, list_id: list.id } })).status()).toBe(201);

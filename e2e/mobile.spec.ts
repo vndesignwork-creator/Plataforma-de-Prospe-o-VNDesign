@@ -47,8 +47,9 @@ test('no telemóvel deslizar no Kanban faz scroll e não arrasta cartões; mante
   await swipe(box.x + 120, box.y + 20, box.x + 120, box.y - 200);
   expect(await page.evaluate(() => scrollY)).toBeGreaterThan(50);
   // Para o lado: o quadro passa para a coluna seguinte.
-  // A meio do ecrã (o índice de colunas fica preso no topo).
-  const middle = page.viewportSize()!.height / 2;
+  // Em cima de um cartão do quadro (o topo da página, com a dica e os filtros, já ocupa meio ecrã).
+  const card = (await column.locator('li').nth(1).boundingBox())!;
+  const middle = Math.min(card.y + card.height / 2, page.viewportSize()!.height - 40);
   await swipe(box.x + 220, middle, box.x + 20, middle + 5);
   expect(await scroller.evaluate((e) => e.scrollLeft)).toBeGreaterThan(100);
   await expect(page.getByText(/→ /)).toHaveCount(0);

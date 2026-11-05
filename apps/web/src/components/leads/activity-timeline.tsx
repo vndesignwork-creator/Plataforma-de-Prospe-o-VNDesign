@@ -482,7 +482,7 @@ export function ActivityTimeline({
               }
             />
           )}
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <DictateButton size="sm" value={body} onChange={setBody} className="mr-auto" />
             <Button type="button" size="sm" variant="ghost" onClick={close}>
               Cancelar

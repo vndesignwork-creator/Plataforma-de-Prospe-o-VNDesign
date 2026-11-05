@@ -396,7 +396,7 @@ export function DictateButton({
     </span>
   );
   const wave = stream ? (
-    <AudioWaveform stream={stream} paused={paused} bar={2} gap={2} className={size === 'sm' ? 'h-7 w-16 shrink-0 sm:w-24' : 'h-8 w-full rounded-md bg-surface'} />
+    <AudioWaveform stream={stream} paused={paused} bar={2} gap={2} className={size === 'sm' ? 'h-7 w-16 shrink-0 max-sm:min-w-0 max-sm:flex-1 sm:w-24' : 'h-8 w-full rounded-md bg-surface'} />
   ) : !paused ? (
     // Sem onda (telemóvel): umas barras a mexer, para se ver que está a ouvir.
     <span aria-hidden className="flex h-6 items-center gap-0.5 text-accent">
@@ -412,7 +412,7 @@ export function DictateButton({
         onClick={paused ? resume : pause}
         aria-label={paused ? 'Retomar o ditado' : 'Pausar o ditado'}
         title={paused ? 'Retomar' : 'Pausa'}
-        className={cn(ctl, 'border-border hover:bg-surface-2', size === 'sm' ? 'h-8 w-8' : 'h-8 px-2.5')}
+        className={cn(ctl, 'border-border hover:bg-surface-2', size === 'sm' ? 'h-8 w-8 max-sm:ml-auto' : 'h-8 px-2.5')}
       >
         {paused ? <Play className="h-4 w-4" aria-hidden /> : <Pause className="h-4 w-4" aria-hidden />}
         {size === 'md' ? (paused ? 'Retomar' : 'Pausa') : null}
@@ -442,7 +442,16 @@ export function DictateButton({
 
   if (size === 'sm') {
     return (
-      <div role="group" aria-label="Ditado" className={cn('inline-flex min-w-0 items-center gap-1.5 rounded-lg border border-danger/40 bg-danger-soft/40 px-1.5 py-0.5', className)}>
+      // No telemóvel: uma linha só para o ditado, por baixo da caixa de texto (o pai tem flex-wrap), sem a espremer.
+      <div
+        role="group"
+        aria-label="Ditado"
+        className={cn(
+          'inline-flex min-w-0 items-center gap-1.5 rounded-lg border border-danger/40 bg-danger-soft/40 px-1.5 py-0.5',
+          className,
+          'max-sm:order-last max-sm:mt-0 max-sm:mr-0 max-sm:w-full max-sm:basis-full',
+        )}
+      >
         {status}
         {wave}
         {buttons}
