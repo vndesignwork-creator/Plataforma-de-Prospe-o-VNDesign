@@ -246,3 +246,32 @@ test('o que falta o cliente enviar: pedir na ficha, o cliente envia pela página
   await section.getByLabel(/^Estado de Fotografias/).selectOption('done');
   await expect(section.getByText('falta 1 de 2')).toBeVisible();
 });
+
+test('renovações e avenças: juntar, renovar (regista o pagamento) e receita recorrente nas Estatísticas', async ({ page }) => {
+  const lead = await createLead(page.request, { company_name: `Renovações ${run}`, contact_name: 'Marta', email: `renov-${run}@exemplo.pt`, status: 'cliente' });
+  await page.goto(`/leads/${lead.id}`);
+  await projectTab(page, 'Tempo');
+  const section = page.locator('#projeto').getByRole('region', { name: 'Renovações e avenças' });
+  await section.getByRole('button', { name: 'Renovação' }).click();
+  await section.getByLabel('Nome').fill(`Domínio renov-${run}.pt`);
+  await section.getByLabel('Valor (€)').fill('15,50');
+  await section.getByLabel('Próxima renovação').fill(iso(10).split('-').reverse().join('/'));
+  await section.getByRole('button', { name: 'Acrescentar' }).click();
+  await expect(section.getByText(`Domínio renov-${run}.pt`)).toBeVisible();
+  await expect(section.getByText('faltam 10 dias')).toBeVisible();
+  await expect(section.getByRole('button', { name: 'Email' })).toBeVisible();
+
+  await section.getByRole('button', { name: 'Renovado' }).click();
+  await section.getByRole('button', { name: 'Confirmar' }).click();
+  await expect(page.getByText(/Renovado\. Próxima: .*\(pagamento registado\)/)).toBeVisible();
+  const [renewal] = (await (await page.request.get(`/api/v1/leads/${lead.id}/renewals`)).json()).data as { next_due_on: string; amount: number }[];
+  expect(renewal!.amount).toBe(15.5);
+  expect(renewal!.next_due_on.slice(0, 4)).toBe(String(Number(iso(10).slice(0, 4)) + 1));
+  const payments = (await (await page.request.get(`/api/v1/leads/${lead.id}/payments`)).json()).data as { amount: number; paid_on: string | null }[];
+  expect(payments.some((p) => p.amount === 15.5 && p.paid_on === iso(0))).toBe(true);
+
+  const summary = (await (await page.request.get('/api/v1/renewals/summary')).json()).data as { monthly: number; active: number };
+  expect(summary.active).toBeGreaterThan(0);
+  await page.goto('/estatisticas#recorrente');
+  await expect(page.getByRole('heading', { name: 'Receita recorrente' }).first()).toBeVisible();
+});

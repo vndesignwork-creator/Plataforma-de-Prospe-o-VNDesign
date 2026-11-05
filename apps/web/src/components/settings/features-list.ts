@@ -15,6 +15,8 @@ import {
   Eye,
   FileSignature,
   Receipt,
+  Repeat,
+  FileSpreadsheet,
   Rocket,
   Target,
   Users,
@@ -182,6 +184,21 @@ export const FEATURES: { key: keyof Features; label: string; description: string
   },
 ];
 
+FEATURES.push(
+  {
+    key: 'renewals',
+    label: 'Renovações e avenças',
+    description: 'Domínio, alojamento e manutenção de cada cliente: aviso uns dias antes (tarefa e email pronto) e a receita recorrente nas Estatísticas.',
+    icon: Repeat,
+  },
+  {
+    key: 'accounting_report',
+    label: 'Relatório para a contabilidade',
+    description: 'Nas Estatísticas: o que recebeste, gastaste e tens por receber em cada mês, em PDF ou Excel.',
+    icon: FileSpreadsheet,
+  },
+);
+
 export const FEATURE_BY_KEY = new Map(FEATURES.map((f) => [f.key, f]));
 
 /** Funcionalidades que dependem de outra (ficam por baixo dela, mais à direita). */
@@ -201,7 +218,7 @@ export const FEATURE_GROUPS: { title: string; description: string; master?: keyo
   {
     title: 'Vendas e faturação',
     description: 'Do orçamento ao dinheiro recebido.',
-    parts: [{ keys: ['quote_calculator', 'contracts', 'payments'] }],
+    parts: [{ keys: ['quote_calculator', 'contracts', 'payments', 'renewals', 'accounting_report'] }],
   },
   {
     title: 'Projetos',

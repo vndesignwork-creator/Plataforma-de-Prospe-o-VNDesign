@@ -80,6 +80,9 @@ import type {
   ProjectTime,
   ProjectDeliverable,
   ClientRequest,
+  RecurringSummary,
+  Renewal,
+  RenewalCreate,
   RunningTimer,
   TimeEntry,
   CalendarEvent,
@@ -197,7 +200,7 @@ export function useLead(id: string, enabled = true) {
 
 /** Partes da ficha que vêm no bundle (cada uma com a chave da cache do cartão: [parte, id]). */
 const BUNDLE_PARTS = ['tasks', 'activities', 'audits', 'proposals', 'meetings', 'project', 'payments', 'contracts', 'client-projects', 'revisions', 'time'] as const;
-const BUNDLE_PROJECT_PARTS = ['deliverables', 'expenses', 'launch', 'collaborators', 'brand-kit', 'accesses', 'briefing', 'client-requests'] as const;
+const BUNDLE_PROJECT_PARTS = ['deliverables', 'expenses', 'launch', 'collaborators', 'brand-kit', 'accesses', 'briefing', 'client-requests', 'renewals'] as const;
 
 function fetchLeadBundle(qc: ReturnType<typeof useQueryClient>, id: string) {
   return api<{ data: { lead: Lead; parts: Record<string, unknown> } }>(`/leads/${id}/bundle`).then(({ data }) => {
@@ -1112,6 +1115,54 @@ export function useDeleteClientRequest(leadId: string) {
   return useMutation({
     mutationFn: (id: string) => api(`/client-requests/${id}`, { method: 'DELETE' }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['client-requests', leadId] }),
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Renovações e avenças
+// -----------------------------------------------------------------------------
+export function useRenewals(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['renewals', leadId],
+    queryFn: () => api<{ data: Renewal[] }>(`/leads/${leadId}/renewals`).then((r) => r.data),
+    enabled,
+  });
+}
+
+export function useRecurringSummary(enabled = true) {
+  return useQuery({ queryKey: ['renewals', 'summary'], queryFn: () => api<{ data: RecurringSummary }>('/renewals/summary').then((r) => r.data), enabled });
+}
+
+export function useSaveRenewal(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id?: string; body: Partial<RenewalCreate> }) =>
+      api<{ data: Renewal }>(id ? `/renewals/${id}` : `/leads/${leadId}/renewals`, { method: id ? 'PATCH' : 'POST', body }).then((r) => r.data),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['renewals'] }),
+  });
+}
+
+export function useRenewRenewal(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, record_payment }: { id: string; record_payment: boolean }) =>
+      api<{ data: Renewal }>(`/renewals/${id}/renew`, { method: 'POST', body: { record_payment } }).then((r) => r.data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['renewals'] });
+      void qc.invalidateQueries({ queryKey: ['payments', leadId] });
+      void qc.invalidateQueries({ queryKey: qk.activities(leadId) });
+    },
+  });
+}
+
+export function useDeleteRenewal(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api(`/renewals/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['renewals', leadId] });
+      void qc.invalidateQueries({ queryKey: ['renewals', 'summary'] });
+    },
   });
 }
 

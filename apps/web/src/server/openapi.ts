@@ -41,6 +41,11 @@ import {
   RunningTimerSchema,
   ProjectDeliverableSchema,
   ClientRequestSchema,
+  RecurringSummarySchema,
+  RenewalCreateSchema,
+  RenewalRenewSchema,
+  RenewalSchema,
+  RenewalUpdateSchema,
   ClientRequestCreateSchema,
   ClientRequestUpdateSchema,
   ProjectDeliverableCreateSchema,
@@ -2067,6 +2072,32 @@ export function getOpenApiDocument() {
           responses: { '200': ok(data(TimeEntrySchema)), '422': problem('O temporizador ainda está a contar'), ...withNotFound },
         }),
         delete: op({ tags: ['Projetos'], summary: 'Apagar um registo de horas', requestParams: { path: idParam }, responses: { '204': { description: 'Apagado' }, ...withNotFound } }),
+      },
+      '/leads/{id}/renewals': {
+        get: op({ tags: ['Projetos'], summary: 'Renovações e avenças do cliente (domínio, alojamento, manutenção…)', requestParams: { path: idParam }, responses: { '200': ok(data(z.array(RenewalSchema))), ...withNotFound } }),
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Juntar uma renovação ou avença (aviso uns dias antes da data)',
+          requestParams: { path: idParam },
+          requestBody: body(RenewalCreateSchema),
+          responses: { '201': ok(data(RenewalSchema), 'Criada'), ...withNotFound },
+        }),
+      },
+      '/renewals/{id}': {
+        patch: op({ tags: ['Projetos'], summary: 'Mudar a renovação (valor, data, aviso, pausar)', requestParams: { path: idParam }, requestBody: body(RenewalUpdateSchema), responses: { '200': ok(data(RenewalSchema)), ...withNotFound } }),
+        delete: op({ tags: ['Projetos'], summary: 'Apagar a renovação (os pagamentos registados ficam)', requestParams: { path: idParam }, responses: { '204': { description: 'Apagada' }, ...withNotFound } }),
+      },
+      '/renewals/{id}/renew': {
+        post: op({
+          tags: ['Projetos'],
+          summary: '"Renovado": passa à data seguinte e (por omissão) regista o pagamento de hoje',
+          requestParams: { path: idParam },
+          requestBody: body(RenewalRenewSchema),
+          responses: { '200': ok(data(RenewalSchema)), ...withNotFound },
+        }),
+      },
+      '/renewals/summary': {
+        get: op({ tags: ['Projetos'], summary: 'Receita recorrente por mês e renovações dos próximos 60 dias', responses: { '200': ok(data(RecurringSummarySchema)), ...common } }),
       },
       '/leads/{id}/client-requests': {
         get: op({ tags: ['Projetos'], summary: 'O que falta o cliente enviar (textos, fotos, acessos…)', requestParams: { path: idParam }, responses: { '200': ok(data(z.array(ClientRequestSchema))), ...withNotFound } }),

@@ -131,6 +131,7 @@ export const HELP_GUIDES: HelpGuide[] = [
       'Em "O que falta o cliente enviar", pede os textos, as fotos ou os acessos: o cliente envia-os pela página do projeto e recebes um aviso.',
       'Usa "Ponto de situação" para enviar ao cliente um resumo do andamento.',
       'No fim, a checklist de lançamento ajuda a não esquecer nada antes de pôr o site no ar.',
+      'Em Tempo e dinheiro → Renovações e avenças, regista o domínio, o alojamento e a manutenção mensal: uns dias antes recebes um aviso e uma tarefa, e o email ao cliente já vem escrito. “Renovado” passa à data seguinte e regista o pagamento.',
     ],
     tips: ['O temporizador e o Pomodoro contam as horas do projeto; o valor por hora aparece nas Estatísticas.'],
   },
@@ -156,6 +157,7 @@ export const HELP_GUIDES: HelpGuide[] = [
       'O funil mostra quantos leads passaram por cada fase (contam uma vez, mesmo que voltem atrás).',
       'Em Emails, vê as aberturas e respostas por modelo e o melhor dia e hora para enviar.',
       'Em Rentabilidade, o valor ganho por hora em cada projeto.',
+      'Em Receita recorrente, quanto entra todos os meses com as renovações e avenças, e as próximas datas.',
     ],
   },
   {

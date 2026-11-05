@@ -11,6 +11,7 @@ import { runWeeklyBackups } from '@/server/services/backup';
 import { purgeExpiredTrash } from '@/server/services/lead-trash';
 import { purgeOldActivities } from '@/server/services/activity-cleanup';
 import { runMonthlyUpdateReminders, saveCoolingAlerts } from '@/server/services/periodic-alerts';
+import { runRenewalReminders } from '@/server/services/renewals';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +22,7 @@ export const dynamic = 'force-dynamic';
  * semanal (no dia escolhido), esvazia a reciclagem (mais de 30 dias), apaga os "Lead editado" antigos
  * (onde a limpeza automática está ligada), à segunda-feira avisa dos leads a arrefecer, no dia 1
  * prepara o ponto de situação mensal dos projetos (tarefa + aviso), envia o resumo diário a todos
- * os workspaces com o resumo ativo, a notificação push a todos os dispositivos
+ * os workspaces com o resumo ativo, avisa das renovações e avenças a chegar (tarefa + aviso), a notificação push a todos os dispositivos
  * subscritos e o mesmo resumo no sino. Autenticação: "Authorization: Bearer CRON_SECRET"
  * (o Vercel Cron envia-o automaticamente). ?dry_run=true não envia.
  */
@@ -34,7 +35,7 @@ async function handler(req: Request) {
     const archived = await autoArchiveLeads(createSupabaseAdminClient(), dryRun);
     // Os leads "agora não" com a data de voltar a tentar chegada voltam à prospeção (e ao resumo de hoje).
     const retried = await retryLostLeads(createSupabaseAdminClient(), dryRun);
-    const [results, push, alerts, leadGeneration, backups, trashPurged, notificationEmails, activitiesPurged, cooling, monthlyUpdates] = await Promise.all([
+    const [results, push, alerts, leadGeneration, backups, trashPurged, notificationEmails, activitiesPurged, cooling, monthlyUpdates, renewals] = await Promise.all([
       sendDailyDigests({ appUrl: publicOrigin(req), dryRun }),
       sendDailyPushes({ dryRun }),
       // O mesmo resumo (atrasados e para hoje) no sino do dono e dos administradores.
@@ -53,8 +54,10 @@ async function handler(req: Request) {
       saveCoolingAlerts({ dryRun }),
       // Dia 1: ponto de situação mensal (tarefa em cada projeto em curso + aviso).
       runMonthlyUpdateReminders({ dryRun }),
+      // Renovações e avenças com a data a chegar: tarefa + aviso (uma vez por data).
+      runRenewalReminders({ dryRun }).catch((e: unknown) => ({ error: e instanceof Error ? e.message : String(e) })),
     ]);
-    return json({ data: results, push, alerts, archived, retried, lead_generation: leadGeneration, backups, trash_purged: trashPurged, notification_emails: notificationEmails, activities_purged: activitiesPurged, cooling, monthly_updates: monthlyUpdates });
+    return json({ data: results, push, alerts, archived, retried, lead_generation: leadGeneration, backups, trash_purged: trashPurged, notification_emails: notificationEmails, activities_purged: activitiesPurged, cooling, monthly_updates: monthlyUpdates, renewals });
   } catch (e) {
     return handleError(e);
   }
