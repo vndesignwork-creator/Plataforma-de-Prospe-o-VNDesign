@@ -42,6 +42,7 @@ import { DateInput } from '@/components/ui/date-input';
 import { SwipeRow } from '@/components/ui/swipe-row';
 import { NewTaskDialog } from './new-task-dialog';
 import { DueChip, DuePicker, TaskEditor, type TaskPatch } from './tasks-card';
+import { ChecklistChip } from './task-checklist';
 
 const GROUPS: TaskGroup[] = ['overdue', 'today', 'week', 'later', 'none'];
 
@@ -420,7 +421,8 @@ export function MyTasksView() {
                         completing.includes(t.id) && 'text-muted line-through',
                       )}
                     >
-                      <Linkified text={t.title} /> {t.due_on ? <DueChip due={t.due_on} today={today} done={completing.includes(t.id)} /> : null}
+                      <Linkified text={t.title} /> {t.due_on ? <DueChip due={t.due_on} today={today} done={completing.includes(t.id)} /> : null}{' '}
+                      <ChecklistChip checklist={t.checklist} />
                     </p>
                     <button
                       type="button"

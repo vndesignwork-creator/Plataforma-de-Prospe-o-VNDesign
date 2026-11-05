@@ -24,6 +24,7 @@ import {
   type Lead,
   type LeadTask,
   type TaskTemplate,
+  type TaskChecklistItem,
 } from '@vndesign/core';
 import { Bell, CalendarDays, Check, ChevronRight, Clock, Copy, CopyPlus, GripVertical, ListPlus, MoreVertical, Pencil, Plus, UserRound, X } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -43,8 +44,9 @@ import { verticalOnly } from '@/lib/dnd';
 import { cn } from '@/lib/utils';
 import { DueChip, ReminderChip } from './task-chips';
 import { TaskProgress } from './task-progress';
+import { ChecklistChip, ChecklistEditor } from './task-checklist';
 
-export type TaskPatch = { title: string; due_on: string | null; remind_at: string | null; assigned_to?: string | null };
+export type TaskPatch = { title: string; due_on: string | null; remind_at: string | null; assigned_to?: string | null; checklist?: TaskChecklistItem[] };
 
 // Os selos de prazo e lembrete estão num ficheiro à parte (o Dashboard usa-os sem
 // trazer o cartão inteiro, com o arrastar e largar).
@@ -170,6 +172,7 @@ export function TaskEditor({
   const [due, setDue] = useState(task.due_on ?? '');
   const [remind, setRemind] = useState(isoToLocalInput(task.remind_at));
   const [assignee, setAssignee] = useState(task.assigned_to ?? '');
+  const [steps, setSteps] = useState<TaskChecklistItem[]>(task.checklist ?? []);
   const { data: team } = useTeamNames();
   const { data: me } = useMe();
   const [saving, setSaving] = useState(false);
@@ -182,6 +185,10 @@ export function TaskEditor({
       due_on: due || null,
       remind_at: localInputToIso(remind),
       ...(assignee !== (task.assigned_to ?? '') ? { assigned_to: assignee || null } : {}),
+      // Os passos vazios saem; só vai se mudou.
+      ...(JSON.stringify(steps) !== JSON.stringify(task.checklist ?? [])
+        ? { checklist: steps.map((s) => ({ ...s, text: s.text.trim() })).filter((s) => s.text) }
+        : {}),
     });
     setSaving(false);
   }
@@ -230,6 +237,7 @@ export function TaskEditor({
           />
           <p className="mt-1 text-right text-xs text-muted tabular">{title.length}/300</p>
         </div>
+        <ChecklistEditor value={steps} onChange={setSteps} taskId={task.id} />
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor={`task-due-${task.id}`} className="mb-1.5 block text-sm font-medium">
@@ -360,6 +368,12 @@ function TaskRow({
           <>
             {' '}
             <ReminderChip task={task} />
+          </>
+        ) : null}
+        {task.checklist?.length ? (
+          <>
+            {' '}
+            <ChecklistChip checklist={task.checklist} />
           </>
         ) : null}
         {assigneeName ? (

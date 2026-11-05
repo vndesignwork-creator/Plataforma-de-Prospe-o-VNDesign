@@ -21,6 +21,23 @@ const taskTitle = z
   .min(1, { error: 'Escreve a tarefa.' })
   .max(300, { error: 'Máximo de 300 caracteres.' });
 
+/** Um passo dentro de uma tarefa. */
+export const TaskChecklistItemSchema = z
+  .object({
+    id: z.string().min(1).max(40),
+    text: z.string().trim().min(1, { error: 'Escreve o passo.' }).max(200, { error: 'Máximo de 200 caracteres.' }),
+    done: z.boolean(),
+  })
+  .meta({ id: 'TaskChecklistItem' });
+export type TaskChecklistItem = z.infer<typeof TaskChecklistItemSchema>;
+export const TaskChecklistSchema = z.array(TaskChecklistItemSchema).max(30, { error: 'No máximo 30 passos.' });
+
+/** "2 de 3" (null = sem passos). */
+export function checklistProgress(list: readonly TaskChecklistItem[] | null | undefined): { done: number; total: number } | null {
+  if (!list?.length) return null;
+  return { done: list.filter((i) => i.done).length, total: list.length };
+}
+
 export const LeadTaskSchema = z
   .object({
     id: z.uuid(),
@@ -33,6 +50,7 @@ export const LeadTaskSchema = z
     position: z.number().meta({ description: 'Ordem na lista (menor = mais acima)' }),
     assigned_to: z.uuid().nullable().optional().meta({ description: 'Responsável (membro da equipa; null = ninguém)' }),
     time_seconds: z.int().optional().meta({ description: 'Tempo registado nesta tarefa (Pomodoro ou registos à mão)' }),
+    checklist: TaskChecklistSchema.optional().meta({ description: 'Passos dentro da tarefa' }),
     created_at: z.string(),
     updated_at: z.string(),
   })
@@ -50,6 +68,7 @@ export const LeadTaskCreateSchema = z
     due_on: nullableDate.optional().transform((v) => v ?? null),
     remind_at: remindAt.optional().transform((v) => v ?? null),
     assigned_to: z.uuid({ error: 'Responsável inválido.' }).nullable().optional().meta({ description: 'Responsável (recebe um aviso)' }),
+    checklist: TaskChecklistSchema.optional().meta({ description: 'Passos dentro da tarefa' }),
   })
   .meta({ id: 'LeadTaskCreate' });
 export type LeadTaskCreate = z.output<typeof LeadTaskCreateSchema>;
@@ -67,6 +86,7 @@ export const LeadTaskUpdateSchema = z
     remind_at: remindAt.optional(),
     done: z.boolean().optional().meta({ description: 'true = concluída' }),
     assigned_to: z.uuid({ error: 'Responsável inválido.' }).nullable().optional().meta({ description: 'Responsável (null = ninguém); recebe um aviso' }),
+    checklist: TaskChecklistSchema.optional().meta({ description: 'Passos dentro da tarefa (a lista toda)' }),
   })
   .meta({ id: 'LeadTaskUpdate' });
 export type LeadTaskUpdate = z.output<typeof LeadTaskUpdateSchema>;

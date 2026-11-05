@@ -27,7 +27,16 @@ import { createActivity } from './activities';
 import { getLead, likeEscape } from './leads';
 import { notifyTaskAssigned } from './team-work';
 
-const TASK_SELECT = 'id, lead_id, title, due_on, done_at, remind_at, reminded_at, position, assigned_to, created_at, updated_at';
+const BASE_SELECT = 'id, lead_id, title, due_on, done_at, remind_at, reminded_at, position, assigned_to, created_at, updated_at';
+const CHECKLIST_SELECT = `${BASE_SELECT}, checklist`;
+/** A coluna dos passos (migração 20261108002300) existe? Fica sabido; sem ela, volta a ver passados 5 min. */
+let checklistColumn: { ok: boolean; at: number } | null = null;
+async function taskSelect(client: SupabaseClient): Promise<string> {
+  if (checklistColumn && (checklistColumn.ok || Date.now() - checklistColumn.at < 5 * 60_000)) return checklistColumn.ok ? CHECKLIST_SELECT : BASE_SELECT;
+  const { error } = await client.from('lead_tasks').select('checklist').limit(1);
+  checklistColumn = { ok: !error, at: Date.now() };
+  return checklistColumn.ok ? CHECKLIST_SELECT : BASE_SELECT;
+}
 const TEMPLATE_SELECT = 'id, name, service, items, sort_order';
 const TASK_NOT_FOUND = 'Tarefa não encontrada';
 
@@ -35,7 +44,7 @@ export async function listTasks(ctx: ApiContext, leadId: string): Promise<LeadTa
   await getLead(ctx, leadId);
   const { data, error } = await ctx.supabase
     .from('lead_tasks')
-    .select(TASK_SELECT)
+    .select(await taskSelect(ctx.supabase))
     .eq('workspace_id', ctx.workspaceId)
     .eq('lead_id', leadId)
     .order('position')
@@ -53,14 +62,14 @@ export async function listTasks(ctx: ApiContext, leadId: string): Promise<LeadTa
   for (const e of (time ?? []) as { task_id: string; started_at: string; ended_at: string }[]) {
     seconds.set(e.task_id, (seconds.get(e.task_id) ?? 0) + entrySeconds(e));
   }
-  return ((data ?? []) as LeadTask[]).map((t) => (seconds.get(t.id) ? { ...t, time_seconds: seconds.get(t.id) } : t));
+  return ((data ?? []) as unknown as LeadTask[]).map((t) => (seconds.get(t.id) ? { ...t, time_seconds: seconds.get(t.id) } : t));
 }
 
 /** Pesquisa rápida: tarefas de todos os leads (as por fazer primeiro; sem arquivados nem anonimizados). */
 export async function searchTasks(ctx: ApiContext, query: TaskSearchQuery): Promise<TaskSearchResult[]> {
   const { data, error } = await ctx.supabase
     .from('lead_tasks')
-    .select(`${TASK_SELECT}, lead:leads!inner(id, number, company_name, project_title, archived_at, anonymized_at)`)
+    .select(`${await taskSelect(ctx.supabase)}, lead:leads!inner(id, number, company_name, project_title, archived_at, anonymized_at)`)
     .eq('workspace_id', ctx.workspaceId)
     .ilike('title', `%${likeEscape(query.q)}%`)
     .is('lead.archived_at', null)
@@ -114,7 +123,7 @@ export async function createTask(ctx: ApiContext, leadId: string | null, input: 
       // As novas ficam em cima (as listas prontas entram no fim, pela ordem da lista).
       position: await firstPosition(ctx, leadId),
     })
-    .select(TASK_SELECT)
+    .select(await taskSelect(ctx.supabase))
     .single();
   // Tarefa solta antes da migração 20261108002200 (lead_id ainda obrigatório na base de dados).
   if (!leadId && result.error?.code === '23502') {
@@ -124,7 +133,7 @@ export async function createTask(ctx: ApiContext, leadId: string | null, input: 
       'A base de dados ainda não foi atualizada para aceitar tarefas sem lead. Escolhe um lead ou projeto, ou atualiza a base de dados (npx supabase db push).',
     );
   }
-  const task = unwrap(result) as LeadTask;
+  const task = unwrap(result) as unknown as LeadTask;
   if (task.assigned_to) await notifyTaskAssigned(ctx, task);
   return task;
 }
@@ -152,7 +161,7 @@ export async function updateTask(ctx: ApiContext, id: string, patch: LeadTaskUpd
   }
   if (!Object.keys(update).length) {
     return unwrap(
-      await ctx.supabase.from('lead_tasks').select(TASK_SELECT).eq('workspace_id', ctx.workspaceId).eq('id', id).maybeSingle(),
+      await ctx.supabase.from('lead_tasks').select(await taskSelect(ctx.supabase)).eq('workspace_id', ctx.workspaceId).eq('id', id).maybeSingle(),
       TASK_NOT_FOUND,
     ) as LeadTask;
   }
@@ -161,9 +170,9 @@ export async function updateTask(ctx: ApiContext, id: string, patch: LeadTaskUpd
     .update(update)
     .eq('workspace_id', ctx.workspaceId)
     .eq('id', id)
-    .select(TASK_SELECT)
+    .select(await taskSelect(ctx.supabase))
     .maybeSingle();
-  const task = unwrap(result, TASK_NOT_FOUND) as LeadTask;
+  const task = unwrap(result, TASK_NOT_FOUND) as unknown as LeadTask;
   if (before && task.assigned_to && task.assigned_to !== before.assigned_to) await notifyTaskAssigned(ctx, task);
   return task;
 }
@@ -174,6 +183,7 @@ export async function updateTask(ctx: ApiContext, id: string, patch: LeadTaskUpd
  */
 export async function listOpenTasks(ctx: ApiContext, query: TaskListQuery): Promise<TaskListItem[]> {
   const done = query.state === 'done';
+  const TASK_SELECT = await taskSelect(ctx.supabase);
   const base = (select: string) => {
     let q = ctx.supabase.from('lead_tasks').select(select).eq('workspace_id', ctx.workspaceId);
     q = done ? q.not('done_at', 'is', null).gte('done_at', new Date(Date.now() - 30 * 86_400_000).toISOString()) : q.is('done_at', null);
@@ -297,6 +307,7 @@ export async function withTaskProgress<L extends Pick<Lead, 'id'>>(
 // "Hoje": tarefas por fazer com prazo
 // -----------------------------------------------------------------------------
 export async function fetchTodayTasks(client: SupabaseClient, workspaceId: string, today = todayIso()): Promise<TodayTasks> {
+  const TASK_SELECT = await taskSelect(client);
   const { data, error } = await client
     .from('lead_tasks')
     .select(`${TASK_SELECT}, lead:leads!inner(id, number, company_name, status, archived_at, anonymized_at)`)
