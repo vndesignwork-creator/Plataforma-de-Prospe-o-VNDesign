@@ -351,8 +351,8 @@ export function TaskRow({
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
-        // Telemóvel: em cima a pega, o visto e o "⋯"; o texto por baixo, com a largura toda.
-        'group relative flex items-start gap-1.5 px-2 py-2 transition-opacity duration-300 hover:bg-surface-2 max-sm:flex-wrap max-sm:items-center max-sm:gap-y-1 sm:gap-2 sm:px-3',
+        // Em cima a pega, o visto e os botões; o texto por baixo, com a largura toda (em todos os ecrãs).
+        'group relative flex flex-wrap items-center gap-x-1.5 gap-y-1 px-2 py-2 transition-opacity duration-300 hover:bg-surface-2 sm:gap-x-2 sm:px-3',
         isDragging && 'z-10 bg-surface-2 opacity-80 shadow-card',
         completing && 'opacity-50',
       )}
@@ -382,7 +382,7 @@ export function TaskRow({
           });
         }}
         aria-label={done ? `Reabrir: ${task.title}` : `Concluir: ${task.title}`}
-        className="mt-1 h-4 w-4 shrink-0 cursor-pointer transition-transform checked:scale-110 max-sm:mt-0"
+        className="h-4 w-4 shrink-0 cursor-pointer transition-transform checked:scale-110"
       />
       {editing ? <TaskEditor task={task} onSave={onSave} onCancel={onCancelEdit} /> : null}
       {/* Tocar no texto edita; os links do texto abrem (com o teclado: Tab até ao lápis). */}
@@ -391,7 +391,7 @@ export function TaskRow({
           if (!(e.target as HTMLElement).closest('a')) onEdit();
         }}
         className={cn(
-          'min-w-0 flex-1 cursor-text text-sm break-words whitespace-pre-line transition-colors max-sm:order-last max-sm:basis-full max-sm:px-1',
+          'order-last min-w-0 flex-1 basis-full cursor-text px-1 text-sm break-words whitespace-pre-line transition-colors',
           shownDone && 'text-muted line-through',
         )}
       >
@@ -459,7 +459,7 @@ export function TaskRow({
         <Pencil className="h-3.5 w-3.5" aria-hidden />
       </button>
       {/* Computador: os ícones aparecem ao passar o rato. */}
-      <span className="hidden shrink-0 items-center gap-0.5 sm:flex sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100 pointer-coarse:opacity-100">
+      <span className="ml-auto hidden shrink-0 items-center gap-0.5 sm:flex sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100 pointer-coarse:opacity-100">
         <button
           type="button"
           onClick={() => void copyText(task.title)}
