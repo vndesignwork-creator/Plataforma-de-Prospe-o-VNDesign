@@ -28,9 +28,9 @@ export const GOAL_UNITS: Record<GoalMetric, [string, string]> = {
 };
 export const GOAL_HINTS: Record<GoalMetric, string> = {
   revenue: 'Pagamentos marcados como pagos neste mês.',
-  proposals: 'Leads que passaram a "Proposta enviada".',
+  proposals: 'Leads que passaram a "Proposta enviada" (cada lead uma vez, por email ou não).',
   clients: 'Leads que passaram a Cliente.',
-  emails: 'Emails enviados (pela plataforma ou marcados como enviados).',
+  emails: 'Emails de prospeção e follow-up (pela plataforma ou marcados como enviados). Os das propostas contam só em Propostas.',
   calls: 'Leads a quem se ligou (cada lead conta uma vez por dia).',
   whatsapp: 'Leads a quem se mandou WhatsApp (cada lead conta uma vez por dia).',
 };
