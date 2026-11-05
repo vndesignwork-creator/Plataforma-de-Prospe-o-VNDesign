@@ -71,3 +71,20 @@ test('sessão de prospeção: lead sem contactos, colar o telefone e aparece Lig
   // Ainda sem email: o "Procurar contacto" continua (só para o email).
   await expect(finder).toContainText('Sem email');
 });
+
+test('lista: procurar contactos em lote e guardar o que faltar', async ({ page }) => {
+  const a = await createLead(page.request, { company_name: `Lote Contactos A ${run}`, website: SITE });
+  const b = await createLead(page.request, { company_name: `Lote Contactos B ${run}`, email: 'ja@tem.pt', phone: '+351 911 111 111' });
+  await page.goto(`/leads?q=${encodeURIComponent(`Lote Contactos`)}`);
+  await page.getByRole('checkbox', { name: new RegExp(`Lote Contactos A ${run}`) }).check();
+  await page.getByRole('checkbox', { name: new RegExp(`Lote Contactos B ${run}`) }).check();
+  const bar = page.getByRole('region', { name: 'Ações nos leads selecionados' });
+  // O B já tem os dois: só conta o A.
+  await bar.getByRole('button', { name: 'Procurar contactos (1)' }).click();
+  await expect(page.getByText(/Contactos novos em 1 de 1 leads/)).toBeVisible({ timeout: 60_000 });
+  const saved = (await (await page.request.get(`/api/v1/leads/${a.id}`)).json()).data as { phone: string | null; email: string | null };
+  expect(saved.phone?.replace(/\D/g, '')).toContain('213456789');
+  expect(saved.email).toBe('reservas@tasca-exemplo.pt');
+  const untouched = (await (await page.request.get(`/api/v1/leads/${b.id}`)).json()).data as { email: string };
+  expect(untouched.email).toBe('ja@tem.pt');
+});

@@ -51,7 +51,7 @@ import { cn, displayHost } from '@/lib/utils';
 import { ChannelLabel, MobileLabel, PageSpeedScore, StatusBadge } from './badges';
 import { LeadScoreBadge } from './lead-score';
 import { MultiSelectFilter, SingleSelectFilter } from './multi-select';
-import { BulkFollowUpMenu, BulkStatusMenu, BulkTagMenu } from './bulk-actions';
+import { BulkFollowUpMenu, BulkFindContactsButton, BulkStatusMenu, BulkTagMenu } from './bulk-actions';
 import { customFilterOptions, useCustomFields } from './custom-fields';
 import { rememberLeadList } from './lead-pager';
 import { SavedViewsMenu } from './saved-views';
@@ -980,6 +980,7 @@ function LeadsTableView() {
           <BulkTagMenu rows={selectedRows} onDone={clearSelection} />
           <BulkStatusMenu rows={selectedRows} onDone={clearSelection} />
           <BulkFollowUpMenu rows={selectedRows} onDone={clearSelection} />
+          <BulkFindContactsButton rows={selectedRows} onDone={clearSelection} />
           {prospector ? null : (
             <Button size="sm" variant="outline" className="text-danger" onClick={() => setConfirmDelete(true)}>
               <Trash2 className="h-3.5 w-3.5" aria-hidden /> Apagar

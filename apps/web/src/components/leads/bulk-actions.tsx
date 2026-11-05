@@ -6,9 +6,9 @@
  * follow-up. As etiquetas e o follow-up têm "Anular" no aviso (só repõe o que
  * mudou: quem já tinha a etiqueta, ou a data que cada um tinha).
  */
-import { LEAD_STATUSES, LEAD_STATUS_META, formatDate, normalizeTags, reschedulePlan, todayIso, type Lead, type LeadStatus, type LostReason } from '@vndesign/core';
+import { LEAD_STATUSES, LEAD_STATUS_META, type BulkFindContactsResult, formatDate, normalizeTags, reschedulePlan, todayIso, type Lead, type LeadStatus, type LostReason } from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { BellRing, CircleDot, Plus, Tag, X } from 'lucide-react';
+import { BellRing, CircleDot, Plus, Search, Tag, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { StatusIcon } from '@/components/icons/lead-icons';
@@ -17,7 +17,7 @@ import { DateMenu } from '@/components/ui/date-menu';
 import { Dialog } from '@/components/ui/dialog';
 import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownSeparator, DropdownTrigger } from '@/components/ui/dropdown';
 import { Input } from '@/components/ui/input';
-import { errorMessage } from '@/lib/api-client';
+import { api, errorMessage } from '@/lib/api-client';
 import { bulkResultMessage, useBulkLeadAction, useReschedule } from '@/lib/queries';
 import { LostReasonDialog } from './lost-reason';
 import { useLeadTags } from './tags';
@@ -221,5 +221,40 @@ export function BulkFollowUpMenu({ rows, onDone }: { rows: Lead[]; onDone: () =>
       }
       onPick={(d) => void pick(d)}
     />
+  );
+}
+
+/** Procurar contactos (telefone, email, site) nos selecionados que não os têm, e guardar o que se encontrar. */
+export function BulkFindContactsButton({ rows, onDone }: { rows: Lead[]; onDone: () => void }) {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const missing = rows.filter((l) => !l.anonymized_at && (!l.phone || !l.email || l.email_bounced_at));
+  if (!missing.length) return null;
+  async function run() {
+    const ids = missing.slice(0, 25).map((l) => l.id);
+    setBusy(true);
+    const toastId = toast.loading(`A procurar contactos em ${ids.length} lead${ids.length === 1 ? '' : 's'}… (pode demorar um minuto)`);
+    try {
+      const { data } = await api<{ data: BulkFindContactsResult }>('/leads/find-contacts', { method: 'POST', body: { ids } });
+      const parts = [data.phones ? `${data.phones} telefone${data.phones === 1 ? '' : 's'}` : null, data.emails ? `${data.emails} email${data.emails === 1 ? '' : 's'}` : null, data.websites ? `${data.websites} site${data.websites === 1 ? '' : 's'}` : null].filter(Boolean);
+      toast.success(
+        data.updated
+          ? `Contactos novos em ${data.updated} de ${data.checked} leads: ${parts.join(', ')}.${missing.length > 25 ? ' Só os primeiros 25: seleciona os restantes e repete.' : ''}`
+          : `Não encontrei contactos novos nos ${data.checked} leads. Experimenta os atalhos de pesquisa na ficha de cada um.`,
+        { id: toastId },
+      );
+      void qc.invalidateQueries({ queryKey: ['leads'] });
+      void qc.invalidateQueries({ queryKey: ['lead'] });
+      onDone();
+    } catch (error) {
+      toast.error(errorMessage(error), { id: toastId });
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Button size="sm" variant="outline" onClick={() => void run()} loading={busy} title="Procura o telefone, o email e o site nos sites e no Google Maps e guarda o que faltar">
+      <Search className="h-3.5 w-3.5" aria-hidden /> Procurar contactos ({Math.min(missing.length, 25)})
+    </Button>
   );
 }

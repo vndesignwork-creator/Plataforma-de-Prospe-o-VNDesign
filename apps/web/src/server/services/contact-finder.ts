@@ -3,10 +3,10 @@
  * mesma proteção da análise de sites) e, com GOOGLE_PLACES_API_KEY, o Google
  * Maps. Devolve só o que ainda não está no lead; nada é guardado sem escolha.
  */
-import { isSocialUrl, pageContacts, phoneKey, textPhones, type ContactFindings } from '@vndesign/core';
+import { formatSharedPhone, isSocialUrl, pageContacts, phoneKey, textPhones, type BulkFindContactsResult, type ContactFindings } from '@vndesign/core';
 import { safeGet } from '../audit/safe-request';
 import type { ApiContext } from '../context';
-import { getLead } from './leads';
+import { getLead, updateLead } from './leads';
 import { lookupPlace } from './share';
 
 type Page = { url: string; body: string };
@@ -80,4 +80,43 @@ export async function findLeadContacts(ctx: ApiContext, leadId: string): Promise
   const newPhones = [...new Map(phones.map((p) => [phoneKey(p), p])).entries()].filter(([k]) => k.length >= 9 && !known.has(k)).map(([, p]) => p);
   const newEmails = [...new Set(emails.map((e) => e.toLowerCase()))].filter((e) => e !== lead.email?.toLowerCase());
   return { phones: newPhones.slice(0, 6), emails: newEmails.slice(0, 6), website, sources };
+}
+
+/**
+ * Procurar contactos em lote: para cada lead sem telefone ou sem email (ou com o
+ * email devolvido), procura e guarda o primeiro que encontrar (e o site, se faltar).
+ * Quatro de cada vez; um que falhe não para os outros.
+ */
+export async function findContactsBulk(ctx: ApiContext, ids: string[]): Promise<BulkFindContactsResult> {
+  const result: BulkFindContactsResult = { checked: 0, updated: 0, phones: 0, emails: 0, websites: 0, skipped: 0, failed: 0 };
+  const queue = [...new Set(ids)];
+  const work = async () => {
+    for (let id = queue.shift(); id; id = queue.shift()) {
+      try {
+        const lead = await getLead(ctx, id);
+        const needsEmail = !lead.email || !!lead.email_bounced_at;
+        if (lead.anonymized_at || (lead.phone && !needsEmail)) {
+          result.skipped++;
+          continue;
+        }
+        result.checked++;
+        const found = await findLeadContacts(ctx, id);
+        const patch: { phone?: string; email?: string; website?: string } = {};
+        if (!lead.phone && found.phones[0]) patch.phone = formatSharedPhone(found.phones[0]);
+        if (needsEmail && found.emails[0] && found.emails[0].toLowerCase() !== lead.email?.toLowerCase()) patch.email = found.emails[0];
+        if (!lead.website && found.website) patch.website = found.website;
+        if (!Object.keys(patch).length) continue;
+        await updateLead(ctx, id, patch);
+        result.updated++;
+        if (patch.phone) result.phones++;
+        if (patch.email) result.emails++;
+        if (patch.website) result.websites++;
+      } catch (error) {
+        result.failed++;
+        console.warn('[procurar contactos] lead', id, error instanceof Error ? error.message : error);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(4, queue.length) }, work));
+  return result;
 }

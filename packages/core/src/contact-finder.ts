@@ -15,6 +15,24 @@ export const ContactFindingsSchema = z
   .meta({ id: 'ContactFindings' });
 export type ContactFindings = z.infer<typeof ContactFindingsSchema>;
 
+/** Procurar contactos em lote (lista de leads): até 25 de cada vez. */
+export const BulkFindContactsSchema = z
+  .object({ ids: z.array(z.uuid()).min(1, { error: 'Escolhe pelo menos um lead.' }).max(25, { error: 'No máximo 25 leads de cada vez.' }) })
+  .meta({ id: 'BulkFindContacts' });
+
+export const BulkFindContactsResultSchema = z
+  .object({
+    checked: z.int(),
+    updated: z.int().meta({ description: 'Leads com algum contacto novo guardado' }),
+    phones: z.int(),
+    emails: z.int(),
+    websites: z.int(),
+    skipped: z.int().meta({ description: 'Já tinham email e telefone (ou anonimizados)' }),
+    failed: z.int(),
+  })
+  .meta({ id: 'BulkFindContactsResult' });
+export type BulkFindContactsResult = z.infer<typeof BulkFindContactsResultSchema>;
+
 export interface SearchLink {
   key: 'google' | 'maps' | 'facebook' | 'instagram';
   label: string;
