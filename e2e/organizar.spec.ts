@@ -254,7 +254,7 @@ test('ditar no novo lead (empresa e notas recolhíveis), na prospeção e no ger
   });
   await page.goto('/leads/novo');
   const company = page.getByRole('textbox', { name: 'Empresa' });
-  await company.locator('xpath=ancestor::div[contains(@class,"items-start")][1]').getByRole('button', { name: 'Ditar (falar em vez de escrever)' }).click();
+  await company.locator('xpath=ancestor::div[contains(@class,"items-end")][1]').getByRole('button', { name: 'Ditar (falar em vez de escrever)' }).click();
   await expect(company).toHaveValue('Padaria do bairro');
   await page.getByRole('button', { name: 'Concluir o ditado' }).click();
 

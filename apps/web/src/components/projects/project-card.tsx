@@ -202,6 +202,8 @@ export function ProjectCard({ lead }: { lead: Lead }) {
       <CardHeader
         title="Projeto"
         description={lead.project_completed_at ? 'Projeto concluído.' : undefined}
+        // Telemóvel: cada linha de botões ocupa a largura toda (sem texto partido nem botões aos saltos); o ⋯ fica pequeno.
+        actionsClassName="max-sm:w-full max-sm:[&>*]:flex-auto max-sm:[&>*]:whitespace-nowrap max-sm:[&>*:last-child]:flex-none"
         actions={
           info ? (
             <>

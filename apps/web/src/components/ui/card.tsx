@@ -10,12 +10,15 @@ export function CardHeader({
   description,
   actions,
   className,
+  actionsClassName,
   as: Heading = 'h2',
 }: {
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
   className?: string;
+  /** Classes da zona dos botões (ex.: no telemóvel, a largura toda). */
+  actionsClassName?: string;
   as?: 'h2' | 'h3';
 }) {
   return (
@@ -26,7 +29,7 @@ export function CardHeader({
         {description ? <p className="mt-0.5 text-sm text-muted">{description}</p> : null}
       </div>
       {/* ml-auto: se não couberem ao lado do título, passam para baixo encostadas à direita. */}
-      {actions ? <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">{actions}</div> : null}
+      {actions ? <div className={cn('ml-auto flex max-w-full flex-wrap items-center justify-end gap-2', actionsClassName)}>{actions}</div> : null}
     </div>
   );
 }
