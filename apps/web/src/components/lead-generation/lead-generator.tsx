@@ -5,14 +5,15 @@
  * internet (1–3 minutos, em segundo plano) → revês a lista e escolhes quais
  * entram como leads (os sites são analisados a seguir).
  */
-import { cleanAiText, type LeadCandidate, type LeadGenerationRun } from '@vndesign/core';
-import { CalendarClock, ChevronDown, ExternalLink, Globe, History, Loader2, Mail, Phone, Repeat, RotateCcw, Search, Sparkles } from 'lucide-react';
+import { cleanAiText, lookalikeSuggestions, type LeadCandidate, type LeadGenerationRun } from '@vndesign/core';
+import { CalendarClock, ChevronDown, ExternalLink, Globe, Handshake, History, Loader2, Mail, Phone, Repeat, RotateCcw, Search, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/page-header';
-import { Button } from '@/components/ui/button';
+import { Button, buttonClasses } from '@/components/ui/button';
+import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownTrigger } from '@/components/ui/dropdown';
 import { Input } from '@/components/ui/input';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { ServiceChips } from '@/components/services/services';
@@ -22,6 +23,7 @@ import {
   useLeadGenerationRun,
   useLeadGenerationRuns,
   useLeadGenerationSchedules,
+  useLeads,
   useRole,
   useStartLeadGeneration,
   useTeamStats,
@@ -33,6 +35,41 @@ import { COUNTS, EMPTY_DRAFT, SEARCH_EXAMPLES, SearchFields, draftToRequest, typ
 const usd = (value: number | null) => (value === null ? null : value.toLocaleString('pt-PT', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }));
 
 const dateTime = (iso: string) => new Date(iso).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+/** "Parecidos com os meus clientes": preenche a pesquisa com o setor, a zona e os serviços dos clientes que já tens. */
+function LookalikeMenu({ onPick }: { onPick: (draft: SearchDraft) => void }) {
+  const { data } = useLeads({ status: 'cliente', limit: 200, archived: 'include' });
+  const suggestions = lookalikeSuggestions(data?.data ?? []);
+  if (!suggestions.length) return null;
+  return (
+    <DropdownRoot>
+      <DropdownTrigger className={buttonClasses('outline', 'sm')}>
+        <Handshake className="h-3.5 w-3.5" aria-hidden /> Parecidos com os meus clientes <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+      </DropdownTrigger>
+      <DropdownContent align="end" className="max-w-sm">
+        <DropdownLabel>Procurar empresas como…</DropdownLabel>
+        {suggestions.map((s) => (
+          <DropdownItem
+            key={s.key}
+            onSelect={() =>
+              onPick({ query: s.query, city: s.city ?? '', sectorId: s.sector_id ?? '', services: s.services, count: EMPTY_DRAFT.count })
+            }
+          >
+            <span className="flex min-w-0 flex-col">
+              <span className="truncate font-medium">
+                {[s.sector_name, s.city].filter(Boolean).join(' · ')}{' '}
+                <span className="font-normal text-muted">
+                  ({s.clients} cliente{s.clients === 1 ? '' : 's'})
+                </span>
+              </span>
+              <span className="truncate text-xs text-muted">{s.examples.join(', ')}</span>
+            </span>
+          </DropdownItem>
+        ))}
+      </DropdownContent>
+    </DropdownRoot>
+  );
+}
 
 function SearchForm({
   draft,
@@ -77,6 +114,14 @@ function SearchForm({
       <CardHeader
         title="Nova pesquisa"
         description="A IA pesquisa na internet empresas reais que encaixam no pedido. Revês a lista antes de entrar algum lead."
+        actions={
+          <LookalikeMenu
+            onPick={(next) => {
+              setDraft(next);
+              toast.success('Pesquisa preenchida com o que os teus clientes têm em comum. Ajusta e carrega em Procurar com IA.');
+            }}
+          />
+        }
       />
       {/* Pedido em cima; Zona, Setor, Serviços e Quantas numa linha (2×2 no telemóvel). */}
       <form onSubmit={submit} className="grid grid-cols-2 gap-4 p-4 lg:grid-cols-4" noValidate>
