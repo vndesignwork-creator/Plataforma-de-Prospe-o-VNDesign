@@ -8,6 +8,7 @@ import { useLeadTags } from '@/components/leads/tags';
 import { Badge, Card } from '@/components/ui/card';
 import {
   useApiTokens,
+  useAutomationRules,
   useDoNotContact,
   useMailAccount,
   useMe,
@@ -117,6 +118,12 @@ function ApiStatus() {
   return <StatusBadge status={active === undefined ? null : { text: active ? `${active} ${active === 1 ? 'chave ativa' : 'chaves ativas'}` : 'Sem chaves' }} />;
 }
 
+function RulesStatus() {
+  const { data } = useAutomationRules();
+  const on = data?.filter((r) => r.enabled).length;
+  return <StatusBadge status={on === undefined ? null : { text: on ? `${on} ${on === 1 ? 'regra ligada' : 'regras ligadas'}` : 'Sem regras' }} />;
+}
+
 const STATUS: Record<SettingsSection['slug'], () => ReactNode> = {
   assinatura: SignatureStatus,
   conta: AccountStatus,
@@ -130,6 +137,7 @@ const STATUS: Record<SettingsSection['slug'], () => ReactNode> = {
   etiquetas: TagsStatus,
   campos: CustomFieldsStatus,
   'listas-tarefas': TaskTemplatesStatus,
+  regras: RulesStatus,
   funcionalidades: FeaturesStatus,
   ia: AiStatus,
   api: ApiStatus,

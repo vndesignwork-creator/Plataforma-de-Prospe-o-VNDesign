@@ -3,6 +3,7 @@
  * importação e pela API de integração). Toda a lógica de duplicados e da lista
  * "não contactar" vive aqui e nas funções SQL.
  */
+import { runRulesForLead } from './automation';
 import {
   addDays,
   fixDirectoryWebsite,
@@ -267,7 +268,9 @@ export async function createLead(
     .insert({ ...input, workspace_id: ctx.workspaceId, created_by: ctx.user.id })
     .select(LEAD_SELECT)
     .single();
-  return unwrap(result) as unknown as Lead;
+  const created = unwrap(result) as unknown as Lead;
+  // Regras automáticas (Definições → Regras automáticas): o lead novo já sai com elas aplicadas.
+  return (await runRulesForLead(ctx, created.id)) ? getLead(ctx, created.id) : created;
 }
 
 export async function updateLead(ctx: ApiContext, id: string, patch: LeadUpdate): Promise<Lead> {
@@ -295,7 +298,8 @@ export async function updateLead(ctx: ApiContext, id: string, patch: LeadUpdate)
     .eq('id', id)
     .select(LEAD_SELECT)
     .maybeSingle();
-  return unwrap(result, NOT_FOUND) as unknown as Lead;
+  const updated = unwrap(result, NOT_FOUND) as unknown as Lead;
+  return (await runRulesForLead(ctx, id)) ? getLead(ctx, id) : updated;
 }
 
 export async function deleteLead(

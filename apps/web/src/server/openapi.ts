@@ -42,6 +42,10 @@ import {
   ProjectDeliverableSchema,
   ClientRequestSchema,
   RecurringSummarySchema,
+  AutomationRuleSchema,
+  AutomationRuleCreateSchema,
+  AutomationRuleUpdateSchema,
+  RulePreviewSchema,
   AccountingReportSchema,
   RenewalCreateSchema,
   RenewalRenewSchema,
@@ -2095,6 +2099,25 @@ export function getOpenApiDocument() {
           requestParams: { path: idParam },
           requestBody: body(RenewalRenewSchema),
           responses: { '200': ok(data(RenewalSchema)), ...withNotFound },
+        }),
+      },
+      '/automation-rules': {
+        get: op({ tags: ['Leads'], summary: 'Regras automáticas (se o lead cumpre as condições, faz as ações)', responses: { '200': ok(data(z.array(AutomationRuleSchema))), ...common } }),
+        post: op({ tags: ['Leads'], summary: 'Nova regra automática (dono e administradores)', requestBody: body(AutomationRuleCreateSchema), responses: { '201': ok(data(AutomationRuleSchema), 'Criada'), '403': problem('Sem permissão'), ...common } }),
+      },
+      '/automation-rules/{id}': {
+        patch: op({ tags: ['Leads'], summary: 'Mudar ou ligar/desligar a regra', requestParams: { path: idParam }, requestBody: body(AutomationRuleUpdateSchema), responses: { '200': ok(data(AutomationRuleSchema)), ...withNotFound } }),
+        delete: op({ tags: ['Leads'], summary: 'Apagar a regra (o que já fez nos leads fica)', requestParams: { path: idParam }, responses: { '204': { description: 'Apagada' }, ...withNotFound } }),
+      },
+      '/automation-rules/{id}/run': {
+        post: op({ tags: ['Leads'], summary: '"Aplicar agora" aos leads que cumprem a regra (uma vez cada)', requestParams: { path: idParam }, responses: { '200': ok(data(z.object({ applied: z.int() }))), ...withNotFound } }),
+      },
+      '/automation-rules/preview': {
+        post: op({
+          tags: ['Leads'],
+          summary: 'Quantos leads cumprem agora as condições (sem fazer nada)',
+          requestBody: body(RulePreviewSchema),
+          responses: { '200': ok(data(z.object({ count: z.int(), sample: z.array(z.object({ id: z.uuid(), number: z.int(), company_name: z.string() })) }))), ...common },
         }),
       },
       '/reports/accounting': {

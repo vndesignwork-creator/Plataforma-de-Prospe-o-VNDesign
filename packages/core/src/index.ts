@@ -66,6 +66,7 @@ export * from './call-windows';
 export * from './client-requests';
 export * from './renewals';
 export * from './accounting';
+export * from './automation';
 export * from './reach-out';
 export * from './quiet-hours';
 export * from './replies';

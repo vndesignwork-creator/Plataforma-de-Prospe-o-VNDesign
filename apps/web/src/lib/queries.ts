@@ -80,6 +80,8 @@ import type {
   ProjectTime,
   ProjectDeliverable,
   ClientRequest,
+  AutomationRule,
+  AutomationRuleCreate,
   RecurringSummary,
   Renewal,
   RenewalCreate,
@@ -1115,6 +1117,41 @@ export function useDeleteClientRequest(leadId: string) {
   return useMutation({
     mutationFn: (id: string) => api(`/client-requests/${id}`, { method: 'DELETE' }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['client-requests', leadId] }),
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Regras automáticas
+// -----------------------------------------------------------------------------
+export function useAutomationRules(enabled = true) {
+  return useQuery({ queryKey: ['automation-rules'], queryFn: () => api<{ data: AutomationRule[] }>('/automation-rules').then((r) => r.data), enabled });
+}
+
+export function useSaveAutomationRule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id?: string; body: Partial<AutomationRuleCreate> }) =>
+      api<{ data: AutomationRule }>(id ? `/automation-rules/${id}` : '/automation-rules', { method: id ? 'PATCH' : 'POST', body }).then((r) => r.data),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['automation-rules'] }),
+  });
+}
+
+export function useDeleteAutomationRule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api(`/automation-rules/${id}`, { method: 'DELETE' }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['automation-rules'] }),
+  });
+}
+
+export function useRunAutomationRule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api<{ data: { applied: number } }>(`/automation-rules/${id}/run`, { method: 'POST' }).then((r) => r.data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['automation-rules'] });
+      void qc.invalidateQueries({ queryKey: ['leads'] });
+    },
   });
 }
 

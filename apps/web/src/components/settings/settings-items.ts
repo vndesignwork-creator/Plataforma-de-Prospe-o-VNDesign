@@ -53,6 +53,7 @@ const ITEMS: Omit<SettingsItem, 'id'>[] = [
   { slug: 'assinatura', label: 'Link do portfólio', where: 'Portefólio', keywords: 'portefólio portfolio trabalhos' },
   { slug: 'assinatura', label: 'Portfólio de design gráfico', where: 'Portefólio', keywords: 'portefólio behance logótipos flyers posts' },
   { slug: 'assinatura', label: 'Links de projetos', find: 'Projetos (um link por linha)', where: 'Portefólio', keywords: 'projetos exemplos sites feitos' },
+  { slug: 'regras', label: 'Nova regra', find: 'Regras automáticas', heading: true, keywords: 'automático automatizar se então etiqueta fase sem site sem resposta em pausa tarefa responsável' },
   { slug: 'conta', label: 'Fotografia e nome', find: 'Perfil', heading: true, keywords: 'perfil foto avatar nome no menu' },
   { slug: 'conta', label: 'Nova palavra-passe', keywords: 'password mudar alterar' },
   { slug: 'conta', label: 'Tema', keywords: 'escuro claro modo noturno dark light cores' },

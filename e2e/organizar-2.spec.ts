@@ -285,3 +285,48 @@ test('Dashboard: a hora certa ao lado da data', async ({ page }) => {
   await page.goto('/dashboard');
   await expect(page.locator('time').filter({ hasText: /^\d{2}:\d{2}$/ }).first()).toBeVisible();
 });
+
+test('regras automáticas: criar no ecrã, aplicar aos que já existem e aos leads novos', async ({ page }) => {
+  const city = `Regras ${run}`;
+  const tag = `auto-${run}`;
+  const before = await createLead(page.request, { company_name: `Antes da regra ${run}`, city });
+  let ruleId: string | null = null;
+  try {
+    await page.goto('/definicoes/regras');
+    await page.getByRole('button', { name: 'Nova regra' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Nova regra' });
+    await dialog.getByLabel('Nome da regra').fill(`Regra ${run}`);
+    await dialog.getByLabel('Condição 1', { exact: true }).selectOption('city_is');
+    await dialog.getByLabel('Cidade', { exact: true }).fill(city);
+    await expect(dialog.getByRole('status')).toContainText('cumpre isto 1 lead');
+    await dialog.getByLabel('Etiqueta', { exact: true }).fill(tag);
+    await dialog.getByRole('button', { name: 'Guardar' }).click();
+    await expect(page.getByText('Regra guardada e aplicada a 1 lead.')).toBeVisible();
+    await expect(page.getByText(`Se é da cidade ${city.toLowerCase()} → pôr a etiqueta “${tag}”.`)).toBeVisible();
+
+    const rules = (await (await page.request.get('/api/v1/automation-rules')).json()).data as { id: string; name: string; runs: number }[];
+    ruleId = rules.find((r) => r.name === `Regra ${run}`)!.id;
+    const first = (await (await page.request.get(`/api/v1/leads/${before.id}`)).json()).data as { tags: string[] };
+    expect(first.tags).toContain(tag);
+
+    // Lead novo: já sai com a regra aplicada (e fica na linha do tempo).
+    const res = await page.request.post('/api/v1/leads?force=true', { data: { company_name: `Depois da regra ${run}`, city } });
+    expect(res.status()).toBe(201);
+    const created = (await res.json()).data as { id: string; tags: string[] };
+    expect(created.tags).toContain(tag);
+    const activities = (await (await page.request.get(`/api/v1/leads/${created.id}/activities`)).json()).data as { body: string | null }[];
+    expect(activities.some((a) => a.body?.includes(`Regra automática “Regra ${run}”`))).toBe(true);
+
+    // Uma vez por lead: tirar a etiqueta à mão não a faz voltar.
+    const edited = await page.request.patch(`/api/v1/leads/${created.id}`, { data: { tags: [] } });
+    expect(((await edited.json()).data as { tags: string[] }).tags).toEqual([]);
+
+    // Desligada: não se aplica.
+    await page.getByRole('switch', { name: `Desligar a regra Regra ${run}` }).click();
+    await expect(page.getByRole('switch', { name: `Ligar a regra Regra ${run}` })).toBeVisible();
+    const off = (await (await page.request.post('/api/v1/leads?force=true', { data: { company_name: `Regra desligada ${run}`, city } })).json()).data as { tags: string[] };
+    expect(off.tags ?? []).not.toContain(tag);
+  } finally {
+    if (ruleId) await page.request.delete(`/api/v1/automation-rules/${ruleId}`);
+  }
+});

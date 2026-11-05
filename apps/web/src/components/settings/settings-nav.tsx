@@ -18,6 +18,7 @@ import {
   Sparkles,
   Tag,
   ToggleRight,
+  Workflow,
   UserCog,
   type LucideIcon,
 } from 'lucide-react';
@@ -66,6 +67,7 @@ export const SETTINGS_SECTIONS = [
   { slug: 'etiquetas', label: 'Etiquetas', group: 'leads', icon: Tag, description: 'Marcas livres para filtrar os leads.' },
   { slug: 'campos', label: 'Campos personalizados', group: 'leads', icon: SlidersHorizontal, description: 'Campos extra na ficha do lead.' },
   { slug: 'listas-tarefas', label: 'Listas de tarefas', group: 'leads', icon: ListChecks, description: 'Modelos de tarefas para leads e projetos.' },
+  { slug: 'regras', label: 'Regras automáticas', group: 'leads', icon: Workflow, description: 'Se o lead cumpre uma condição, a plataforma faz o resto.' },
   { slug: 'funcionalidades', label: 'Funcionalidades', group: 'plataforma', icon: ToggleRight, description: 'Ligar ou desligar partes da plataforma.' },
   { slug: 'ia', label: 'Inteligência artificial', group: 'plataforma', icon: Sparkles, description: 'Fornecedores e chaves da IA.' },
   { slug: 'api', label: 'Acesso externo (API)', group: 'plataforma', icon: KeyRound, description: 'Chaves para outras apps usarem a plataforma.' },
