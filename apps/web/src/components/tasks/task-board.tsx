@@ -766,9 +766,11 @@ function BoardCardView({
                 <DropdownItem
                   aria-label="Cor: sem cor"
                   onSelect={() => onColor(null)}
-                  className="h-7 w-7 justify-center rounded-full border border-border-strong p-0"
+                  className="h-7 w-7 justify-center rounded-full p-0"
                 >
-                  {!color ? <Check className="h-3.5 w-3.5" aria-hidden /> : null}
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full border border-border-strong">
+                    {!color ? <Check className="h-3 w-3" aria-hidden /> : null}
+                  </span>
                 </DropdownItem>
                 {(Object.keys(CARD_COLORS) as CardColor[]).map((c) => (
                   <DropdownItem

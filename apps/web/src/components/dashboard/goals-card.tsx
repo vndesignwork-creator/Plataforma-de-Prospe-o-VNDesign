@@ -52,8 +52,8 @@ export function GoalBar({ metric, data, mine, compact = false }: { metric: GoalM
   const perDay = perWorkdayLeft(done, goal, data.month, todayIso());
   const unit = metric === 'revenue' ? '' : ` ${goal === 1 ? GOAL_UNITS[metric][0] : GOAL_UNITS[metric][1]}`;
   return (
-    <div className={cn('flex flex-col gap-1', compact ? 'min-w-36' : '')}>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-2 text-sm">
+    <span className={cn('flex flex-col gap-1', compact ? 'min-w-36' : '')}>
+      <span className="flex flex-wrap items-baseline justify-between gap-x-2 text-sm">
         <span className="font-medium">{GOAL_LABELS[metric]}</span>
         <span className="tabular">
           <strong>{formatGoalValue(metric, done)}</strong>
@@ -63,7 +63,7 @@ export function GoalBar({ metric, data, mine, compact = false }: { metric: GoalM
             {unit}
           </span>
         </span>
-      </div>
+      </span>
       <span
         role="progressbar"
         aria-label={`${GOAL_LABELS[metric]}: ${formatGoalValue(metric, done)} de ${formatGoalValue(metric, goal)}`}
@@ -92,7 +92,7 @@ export function GoalBar({ metric, data, mine, compact = false }: { metric: GoalM
           {mine !== null && mine !== undefined ? <span className="text-muted">· tu: {formatGoalValue(metric, mine)}</span> : null}
         </span>
       )}
-    </div>
+    </span>
   );
 }
 
