@@ -25,6 +25,7 @@ import {
   type LeadTask,
   type TaskTemplate,
   type TaskChecklistItem,
+  parseTaskPhrase,
 } from '@vndesign/core';
 import { Bell, CalendarDays, Check, ChevronRight, Clock, Copy, CopyPlus, GripVertical, ListPlus, MoreVertical, Pencil, Plus, UserRound, X } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -456,6 +457,19 @@ function TaskRow({
   );
 }
 
+/** O que o texto da nova tarefa vai dar: prazo e hora reconhecidos ("sexta às 10h"). */
+function PhraseHint({ text, today, manualDue }: { text: string; today: string; manualDue: boolean }) {
+  const phrase = parseTaskPhrase(text, today);
+  if (!phrase.matched.length) return null;
+  return (
+    <p role="status" className="basis-full text-xs text-accent-text">
+      ✨ Fica “{phrase.title}”
+      {phrase.due_on && !manualDue ? ` · 📅 ${formatDate(phrase.due_on)}` : ''}
+      {phrase.time ? ` · 🔔 ${phrase.time}` : ''}
+    </p>
+  );
+}
+
 /** Copia o texto da tarefa (para colar num email, no WhatsApp…). */
 async function copyText(text: string) {
   try {
@@ -560,11 +574,15 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
 
   async function add(e: FormEvent) {
     e.preventDefault();
-    const value = title.trim();
-    if (!value) return;
+    const typed = title.trim();
+    if (!typed) return;
+    // "Enviar maquete sexta às 10h": a data e a hora do texto passam a prazo e lembrete
+    // (as escolhidas nos botões ganham).
+    const phrase = parseTaskPhrase(typed, today);
+    const value = phrase.matched.length ? phrase.title : typed;
     // Limpa já, para se poder escrever a seguinte enquanto esta grava (o texto volta se der erro).
-    const dueValue = due;
-    const remindValue = remind;
+    const dueValue = due || phrase.due_on || '';
+    const remindValue = remind || (phrase.time && dueValue ? `${dueValue}T${phrase.time}` : '');
     setTitle('');
     setDue('');
     setRemind('');
@@ -578,9 +596,9 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
       if (remindValue) toast.success(`Lembrete marcado para ${formatReminder(localInputToIso(remindValue)!)}.`);
     } catch (error) {
       toast.error(errorMessage(error));
-      setTitle(value);
-      setDue(dueValue);
-      setRemind(remindValue);
+      setTitle(typed);
+      setDue(due);
+      setRemind(remind);
       setShowRemind(Boolean(remindValue));
     } finally {
       invalidate(lead.id);
@@ -718,11 +736,12 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Nova tarefa…"
+          placeholder="Nova tarefa… (ex.: Enviar maquete sexta às 10h)"
           aria-label="Nova tarefa"
           maxLength={300}
           className="min-w-0 basis-full sm:flex-[1_1_10rem] sm:basis-auto"
         />
+        <PhraseHint text={title} today={today} manualDue={!!due} />
         <DuePicker
           value={due}
           today={today}

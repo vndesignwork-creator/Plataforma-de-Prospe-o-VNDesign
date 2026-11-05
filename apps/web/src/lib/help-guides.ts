@@ -51,7 +51,11 @@ export const HELP_GUIDES: HelpGuide[] = [
       'Marca como feita com o visto; para mudar a data, carrega no prazo da tarefa.',
       'No telemóvel, desliza uma tarefa para a direita para a marcar como feita e para a esquerda para a adiar.',
     ],
-    tips: ['Listas de tarefas prontas (ex.: arranque de projeto) ficam em Definições → Listas de tarefas.'],
+    tips: [
+      'Escreve como falas: “Ligar à Clínica Sorriso sexta às 10h” fica com o prazo, o lembrete e a sugestão do lead.',
+      'Tarefas maiores: abre-a (toca no texto) e divide-a em passos; a lista mostra “2/3”.',
+      'Listas de tarefas prontas (ex.: arranque de projeto) ficam em Definições → Listas de tarefas.',
+    ],
   },
   {
     id: 'leads',

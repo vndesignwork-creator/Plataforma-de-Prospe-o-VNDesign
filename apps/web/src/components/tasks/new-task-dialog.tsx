@@ -5,9 +5,9 @@
  * pesquisa), prazo e responsável — sem ter de abrir a ficha. Sem lead, fica uma
  * tarefa solta (só aqui e em "Hoje").
  */
-import { formatDate, todayIso, type Lead } from '@vndesign/core';
-import { BriefcaseBusiness, Search, Users } from 'lucide-react';
-import { useDeferredValue, useState, type FormEvent } from 'react';
+import { formatDate, normalizeText, parseTaskPhrase, todayIso, type Lead } from '@vndesign/core';
+import { BriefcaseBusiness, Search, Sparkles, Users } from 'lucide-react';
+import { useDeferredValue, useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { DateInput } from '@/components/ui/date-input';
@@ -16,6 +16,7 @@ import { Field } from '@/components/ui/field';
 import { Input, Select } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
 import { useInvalidateTasks, useLeads, useMe, useTeamNames } from '@/lib/queries';
+import { localInputToIso } from '@/lib/local-datetime';
 import { cn } from '@/lib/utils';
 import { DuePicker } from './tasks-card';
 
@@ -73,6 +74,23 @@ function LeadPicker({ value, onChange }: { value: Picked | null; onChange: (lead
   );
 }
 
+/** O lead que a frase parece referir ("Ligar à Clínica Sorriso…", "Proposta #12…"). */
+function useLeadFromHint(hint: string | null, enabled: boolean): Picked | null {
+  const byNumber = hint?.startsWith('#') ? Number(hint.slice(1)) : null;
+  const q = useDeferredValue(enabled && hint ? (byNumber ? String(byNumber) : hint) : '');
+  const { data } = useLeads({ q: q || undefined, limit: 5 }, !!q);
+  if (!q || !data?.data.length) return null;
+  if (byNumber) return data.data.find((l) => l.number === byNumber) ?? null;
+  const wanted = normalizeText(hint) ?? '';
+  // Só se o nome bater (não sugere um lead qualquer que tenha a palavra).
+  return (
+    data.data.find((l) => {
+      const name = normalizeText(l.company_name) ?? '';
+      return !!wanted && !!name && (name.includes(wanted) || wanted.includes(name));
+    }) ?? null
+  );
+}
+
 function LeadLabel({ lead }: { lead: Picked }) {
   const project = lead.status === 'cliente';
   const Icon = project ? BriefcaseBusiness : Users;
@@ -103,6 +121,11 @@ export function NewTaskDialog({ onClose }: { onClose: () => void }) {
   const assigned = assignee ?? (hasTeam ? (me?.user.id ?? '') : '');
   const [errors, setErrors] = useState<{ title?: string }>({});
   const [saving, setSaving] = useState(false);
+  // Escrever como se fala: "Ligar à Clínica Sorriso sexta às 10h" → prazo, lembrete e lead.
+  const [smart, setSmart] = useState(true);
+  const parsed = useMemo(() => parseTaskPhrase(title, today), [title, today]);
+  const recognized = smart && parsed.matched.length > 0;
+  const suggested = useLeadFromHint(parsed.leadHint, smart && !lead);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -110,17 +133,21 @@ export function NewTaskDialog({ onClose }: { onClose: () => void }) {
     setErrors(next);
     if (next.title) return;
     setSaving(true);
+    // A data escolhida à mão ganha à do texto.
+    const dueOn = due || (recognized ? parsed.due_on : null) || null;
+    const remindAt = recognized && parsed.time && dueOn ? localInputToIso(`${dueOn}T${parsed.time}`) : null;
     try {
       await api('/tasks', {
         method: 'POST',
         body: {
-          title: title.trim(),
+          title: recognized ? parsed.title : title.trim(),
           lead_id: lead?.id ?? null,
-          due_on: due || null,
+          due_on: dueOn,
+          remind_at: remindAt,
           ...(hasTeam ? { assigned_to: assigned || null } : {}),
         },
       });
-      const when = due ? `, para ${formatDate(due)}` : '';
+      const when = dueOn ? `, para ${formatDate(dueOn)}${remindAt ? ` às ${parsed.time}` : ''}` : '';
       toast.success(lead ? `Tarefa criada em ${lead.company_name}${when}.` : `Tarefa criada (sem lead)${when}.`);
       invalidate(lead?.id ?? null);
       onClose();
@@ -150,13 +177,41 @@ export function NewTaskDialog({ onClose }: { onClose: () => void }) {
       }
     >
       <form id="new-task" onSubmit={submit} noValidate className="flex flex-col gap-4">
-        <Field label="Tarefa" error={errors.title}>
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Enviar proposta revista" maxLength={300} autoFocus />
-        </Field>
+        <div className="flex flex-col gap-1.5">
+          <Field label="Tarefa" error={errors.title} hint={recognized ? undefined : 'Podes escrever como falas: “Ligar à Clínica Sorriso sexta às 10h”.'}>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Enviar proposta revista amanhã às 10h" maxLength={300} autoFocus />
+          </Field>
+          {recognized ? (
+            <p role="status" className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-accent-soft px-3 py-2 text-xs text-accent-text">
+              <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span>
+                Fica: <strong className="font-semibold">“{parsed.title}”</strong>
+                {parsed.due_on && !due ? <> · 📅 {formatDate(parsed.due_on)}</> : null}
+                {parsed.time && (due || parsed.due_on) ? <> · 🔔 {parsed.time}</> : null}
+              </span>
+              <button type="button" onClick={() => setSmart(false)} className="ml-auto font-medium underline">
+                Não usar
+              </button>
+            </p>
+          ) : !smart && parsed.matched.length ? (
+            <button type="button" onClick={() => setSmart(true)} className="self-start text-xs text-muted underline">
+              Usar a data e a hora do texto
+            </button>
+          ) : null}
+        </div>
         <div className="flex flex-col gap-1.5">
           <span className="text-sm font-medium">
             Lead ou projeto <span className="font-normal text-muted">(opcional)</span>
           </span>
+          {!lead && suggested ? (
+            <p className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-border-strong px-3 py-2 text-sm">
+              <span className="text-muted">É para</span>
+              <LeadLabel lead={suggested} />
+              <button type="button" onClick={() => setLead(suggested)} className="ml-auto text-sm font-medium text-accent-text hover:underline">
+                Associar
+              </button>
+            </p>
+          ) : null}
           <LeadPicker value={lead} onChange={setLead} />
         </div>
         <div className="flex flex-wrap items-end gap-3">
