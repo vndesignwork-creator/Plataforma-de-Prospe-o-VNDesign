@@ -21,12 +21,13 @@ import { ComparePeriodSwitch, PeriodCompareCard } from './period-compare';
 import { PomodoroStatsSection } from './pomodoro-stats';
 import { ProfitabilitySection } from './profitability-section';
 import { RecurringSection } from './recurring-section';
+import { AccountingSection } from './accounting-section';
 import { TeamStatsSection } from './team-stats';
 
 const euros = (v: number) => formatCurrency(v, { decimals: false });
 
 /** As secções da página (cada pessoa escolhe a ordem e as que vê: "stats.sections"). */
-const STATS_SECTIONS = ['resumo', 'funil', 'leads', 'emails', 'equipa', 'rentabilidade', 'recorrente', 'pomodoro'] as const;
+const STATS_SECTIONS = ['resumo', 'funil', 'leads', 'emails', 'equipa', 'rentabilidade', 'recorrente', 'contabilidade', 'pomodoro'] as const;
 type StatsSection = (typeof STATS_SECTIONS)[number];
 const SECTION_META: Record<StatsSection, { title: string; nav: string; description?: string }> = {
   resumo: { title: 'Resumo', nav: 'Resumo' },
@@ -40,6 +41,7 @@ const SECTION_META: Record<StatsSection, { title: string; nav: string; descripti
     description: 'Valor de cada projeto (proposta aceite, pagamentos ou valor estimado) a dividir pelas horas registadas.',
   },
   recorrente: { title: 'Receita recorrente', nav: 'Recorrente', description: 'Renovações e avenças: o que entra todos os meses e as próximas datas.' },
+  contabilidade: { title: 'Contabilidade', nav: 'Contabilidade', description: 'O relatório de cada mês em PDF ou Excel.' },
   pomodoro: { title: 'Pomodoro', nav: 'Pomodoro', description: 'Os teus blocos de trabalho completos (o trabalho conta nas horas de cada projeto).' },
 };
 export const STATS_BOARD: Board<StatsSection> = {
@@ -152,6 +154,7 @@ function OwnerStats() {
     equipa: (team?.length ?? 0) > 1,
     rentabilidade: !!settings?.features.projects,
     recorrente: !!settings?.features.renewals,
+    contabilidade: !!settings?.features.accounting_report,
     pomodoro,
   };
   const sections = visibleCards(STATS_BOARD, layout, (k) => available[k]);
@@ -377,6 +380,7 @@ function OwnerStats() {
     equipa: <TeamStatsSection bare />,
     rentabilidade: <ProfitabilitySection bare />,
     recorrente: <RecurringSection />,
+    contabilidade: <AccountingSection />,
     pomodoro: <PomodoroStatsSection bare />,
   };
 

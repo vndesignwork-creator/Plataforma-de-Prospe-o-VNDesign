@@ -42,6 +42,7 @@ import {
   ProjectDeliverableSchema,
   ClientRequestSchema,
   RecurringSummarySchema,
+  AccountingReportSchema,
   RenewalCreateSchema,
   RenewalRenewSchema,
   RenewalSchema,
@@ -2094,6 +2095,14 @@ export function getOpenApiDocument() {
           requestParams: { path: idParam },
           requestBody: body(RenewalRenewSchema),
           responses: { '200': ok(data(RenewalSchema)), ...withNotFound },
+        }),
+      },
+      '/reports/accounting': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Relatório do mês para a contabilidade (recebido, despesas, por receber); format=pdf ou xlsx para descarregar',
+          requestParams: { query: z.object({ month: z.string().meta({ example: '2026-11' }), format: z.enum(['json', 'pdf', 'xlsx']).optional() }) },
+          responses: { '200': ok(data(AccountingReportSchema)), '404': problem('Relatório desligado'), '422': problem('Mês inválido'), ...common },
         }),
       },
       '/renewals/summary': {

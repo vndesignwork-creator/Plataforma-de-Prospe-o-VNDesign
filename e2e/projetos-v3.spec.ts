@@ -275,3 +275,34 @@ test('renovações e avenças: juntar, renovar (regista o pagamento) e receita r
   await page.goto('/estatisticas#recorrente');
   await expect(page.getByRole('heading', { name: 'Receita recorrente' }).first()).toBeVisible();
 });
+
+test('relatório para a contabilidade: números do mês, PDF e Excel', async ({ page }) => {
+  const lead = await createLead(page.request, { company_name: `Contas ${run}`, status: 'cliente' });
+  const month = iso(0).slice(0, 7);
+  expect((await page.request.post(`/api/v1/leads/${lead.id}/payments`, { data: { description: `Sinal ${run}`, amount: 400, paid_on: iso(0), method: 'MB Way' } })).status()).toBe(201);
+  expect((await page.request.post(`/api/v1/leads/${lead.id}/payments`, { data: { description: `Final ${run}`, amount: 600, due_on: iso(0) } })).status()).toBe(201);
+  expect((await page.request.post(`/api/v1/leads/${lead.id}/expenses`, { data: { description: `Plugin ${run}`, amount: 49.9, spent_on: iso(0) } })).status()).toBe(201);
+
+  const report = (await (await page.request.get(`/api/v1/reports/accounting?month=${month}`)).json()).data as {
+    received: { rows: { description: string; amount: number }[] };
+    expenses: { rows: { description: string }[] };
+    outstanding: { rows: { description: string }[] };
+  };
+  expect(report.received.rows.some((r) => r.description === `Sinal ${run}` && r.amount === 400)).toBe(true);
+  expect(report.expenses.rows.some((r) => r.description === `Plugin ${run}`)).toBe(true);
+  expect(report.outstanding.rows.some((r) => r.description === `Final ${run}`)).toBe(true);
+
+  const pdf = await page.request.get(`/api/v1/reports/accounting?month=${month}&format=pdf`);
+  expect(pdf.headers()['content-type']).toBe('application/pdf');
+  expect((await pdf.body()).subarray(0, 4).toString()).toBe('%PDF');
+  const xlsx = await page.request.get(`/api/v1/reports/accounting?month=${month}&format=xlsx`);
+  expect(xlsx.headers()['content-type']).toContain('spreadsheetml');
+  expect((await xlsx.body()).subarray(0, 2).toString()).toBe('PK');
+  expect((await page.request.get('/api/v1/reports/accounting?month=2026-13')).status()).toBe(422);
+
+  await page.goto('/estatisticas#contabilidade');
+  const card = page.getByRole('heading', { name: 'Relatório para a contabilidade' });
+  await expect(card).toBeVisible();
+  await page.getByLabel('Mês do relatório').selectOption(month);
+  await expect(page.getByRole('link', { name: 'Descarregar PDF' })).toHaveAttribute('href', `/api/v1/reports/accounting?month=${month}&format=pdf`);
+});

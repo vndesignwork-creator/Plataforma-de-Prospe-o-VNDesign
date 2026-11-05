@@ -45,6 +45,8 @@ const nextConfig: NextConfig = {
     '/api/v1/leads/**': ['../../node_modules/pdfkit/js/standard-fonts/**/*', '../../node_modules/pdfkit/js/data/**/*'],
     // Contratos (na plataforma e no link do cliente).
     '/api/v1/contracts/**': ['../../node_modules/pdfkit/js/standard-fonts/**/*', '../../node_modules/pdfkit/js/data/**/*'],
+    // Relatório para a contabilidade (PDF).
+    '/api/v1/reports/**': ['../../node_modules/pdfkit/js/standard-fonts/**/*', '../../node_modules/pdfkit/js/data/**/*'],
     '/api/v1/public/**': ['../../node_modules/pdfkit/js/standard-fonts/**/*', '../../node_modules/pdfkit/js/data/**/*'],
   },
   // Permite fixar a raiz do monorepo (evita avisos com vários lockfiles).

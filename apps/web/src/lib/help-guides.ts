@@ -158,6 +158,7 @@ export const HELP_GUIDES: HelpGuide[] = [
       'Em Emails, vê as aberturas e respostas por modelo e o melhor dia e hora para enviar.',
       'Em Rentabilidade, o valor ganho por hora em cada projeto.',
       'Em Receita recorrente, quanto entra todos os meses com as renovações e avenças, e as próximas datas.',
+      'Em Contabilidade, escolhe o mês e descarrega o relatório em PDF ou Excel (recebido, despesas e por receber) para o contabilista.',
     ],
   },
   {
