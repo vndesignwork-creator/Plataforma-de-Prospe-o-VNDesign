@@ -1,4 +1,5 @@
 import {
+  CLIENT_REQUEST_STATUS_LABELS,
   DELIVERABLE_STATUS_LABELS,
   PROJECT_STAGE_CLIENT_TEXT,
   PROJECT_STAGE_LABELS,
@@ -7,11 +8,13 @@ import {
   formatDateTime,
   type SharedProject,
 } from '@vndesign/core';
-import { CalendarClock, CheckCircle2, ExternalLink, FileSignature, FolderOpen, Globe, ListChecks, Mail, PackageCheck, Phone, RefreshCcw, Wallet } from 'lucide-react';
+import { CalendarClock, CheckCircle2, ClipboardList, ExternalLink, FileSignature, FolderOpen, Globe, ListChecks, Mail, PackageCheck, Phone, RefreshCcw, Wallet } from 'lucide-react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { StageSteps } from '@/components/projects/project-bits';
+import { sharedClientRequests } from '@/server/services/client-requests';
 import { getSharedProject } from '@/server/services/project-tools';
+import { ClientRequestForm } from './client-request-form';
 import { DeliverableResponse } from './deliverable-response';
 
 /*
@@ -82,6 +85,8 @@ export default async function SharedProjectPage({ params }: Props) {
   const token = (await params).token;
   const project = await getSharedProject(token);
   if (!project) notFound();
+  const requests = await sharedClientRequests(token);
+  const missing = requests.filter((r) => r.status === 'pending').length;
   const { tasks, payments, deliverables, revisions, next_meeting: meeting } = project;
   const done = tasks.filter((t) => t.done).length;
   const pct = tasks.length ? Math.round((done / tasks.length) * 100) : null;
@@ -150,6 +155,32 @@ export default async function SharedProjectPage({ params }: Props) {
                   </span>
                   <span className={t.done ? 'line-through' : ''}>{t.title}</span>
                   <span className="sr-only">{t.done ? '(feito)' : '(por fazer)'}</span>
+                </li>
+              ))}
+            </ul>
+          </Box>
+        ) : null}
+        {requests.length ? (
+          <Box icon={ClipboardList} title="O que precisamos de si" className="sm:col-span-2">
+            <p className="mb-2 text-sm text-muted">
+              {missing ? `Falta${missing === 1 ? '' : 'm'} ${missing} de ${requests.length}. Envie aqui o texto, os ficheiros ou um link.` : 'Já recebemos tudo o que pedimos. Obrigado!'}
+            </p>
+            <ul className="flex flex-col gap-3 text-sm">
+              {requests.map((r) => (
+                <li key={r.id} className="flex flex-col">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <span aria-hidden className={r.status === 'pending' ? 'text-muted' : 'text-success'}>
+                      {r.status === 'pending' ? '○' : '✓'}
+                    </span>
+                    <span className="font-medium">{r.title}</span>
+                    <span className={`text-xs ${r.status === 'pending' ? 'text-warning' : 'text-success'}`}>
+                      {CLIENT_REQUEST_STATUS_LABELS[r.status]}
+                      {r.sent_at && r.status !== 'pending' ? ` a ${formatDate(r.sent_at)}` : ''}
+                    </span>
+                  </div>
+                  {r.note ? <p className="mt-0.5 text-xs whitespace-pre-line text-muted">{r.note}</p> : null}
+                  {r.files.length ? <p className="mt-0.5 text-xs text-muted">Enviado: {r.files.map((f) => f.name).join(', ')}</p> : null}
+                  {r.status !== 'done' && !project.completed_at ? <ClientRequestForm token={token} id={r.id} title={r.title} sent={r.status === 'sent'} /> : null}
                 </li>
               ))}
             </ul>

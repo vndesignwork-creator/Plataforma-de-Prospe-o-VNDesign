@@ -11,6 +11,7 @@ import { listAudits } from './audits';
 import { getBrandKit, listAccesses } from './brand-kit';
 import { getBriefing } from './briefing';
 import { listClientProjects } from './client-projects';
+import { listClientRequests } from './client-requests';
 import { listCollaborators } from './collaborators';
 import { listContracts } from './contracts';
 import { getLaunchChecklist } from './launch';
@@ -49,6 +50,7 @@ const PROJECT: Record<string, Part> = {
   collaborators: listCollaborators,
   accesses: listAccesses,
   briefing: getBriefing,
+  'client-requests': listClientRequests,
 };
 
 export async function leadBundle(ctx: ApiContext, id: string): Promise<{ lead: unknown; parts: Record<string, unknown> }> {

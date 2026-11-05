@@ -20,6 +20,7 @@ import { DropdownContent, DropdownItem, DropdownRoot, DropdownTrigger } from '@/
 import { cn } from '@/lib/utils';
 import { useServiceCatalog } from '@/components/services/services';
 import { BriefingSection } from './briefing-section';
+import { ClientRequestsSection } from './client-requests-section';
 import { CollaboratorsSection } from './collaborators-section';
 import { DeliverablesSection } from './deliverables-section';
 import { LaunchSection } from './launch-section';
@@ -168,6 +169,7 @@ export function ProjectCard({ lead }: { lead: Lead }) {
   const panels: Record<ProjectTab, ReactNode[]> = {
     trabalho: [
       features?.briefing ? <BriefingSection key="briefing" lead={lead} /> : null,
+      features?.client_page ? <ClientRequestsSection key="client-requests" lead={lead} /> : null,
       features?.revisions ? <RevisionsSection key="revisions" lead={lead} /> : null,
       features?.deliverables ? <DeliverablesSection key="deliverables" lead={lead} /> : null,
       features?.launch_checklist && hasSite ? <LaunchSection key="launch" lead={lead} /> : null,

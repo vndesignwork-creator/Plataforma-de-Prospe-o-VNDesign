@@ -79,6 +79,7 @@ import type {
   ProjectRevision,
   ProjectTime,
   ProjectDeliverable,
+  ClientRequest,
   RunningTimer,
   TimeEntry,
   CalendarEvent,
@@ -196,7 +197,7 @@ export function useLead(id: string, enabled = true) {
 
 /** Partes da ficha que vêm no bundle (cada uma com a chave da cache do cartão: [parte, id]). */
 const BUNDLE_PARTS = ['tasks', 'activities', 'audits', 'proposals', 'meetings', 'project', 'payments', 'contracts', 'client-projects', 'revisions', 'time'] as const;
-const BUNDLE_PROJECT_PARTS = ['deliverables', 'expenses', 'launch', 'collaborators', 'brand-kit', 'accesses', 'briefing'] as const;
+const BUNDLE_PROJECT_PARTS = ['deliverables', 'expenses', 'launch', 'collaborators', 'brand-kit', 'accesses', 'briefing', 'client-requests'] as const;
 
 function fetchLeadBundle(qc: ReturnType<typeof useQueryClient>, id: string) {
   return api<{ data: { lead: Lead; parts: Record<string, unknown> } }>(`/leads/${id}/bundle`).then(({ data }) => {
@@ -1083,6 +1084,34 @@ export function useDeleteDeliverable(leadId: string) {
       void qc.invalidateQueries({ queryKey: ['deliverables', leadId] });
       invalidate(leadId);
     },
+  });
+}
+
+// -----------------------------------------------------------------------------
+// O que falta o cliente enviar
+// -----------------------------------------------------------------------------
+export function useClientRequests(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['client-requests', leadId],
+    queryFn: () => api<{ data: ClientRequest[] }>(`/leads/${leadId}/client-requests`).then((r) => r.data),
+    enabled,
+  });
+}
+
+export function useSaveClientRequest(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id?: string; body: Partial<Pick<ClientRequest, 'title' | 'note' | 'status'>> }) =>
+      api<{ data: ClientRequest }>(id ? `/client-requests/${id}` : `/leads/${leadId}/client-requests`, { method: id ? 'PATCH' : 'POST', body }).then((r) => r.data),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['client-requests', leadId] }),
+  });
+}
+
+export function useDeleteClientRequest(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api(`/client-requests/${id}`, { method: 'DELETE' }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['client-requests', leadId] }),
   });
 }
 

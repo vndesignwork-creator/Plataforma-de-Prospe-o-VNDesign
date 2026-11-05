@@ -63,6 +63,7 @@ export * from './task-phrase';
 export * from './business-card';
 export * from './lookalike';
 export * from './call-windows';
+export * from './client-requests';
 export * from './reach-out';
 export * from './quiet-hours';
 export * from './replies';

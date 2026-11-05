@@ -207,3 +207,42 @@ test('briefing online: o cliente responde e envia ficheiros; a fase passa a Em p
   expect(file.status()).toBe(200);
   expect(await file.text()).toBe(`logo ${run}`);
 });
+
+test('o que falta o cliente enviar: pedir na ficha, o cliente envia pela página, chega o ficheiro', async ({ page, browser }) => {
+  const lead = await createLead(page.request, { company_name: `Pedidos ${run}`, contact_name: 'Rita', status: 'cliente' });
+  await page.goto(`/leads/${lead.id}`);
+  const card = page.locator('#projeto');
+  await projectTab(page, 'Trabalho');
+  const section = card.getByRole('region', { name: 'O que falta o cliente enviar' });
+  await section.getByRole('button', { name: 'Pedir' }).click();
+  await section.getByRole('button', { name: '+ Fotografias (espaço, equipa, produtos)' }).click();
+  await section.getByLabel('O que falta o cliente enviar').fill('Textos da página Sobre');
+  await section.getByRole('button', { name: 'Juntar' }).click();
+  await expect(section.getByText('faltam 2 de 2')).toBeVisible();
+  const token = (await (await page.request.post(`/api/v1/leads/${lead.id}/project/share`, { data: { enabled: true } })).json()).data.share_token;
+
+  const client = await anonymous(browser);
+  await client.page.goto(`/p/${token}`);
+  const box = client.page.getByRole('region', { name: 'O que precisamos de si' });
+  await expect(box.getByText('Faltam 2 de 2.', { exact: false })).toBeVisible();
+  await box.getByRole('button', { name: 'Enviar: Fotografias (espaço, equipa, produtos)' }).click();
+  await box.getByLabel('Ficheiros para Fotografias (espaço, equipa, produtos)').setInputFiles({ name: 'loja.txt', mimeType: 'text/plain', buffer: Buffer.from(`foto ${run}`) });
+  await box.getByLabel('Nota para Fotografias (espaço, equipa, produtos)').fill('Mais fotos na sexta');
+  await box.getByRole('button', { name: 'Enviar', exact: true }).click();
+  await expect(box.getByText('Obrigado! Recebemos o que enviou.')).toBeVisible();
+  await expect(box.getByText('Enviado: loja.txt')).toBeVisible();
+  await expect(box.getByText('Falta 1 de 2.', { exact: false })).toBeVisible();
+  await client.context.close();
+
+  const requests = (await (await page.request.get(`/api/v1/leads/${lead.id}/client-requests`)).json()).data as { id: string; title: string; status: string; client_note: string | null }[];
+  const photos = requests.find((r) => r.title.startsWith('Fotografias'))!;
+  expect(photos).toMatchObject({ status: 'sent', client_note: 'Mais fotos na sexta' });
+  const file = await page.request.get(`/api/v1/client-requests/${photos.id}/files/0`);
+  expect(await file.text()).toBe(`foto ${run}`);
+
+  await page.reload();
+  await projectTab(page, 'Trabalho');
+  await expect(section.getByRole('link', { name: 'loja.txt' })).toBeVisible();
+  await section.getByLabel(/^Estado de Fotografias/).selectOption('done');
+  await expect(section.getByText('falta 1 de 2')).toBeVisible();
+});

@@ -40,6 +40,9 @@ import {
   TimeStartSchema,
   RunningTimerSchema,
   ProjectDeliverableSchema,
+  ClientRequestSchema,
+  ClientRequestCreateSchema,
+  ClientRequestUpdateSchema,
   ProjectDeliverableCreateSchema,
   ProjectDeliverableUpdateSchema,
   CalendarEventSchema,
@@ -2064,6 +2067,43 @@ export function getOpenApiDocument() {
           responses: { '200': ok(data(TimeEntrySchema)), '422': problem('O temporizador ainda está a contar'), ...withNotFound },
         }),
         delete: op({ tags: ['Projetos'], summary: 'Apagar um registo de horas', requestParams: { path: idParam }, responses: { '204': { description: 'Apagado' }, ...withNotFound } }),
+      },
+      '/leads/{id}/client-requests': {
+        get: op({ tags: ['Projetos'], summary: 'O que falta o cliente enviar (textos, fotos, acessos…)', requestParams: { path: idParam }, responses: { '200': ok(data(z.array(ClientRequestSchema))), ...withNotFound } }),
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Pedir algo ao cliente (aparece na página do cliente)',
+          requestParams: { path: idParam },
+          requestBody: body(ClientRequestCreateSchema),
+          responses: { '201': ok(data(ClientRequestSchema), 'Criado'), ...withNotFound },
+        }),
+      },
+      '/client-requests/{id}': {
+        patch: op({
+          tags: ['Projetos'],
+          summary: 'Mudar o pedido ou o estado (Por enviar, Enviado, Recebido)',
+          requestParams: { path: idParam },
+          requestBody: body(ClientRequestUpdateSchema),
+          responses: { '200': ok(data(ClientRequestSchema)), ...withNotFound },
+        }),
+        delete: op({ tags: ['Projetos'], summary: 'Apagar o pedido e os ficheiros enviados', requestParams: { path: idParam }, responses: { '204': { description: 'Apagado' }, ...withNotFound } }),
+      },
+      '/client-requests/{id}/files/{index}': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Descarregar um ficheiro que o cliente enviou (redireciona para um link temporário)',
+          requestParams: { path: z.object({ id: z.uuid(), index: z.string() }) },
+          responses: { '302': { description: 'Link temporário' }, ...withNotFound },
+        }),
+      },
+      '/public/projects/{token}/requests/{id}': {
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Na página do cliente (sem sessão): enviar o que foi pedido (multipart: note e files, até 10 de 25 MB)',
+          security: [],
+          requestParams: { path: z.object({ token: z.string(), id: z.uuid() }) },
+          responses: { '200': { description: 'Enviado' }, '404': problem('Página ou pedido inexistente'), '422': problem('Nada para enviar ou ficheiro demasiado grande') },
+        }),
       },
       '/leads/{id}/deliverables': {
         get: op({ tags: ['Projetos'], summary: 'Ficheiros e entregas do projeto', requestParams: { path: idParam }, responses: { '200': ok(data(z.array(ProjectDeliverableSchema))), ...withNotFound } }),
