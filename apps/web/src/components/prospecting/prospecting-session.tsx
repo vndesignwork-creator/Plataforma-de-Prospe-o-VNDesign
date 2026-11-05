@@ -31,8 +31,11 @@ import {
   type ProspectingOutcome,
   type ProspectingResult,
   pickTemplateVariant,
+  callWindowLabel,
+  currentAvoidWindow,
+  type CallAvoidWindow,
 } from '@vndesign/core';
-import {
+import { BellOff,
   CalendarClock,
   Check,
   ChevronDown,
@@ -192,9 +195,14 @@ export function ProspectingSession() {
   // O servidor separa os sem email/contacto ("Falta …") dos outros; guardar um contacto não faz o lead saltar de separador.
   const counts = data?.counts;
   const missingCount = counts?.missing ?? 0;
-  const pending = items
+  // A ligar: os leads de setores em "horas a evitar" (Definições → Setores) passam para o fim.
+  const { data: workspaceSettings } = useSettings();
+  const badTime = (i: ProspectingItem) =>
+    mode === 'phone' && i.lead.sector_id ? currentAvoidWindow(workspaceSettings?.call_avoid?.[i.lead.sector_id]) : null;
+  const pendingAll = items
     .filter((i) => !local[i.lead.id]?.done)
     .map((i) => local[i.lead.id]?.item ?? i);
+  const pending = [...pendingAll.filter((i) => !badTime(i)), ...pendingAll.filter((i) => badTime(i))];
   const done = doneIds.map((id) => local[id]).filter((d) => !!d);
   const today = doneToday ?? data?.done_today ?? 0;
   const emailsToday = (data?.emails_today ?? 0) + emailsSent;
@@ -409,6 +417,7 @@ export function ProspectingSession() {
                 key={item.lead.id}
                 item={item}
                 mode={mode}
+                badTime={badTime(item)}
                 onSaved={(lead) => saved(item, lead)}
                 onEmailed={(result) => emailed(item, result)}
                 onRecorded={(outcome, result) => recorded(item, outcome, result)}
@@ -473,6 +482,7 @@ function LeadRow({
   item,
   mode,
   done,
+  badTime,
   onSaved,
   onEmailed,
   onRecorded,
@@ -480,6 +490,8 @@ function LeadRow({
   item: ProspectingItem;
   mode: ProspectingMode;
   done?: Done;
+  /** Agora é má altura para ligar a este setor (o intervalo a evitar). */
+  badTime?: CallAvoidWindow | null;
   onSaved: (lead: Lead) => void;
   onEmailed: (result: LeadEmailSendResult) => void;
   onRecorded: (outcome: ProspectingOutcome, result: ProspectingResult) => void;
@@ -558,6 +570,11 @@ function LeadRow({
               {item.reason}
             </span>
             {meta ? <span>{meta}</span> : null}
+            {badTime ? (
+              <span className="inline-flex items-center gap-1 text-warning" title="Definições → Setores → Horas a evitar para ligar">
+                <BellOff className="h-3.5 w-3.5" aria-hidden /> Má altura para ligar ({callWindowLabel(badTime)})
+              </span>
+            ) : null}
             {item.sequence ? (
               <span className="inline-flex items-center gap-1 text-accent-text">
                 <Route className="h-3.5 w-3.5" aria-hidden /> Passo {item.sequence.step} de {item.sequence.total}

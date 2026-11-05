@@ -1,9 +1,9 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { SECTOR_ICONS, SECTOR_ICON_KEYS, SectorCreateSchema, sectorIconFor, type Sector } from '@vndesign/core';
-import { Archive, ArchiveRestore, Edit3, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { CALL_AVOID_PRESETS, SECTOR_ICONS, SECTOR_ICON_KEYS, SectorCreateSchema, callWindowLabel, sectorIconFor, type CallAvoidWindow, type Sector } from '@vndesign/core';
+import { Archive, ArchiveRestore, BellOff, Edit3, Plus, Trash2, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import type { z } from 'zod';
@@ -13,7 +13,8 @@ import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input, Textarea } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
-import { useInvalidateSectors, useSectors } from '@/lib/queries';
+import { useInvalidateSectors, useSectors, useSettings } from '@/lib/queries';
+import { useQueryClient } from '@tanstack/react-query';
 import { SECTOR_ICON_COMPONENTS, SectorIconView } from '@/components/icons/lead-icons';
 import { cn } from '@/lib/utils';
 import { rovingKeyDown, rovingTabIndex } from '@/lib/roving';
@@ -33,6 +34,18 @@ function SectorDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const invalidateSectors = useInvalidateSectors();
+  const qc = useQueryClient();
+  const { data: settings } = useSettings();
+  // Horas a evitar para ligar (ficam nas definições, por setor).
+  const savedAvoid = (sector && settings?.call_avoid?.[sector.id]) || [];
+  const [avoid, setAvoid] = useState<CallAvoidWindow[] | null>(null);
+  const windows = avoid ?? savedAvoid;
+  const [custom, setCustom] = useState({ from: '', to: '' });
+  // Ao abrir (outro setor ou o mesmo outra vez), começa pelo que está guardado.
+  useEffect(() => {
+    /* eslint-disable-next-line react-hooks/set-state-in-effect -- repor o rascunho ao abrir */
+    setAvoid(null);
+  }, [open, sector?.id]);
   const {
     register,
     handleSubmit,
@@ -55,8 +68,16 @@ function SectorDialog({
 
   const onSubmit = handleSubmit(async (values) => {
     try {
-      if (sector) await api(`/sectors/${sector.id}`, { method: 'PATCH', body: values });
-      else await api('/sectors', { method: 'POST', body: values });
+      const saved = sector
+        ? (await api<{ data: Sector }>(`/sectors/${sector.id}`, { method: 'PATCH', body: values })).data
+        : (await api<{ data: Sector }>('/sectors', { method: 'POST', body: values })).data;
+      if (avoid !== null && settings && JSON.stringify(avoid) !== JSON.stringify(savedAvoid)) {
+        const next = { ...settings.call_avoid };
+        if (avoid.length) next[saved.id] = avoid;
+        else delete next[saved.id];
+        await api('/settings', { method: 'PATCH', body: { call_avoid: next } });
+        void qc.invalidateQueries({ queryKey: ['settings'] });
+      }
       invalidateSectors();
       toast.success(sector ? 'Setor atualizado.' : 'Setor criado.');
       onOpenChange(false);
@@ -122,6 +143,50 @@ function SectorDialog({
         <Field label="Argumentos de venda" error={errors.sales_arguments?.message} className="sm:col-span-2" hint="Usados nos scripts de contacto (Fase C).">
           <Textarea rows={4} {...register('sales_arguments')} />
         </Field>
+        <fieldset className="flex flex-col gap-2 sm:col-span-2">
+          <legend className="mb-1 flex items-center gap-1.5 text-sm font-medium">
+            <BellOff className="h-4 w-4 text-muted" aria-hidden /> Horas a evitar para ligar
+          </legend>
+          <p className="-mt-1 text-xs text-muted">Na Prospeção (a ligar), os leads deste setor passam para o fim nestas horas, com o aviso “má altura”.</p>
+          {windows.length ? (
+            <ul className="flex flex-wrap gap-1.5" aria-label="Horas a evitar">
+              {windows.map((w, i) => (
+                <li key={`${w.from}-${w.to}`} className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-2 py-0.5 pr-1 pl-2.5 text-sm">
+                  {callWindowLabel(w)}
+                  <button type="button" onClick={() => setAvoid(windows.filter((_, j) => j !== i))} aria-label={`Tirar ${callWindowLabel(w)}`} className="rounded-full p-0.5 text-muted hover:text-danger">
+                    <X className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {windows.length < 4 ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {CALL_AVOID_PRESETS.filter((p) => !windows.some((w) => w.from === p.window.from && w.to === p.window.to)).map((p) => (
+                <button key={p.label} type="button" onClick={() => setAvoid([...windows, p.window])} className="rounded-full border border-dashed border-border-strong px-2.5 py-0.5 text-xs text-muted hover:text-fg">
+                  + {p.label}
+                </button>
+              ))}
+              <span className="inline-flex items-center gap-1 text-xs text-muted">
+                ou das
+                <input type="time" value={custom.from} onChange={(e) => setCustom({ ...custom, from: e.target.value })} aria-label="Evitar a partir de" className="h-7 rounded border border-border-input bg-surface-2 px-1" />
+                às
+                <input type="time" value={custom.to} onChange={(e) => setCustom({ ...custom, to: e.target.value })} aria-label="Evitar até" className="h-7 rounded border border-border-input bg-surface-2 px-1" />
+                <button
+                  type="button"
+                  disabled={!custom.from || !custom.to || custom.from === custom.to}
+                  onClick={() => {
+                    setAvoid([...windows, { from: custom.from, to: custom.to }]);
+                    setCustom({ from: '', to: '' });
+                  }}
+                  className="rounded border border-border px-2 py-0.5 hover:bg-surface-2 disabled:opacity-50"
+                >
+                  Juntar
+                </button>
+              </span>
+            </div>
+          ) : null}
+        </fieldset>
         <button type="submit" hidden />
       </form>
     </Dialog>

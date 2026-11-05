@@ -4,6 +4,7 @@
  * Convenção da API: snake_case, datas "AAAA-MM-DD", timestamps ISO 8601,
  * valores em euros com 2 casas decimais.
  */
+import { CallAvoidSchema } from './call-windows';
 import { z } from 'zod';
 import { ProfileSchema } from './profile';
 import { DEFAULT_SITE_FORM, SiteFormSettingsSchema } from './site-form';
@@ -718,6 +719,8 @@ export const WorkspaceSettingsSchema = z
     site_form: SiteFormSettingsSchema.default(DEFAULT_SITE_FORM),
     /** Sequência multicanal na Prospeção (ex.: dia 0 WhatsApp, dia 3 email, dia 7 ligar). */
     prospecting_sequence: ProspectingSequenceSchema.default(DEFAULT_PROSPECTING_SEQUENCE),
+    /** Horas a evitar para ligar, por setor (id do setor → intervalos). */
+    call_avoid: CallAvoidSchema.default({}),
     /** Fornecedor e modelo de IA de cada função (Definições → Inteligência artificial). */
     ai: AiSettingsSchema.default({
       email: { provider: SERVER_AI_PROVIDER, model: null },
@@ -778,6 +781,7 @@ export const WorkspaceSettingsUpdateSchema = z
     quote: QuoteSettingsSchema,
     pomodoro: PomodoroSettingsSchema,
     team: TeamSettingsSchema,
+    call_avoid: CallAvoidSchema,
   })
   .partial()
   .meta({ id: 'WorkspaceSettingsUpdate' });
