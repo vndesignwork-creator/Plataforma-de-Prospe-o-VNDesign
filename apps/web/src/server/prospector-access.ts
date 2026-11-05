@@ -49,6 +49,7 @@ const RULES: Rule[] = [
   ['POST', new RegExp(`^/leads/${ID}/brand-kit/files$`)],
   ['GET DELETE', new RegExp(`^/leads/${ID}/brand-kit/files/\\d+$`)],
   ['POST', new RegExp(`^/leads/${ID}/geo/(faq|google)$`)],
+  ['GET POST', /^\/ai\/transcribe$/],
   ['GET', /^\/map$/],
   ['POST', /^\/map\/geocode$/],
   ['POST', new RegExp(`^/meetings/${ID}/cancel$`)],

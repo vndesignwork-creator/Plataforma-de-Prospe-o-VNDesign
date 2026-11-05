@@ -5,11 +5,14 @@
  * no Android e no iPhone também), em português de Portugal. O que se diz vai
  * entrando no texto. Enquanto se dita: Pausa/Retomar, Concluir, Descartar (repõe
  * o texto como estava antes de começar) e a onda do som. Sem custos nem IA; o
- * áudio é tratado pelo browser. Onde não existe (ex.: Firefox), o botão não aparece.
+ * áudio é tratado pelo browser. Onde não existe (ex.: Firefox), grava o áudio e passa-o
+ * a texto com a chave da OpenAI (Definições → IA), ao Concluir; sem essa chave, não aparece.
  */
-import { Check, Mic, Pause, Play, Trash2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Check, Loader2, Mic, Pause, Play, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
+import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { appendDictation } from '@/lib/dictation';
 import { cn } from '@/lib/utils';
 import { AudioWaveform } from './audio-waveform';
@@ -41,6 +44,15 @@ export function useDictationSupported(): boolean {
   return useSyncExternalStore(noop, () => !!recognitionCtor(), () => false);
 }
 
+/** Este browser grava áudio? (Para o Ditar com transcrição, onde não há reconhecimento de voz.) */
+function useRecordingSupported(): boolean {
+  return useSyncExternalStore(
+    noop,
+    () => typeof MediaRecorder !== 'undefined' && !!navigator.mediaDevices?.getUserMedia,
+    () => false,
+  );
+}
+
 /** Para campos que não são texto simples (ex.: o editor do email). */
 export interface DictateTarget {
   /** Junta uma frase reconhecida (no sítio do cursor ou no fim). */
@@ -52,7 +64,7 @@ export interface DictateTarget {
 
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
-type Phase = 'idle' | 'listening' | 'paused';
+type Phase = 'idle' | 'listening' | 'paused' | 'sending';
 
 export function DictateButton({
   value,
@@ -73,6 +85,19 @@ export function DictateButton({
   size?: 'sm' | 'md';
 }) {
   const supported = useDictationSupported();
+  const recordable = useRecordingSupported();
+  // Sem reconhecimento de voz no browser: grava e transcreve, se houver chave da OpenAI.
+  const fallback = useQuery({
+    queryKey: ['transcribe-available'],
+    queryFn: () => api<{ data: { available: boolean } }>('/ai/transcribe').then((r) => r.data.available),
+    enabled: !supported && recordable,
+    staleTime: 10 * 60_000,
+    retry: false,
+  });
+  const engine: 'speech' | 'record' | null = supported ? 'speech' : recordable && fallback.data ? 'record' : null;
+  const media = useRef<MediaRecorder | null>(null);
+  const chunks = useRef<Blob[]>([]);
+  const mediaMode = useRef<'finish' | 'discard'>('finish');
   const [phase, setPhase] = useState<Phase>('idle');
   const [seconds, setSeconds] = useState(0);
   const [interim, setInterim] = useState('');
@@ -139,13 +164,15 @@ export function DictateButton({
     () => () => {
       phaseRef.current = 'idle';
       rec.current?.abort();
+      mediaMode.current = 'discard';
+      if (media.current && media.current.state !== 'inactive') media.current.stop();
       if (timer.current) clearInterval(timer.current);
     },
     [],
   );
   useEffect(() => () => stream?.getTracks().forEach((t) => t.stop()), [stream]);
 
-  if (!supported) return null;
+  if (!engine) return null;
 
   function listen() {
     const Ctor = recognitionCtor();
@@ -190,7 +217,62 @@ export function DictateButton({
     }
   }
 
+  async function startRecording() {
+    let s: MediaStream;
+    try {
+      s = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      toast.error('Sem acesso ao microfone: toca no cadeado ao lado do endereço → Microfone → Permitir, e tenta outra vez.');
+      return;
+    }
+    const type = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'].find((t) => MediaRecorder.isTypeSupported(t));
+    const r = new MediaRecorder(s, { ...(type ? { mimeType: type } : {}), audioBitsPerSecond: 32_000 });
+    chunks.current = [];
+    mediaMode.current = 'finish';
+    r.ondataavailable = (e) => {
+      if (e.data.size) chunks.current.push(e.data);
+    };
+    r.onstop = () => {
+      s.getTracks().forEach((t) => t.stop());
+      if (mediaMode.current === 'discard') return;
+      const mime = r.mimeType || 'audio/webm';
+      const ext = mime.includes('mp4') ? 'm4a' : mime.includes('ogg') ? 'ogg' : 'webm';
+      void transcribe(new File([new Blob(chunks.current, { type: mime })], `ditado.${ext}`, { type: mime }));
+    };
+    r.start(1000);
+    media.current = r;
+    setStream(s);
+    elapsed.current = { before: 0, since: Date.now() };
+    setSeconds(0);
+    setP('listening');
+    tick();
+  }
+
+  async function transcribe(file: File) {
+    setP('sending');
+    try {
+      const form = new FormData();
+      form.append('audio', file);
+      const res = await fetch('/api/v1/ai/transcribe', { method: 'POST', body: form, credentials: 'same-origin' });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new ApiClientError(res.status, payload ?? { type: 'about:blank', title: 'Não foi possível passar a texto', status: res.status });
+      const spoken = (payload as { data: { text: string } }).data.text;
+      if (spoken.trim()) live.current?.insert(spoken);
+      else toast('Não se ouviu nada.');
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      if (phaseRef.current === 'sending') setP('idle');
+    }
+  }
+
   function start() {
+    if (engine === 'record') {
+      before.current = live.current?.snapshot() ?? '';
+      produced.current = before.current;
+      void startRecording();
+      return;
+    }
     before.current = live.current?.snapshot() ?? '';
     produced.current = before.current;
     restarts.current = [];
@@ -212,7 +294,8 @@ export function DictateButton({
     setP('paused');
     stopClock();
     elapsed.current.before += Date.now() - elapsed.current.since;
-    rec.current?.stop();
+    if (engine === 'record') media.current?.pause();
+    else rec.current?.stop();
   }
 
   function resume() {
@@ -220,10 +303,21 @@ export function DictateButton({
     elapsed.current.since = Date.now();
     restarts.current = [];
     tick();
-    listen();
+    if (engine === 'record') media.current?.resume();
+    else listen();
   }
 
   function finish() {
+    if (engine === 'record') {
+      stopClock();
+      mediaMode.current = 'finish';
+      // A transcrição começa quando o gravador entrega o áudio (onstop).
+      setP('sending');
+      media.current?.stop();
+      media.current = null;
+      setStream(null);
+      return;
+    }
     setP('idle');
     stopClock();
     // stop() (não abort): as últimas palavras ainda entram.
@@ -239,6 +333,15 @@ export function DictateButton({
     if (edited && !window.confirm('Descartar o ditado repõe o texto como estava antes de começares (também o que escreveste entretanto). Continuar?')) return;
     setP('idle');
     stopClock();
+    if (engine === 'record') {
+      // Nada entrou no texto ainda: só deita a gravação fora.
+      mediaMode.current = 'discard';
+      media.current?.stop();
+      media.current = null;
+      releaseMic();
+      toast('Ditado descartado.');
+      return;
+    }
     rec.current?.abort();
     rec.current = null;
     setInterim('');
@@ -266,12 +369,21 @@ export function DictateButton({
     );
   }
 
+  if (phase === 'sending') {
+    return (
+      <span role="status" className={cn('inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border px-2.5 text-sm text-muted', size === 'sm' ? 'h-8' : 'h-9', className)}>
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> A passar a texto…
+      </span>
+    );
+  }
+
   const paused = phase === 'paused';
+  const recording = engine === 'record';
   const ctl = 'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border text-sm transition-colors';
   const status = (
     <span role="status" className={cn('flex shrink-0 items-center gap-1.5 text-xs font-medium tabular', paused ? 'text-warning' : 'text-danger')}>
       {paused ? <Pause className="h-3 w-3" aria-hidden /> : <span className="h-2 w-2 animate-pulse rounded-full bg-danger" aria-hidden />}
-      <span className={size === 'sm' ? 'sr-only' : undefined}>{paused ? 'Em pausa' : 'A ouvir'}</span> {fmt(seconds)}
+      <span className={size === 'sm' ? 'sr-only' : undefined}>{paused ? 'Em pausa' : recording ? 'A gravar' : 'A ouvir'}</span> {fmt(seconds)}
     </span>
   );
   const wave = stream ? (
@@ -336,7 +448,15 @@ export function DictateButton({
       </div>
       {wave}
       <p className="min-h-5 text-xs text-muted" aria-live="off">
-        {interim ? <em>{interim}…</em> : paused ? 'Em pausa: Retomar para continuar, Concluir para acabar.' : 'Fala à vontade: o texto vai entrando na caixa.'}
+        {interim ? (
+          <em>{interim}…</em>
+        ) : paused ? (
+          'Em pausa: Retomar para continuar, Concluir para acabar.'
+        ) : recording ? (
+          'A gravar: o texto aparece na caixa quando carregares em Concluir.'
+        ) : (
+          'Fala à vontade: o texto vai entrando na caixa.'
+        )}
       </p>
     </div>
   );

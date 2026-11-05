@@ -2182,6 +2182,14 @@ export function getOpenApiDocument() {
           responses: { '200': ok(data(LeadEmailSendResultSchema)), '429': problem('Limite diário atingido'), ...withNotFound },
         }),
       },
+      '/ai/transcribe': {
+        get: op({ tags: ['Fornecedores de IA'], summary: 'Há fornecedor (OpenAI ou compatível) para passar áudio a texto?', responses: { '200': ok(data(z.object({ available: z.boolean() }))), ...common } }),
+        post: op({
+          tags: ['Fornecedores de IA'],
+          summary: 'Passar um ditado gravado a texto (multipart: audio, até 25 MB); não grava nada',
+          responses: { '200': ok(data(z.object({ text: z.string(), provider: z.string() }))), '422': problem('Sem fornecedor OpenAI'), ...common },
+        }),
+      },
       '/ai-providers': {
         get: op({
           tags: ['Fornecedores de IA'],

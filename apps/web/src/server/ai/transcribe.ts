@@ -11,6 +11,12 @@ import { listAiProviders, resolveAiProvider } from './providers';
 export const TRANSCRIBE_MAX_BYTES = 25 * 1024 * 1024;
 const MODEL = () => process.env.AI_TRANSCRIBE_MODEL?.trim() || 'whisper-1';
 
+/** Há um fornecedor que transcreva (OpenAI ou compatível)? (Para mostrar o Ditar onde o browser não reconhece voz.) */
+export async function transcriptionAvailable(ctx: ApiContext): Promise<boolean> {
+  const providers = await listAiProviders(ctx).catch(() => []);
+  return providers.some((p) => p.kind === 'openai' || p.kind === 'custom');
+}
+
 export async function transcribeAudio(ctx: ApiContext, file: File): Promise<{ text: string; provider: string }> {
   if (file.size > TRANSCRIBE_MAX_BYTES) throw new ApiError(413, 'Gravação demasiado grande', 'O máximo são 25 MB (cerca de 1 hora e meia de áudio comprimido).');
   if (!file.size) throw new ApiError(422, 'Gravação vazia');
