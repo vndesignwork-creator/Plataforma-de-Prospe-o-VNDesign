@@ -24,6 +24,8 @@ import { ChevronRight, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
+import { CollapseButton } from '@/components/ui/collapse';
+import { DictateButton } from '@/components/ui/dictate-button';
 import { EmailCheckHint } from '@/components/email/email-check-hint';
 import { Controller, useForm, useWatch, type Control, type FieldPath } from 'react-hook-form';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
@@ -99,11 +101,27 @@ const MORE_FIELDS = [
   'problems', 'pagespeed', 'mobile', 'approach_angle', 'email_subject', 'email_body',
 ] as const;
 
-function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+function Section({
+  title,
+  description,
+  children,
+  collapse,
+}: {
+  title: string;
+  description?: ReactNode;
+  children: ReactNode;
+  /** Secção que se pode recolher (o título fica, com um resumo). */
+  collapse?: { collapsed: boolean; onToggle: () => void };
+}) {
   return (
     <Card>
-      <CardHeader title={title} description={description} />
-      <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">{children}</div>
+      <CardHeader
+        title={title}
+        description={description}
+        className={collapse?.collapsed ? 'border-b-0' : undefined}
+        actions={collapse ? <CollapseButton collapsed={collapse.collapsed} onToggle={collapse.onToggle} label={title} /> : undefined}
+      />
+      {collapse?.collapsed ? null : <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">{children}</div>}
     </Card>
   );
 }
@@ -133,6 +151,9 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
 
   // Verificação de duplicados enquanto se escreve (nome, website, email).
   const [name, website, email] = useWatch({ control, name: ['company_name', 'website', 'email'] });
+  const notes = useWatch({ control, name: 'notes' }) as string | null | undefined;
+  // Notas recolhidas: fechadas quando estão vazias (abrem sozinhas se tiverem erro).
+  const [notesCollapsed, setNotesCollapsed] = useState(() => !(lead?.notes ?? initial?.notes)?.trim());
   const probe = useDebouncedValue({ name: name?.trim() ?? '', website: website?.trim() ?? '', email: email?.trim() ?? '' }, 500);
   const shouldCheck = probe.name.length >= 3 || probe.website.length >= 4 || probe.email.includes('@');
   const dupCheck = useQuery({
@@ -243,9 +264,18 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
       )}
 
       <Section title="Empresa" description="Só dados empresariais públicos (RGPD).">
-        <Field label="Empresa" error={e('company_name')} required className="md:col-span-2">
-          <Input autoComplete="off" autoFocus={!isEdit} {...register('company_name')} />
-        </Field>
+        {/* O Field liga o rótulo ao Input (tem de ser o filho direto): o Ditar fica ao lado. */}
+        <div className="flex items-start gap-2 md:col-span-2">
+          <Field label="Empresa" error={e('company_name')} required className="min-w-0 flex-1">
+            <Input autoComplete="off" autoFocus={!isEdit} {...register('company_name')} />
+          </Field>
+          <DictateButton
+            size="sm"
+            value={name ?? ''}
+            onChange={(v) => setValue('company_name', v as never, { shouldDirty: true, shouldValidate: true })}
+            className="mt-[1.875rem] pointer-coarse:mt-8"
+          />
+        </div>
         {dupCheck.data && (dupCheck.data.duplicates.length || dupCheck.data.do_not_contact.length) ? (
           <div id="lead-duplicados" className="scroll-mt-24 md:col-span-2">
             <DuplicatePanel
@@ -350,10 +380,15 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
         </Field>
       </Section>
 
-      <Section title="Notas">
+      <Section
+        title="Notas"
+        description={notesCollapsed && !e('notes') ? (notes?.trim() ? <span className="line-clamp-1">{notes.trim()}</span> : 'Sem notas.') : undefined}
+        collapse={{ collapsed: notesCollapsed && !e('notes'), onToggle: () => setNotesCollapsed((c) => !c) }}
+      >
         <Field label="Notas" error={e('notes')} className="md:col-span-2">
           <Textarea rows={4} {...register('notes')} />
         </Field>
+        <DictateButton value={notes ?? ''} onChange={(v) => setValue('notes', v as never, { shouldDirty: true })} className="-mt-2 self-start md:col-span-2" />
       </Section>
 
       {/* Campos que raramente se preenchem ao criar: fechados por omissão (abrem sozinhos se tiverem erros). */}

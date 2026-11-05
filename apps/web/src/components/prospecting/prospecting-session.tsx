@@ -73,6 +73,7 @@ import { Badge, Card, EmptyState, Skeleton } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownSeparator, DropdownTrigger } from '@/components/ui/dropdown';
 import { useServiceCatalog } from '@/components/services/services';
+import { DictateButton } from '@/components/ui/dictate-button';
 import { Textarea } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api-client';
 import { usePreference, useProspectingOutcome, useProspectingQueue, useSetPreference, useSettings, useTemplates } from '@/lib/queries';
@@ -769,7 +770,10 @@ function LeadRow({
             onChange={(e) => setNote(e.target.value)}
             placeholder="Ex.: falei com a dona, pediu para ligar depois das 15h"
           />
-          <p className="text-xs text-muted">Fica guardada com o próximo resultado que registares.</p>
+          <div className="flex flex-wrap items-start gap-2">
+            <DictateButton value={note} onChange={setNote} max={2000} />
+            <p className="ml-auto text-xs text-muted">Fica guardada com o próximo resultado que registares.</p>
+          </div>
         </div>
       ) : null}
 

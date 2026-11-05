@@ -3,6 +3,7 @@
 /** Campos da pesquisa do gerador (usados na pesquisa normal e nas automáticas). */
 import { LEAD_GENERATION_LIMITS } from '@vndesign/core';
 import { Field } from '@/components/ui/field';
+import { DictateButton } from '@/components/ui/dictate-button';
 import { Input, Select, Textarea } from '@/components/ui/input';
 import { MultiSelectFilter } from '@/components/leads/multi-select';
 import { ServiceGlyph, useServiceCatalog } from '@/components/services/services';
@@ -63,6 +64,7 @@ export function SearchFields({
       >
         <Textarea rows={2} value={value.query} maxLength={500} onChange={(e) => set({ query: e.target.value })} className="text-base" />
       </Field>
+      <DictateButton value={value.query} onChange={(query) => set({ query })} max={500} className="-mt-2 col-span-full self-start justify-self-start" />
       {ideas?.length ? (
         <div role="group" aria-label="Ideias de pesquisa" className="-mt-2 flex flex-wrap items-center gap-1.5 col-span-full">
           <span className="text-xs text-muted">Ideias:</span>

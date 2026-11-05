@@ -230,3 +230,48 @@ test('atalhos de teclado: G + tecla, N, ? e nada enquanto se escreve', async ({ 
   await expect(page).toHaveURL(/\/leads\/novo$/);
   await expect(name).toHaveValue('gl');
 });
+
+test('ditar no novo lead (empresa e notas recolhíveis), na prospeção e no gerar leads', async ({ page }) => {
+  await page.addInitScript(() => {
+    class FakeRecognition {
+      lang = '';
+      continuous = false;
+      interimResults = false;
+      onresult: ((e: unknown) => void) | null = null;
+      onerror: ((e: unknown) => void) | null = null;
+      onend: (() => void) | null = null;
+      start() {
+        setTimeout(() => this.onresult?.({ resultIndex: 0, results: [Object.assign([{ transcript: 'padaria do bairro' }], { isFinal: true })] }), 50);
+      }
+      stop() {
+        this.onend?.();
+      }
+      abort() {
+        this.onend?.();
+      }
+    }
+    Object.assign(window, { SpeechRecognition: FakeRecognition, webkitSpeechRecognition: FakeRecognition });
+  });
+  await page.goto('/leads/novo');
+  const company = page.getByRole('textbox', { name: 'Empresa' });
+  await company.locator('xpath=ancestor::div[contains(@class,"items-start")][1]').getByRole('button', { name: 'Ditar (falar em vez de escrever)' }).click();
+  await expect(company).toHaveValue('Padaria do bairro');
+  await page.getByRole('button', { name: 'Concluir o ditado' }).click();
+
+  // Notas: recolhidas quando vazias; abrem e também se dita.
+  await expect(page.getByLabel('Notas', { exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Expandir: Notas' }).click();
+  const notes = page.getByLabel('Notas', { exact: true });
+  await expect(notes).toBeVisible();
+  await notes.locator('xpath=ancestor::div[contains(@class,"grid")][1]').getByRole('button', { name: 'Ditar (falar em vez de escrever)' }).click();
+  await expect(notes).toHaveValue('Padaria do bairro');
+  await page.getByRole('button', { name: 'Concluir o ditado' }).click();
+  await page.getByRole('button', { name: 'Recolher: Notas' }).click();
+  await expect(page.getByText('Padaria do bairro', { exact: true })).toBeVisible();
+
+  await page.goto('/gerar-leads');
+  const query = page.getByLabel('O que procuras?');
+  await query.fill('');
+  await page.getByRole('button', { name: 'Ditar (falar em vez de escrever)' }).first().click();
+  await expect(query).toHaveValue('Padaria do bairro');
+});
