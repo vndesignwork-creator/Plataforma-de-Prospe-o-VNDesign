@@ -42,7 +42,7 @@ const validDate = (y: number, m: number, d: number) => m >= 0 && m < 12 && d >= 
 /** Preposições que ficam a sobrar antes da data/hora ("na sexta", "até amanhã", "às 10h"). */
 const LEAD_IN = String.raw`(?:(?:at[ée]|para|na|no|em|ao|à|a|dia|de|do|da)\s+)*`;
 
-type DateRule = { re: RegExp; date: (m: RegExpExecArray, today: string) => string | null };
+type DateRule = { re: RegExp; date: (m: RegExpExecArray, today: string, text: string) => string | null };
 
 const DATE_RULES: DateRule[] = [
   { re: R(/\bdepois de amanh[ãa]\b/iu), date: (_m, t) => addDays(t, 2) },
@@ -73,8 +73,12 @@ const DATE_RULES: DateRule[] = [
       return iso(y, mo - 1, daysInMonth(y, mo - 1));
     } },
   {
-    re: R(/\b(?:pr[óo]xim[ao]\s+)?(segunda|ter[çc]a|quarta|quinta|sexta|s[áa]bado|domingo)(?:-feira)?\b/iu),
-    date: (m, t) => {
+    // Em minúsculas (ou com "-feira"): "Quinta do Lago" e "Segunda versão" não são dias.
+    re: R(/\b(?:[Pp]r[óo]xim[ao]\s+)?(segunda|ter[çc]a|quarta|quinta|sexta|s[áa]bado|domingo|(?:Segunda|Ter[çc]a|Quarta|Quinta|Sexta)(?=-feira))(-feira)?\b/u),
+    date: (m, t, text) => {
+      const before = text.slice(0, m.index).trim();
+      // Primeira palavra ("Segunda rápida") ou depois de um artigo ("a segunda proposta"): não é o dia.
+      if (!m[2] && (!before || /(?:^|\s)(?:a|o|um|uma|da|do|na\s+tua|nesta)$/i.test(before))) return null;
       const target = WEEKDAYS[fold(m[1]!)]!;
       // O próximo dia com esse nome (hoje é sexta → a próxima sexta).
       return addDays(t, ((target - weekday(t) + 7) % 7) || 7);
@@ -165,15 +169,17 @@ export function parseTaskPhrase(text: string, today: string): ParsedTaskPhrase {
   let due: string | null = null;
   let time: string | null = null;
   const matched: string[] = [];
-  for (const rule of DATE_RULES) {
-    const m = rule.re.exec(rest);
-    if (!m) continue;
-    const date = rule.date(m, today);
-    if (!date) continue;
-    due = date;
-    matched.push(m[0].trim());
-    rest = cut(rest, m);
-    break;
+  outer: for (const rule of DATE_RULES) {
+    // Todas as ocorrências: a primeira pode não contar ("Segunda versão até sexta").
+    const re = new RegExp(rule.re.source, rule.re.flags.includes('g') ? rule.re.flags : `${rule.re.flags}g`);
+    for (const m of rest.matchAll(re) as IterableIterator<RegExpExecArray>) {
+      const date = rule.date(m, today, rest);
+      if (!date) continue;
+      due = date;
+      matched.push(m[0].trim());
+      rest = cut(rest, m);
+      break outer;
+    }
   }
   for (const rule of TIME_RULES) {
     const m = rule.re.exec(rest);

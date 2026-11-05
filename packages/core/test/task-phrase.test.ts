@@ -45,4 +45,12 @@ describe('criar tarefa a escrever como se fala', () => {
     expect(p('Pedir 3 fotografias').due_on).toBeNull();
     expect(p('Proposta #12 amanhã')).toMatchObject({ leadHint: '#12', due_on: '2026-11-06' });
   });
+
+  it('palavras que não são dias da semana', () => {
+    expect(p('Segunda rápida')).toMatchObject({ title: 'Segunda rápida', due_on: null });
+    expect(p('Enviar a segunda proposta')).toMatchObject({ title: 'Enviar a segunda proposta', due_on: null });
+    expect(p('Visitar a Quinta do Lago')).toMatchObject({ due_on: null, leadHint: 'Quinta do Lago' });
+    expect(p('Segunda versão do logótipo até sexta')).toMatchObject({ title: 'Segunda versão do logótipo', due_on: '2026-11-06' });
+    expect(p('Segunda-feira: reunião de equipa').due_on).toBe('2026-11-09');
+  });
 });
