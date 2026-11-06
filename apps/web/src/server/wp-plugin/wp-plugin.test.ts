@@ -105,7 +105,7 @@ describe('plugin de WordPress', () => {
     expect(on.match(/<li>/g)?.length).toBe(4);
     // De origem: o texto à esquerda e, no telemóvel, por cima do formulário.
     expect(on.indexOf('vnd-fa__promo')).toBeLessThan(on.indexOf('vnd-fa__main'));
-    expect(on).toContain('width="800" height="420"');
+    expect(on).toContain('width="1000" height="500"');
     expect(on).toContain('--vnd-fa-cols:minmax(0,1fr) minmax(0,1fr)');
     // Largura: de origem ocupa o sítio onde está; com "máxima", o valor escolhido.
     expect(on).toContain('--vnd-fa-max:none');

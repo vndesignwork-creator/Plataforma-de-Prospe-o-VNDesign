@@ -269,7 +269,7 @@ class VND_FA_Bricks_Element extends \Bricks\Element {
 			'group' => 'vnd_promo_style',
 			'label' => 'Contorno e cantos da imagem',
 			'type'  => 'border',
-			'css'   => array(array('property' => 'border', 'selector' => '.vnd-fa__image')),
+			'css'   => array(array('property' => 'border', 'selector' => '.vnd-fa__media')),
 		);
 
 		// Aspeto

@@ -205,7 +205,9 @@
 }
 .vnd-fa__main { min-width: 0; }
 @container (min-width: 760px) {
-	.vnd-fa__grid { grid-template-columns: var(--vnd-fa-cols, minmax(0, 1fr) minmax(0, 1fr)); grid-template-areas: "main promo"; }
+	.vnd-fa__grid { grid-template-columns: var(--vnd-fa-cols, minmax(0, 1fr) minmax(0, 1fr)); grid-template-areas: "main promo"; align-items: stretch; }
+	.vnd-fa__main { display: flex; flex-direction: column; justify-content: center; }
+	.vnd-fa__promo .vnd-fa__media { flex: 1 1 0; min-height: 11rem; aspect-ratio: auto; }
 	.vnd-fa--promo-left .vnd-fa__grid { grid-template-areas: "promo main"; }
 	.vnd-fa__main { grid-area: main; }
 	.vnd-fa__promo { grid-area: promo; }
@@ -216,18 +218,28 @@
 	gap: 0.9rem;
 	min-width: 0;
 }
-.vnd-fa__image {
-	display: block;
-	width: 100%;
-	height: auto;
-	max-height: 26rem;
-	object-fit: cover;
+/* A imagem fica numa moldura horizontal; a foto/ilustração preenche-a (corta só as bordas). */
+.vnd-fa__media {
+	position: relative;
+	flex: none;
+	aspect-ratio: 4 / 3; /* uma coluna (telemóvel): o desenho aparece maior */
+	overflow: hidden;
 	border-radius: calc(var(--vnd-fa-radius) * 1.4);
 }
-/* A ilustração do plugin encolhe sem ser cortada; as fotos preenchem a caixa. */
-.vnd-fa .vnd-fa__image--illustration { max-height: none; object-fit: fill; }
-.vnd-fa__promo--image-top .vnd-fa__image { margin-bottom: 0.4rem; }
-.vnd-fa__promo--image-bottom .vnd-fa__image { margin-top: 0.4rem; }
+.vnd-fa .vnd-fa__image {
+	position: absolute;
+	inset: 0;
+	display: block;
+	width: 100%;
+	max-width: none;
+	height: 100%;
+	max-height: none;
+	margin: 0;
+	object-fit: cover;
+	border-radius: 0;
+}
+.vnd-fa__promo--image-top .vnd-fa__media { margin-bottom: 0.3rem; }
+.vnd-fa__promo--image-bottom .vnd-fa__media { margin-top: 0.3rem; }
 .vnd-fa__eyebrow {
 	align-self: flex-start;
 	margin: 0;

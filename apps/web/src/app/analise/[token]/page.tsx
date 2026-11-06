@@ -23,13 +23,16 @@ export const metadata: Metadata = { title: { absolute: 'Analisar o meu site grá
 function Promo() {
   const p = FREE_AUDIT_PROMO;
   return (
-    <section aria-label="Porquê analisar o site" className="flex min-w-0 flex-col gap-4">
-      {/* eslint-disable-next-line @next/next/no-img-element -- ilustração SVG estática */}
-      <img src="/analise/promo.svg" alt={p.imageAlt} width={800} height={420} className="h-auto w-full rounded-2xl" />
+    <section aria-label="Porquê analisar o site" className="flex h-full min-w-0 flex-col gap-4">
+      {/* Imagem na horizontal: no computador estica ou encolhe até a coluna ficar da altura do formulário. */}
+      <div className="relative aspect-[4/3] overflow-hidden rounded-2xl lg:aspect-auto lg:min-h-36 lg:flex-1 lg:basis-0">
+        {/* eslint-disable-next-line @next/next/no-img-element -- ilustração SVG estática */}
+        <img src="/analise/promo.svg" alt={p.imageAlt} width={1000} height={500} className="absolute inset-0 h-full w-full object-cover" />
+      </div>
       <p className="w-fit rounded-full bg-accent-soft px-3 py-1 text-xs font-bold tracking-wide text-accent-text uppercase">{p.eyebrow}</p>
-      <h2 className="font-display text-2xl leading-tight font-bold sm:text-3xl">{p.title}</h2>
+      <h2 className="font-display text-2xl leading-tight font-bold">{p.title}</h2>
       <p className="text-muted">{p.text}</p>
-      <ul className="flex flex-col gap-2.5">
+      <ul className="flex flex-col gap-2">
         {p.points.map((point) => (
           <li key={point} className="flex items-start gap-2.5">
             <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-accent-soft text-accent-text">
@@ -86,11 +89,11 @@ export default async function FreeAuditPage({ params, searchParams }: Props) {
       {logo}
       {layout.promo ? (
         // No telemóvel: o texto por cima do formulário. No computador: o texto do lado escolhido.
-        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14">
+        <div className="grid gap-10 lg:grid-cols-2 lg:items-stretch lg:gap-14">
           <div className={layout.side === 'right' ? 'lg:order-last' : undefined}>
             <Promo />
           </div>
-          {main}
+          <div className="flex flex-col justify-center">{main}</div>
         </div>
       ) : (
         main

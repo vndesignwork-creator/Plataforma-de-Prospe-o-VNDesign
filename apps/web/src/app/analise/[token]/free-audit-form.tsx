@@ -65,7 +65,7 @@ export function FreeAuditForm({ token, brand }: { token: string; brand: string }
         <Input name="email" type="email" required placeholder="nome@exemplo.pt" autoComplete="email" aria-invalid={err('email') ? true : undefined} />
         {err('email') ? <span className="text-xs text-danger">{err('email')}</span> : null}
       </label>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4">
         <label className="flex flex-col gap-1.5 text-sm">
           <span className="font-medium">O seu nome</span>
           <Input name="name" autoComplete="name" />
