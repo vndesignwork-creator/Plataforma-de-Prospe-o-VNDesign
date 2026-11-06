@@ -54,8 +54,9 @@ export function PeriodCompareCard({ period }: { period: ComparePeriod }) {
       ) : isLoading || !data ? (
         <Skeleton className="m-4 h-24" />
       ) : (
-        // Em linhas que se esticam: sem buracos quando o número de valores não enche a última linha.
-        <ul className="flex flex-wrap gap-px bg-border" aria-label="Comparação">
+        // Telemóvel: duas colunas iguais (o último a toda a largura, se sobrar um). Computador: linhas que
+        // se esticam, sem buracos quando o número de valores não enche a última linha.
+        <ul className="grid grid-cols-2 gap-px bg-border sm:flex sm:flex-wrap [&>li:last-child:nth-child(odd)]:col-span-2" aria-label="Comparação">
           {data.metrics.map((m) => {
             const d = compareDelta(m.current, m.previous);
             const money = m.key === 'received';
