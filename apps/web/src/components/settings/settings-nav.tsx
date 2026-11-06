@@ -13,6 +13,7 @@ import {
   ListChecks,
   Mail,
   PenLine,
+  Quote,
   Search,
   SlidersHorizontal,
   Sparkles,
@@ -56,6 +57,7 @@ export const SETTINGS_SECTIONS = [
   { slug: 'nao-contactar', label: 'Não contactar', group: 'email', icon: Ban, description: 'Emails e domínios que nunca recebem contactos.' },
   { slug: 'servicos', label: 'Serviços', group: 'negocio', icon: Layers, description: 'O que vendes: serviços, categorias e componentes.' },
   { slug: 'propostas', label: 'Propostas', group: 'negocio', icon: FileText, description: 'Pacotes, preços e textos do PDF da proposta.' },
+  { slug: 'testemunhos', label: 'Testemunhos', group: 'negocio', icon: Quote, description: 'As opiniões dos clientes e as que aparecem nas propostas.' },
   {
     slug: 'formulario',
     label: 'Formulário do site',
@@ -83,6 +85,7 @@ export const SETTINGS_KEYWORDS: Partial<Record<SettingsSection['slug'], string>>
   funcionalidades: 'ligar desligar módulos pomodoro pagamentos projetos tempo dinheiro reuniões prospeção',
   servicos: 'serviços categorias componentes catálogo pacotes',
   propostas: 'pacotes preços pdf orçamento iva validade valor por hora calculadora',
+  testemunhos: 'opinião opiniões avaliação estrelas clientes satisfeitos recomendação google review',
   ia: 'ia claude chatgpt openai openrouter chave api inteligência artificial modelo',
   'listas-tarefas': 'modelos tarefas checklist',
   setores: 'sectores oportunidades argumentos',

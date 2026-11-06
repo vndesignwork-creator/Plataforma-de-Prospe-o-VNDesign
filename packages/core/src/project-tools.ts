@@ -677,3 +677,59 @@ export function reorderSubset(full: readonly string[], subset: readonly string[]
   for (let i = 0; i < next.length; i++) if (inSubset.has(next[i]!)) next[i] = subset[j++]!;
   return next;
 }
+
+// -----------------------------------------------------------------------------
+// Testemunhos dos clientes (link /o/<código> no fim do projeto)
+// -----------------------------------------------------------------------------
+
+export const TESTIMONIAL_QUOTE_MAX = 1500;
+
+export const TestimonialSchema = z
+  .object({
+    id: z.uuid(),
+    lead_id: z.uuid(),
+    token: z.string().meta({ description: 'Link do cliente: /o/<token>' }),
+    status: z.enum(['pendente', 'recebido']),
+    rating: z.number().int().min(1).max(5).nullable(),
+    quote: z.string().nullable(),
+    author_name: z.string().nullable(),
+    author_role: z.string().nullable(),
+    can_publish: z.boolean().meta({ description: 'O cliente autorizou mostrar o testemunho com o nome' }),
+    featured: z.boolean().meta({ description: 'Mostrar nas propostas (só se o cliente autorizou)' }),
+    submitted_at: z.string().nullable(),
+    created_at: z.string(),
+  })
+  .meta({ id: 'Testimonial' });
+export type Testimonial = z.infer<typeof TestimonialSchema>;
+
+export const TestimonialListItemSchema = TestimonialSchema.extend({ company_name: z.string() }).meta({ id: 'TestimonialListItem' });
+export type TestimonialListItem = z.infer<typeof TestimonialListItemSchema>;
+
+const trimmed = (max: number, message: string) => z.string().trim().max(max, message);
+
+/** O que o cliente envia na página do testemunho. */
+export const TestimonialSubmitSchema = z
+  .object({
+    rating: z.coerce.number({ error: 'Escolha de 1 a 5 estrelas.' }).int().min(1, 'Escolha de 1 a 5 estrelas.').max(5, 'Escolha de 1 a 5 estrelas.'),
+    quote: trimmed(TESTIMONIAL_QUOTE_MAX, `Escreva até ${TESTIMONIAL_QUOTE_MAX} caracteres.`).min(10, 'Escreva pelo menos uma frase (10 caracteres).'),
+    author_name: trimmed(120, 'Nome demasiado comprido.').min(1, 'Indique o seu nome.'),
+    author_role: trimmed(120, 'Texto demasiado comprido.').optional().transform((v) => v || null),
+    can_publish: z.boolean().default(false),
+  })
+  .meta({ id: 'TestimonialSubmit' });
+export type TestimonialSubmit = z.infer<typeof TestimonialSubmitSchema>;
+
+export const TestimonialUpdateSchema = z.object({ featured: z.boolean() }).meta({ id: 'TestimonialUpdate' });
+
+/** Aparece nas propostas: autorizado pelo cliente, marcado pelo dono e com 4 ou 5 estrelas. */
+export function isTestimonialShowable(t: Pick<Testimonial, 'status' | 'can_publish' | 'featured' | 'rating' | 'quote'>): boolean {
+  return t.status === 'recebido' && t.can_publish && t.featured && (t.rating ?? 0) >= 4 && Boolean(t.quote?.trim());
+}
+
+/** "Ana Silva, Gerente · Café Central" (o nome da empresa só se não estiver já no cargo). */
+export function testimonialAuthorLine(t: { author_name: string | null; author_role: string | null }, company?: string | null): string {
+  const role = t.author_role?.trim();
+  const parts = [t.author_name?.trim(), role].filter(Boolean).join(', ');
+  const showCompany = company && !(role ?? '').toLowerCase().includes(company.toLowerCase());
+  return [parts, showCompany ? company : null].filter(Boolean).join(' · ');
+}

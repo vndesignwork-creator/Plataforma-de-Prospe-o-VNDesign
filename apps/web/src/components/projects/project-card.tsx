@@ -20,6 +20,7 @@ import { DropdownContent, DropdownItem, DropdownRoot, DropdownTrigger } from '@/
 import { cn } from '@/lib/utils';
 import { useServiceCatalog } from '@/components/services/services';
 import { BriefingSection } from './briefing-section';
+import { TestimonialSection } from './testimonial-section';
 import { ClientRequestsSection } from './client-requests-section';
 import { CollaboratorsSection } from './collaborators-section';
 import { DeliverablesSection } from './deliverables-section';
@@ -193,6 +194,7 @@ export function ProjectCard({ lead }: { lead: Lead }) {
     cliente: [
       features?.site_monitoring ? <SiteMonitorSection key="site" lead={lead} /> : null,
       features?.client_page ? <ShareSection key="share" lead={lead} /> : null,
+      features?.testimonials ? <TestimonialSection key="testimonial" lead={lead} /> : null,
       features?.collaborators ? <CollaboratorsSection key="collab" lead={lead} /> : null,
     ].filter(Boolean),
   };

@@ -22,6 +22,7 @@ import { listPayments } from './payments';
 import { getProjectInfo, getProjectTime, listDeliverables, listExpenses, listRevisions } from './project-tools';
 import { listProposals } from './proposals';
 import { listTasks } from './tasks';
+import { getTestimonial } from './testimonials';
 
 /** Antes de responder, um lead não tem projeto: as partes do projeto não se pedem. */
 const EARLY: readonly LeadStatus[] = ['identificado', 'contactado', 'respondeu'];
@@ -51,6 +52,7 @@ const PROJECT: Record<string, Part> = {
   collaborators: listCollaborators,
   accesses: listAccesses,
   briefing: getBriefing,
+  testimonial: getTestimonial,
   'client-requests': listClientRequests,
   renewals: listRenewals,
 };

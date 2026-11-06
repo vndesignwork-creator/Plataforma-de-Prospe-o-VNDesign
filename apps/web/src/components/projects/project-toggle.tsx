@@ -8,7 +8,7 @@
  */
 import { useQueryClient } from '@tanstack/react-query';
 import { UPSELL_MONTHS, renderTemplate, templateVariablesIn, type Lead, toPlainText, pickTemplateVariant } from '@vndesign/core';
-import { CheckCircle2, MessageCircle, RotateCcw, Star } from 'lucide-react';
+import { CheckCircle2, MessageCircle, Quote, RotateCcw, Star } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { SendEmailButton } from '@/components/email/send-email-dialog';
@@ -20,6 +20,7 @@ import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useLogActivity, useMe, useSetProjectCompleted, useSettings, useTemplates, type SettingsWithMail } from '@/lib/queries';
 import { usesAiVisibility, useTemplateContext } from '@/lib/template-context';
 import { whatsappUrl } from '@/lib/utils';
+import { TestimonialRequest } from './testimonial-section';
 
 /** Pedir a avaliação: modelos com {{avaliacao}} (WhatsApp e email). */
 function ReviewRequest({ lead }: { lead: Lead }) {
@@ -110,6 +111,8 @@ function ReviewRequest({ lead }: { lead: Lead }) {
 
 export function WrapUpDialog({ lead, onClose }: { lead: Lead; onClose: () => void }) {
   const set = useSetProjectCompleted();
+  const { data: settings } = useSettings();
+  const testimonials = settings?.features.testimonials ?? false;
   const [portfolio, setPortfolio] = useState(true);
   const [upsell, setUpsell] = useState(true);
   const [months, setMonths] = useState('6');
@@ -150,8 +153,17 @@ export function WrapUpDialog({ lead, onClose }: { lead: Lead; onClose: () => voi
         <div className="flex flex-col gap-3">
           <p className="text-sm">
             {portfolio || upsell ? 'As tarefas ficaram criadas no cliente e aparecem em “Hoje” no dia. ' : ''}
-            Agora é a altura certa para pedir uma avaliação:
+            Agora é a altura certa para pedir {testimonials ? 'a opinião do cliente' : 'uma avaliação'}:
           </p>
+          {testimonials ? (
+            <>
+              <h3 className="inline-flex items-center gap-2 text-sm font-semibold">
+                <Quote className="h-4 w-4 text-accent-text" aria-hidden /> Pedir testemunho
+              </h3>
+              <p className="text-xs text-muted">Um link para o cliente dar a opinião. Com 4 ou 5 estrelas, a página sugere-lhe também o Google.</p>
+              <TestimonialRequest lead={lead} compact />
+            </>
+          ) : null}
           <h3 className="inline-flex items-center gap-2 text-sm font-semibold">
             <Star className="h-4 w-4 text-accent-text" aria-hidden /> Pedir avaliação no Google
           </h3>
@@ -179,7 +191,7 @@ export function WrapUpDialog({ lead, onClose }: { lead: Lead; onClose: () => voi
               ))}
             </Select>
           </div>
-          <p className="text-xs text-muted">No passo seguinte podes pedir uma avaliação no Google ao cliente.</p>
+          <p className="text-xs text-muted">No passo seguinte podes pedir {testimonials ? 'um testemunho e ' : ''}uma avaliação no Google ao cliente.</p>
         </div>
       )}
     </Dialog>

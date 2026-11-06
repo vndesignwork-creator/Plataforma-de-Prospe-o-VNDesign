@@ -18,6 +18,7 @@ import {
   useSettings,
   useSignature,
   useTaskTemplates,
+  useTestimonials,
 } from '@/lib/queries';
 import { SETTINGS_GROUPS, useSettingsSections, type SettingsSection } from './settings-nav';
 
@@ -118,6 +119,17 @@ function ApiStatus() {
   return <StatusBadge status={active === undefined ? null : { text: active ? `${active} ${active === 1 ? 'chave ativa' : 'chaves ativas'}` : 'Sem chaves' }} />;
 }
 
+function TestimonialsStatus() {
+  const { data } = useTestimonials();
+  const got = data?.filter((t) => t.status === 'recebido');
+  const avg = got?.length ? got.reduce((sum, t) => sum + (t.rating ?? 0), 0) / got.length : 0;
+  return (
+    <StatusBadge
+      status={got === undefined ? null : { text: got.length ? `${got.length} · média ${avg.toFixed(1).replace('.', ',')} ★` : 'Nenhum ainda' }}
+    />
+  );
+}
+
 function RulesStatus() {
   const { data } = useAutomationRules();
   const on = data?.filter((r) => r.enabled).length;
@@ -132,6 +144,7 @@ const STATUS: Record<SettingsSection['slug'], () => ReactNode> = {
   'nao-contactar': DncStatus,
   servicos: ServicesStatus,
   propostas: PackagesStatus,
+  testemunhos: TestimonialsStatus,
   formulario: SiteFormStatus,
   setores: SectorsStatus,
   etiquetas: TagsStatus,

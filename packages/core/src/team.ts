@@ -141,6 +141,7 @@ export const TEAM_ACTIVITY_GROUPS = {
     types: [
       'payment_received', 'project_completed', 'project_reopened', 'project_stage_changed', 'revision_requested',
       'deliverable_sent', 'deliverable_approved', 'project_started', 'contract_sent', 'contract_accepted', 'briefing_received',
+      'testimonial_received',
     ],
   },
 } as const satisfies Record<string, { label: string; types: readonly (typeof ACTIVITY_TYPES)[number][] }>;

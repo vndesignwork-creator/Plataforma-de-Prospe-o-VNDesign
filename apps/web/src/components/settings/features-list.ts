@@ -11,6 +11,7 @@ import {
   CalendarPlus,
   Camera,
   Palette,
+  Quote,
   ClipboardList,
   Clock,
   Eye,
@@ -139,6 +140,13 @@ export const FEATURES: { key: keyof Features; label: string; description: string
     sub: true,
   },
   {
+    key: 'testimonials',
+    label: 'Testemunhos dos clientes',
+    description: 'No fim do projeto, um link para o cliente dar a opinião (1 a 5 estrelas). Os autorizados aparecem nas propostas.',
+    icon: Quote,
+    sub: true,
+  },
+  {
     key: 'collaborators',
     label: 'Colaboradores',
     description: 'Convidar um freelancer para um projeto: só vê as tarefas, os ficheiros, o briefing e as horas dele.',
@@ -248,7 +256,7 @@ export const FEATURE_GROUPS: { title: string; description: string; master?: keyo
       { title: 'Arranque', keys: ['project_kickoff', 'briefing'] },
       { title: 'Tempo', keys: ['time_tracking', 'time_value', 'pomodoro'] },
       { title: 'Trabalho e entregas', keys: ['revisions', 'deliverables', 'launch_checklist', 'expenses'] },
-      { title: 'Cliente e equipa', keys: ['site_monitoring', 'client_page', 'client_approvals', 'collaborators', 'brand_kit'] },
+      { title: 'Cliente e equipa', keys: ['site_monitoring', 'client_page', 'client_approvals', 'testimonials', 'collaborators', 'brand_kit'] },
     ],
   },
 ];

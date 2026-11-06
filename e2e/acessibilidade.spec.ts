@@ -40,6 +40,7 @@ const PAGES = [
   '/definicoes/servicos',
   '/definicoes/email',
   '/definicoes/funcionalidades',
+  '/definicoes/testemunhos',
 ];
 
 for (const theme of ['dark', 'light'] as const) {

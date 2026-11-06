@@ -47,6 +47,7 @@ import {
   MessagesSquare,
   MailOpen,
   Phone,
+  Quote,
   Wallet,
   CalendarPlus,
   CalendarX,
@@ -111,6 +112,7 @@ export const ICONS: Partial<Record<Activity["type"], LucideIcon>> = {
   contract_sent: FileSignature,
   contract_accepted: FileCheck2,
   briefing_received: ClipboardList,
+  testimonial_received: Quote,
   email_opened: Eye,
   email_clicked: MousePointerClick,
   comment: MessagesSquare,
@@ -220,6 +222,8 @@ export function describe(a: Activity): string | null {
       return [a.body ? `“${a.body}”` : null, p.url ? String(p.url).replace(/^https?:\/\/(www\.)?/, '') : null].filter(Boolean).join(' → ') || null;
     case 'briefing_received':
       return `${Number(p.answers ?? 0)} resposta(s)${Number(p.files ?? 0) ? ` · ${Number(p.files)} ficheiro(s)` : ''}`;
+    case 'testimonial_received':
+      return `${'★'.repeat(Number(p.rating ?? 0))} · ${p.can_publish ? 'pode ser publicado' : 'só para ti (sem autorização para publicar)'}`;
     case 'email_received':
       return [p.from ? `De ${String(p.from)}` : null, p.subject ? `“${String(p.subject)}”` : null, p.auto ? 'resposta automática' : null]
         .filter(Boolean)

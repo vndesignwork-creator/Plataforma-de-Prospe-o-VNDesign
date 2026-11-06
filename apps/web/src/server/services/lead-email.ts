@@ -23,6 +23,7 @@ import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
 import { sendWithAccount } from '../mailer';
 import { renderProposalPdf } from '../proposals/pdf';
+import { proposalTestimonials } from './testimonials';
 import { latestScreenshots } from './audits';
 import { diagnosisPdf } from './diagnosis';
 import { prepareTracking } from './email-tracking';
@@ -238,7 +239,9 @@ export async function followUpDraft(ctx: ApiContext, leadId: string): Promise<Fo
 export async function sendProposalEmail(ctx: ApiContext, proposalId: string, input: LeadEmailSend): Promise<LeadEmailSendResult> {
   const proposal = await getProposal(ctx, proposalId);
   const [lead, signature, settings] = await Promise.all([getLead(ctx, proposal.lead_id), getSignature(ctx), getSettings(ctx)]);
-  const pdf = await renderProposalPdf({ proposal, lead, signature, settings: settings.proposal });
+  // Testemunhos autorizados (sem bloquear o PDF se falharem, ex.: base de dados por atualizar).
+  const testimonials = settings.features.testimonials ? await proposalTestimonials(ctx, lead.id).catch(() => []) : [];
+  const pdf = await renderProposalPdf({ proposal, lead, signature, settings: settings.proposal, testimonials });
   const filename = `Proposta-${proposal.code}-${slugify(lead.company_name) || 'cliente'}.pdf`;
   const { sentToday, dailyLimit } = await deliver(ctx, lead, input, {
     attachments: [{ filename, content: pdf, contentType: 'application/pdf' }],

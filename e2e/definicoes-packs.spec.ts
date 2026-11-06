@@ -82,3 +82,10 @@ test('Definições: mostra a versão da plataforma (a mesma de /api/version)', a
   await expect(footer).toContainText(build);
   await expect(footer).toContainText('É a mais recente');
 });
+
+test('Scripts: modelos de Vídeo e Motion na categoria de vídeo', async ({ page }) => {
+  const templates = (await (await page.request.get('/api/v1/templates')).json()).data as { name: string; kind: string; category: string | null }[];
+  const video = templates.filter((t) => t.name.includes('Vídeo e Motion') || t.name.includes('Reels (redes sem vídeo)'));
+  expect(video.map((t) => t.kind).sort()).toEqual(['call_script', 'cold_email', 'cold_email', 'follow_up', 'social_dm', 'whatsapp']);
+  expect(new Set(video.map((t) => t.category)).size).toBe(1);
+});

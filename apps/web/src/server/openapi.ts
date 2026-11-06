@@ -89,6 +89,10 @@ import {
   ProjectExpenseSchema,
   ProjectExpenseCreateSchema,
   ProjectBriefingSchema,
+  TestimonialSchema,
+  TestimonialListItemSchema,
+  TestimonialSubmitSchema,
+  TestimonialUpdateSchema,
   CalendarFeedUpdateSchema,
   CalendarQuerySchema,
   BillingSummarySchema,
@@ -2092,6 +2096,39 @@ export function getOpenApiDocument() {
           security: [],
           requestParams: { path: z.object({ token: z.string() }) },
           responses: { '200': { description: 'Recebido' }, '404': problem('Link inexistente'), '422': problem('Sem respostas ou ficheiros a mais') },
+        }),
+      },
+      '/leads/{id}/testimonial': {
+        get: op({ tags: ['Projetos'], summary: 'Testemunho do cliente (null se ainda não foi pedido)', requestParams: { path: idParam }, responses: { '200': ok(data(TestimonialSchema.nullable())), ...withNotFound } }),
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Criar o link do testemunho (/o/{token}) para o cliente; se já existe, devolve-o',
+          requestParams: { path: idParam },
+          responses: { '201': ok(data(TestimonialSchema), 'Criado'), ...withNotFound },
+        }),
+        delete: op({ tags: ['Projetos'], summary: 'Apagar o testemunho (o link deixa de funcionar)', requestParams: { path: idParam }, responses: { '204': { description: 'Apagado' }, ...withNotFound } }),
+      },
+      '/testimonials': {
+        get: op({ tags: ['Projetos'], summary: 'Todos os testemunhos (recebidos e pedidos), com o nome do cliente', responses: { '200': ok(data(z.array(TestimonialListItemSchema))), ...common } }),
+      },
+      '/testimonials/{id}': {
+        patch: op({
+          tags: ['Projetos'],
+          summary: 'Mostrar ou não o testemunho nas propostas (só aparece se o cliente autorizou e deu 4 ou 5 estrelas)',
+          requestParams: { path: idParam },
+          requestBody: body(TestimonialUpdateSchema),
+          responses: { '200': ok(data(TestimonialListItemSchema)), ...withNotFound },
+        }),
+        delete: op({ tags: ['Projetos'], summary: 'Apagar um testemunho', requestParams: { path: idParam }, responses: { '204': { description: 'Apagado' }, ...withNotFound } }),
+      },
+      '/public/testimonials/{token}': {
+        post: op({
+          tags: ['Projetos'],
+          summary: 'O cliente envia (ou corrige) o testemunho (sem sessão). Com 4 ou 5 estrelas devolve o link do Google, se houver',
+          security: [],
+          requestParams: { path: z.object({ token: z.string() }) },
+          requestBody: body(TestimonialSubmitSchema),
+          responses: { '200': ok(data(z.object({ google_review_url: z.string().nullable() }))), '400': problem('Dados inválidos'), '404': problem('Link inexistente') },
         }),
       },
       '/calendar-feed': {

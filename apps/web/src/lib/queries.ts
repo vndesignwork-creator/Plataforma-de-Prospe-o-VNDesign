@@ -96,6 +96,8 @@ import type {
   CalendarFeed,
   ProjectExpense,
   ProjectBriefing,
+  Testimonial,
+  TestimonialListItem,
   LeadGenerationScheduleUpdate,
   LeadGenerationScheduleUpsertInput,
   MailAccount,
@@ -205,7 +207,7 @@ export function useLead(id: string, enabled = true) {
 
 /** Partes da ficha que vêm no bundle (cada uma com a chave da cache do cartão: [parte, id]). */
 const BUNDLE_PARTS = ['tasks', 'activities', 'audits', 'proposals', 'meetings', 'project', 'payments', 'contracts', 'client-projects', 'revisions', 'time'] as const;
-const BUNDLE_PROJECT_PARTS = ['deliverables', 'expenses', 'launch', 'collaborators', 'brand-kit', 'accesses', 'briefing', 'client-requests', 'renewals'] as const;
+const BUNDLE_PROJECT_PARTS = ['deliverables', 'expenses', 'launch', 'collaborators', 'brand-kit', 'accesses', 'briefing', 'testimonial', 'client-requests', 'renewals'] as const;
 
 function fetchLeadBundle(qc: ReturnType<typeof useQueryClient>, id: string) {
   return api<{ data: { lead: Lead; parts: Record<string, unknown> } }>(`/leads/${id}/bundle`).then(({ data }) => {
@@ -1422,6 +1424,48 @@ export function useBriefingAction(leadId: string) {
         ? api(`/leads/${leadId}/briefing`, { method: 'DELETE' }).then(() => null)
         : api<{ data: ProjectBriefing }>(`/leads/${leadId}/briefing`, { method: 'POST' }).then((r) => r.data),
     onSuccess: (briefing) => qc.setQueryData(['briefing', leadId], briefing),
+  });
+}
+
+export function useTestimonial(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['testimonial', leadId],
+    queryFn: () => api<{ data: Testimonial | null }>(`/leads/${leadId}/testimonial`).then((r) => r.data),
+    enabled,
+  });
+}
+
+/** Criar o link do testemunho do cliente, ou apagá-lo (remove). */
+export function useTestimonialAction(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { remove?: boolean } = {}) =>
+      input.remove
+        ? api(`/leads/${leadId}/testimonial`, { method: 'DELETE' }).then(() => null)
+        : api<{ data: Testimonial }>(`/leads/${leadId}/testimonial`, { method: 'POST' }).then((r) => r.data),
+    onSuccess: (testimonial) => {
+      qc.setQueryData(['testimonial', leadId], testimonial);
+      void qc.invalidateQueries({ queryKey: ['testimonials'] });
+    },
+  });
+}
+
+/** Todos os testemunhos (Definições → Testemunhos). */
+export function useTestimonials() {
+  return useQuery({ queryKey: ['testimonials'], queryFn: () => api<{ data: TestimonialListItem[] }>('/testimonials').then((r) => r.data) });
+}
+
+export function useUpdateTestimonial() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; featured?: boolean; remove?: boolean }) =>
+      input.remove
+        ? api(`/testimonials/${input.id}`, { method: 'DELETE' }).then(() => null)
+        : api<{ data: TestimonialListItem }>(`/testimonials/${input.id}`, { method: 'PATCH', body: { featured: input.featured } }).then((r) => r.data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['testimonials'] });
+      void qc.invalidateQueries({ queryKey: ['testimonial'] });
+    },
   });
 }
 

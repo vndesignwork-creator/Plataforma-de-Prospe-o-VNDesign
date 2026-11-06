@@ -18,6 +18,12 @@ describe('PDFs com dados mínimos', () => {
     };
     const settings = WorkspaceSettingsSchema.parse({}).proposal;
     isPdf(await renderProposalPdf({ proposal, lead: { company_name: 'Teste', contact_name: null, city: null, website: null, email: null }, signature, settings }));
+    // Com testemunhos (um sem autor).
+    const testimonials = [
+      { quote: 'Trabalho rápido e muito profissional.', rating: 5, author: 'Cliente Teste, Gerente', company: 'Empresa Teste' },
+      { quote: 'Recomendo.', rating: 4, author: '', company: 'Outra' },
+    ];
+    isPdf(await renderProposalPdf({ proposal, lead: { company_name: 'Teste', contact_name: null, city: null, website: null, email: null }, signature, settings, testimonials }));
   }, 30_000);
 
   it('contrato com as partes só com o nome e uma cláusula vazia; e já aceite', async () => {

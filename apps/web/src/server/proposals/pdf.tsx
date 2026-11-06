@@ -79,6 +79,10 @@ const s = StyleSheet.create({
   boxLabel: { width: 110, color: MUTED },
   boxValue: { flex: 1 },
   signature: { marginTop: 20 },
+  quote: { borderLeftWidth: 2, borderLeftColor: ACCENT, paddingLeft: 10, marginBottom: 10 },
+  quoteStars: { color: ACCENT, fontSize: 9, marginBottom: 2 },
+  quoteText: { fontSize: 10 },
+  quoteAuthor: { fontSize: 8.5, color: MUTED, marginTop: 3 },
   footer: {
     position: 'absolute',
     bottom: 22,
@@ -99,12 +103,14 @@ export interface ProposalPdfData {
   lead: { company_name: string; contact_name: string | null; city: string | null; website: string | null; email: string | null };
   signature: Signature;
   settings: WorkspaceSettings['proposal'];
+  /** Testemunhos autorizados (até 2) para "O que dizem os clientes". */
+  testimonials?: { quote: string; rating: number; author: string; company: string }[];
 }
 
 const euros = (v: number) => formatCurrency(v);
 const bareHost = (url: string | null) => (url ? url.replace(/^https?:\/\//, '').replace(/\/$/, '') : null);
 
-function ProposalDocument({ proposal, lead, signature, settings }: ProposalPdfData) {
+function ProposalDocument({ proposal, lead, signature, settings, testimonials = [] }: ProposalPdfData) {
   const totals = proposalTotals(proposal.items, proposal.discount);
   const company = signature.company || 'VNDesign';
   const contactLine = [signature.full_name, signature.phone, signature.email, bareHost(signature.website)].filter(Boolean).join(' · ');
@@ -229,6 +235,19 @@ function ProposalDocument({ proposal, lead, signature, settings }: ProposalPdfDa
                 <Text style={s.boxValue}>{proposal.notes}</Text>
                 </View>
             ) : null}
+            </View>
+          ) : null}
+
+          {testimonials.length ? (
+            <View wrap={false}>
+              <Text style={s.h2}>O que dizem os clientes</Text>
+              {testimonials.map((t, i) => (
+                <View key={i} style={s.quote}>
+                  <Text style={s.quoteStars}>{'★'.repeat(t.rating)}</Text>
+                  <Text style={s.quoteText}>“{t.quote}”</Text>
+                  <Text style={s.quoteAuthor}>{[t.author, t.company].filter(Boolean).join(' · ')}</Text>
+                </View>
+              ))}
             </View>
           ) : null}
 
