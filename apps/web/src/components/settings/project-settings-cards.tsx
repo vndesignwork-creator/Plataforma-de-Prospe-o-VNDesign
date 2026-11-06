@@ -322,7 +322,7 @@ export function QuoteSettingsCard({ settings }: { settings: SettingsWithMail }) 
         description="Os extras que podes juntar aos pacotes (na ficha: Propostas → Calcular) e o teu valor por hora."
       />
       <form onSubmit={save} className="flex flex-col gap-4 p-4" noValidate>
-        <Field label="Valor por hora (€)" hint="O mesmo das Horas (converte o tempo em dinheiro). Vazio = sem comparação." className="w-64">
+        <Field label="Valor por hora (€)" hint="O mesmo das Horas (converte o tempo em dinheiro). Vazio = sem comparação." className="w-full sm:w-64">
           <Input inputMode="decimal" placeholder="35" value={targetValue} onChange={(e) => setTarget(e.target.value)} />
         </Field>
         {/* No telemóvel, cada extra é um cartão com os campos identificados; no computador, uma tabela. */}
@@ -596,7 +596,7 @@ export function HourlyRateCard({ settings }: { settings: SettingsWithMail }) {
           <h2 className="text-base font-semibold">Valor por hora</h2>
           <p className="text-sm text-muted">Converte o tempo registado (horas, cronómetro e Pomodoro) em dinheiro. Também é o objetivo da calculadora de orçamento.</p>
         </div>
-        <Field label="€ por hora" error={error ?? undefined} className="w-32">
+        <Field label="€ por hora" error={error ?? undefined} className="w-full sm:w-32">
           <Input inputMode="decimal" placeholder="35" value={value ?? current} onChange={(e) => setValue(e.target.value)} />
         </Field>
         {value !== null && value !== current ? (

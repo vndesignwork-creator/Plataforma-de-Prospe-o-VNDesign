@@ -97,14 +97,14 @@ test('lista: prazo, fase, ações rápidas, plano de pagamentos, temporizador, f
   await row.getByRole('button', { name: /Pausar o temporizador/ }).click();
   await expect(page.getByText(/Em pausa\. Total registado: \d+ s\./)).toBeVisible();
   await expect(page.getByRole('status', { name: /Temporizador a contar/ })).toHaveCount(0);
-  const resume = row.getByRole('button', { name: /Continuar a contar o tempo \(total 0:0\d:(0[2-9]|[1-5]\d)\)/ });
+  const resume = row.getByRole('button', { name: /^Continuar · 0:0\d:(0[2-9]|[1-5]\d) \(retomar a contagem do tempo\)$/ });
   await expect(resume).toBeVisible();
   await resume.click();
   await expect(page.getByText('A continuar a contar.')).toBeVisible();
   await expect(row.getByRole('button', { name: /Pausar o temporizador \(total 0:0\d:(0[2-9]|[1-5]\d)\)/ })).toBeVisible();
   await page.waitForTimeout(5500);
   await row.getByRole('button', { name: /Pausar o temporizador/ }).click();
-  await expect(row.getByRole('button', { name: /Continuar a contar o tempo/ })).toBeVisible();
+  await expect(row.getByRole('button', { name: /^Continuar · .* \(retomar a contagem do tempo\)$/ })).toBeVisible();
   const time = (await (await page.request.get(`/api/v1/leads/${lead.id}/time`)).json()).data;
   expect(time.entries).toHaveLength(2);
   expect(time.logged_seconds).toBeGreaterThanOrEqual(10);

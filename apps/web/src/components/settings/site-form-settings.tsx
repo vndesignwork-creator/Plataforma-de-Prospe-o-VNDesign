@@ -117,7 +117,7 @@ export function SiteFormSettings() {
               <section className="flex flex-col gap-1.5" aria-label="HTML pronto a colar">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="font-medium">Ou HTML pronto a colar (elemento “Código”)</h3>
-                  <Button size="sm" variant="outline" onClick={() => void copy(siteFormSnippet(endpoint), 'HTML')}>
+                  <Button size="sm" variant="outline" onClick={() => void copy(siteFormSnippet(endpoint), 'HTML')} className="ml-auto">
                     <Copy className="h-3.5 w-3.5" aria-hidden /> Copiar HTML
                   </Button>
                 </div>

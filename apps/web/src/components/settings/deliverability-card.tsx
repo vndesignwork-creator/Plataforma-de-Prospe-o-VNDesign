@@ -70,9 +70,10 @@ export function DeliverabilityCard() {
       />
       <div className="flex flex-col gap-4 px-4 py-4">
         <form onSubmit={check} className="flex flex-wrap items-end justify-end gap-2">
-          <label className="mr-auto flex min-w-0 flex-col gap-1 text-xs text-muted">
+          {/* No telemóvel, o campo a toda a largura e o botão por baixo, à direita. */}
+          <label className="flex w-full min-w-0 flex-col gap-1 text-xs text-muted sm:mr-auto sm:w-auto sm:max-w-md sm:flex-1">
             Seletor DKIM (opcional)
-            <Input value={selector} onChange={(e) => setSelector(e.target.value)} placeholder="ex.: hostingermail-a" className="h-9 w-48" aria-label="Seletor DKIM (opcional)" />
+            <Input value={selector} onChange={(e) => setSelector(e.target.value)} placeholder="ex.: hostingermail-a" className="h-9 w-full" aria-label="Seletor DKIM (opcional)" />
           </label>
           <Button type="submit" loading={busy}>
             <ShieldCheck className="h-4 w-4" aria-hidden /> {report ? 'Verificar outra vez' : 'Verificar o domínio'}

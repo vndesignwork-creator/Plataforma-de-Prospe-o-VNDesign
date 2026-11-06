@@ -157,7 +157,7 @@ export function FreeAuditSettings() {
             <section className="flex flex-col gap-2 rounded-lg border border-border p-3" aria-label="Plugin para WordPress">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="font-medium">Plugin para WordPress e Bricks (recomendado)</h3>
-                <a href="/api/v1/free-audit/wordpress-plugin" download className={buttonClasses('primary', 'sm')}>
+                <a href="/api/v1/free-audit/wordpress-plugin" download className={buttonClasses('primary', 'sm', 'ml-auto')}>
                   <Download className="h-3.5 w-3.5" aria-hidden /> Descarregar o plugin
                 </a>
               </div>
@@ -183,7 +183,7 @@ export function FreeAuditSettings() {
               <section className="flex flex-col gap-1.5" aria-label="Botão para o site">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="font-medium">Botão para o site (abre a página)</h3>
-                  <Button size="sm" variant="outline" onClick={() => void copy(snippets.button, 'HTML')}>
+                  <Button size="sm" variant="outline" onClick={() => void copy(snippets.button, 'HTML')} className="ml-auto">
                     <Copy className="h-3.5 w-3.5" aria-hidden /> Copiar HTML
                   </Button>
                 </div>
@@ -192,7 +192,7 @@ export function FreeAuditSettings() {
               <section className="flex flex-col gap-1.5" aria-label="Página dentro do site">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="font-medium">Ou a página dentro do site (moldura que cresce sozinha)</h3>
-                  <Button size="sm" variant="outline" onClick={() => void copy(snippets.iframe, 'HTML')}>
+                  <Button size="sm" variant="outline" onClick={() => void copy(snippets.iframe, 'HTML')} className="ml-auto">
                     <Copy className="h-3.5 w-3.5" aria-hidden /> Copiar HTML
                   </Button>
                 </div>

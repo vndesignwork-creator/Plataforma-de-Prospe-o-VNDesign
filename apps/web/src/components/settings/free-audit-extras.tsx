@@ -9,7 +9,7 @@ import { ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Input, Select } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
 import { useSettings } from '@/lib/queries';
 
@@ -77,9 +77,10 @@ export function FreeAuditExtras({ canEdit }: { canEdit: boolean }) {
       <section aria-label="Follow-up automático" className="flex flex-col gap-1.5">
         <h3 className="font-medium">Follow-up automático</h3>
         <p className="text-muted">Quem recebeu a análise e não respondeu recebe um email curto (“Teve oportunidade de ver a análise?”), na mesma conversa. Só uma vez, e só a quem continua em “Respondeu”.</p>
-        <select
+        {/* A lista da plataforma (não a do sistema), encostada à direita. */}
+        <Select
           aria-label="Quando enviar o follow-up"
-          className="w-fit rounded-lg border border-border-input bg-surface px-3 py-1.5"
+          className="h-9 w-48 self-end"
           value={fa.follow_up_days ?? ''}
           disabled={!canEdit || busy}
           onChange={(e) => void save({ follow_up_days: e.target.value ? Number(e.target.value) : null }, 'Follow-up guardado.')}
@@ -89,7 +90,7 @@ export function FreeAuditExtras({ canEdit }: { canEdit: boolean }) {
               {o.label}
             </option>
           ))}
-        </select>
+        </Select>
       </section>
 
       <section aria-label="Proteção contra robôs" className="flex flex-col gap-1.5">
@@ -113,14 +114,14 @@ export function FreeAuditExtras({ canEdit }: { canEdit: boolean }) {
             ) : null}
           </div>
         ) : canEdit ? (
-          <div className="flex flex-wrap items-end gap-2">
-            <label className="flex flex-col gap-1 text-xs">
+          <div className="flex flex-wrap items-end justify-end gap-2 sm:justify-start" /* telemóvel: chaves a toda a largura, "Ligar" à direita */>
+            <label className="flex w-full flex-col gap-1 text-xs sm:w-auto">
               Chave do site
-              <Input value={siteKey} onChange={(e) => setSiteKey(e.target.value.trim())} placeholder="0x4AAAA…" className="w-56" />
+              <Input value={siteKey} onChange={(e) => setSiteKey(e.target.value.trim())} placeholder="0x4AAAA…" className="w-full sm:w-56" />
             </label>
-            <label className="flex flex-col gap-1 text-xs">
+            <label className="flex w-full flex-col gap-1 text-xs sm:w-auto">
               Chave secreta
-              <Input type="password" value={secret} onChange={(e) => setSecret(e.target.value.trim())} placeholder="0x4AAAA…" className="w-56" autoComplete="off" />
+              <Input type="password" value={secret} onChange={(e) => setSecret(e.target.value.trim())} placeholder="0x4AAAA…" className="w-full sm:w-56" autoComplete="off" />
             </label>
             <Button size="sm" loading={busy} disabled={!siteKey || !secret} onClick={() => void save({ turnstile_site_key: siteKey, turnstile_secret: secret }, 'Turnstile ligado.')}>
               Ligar

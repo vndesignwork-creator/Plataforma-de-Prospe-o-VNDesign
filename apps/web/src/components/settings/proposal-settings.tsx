@@ -316,10 +316,11 @@ export function ProposalSettings() {
 
       <div className="flex items-start gap-2 border-t border-border p-4 text-sm">
         <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-accent-text" aria-hidden />
-        <p>
-          <span className="font-medium">Gerador de emails com IA:</span>{' '}
-          {settings.ai_configured ? <Badge tone="success">Ativo</Badge> : <span className="text-muted">inativo.</span>}{' '}
-          <Link href="/definicoes/ia" className="text-accent-text hover:underline">
+        <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-1">
+          <span className="font-medium">Gerador de emails com IA:</span>
+          {settings.ai_configured ? <Badge tone="success">Ativo</Badge> : <span className="text-muted">inativo.</span>}
+          {/* O link numa linha própria, à direita. */}
+          <Link href="/definicoes/ia" className="basis-full text-right text-accent-text hover:underline">
             Escolher fornecedor e chaves
           </Link>
         </p>
