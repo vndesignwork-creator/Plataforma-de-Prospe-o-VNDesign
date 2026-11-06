@@ -89,7 +89,7 @@ export function FreeAuditForm({ token, brand }: { token: string; brand: string }
           {error}
         </p>
       ) : null}
-      <Button type="submit" loading={busy} className="w-full sm:w-fit">
+      <Button type="submit" loading={busy} className="w-full">
         Analisar o meu site
       </Button>
     </form>

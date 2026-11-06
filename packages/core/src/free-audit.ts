@@ -66,9 +66,55 @@ export function freeAuditEmail(input: { name: string | null; company: string; ho
 }
 
 /** HTML para pôr no site: o botão (link) e a página dentro do site (iframe). */
-export function freeAuditSnippets(url: string): { button: string; iframe: string } {
+/** O texto de persuasão ao lado do formulário (o mesmo do plugin de WordPress). */
+export const FREE_AUDIT_PROMO = {
+  eyebrow: 'Análise gratuita · Sem compromisso',
+  title: 'O seu site está a afastar clientes sem dar por isso?',
+  text: 'Um site lento, com o aviso “Não seguro” ou difícil de encontrar no Google faz perder pedidos todos os dias. Em poucos minutos mostramos-lhe o que está a correr mal e como resolver.',
+  points: [
+    'Velocidade no telemóvel: quanto tempo os clientes esperam',
+    'Segurança: se aparece o aviso “Não seguro”',
+    'Google: como o seu negócio aparece nas pesquisas',
+    'Os pormenores que levam os visitantes a desistir',
+  ],
+  note: 'Recebe o relatório em PDF no seu email, em linguagem simples. Sem custos e sem compromisso.',
+  imageAlt: 'Exemplo do relatório da análise do site',
+} as const;
+
+export type FreeAuditLayout = {
+  /** Mostrar o texto de persuasão ao lado do formulário. */
+  promo: boolean;
+  /** De que lado fica o texto (o formulário fica do outro). */
+  side: 'right' | 'left';
+};
+export const DEFAULT_FREE_AUDIT_LAYOUT: FreeAuditLayout = { promo: true, side: 'right' };
+
+/** O endereço da página com as escolhas (?texto=0, ?lado=esquerda, ?embed=1). */
+export function freeAuditPageUrl(url: string, layout: FreeAuditLayout = DEFAULT_FREE_AUDIT_LAYOUT, embed = false): string {
+  const q = new URLSearchParams();
+  if (embed) q.set('embed', '1');
+  if (!layout.promo) q.set('texto', '0');
+  else if (layout.side === 'left') q.set('lado', 'esquerda');
+  const qs = q.toString();
+  return qs ? `${url}?${qs}` : url;
+}
+
+/** Lê as escolhas do endereço da página. */
+export function freeAuditLayoutFrom(params: { texto?: string; lado?: string }): FreeAuditLayout {
+  return { promo: params.texto !== '0', side: params.lado === 'esquerda' ? 'left' : 'right' };
+}
+
+/**
+ * O HTML para pôr no site sem o plugin: um botão que abre a página, ou a página dentro do
+ * site (moldura que cresce sozinha à altura do conteúdo).
+ */
+export function freeAuditSnippets(url: string, layout: FreeAuditLayout = DEFAULT_FREE_AUDIT_LAYOUT): { button: string; iframe: string } {
+  const origin = new URL(url).origin;
+  const height = layout.promo ? 760 : 680;
   return {
-    button: `<a href="${url}" target="_blank" rel="noopener" style="display:inline-block;padding:12px 20px;border-radius:10px;background:#ef5c32;color:#fff;font-weight:600;text-decoration:none">Analisar o meu site grátis</a>`,
-    iframe: `<iframe src="${url}?embed=1" title="Analisar o meu site grátis" style="width:100%;max-width:560px;height:620px;border:0;border-radius:12px" loading="lazy"></iframe>`,
+    button: `<a href="${freeAuditPageUrl(url, layout)}" target="_blank" rel="noopener" style="display:inline-block;padding:12px 20px;border-radius:10px;background:#ef5c32;color:#0d0d0d;font-weight:600;text-decoration:none">Analisar o meu site grátis</a>`,
+    iframe:
+      `<iframe id="vnd-analise-gratis" src="${freeAuditPageUrl(url, layout, true)}" title="Analisar o meu site grátis" style="display:block;width:100%;height:${height}px;border:0" loading="lazy"></iframe>\n` +
+      `<script>addEventListener("message",function(e){if(e.origin==="${origin}"&&e.data&&e.data.type==="vnd-fa-height"){var f=document.getElementById("vnd-analise-gratis");if(f)f.style.height=e.data.height+"px";}});</script>`,
   };
 }

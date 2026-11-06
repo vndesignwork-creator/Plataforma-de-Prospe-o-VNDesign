@@ -5,7 +5,7 @@
  * para pôr no teu site (plugin de WordPress/Bricks, link ou moldura). Quem a usa entra como lead quente, o site é
  * analisado e recebe o diagnóstico em PDF por email.
  */
-import { freeAuditSnippets } from '@vndesign/core';
+import { DEFAULT_FREE_AUDIT_LAYOUT, freeAuditPageUrl, freeAuditSnippets, type FreeAuditLayout } from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { ChevronRight, Copy, Download, ExternalLink, RefreshCcw, Search } from 'lucide-react';
 import Link from 'next/link';
@@ -14,7 +14,9 @@ import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { api, errorMessage } from '@/lib/api-client';
-import { useMailAccount, useRole, useSettings } from '@/lib/queries';
+import { useMailAccount, usePreference, useRole, useSetPreference, useSettings } from '@/lib/queries';
+
+const LAYOUT_PREFERENCE = 'free_audit.layout';
 
 async function copy(text: string, what: string) {
   try {
@@ -32,6 +34,11 @@ export function FreeAuditSettings() {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [confirmRotate, setConfirmRotate] = useState(false);
+  // Aspeto da página (com ou sem texto de persuasão, e de que lado): vale para o Abrir, o Copiar, o botão e a moldura.
+  const { data: savedLayout } = usePreference<FreeAuditLayout>(LAYOUT_PREFERENCE);
+  const saveLayout = useSetPreference<FreeAuditLayout>(LAYOUT_PREFERENCE);
+  const layout: FreeAuditLayout = { ...DEFAULT_FREE_AUDIT_LAYOUT, ...(savedLayout ?? {}) };
+  const setLayout = (next: Partial<FreeAuditLayout>) => saveLayout.mutate({ ...layout, ...next });
   const canEdit = role === 'owner' || role === 'admin';
   const token = settings?.free_audit?.token ?? null;
   const url = token ? `${typeof window === 'undefined' ? '' : window.location.origin}/analise/${token}` : null;
@@ -51,7 +58,8 @@ export function FreeAuditSettings() {
   }
 
   if (isLoading || !settings) return <Skeleton className="h-40" />;
-  const snippets = url ? freeAuditSnippets(url) : null;
+  const snippets = url ? freeAuditSnippets(url, layout) : null;
+  const pageUrl = url ? freeAuditPageUrl(url, layout) : null;
   return (
     <Card className="mt-5">
       <CardHeader
@@ -89,12 +97,12 @@ export function FreeAuditSettings() {
               <span className="font-medium">Endereço da página</span>
               <div className="flex flex-wrap items-center gap-2">
                 <code className="min-w-0 flex-1 rounded-lg bg-surface-2 px-3 py-2 text-xs break-all" aria-label="Endereço da página">
-                  {url}
+                  {pageUrl}
                 </code>
-                <Button size="sm" variant="outline" onClick={() => void copy(url, 'Endereço')}>
+                <Button size="sm" variant="outline" onClick={() => void copy(pageUrl ?? url, 'Endereço')}>
                   <Copy className="h-3.5 w-3.5" aria-hidden /> Copiar
                 </Button>
-                <a href={url} target="_blank" rel="noreferrer" className={buttonClasses('ghost', 'sm')}>
+                <a href={pageUrl ?? url} target="_blank" rel="noreferrer" className={buttonClasses('ghost', 'sm')}>
                   <ExternalLink className="h-3.5 w-3.5" aria-hidden /> Abrir
                 </a>
               </div>
@@ -116,6 +124,35 @@ export function FreeAuditSettings() {
                 )
               ) : null}
             </div>
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-1.5 font-medium">Aspeto da página (Abrir, botão e moldura)</legend>
+              <label className="inline-flex w-fit items-center gap-2">
+                <input type="checkbox" className="h-4 w-4 accent-[var(--color-accent)]" checked={layout.promo} onChange={(e) => setLayout({ promo: e.target.checked })} />
+                Texto de persuasão com imagem ao lado do formulário
+              </label>
+              {layout.promo ? (
+                <div role="radiogroup" aria-label="Lado do texto de persuasão" className="inline-flex w-fit rounded-lg border border-border p-0.5">
+                  {(
+                    [
+                      ['right', 'Texto à direita'],
+                      ['left', 'Texto à esquerda'],
+                    ] as const
+                  ).map(([side, label]) => (
+                    <button
+                      key={side}
+                      type="button"
+                      role="radio"
+                      aria-checked={layout.side === side}
+                      onClick={() => setLayout({ side })}
+                      className={layout.side === side ? 'rounded-md bg-surface-3 px-3 py-1 font-medium text-fg' : 'rounded-md px-3 py-1 text-muted hover:text-fg'}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <p className="text-xs text-muted">No telemóvel o texto fica por baixo do formulário. No plugin de WordPress estas escolhas fazem-se no próprio plugin.</p>
+            </fieldset>
             <section className="flex flex-col gap-2 rounded-lg border border-border p-3" aria-label="Plugin para WordPress">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="font-medium">Plugin para WordPress e Bricks (recomendado)</h3>
@@ -153,12 +190,12 @@ export function FreeAuditSettings() {
               </section>
               <section className="flex flex-col gap-1.5" aria-label="Página dentro do site">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="font-medium">Ou a página dentro do site (moldura)</h3>
+                  <h3 className="font-medium">Ou a página dentro do site (moldura que cresce sozinha)</h3>
                   <Button size="sm" variant="outline" onClick={() => void copy(snippets.iframe, 'HTML')}>
                     <Copy className="h-3.5 w-3.5" aria-hidden /> Copiar HTML
                   </Button>
                 </div>
-                <p className="text-muted">Mostra o formulário dentro de uma página tua (ex.: “Análise grátis”).</p>
+                <p className="text-muted">Mostra o formulário dentro de uma página tua (ex.: “Análise grátis”), com toda a largura da secção onde a pões. No Bricks: elemento “Código” com “Executar código” ligado.</p>
               </section>
               </div>
             </details>
