@@ -63,7 +63,7 @@ export function LeadQuickFill({ onResult, bare }: { onResult: (data: CardScanRes
         <Mic className="h-4 w-4 text-accent-text" aria-hidden /> Ditar ou escrever
       </Button>
       {picker ? (
-        <Button type="button" size="sm" variant="outline" onClick={() => void pickContact()} className={bare ? 'col-span-2 sm:col-span-1' : undefined}>
+        <Button type="button" size="sm" variant="outline" onClick={() => void pickContact()} className={bare ? 'col-span-2 sm:order-first' : undefined}>
           <BookUser className="h-4 w-4 text-accent-text" aria-hidden /> Escolher dos contactos
         </Button>
       ) : null}

@@ -257,9 +257,10 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
           <span className="inline-flex items-center gap-1.5 font-medium">
             <Sparkles className="h-4 w-4 text-accent-text" aria-hidden /> Preencher com IA
           </span>
-          {/* Telemóvel: a largura toda, dois lado a lado e o terceiro (contactos) por baixo a toda a largura.
-              Computador: à direita, lado a lado e com a mesma largura. */}
-          <span className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:w-auto sm:grid-flow-col sm:auto-cols-fr sm:grid-cols-none [&_svg]:shrink-0 [&>*]:gap-1.5 [&>*]:px-2 [&>*]:text-[13px] sm:[&>*]:px-3 sm:[&>*]:text-sm">
+          {/* Telemóvel: a largura toda, dois lado a lado e o dos contactos (só no Android, aparece depois de a
+              página arrancar) por baixo a toda a largura. Computador: à direita; o dos contactos entra à
+              esquerda, para os outros não mudarem de sítio quando aparece. */}
+          <span className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto sm:justify-end [&_svg]:shrink-0 [&>*]:gap-1.5 [&>*]:px-2 [&>*]:text-[13px] sm:[&>*]:px-3 sm:[&>*]:text-sm">
             <CardScanButton onResult={fillFromCard} bare />
             <LeadQuickFill onResult={fillFromCard} bare />
           </span>
