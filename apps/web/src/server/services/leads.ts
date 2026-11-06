@@ -34,6 +34,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ApiContext } from '../context';
 import { withTaskProgress } from './tasks';
 import { ApiError, fromPostgrest, unwrap } from '../http';
+import { getSettings, updateSettings } from './workspace';
 
 export const LEAD_SELECT = [
   'id', 'number', 'company_name', 'sector_id', 'sector:sectors(id, name, slug, emoji, icon)',
@@ -479,11 +480,26 @@ export async function moveLead(
   return unwrap(result, NOT_FOUND) as unknown as Lead;
 }
 
-/** Etiquetas usadas no workspace, com o número de leads (mais usadas primeiro). */
+const foldTag = (t: string) => t.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+
+/** Etiquetas usadas no workspace, com o número de leads (mais usadas primeiro); no fim as criadas e ainda sem leads. */
 export async function leadTagCounts(ctx: ApiContext): Promise<LeadTagCount[]> {
-  const { data, error } = await ctx.supabase.rpc('lead_tag_counts', { p_workspace_id: ctx.workspaceId });
+  const [{ data, error }, settings] = await Promise.all([ctx.supabase.rpc('lead_tag_counts', { p_workspace_id: ctx.workspaceId }), getSettings(ctx)]);
   if (error) throw fromPostgrest(error);
-  return ((data ?? []) as { tag: string; count: number | string }[]).map((r) => ({ tag: r.tag, count: Number(r.count) }));
+  const used = ((data ?? []) as { tag: string; count: number | string }[]).map((r) => ({ tag: r.tag, count: Number(r.count) }));
+  const seen = new Set(used.map((t) => foldTag(t.tag)));
+  const saved = settings.saved_tags.filter((t) => !seen.has(foldTag(t))).sort((a, b) => a.localeCompare(b, 'pt-PT'));
+  return [...used, ...saved.map((tag) => ({ tag, count: 0 }))];
+}
+
+/** Cria uma etiqueta (Definições → Etiquetas): fica nas sugestões, mesmo sem leads. Já existe → devolve a que existe. */
+export async function createLeadTag(ctx: ApiContext, tag: string): Promise<LeadTagCount> {
+  const existing = (await leadTagCounts(ctx)).find((t) => foldTag(t.tag) === foldTag(tag));
+  if (existing) return existing;
+  const settings = await getSettings(ctx);
+  if (settings.saved_tags.length >= 200) throw new ApiError(422, 'Etiquetas a mais', 'Já há 200 etiquetas criadas sem leads: apaga algumas antes.');
+  await updateSettings(ctx, { saved_tags: [...settings.saved_tags, tag] });
+  return { tag, count: 0 };
 }
 
 /** Cidades dos leads (sem os anonimizados), mais usadas primeiro; a grafia mais comum de cada uma. */
@@ -528,5 +544,11 @@ export async function lostReasonCounts(ctx: ApiContext): Promise<LostReasonCount
 export async function renameLeadTag(ctx: ApiContext, from: string, to: string | null): Promise<{ affected: number }> {
   const { data, error } = await ctx.supabase.rpc('lead_tags_rename', { p_workspace_id: ctx.workspaceId, p_from: from, p_to: to });
   if (error) throw fromPostgrest(error);
+  // As criadas (sem leads) também mudam de nome ou saem.
+  const settings = await getSettings(ctx);
+  if (settings.saved_tags.some((t) => foldTag(t) === foldTag(from))) {
+    const rest = settings.saved_tags.filter((t) => foldTag(t) !== foldTag(from));
+    await updateSettings(ctx, { saved_tags: to && !rest.some((t) => foldTag(t) === foldTag(to)) ? [...rest, to] : rest });
+  }
   return { affected: Number(data ?? 0) };
 }

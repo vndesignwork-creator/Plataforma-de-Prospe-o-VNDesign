@@ -7,7 +7,7 @@
  */
 import { normalizeTags, type LeadTagCount } from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { Merge, Pencil, Tag, Trash2 } from 'lucide-react';
+import { Merge, Pencil, Plus, Tag, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -27,6 +27,25 @@ export function TagsSettings() {
   const [name, setName] = useState('');
   const [deleting, setDeleting] = useState<LeadTagCount | null>(null);
   const [busy, setBusy] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [creating, setCreating] = useState(false);
+  const newTag = normalizeTags([newName])[0] ?? '';
+  const already = newTag ? (tags ?? []).find((t) => fold(t.tag) === fold(newTag)) : undefined;
+
+  async function create() {
+    if (!newTag || already) return;
+    setCreating(true);
+    try {
+      await api('/leads/tags', { method: 'POST', body: { tag: newTag } });
+      toast.success(`Etiqueta “${newTag}” criada: já aparece nas sugestões da ficha e da lista.`);
+      setNewName('');
+      void qc.invalidateQueries({ queryKey: ['lead-tags'] });
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setCreating(false);
+    }
+  }
 
   const target = normalizeTags([name])[0] ?? '';
   // Para um nome que já existe (sem contar maiúsculas/acentos), é juntar.
@@ -52,12 +71,31 @@ export function TagsSettings() {
     <Card>
       <CardHeader
         title="Etiquetas"
-        description="As etiquetas dos leads (põem-se na ficha ou em vários de uma vez na lista). Renomear muda-a em todos; para um nome que já existe, junta as duas."
+        description="As etiquetas dos leads (põem-se na ficha ou em vários de uma vez na lista). Cria-as aqui para já aparecerem nas sugestões. Renomear muda-a em todos; para um nome que já existe, junta as duas."
       />
+      <form
+        className="flex flex-wrap items-start justify-end gap-2 border-b border-border px-4 py-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void create();
+        }}
+      >
+        <div className="min-w-0 flex-[1_1_12rem]">
+          <Input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={30} placeholder="Nova etiqueta (ex.: feira de março)" aria-label="Nova etiqueta" />
+          {already ? (
+            <p className="mt-1 text-xs text-muted" role="status">
+              Já existe “{already.tag}”.
+            </p>
+          ) : null}
+        </div>
+        <Button type="submit" loading={creating} disabled={!newTag || !!already}>
+          <Plus className="h-4 w-4" aria-hidden /> Criar
+        </Button>
+      </form>
       {isLoading ? (
         <Skeleton className="m-4 h-32" />
       ) : !tags?.length ? (
-        <p className="p-4 text-sm text-muted">Ainda não há etiquetas. Põe a primeira na ficha de um lead, na linha “Etiquetas”.</p>
+        <p className="p-4 text-sm text-muted">Ainda não há etiquetas. Cria a primeira aqui em cima, ou põe-na na ficha de um lead, na linha “Etiquetas”.</p>
       ) : (
         <ul aria-label="Etiquetas" className="divide-y divide-border">
           {tags.map((t) => (
@@ -66,9 +104,7 @@ export function TagsSettings() {
               <Link href={`/leads?etiqueta=${encodeURIComponent(t.tag)}`} className="min-w-0 flex-1 truncate font-medium hover:underline">
                 {t.tag}
               </Link>
-              <span className="text-sm text-muted tabular">
-                {t.count} lead{t.count === 1 ? '' : 's'}
-              </span>
+              <span className="text-sm text-muted tabular">{t.count ? `${t.count} lead${t.count === 1 ? '' : 's'}` : 'ainda sem leads'}</span>
               <Button
                 size="icon"
                 variant="ghost"

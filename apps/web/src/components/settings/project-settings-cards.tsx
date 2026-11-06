@@ -322,7 +322,7 @@ export function QuoteSettingsCard({ settings }: { settings: SettingsWithMail }) 
         description="Os extras que podes juntar aos pacotes (na ficha: Propostas → Calcular) e o teu valor por hora."
       />
       <form onSubmit={save} className="flex flex-col gap-4 p-4" noValidate>
-        <Field label="Valor por hora (€)" hint="O mesmo das Horas (converte o tempo em dinheiro). Vazio = sem comparação." className="w-full sm:w-64">
+        <Field label="Valor por hora (€)" hint="O mesmo das Horas (converte o tempo em dinheiro). Vazio = sem comparação." className="ml-auto w-64 max-w-full">
           <Input inputMode="decimal" placeholder="35" value={targetValue} onChange={(e) => setTarget(e.target.value)} />
         </Field>
         {/* No telemóvel, cada extra é um cartão com os campos identificados; no computador, uma tabela. */}
@@ -477,15 +477,16 @@ export function PomodoroSettingsCard({ settings }: { settings: SettingsWithMail 
     <Card>
       <CardHeader title="Pomodoro" description="Os tempos de cada fase. O trabalho fica no registo de horas do projeto; as pausas não." />
       <form onSubmit={submit} className="flex flex-col gap-3 p-4" noValidate>
-        <div className="flex flex-wrap gap-3">
+        {/* Os quatro tempos a toda a largura: dois por linha no telemóvel, quatro no computador. */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {POMODORO_FIELDS.map(({ key, label }) => (
-            <Field key={key} label={label} className="w-36">
+            <Field key={key} label={label}>
               <Input inputMode="numeric" value={values[key]} onChange={(e) => setForm({ ...values, [key]: e.target.value })} />
             </Field>
           ))}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <label className="inline-flex items-center gap-2 text-sm">
+          <label className="inline-flex w-full items-center gap-2 text-sm sm:w-auto">
             <input
               type="checkbox"
               className="h-4 w-4"
@@ -498,7 +499,7 @@ export function PomodoroSettingsCard({ settings }: { settings: SettingsWithMail 
             aria-label="Som do aviso"
             value={current.sound_name}
             disabled={!current.sound}
-            className="h-9 w-44 text-sm"
+            className="h-9 min-w-0 flex-1 text-sm sm:w-44 sm:flex-none"
             onChange={(e) => {
               const sound = e.target.value as PomodoroSound;
               unlockSound();
@@ -596,7 +597,7 @@ export function HourlyRateCard({ settings }: { settings: SettingsWithMail }) {
           <h2 className="text-base font-semibold">Valor por hora</h2>
           <p className="text-sm text-muted">Converte o tempo registado (horas, cronómetro e Pomodoro) em dinheiro. Também é o objetivo da calculadora de orçamento.</p>
         </div>
-        <Field label="€ por hora" error={error ?? undefined} className="w-full sm:w-32">
+        <Field label="€ por hora" error={error ?? undefined} className="ml-auto w-32">
           <Input inputMode="decimal" placeholder="35" value={value ?? current} onChange={(e) => setValue(e.target.value)} />
         </Field>
         {value !== null && value !== current ? (

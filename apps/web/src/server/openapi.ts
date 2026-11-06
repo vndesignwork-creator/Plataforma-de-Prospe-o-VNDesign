@@ -218,6 +218,7 @@ import {
   LeadCityCountSchema,
   LeadTagCountSchema,
   LeadTagRenameSchema,
+  LeadTagCreateSchema,
   LeadSummarySchema,
   CardScanInputSchema,
   LeadTextInputSchema,
@@ -439,8 +440,14 @@ export function getOpenApiDocument() {
       '/leads/tags': {
         get: op({
           tags: ['Leads'],
-          summary: 'Etiquetas usadas, com o número de leads (mais usadas primeiro)',
+          summary: 'Etiquetas usadas, com o número de leads (mais usadas primeiro); no fim as criadas e ainda sem leads',
           responses: { '200': ok(data(z.array(LeadTagCountSchema))), ...common },
+        }),
+        post: op({
+          tags: ['Leads'],
+          summary: 'Criar uma etiqueta (fica nas sugestões, mesmo sem leads); se já existe, devolve-a',
+          requestBody: body(LeadTagCreateSchema),
+          responses: { '201': ok(data(LeadTagCountSchema)), ...common },
         }),
         patch: op({
           tags: ['Leads'],

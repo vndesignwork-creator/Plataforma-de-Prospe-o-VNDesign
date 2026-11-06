@@ -253,3 +253,9 @@
   background-color: var(--accent-soft);
   color: var(--accent-text);
 }
+
+/* "break-words" parte também emails e links compridos (sem espaços) e deixa o texto encolher
+   ao lado dos botões, em vez de passar por baixo deles (ex.: chave de IA com o email como nome). */
+@utility break-words {
+  overflow-wrap: anywhere;
+}

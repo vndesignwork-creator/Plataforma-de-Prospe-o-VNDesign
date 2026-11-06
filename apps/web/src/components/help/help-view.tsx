@@ -7,6 +7,7 @@
 import { ArrowRight, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 import { PageHeader } from '@/components/layout/page-header';
 import { Input } from '@/components/ui/input';
 import { HELP_GUIDES, type HelpGuide } from '@/lib/help-guides';
@@ -47,11 +48,7 @@ export function HelpView() {
   return (
     <>
       <PageHeader
-        eyebrow={
-          <Link href="/definicoes" className="hover:text-fg hover:underline">
-            Definições
-          </Link>
-        }
+        eyebrow={<Breadcrumbs items={[{ label: 'Definições', href: '/definicoes' }]} />}
         title="Ajuda"
         description="O que é a plataforma e um guia curto de cada parte."
       />

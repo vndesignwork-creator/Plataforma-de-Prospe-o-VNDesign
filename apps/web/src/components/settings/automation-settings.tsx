@@ -75,29 +75,105 @@ function defaultAction(type: RuleActionType): RuleAction {
   }
 }
 
-/** Ideias prontas (abrem o editor já preenchido). */
+/** Ideias prontas (abrem o editor já preenchido, desligadas: revês, guardas e ligas quando quiseres). */
 const IDEAS: (AutomationRuleCreate & { hint: string })[] = [
-  { name: 'Sem site', hint: 'Etiqueta os leads sem site (bons candidatos a um site novo).', enabled: true, conditions: [{ type: 'no_website' }], actions: [{ type: 'add_tag', value: 'Sem site' }] },
+  { name: 'Sem site', hint: 'Etiqueta os leads sem site (bons candidatos a um site novo).', enabled: false, conditions: [{ type: 'no_website' }], actions: [{ type: 'add_tag', value: 'Sem site' }] },
   {
     name: 'Sem resposta há 21 dias',
     hint: 'Contactados que não responderam em 3 semanas passam a Em pausa.',
-    enabled: true,
+    enabled: false,
     conditions: [{ type: 'status_in', values: ['contactado'] }, { type: 'idle_days', days: 21 }],
     actions: [{ type: 'set_status', value: 'em_pausa' }],
   },
   {
     name: 'Respondeu: responder hoje',
     hint: 'Quando um lead responde, cria a tarefa para lhe responder no mesmo dia.',
-    enabled: true,
+    enabled: false,
     conditions: [{ type: 'status_in', values: ['respondeu'] }],
     actions: [{ type: 'create_task', title: 'Responder ao lead', due_in_days: 0 }],
   },
   {
     name: 'Sem email: procurar contacto',
     hint: 'Leads sem email ganham a tarefa de procurar o contacto.',
-    enabled: true,
+    enabled: false,
     conditions: [{ type: 'no_email' }, { type: 'status_in', values: ['identificado'] }],
     actions: [{ type: 'create_task', title: 'Procurar o email', due_in_days: 1 }],
+  },
+  {
+    name: 'Sem telefone: procurar',
+    hint: 'Leads novos sem telefone ganham a tarefa de o procurar (Google, Maps, redes).',
+    enabled: false,
+    conditions: [{ type: 'no_phone' }, { type: 'status_in', values: ['identificado'] }],
+    actions: [{ type: 'create_task', title: 'Procurar o telefone', due_in_days: 1 }],
+  },
+  {
+    name: 'Tem site: analisar antes de contactar',
+    hint: 'Leads novos com site ganham a tarefa de fazer o diagnóstico do site.',
+    enabled: false,
+    conditions: [{ type: 'has_website' }, { type: 'status_in', values: ['identificado'] }],
+    actions: [{ type: 'create_task', title: 'Analisar o site (diagnóstico)', due_in_days: 0 }],
+  },
+  {
+    name: 'Contactado há 7 dias: follow-up',
+    hint: 'Sem novidades uma semana depois do contacto: o follow-up fica marcado para hoje.',
+    enabled: false,
+    conditions: [{ type: 'status_in', values: ['contactado'] }, { type: 'idle_days', days: 7 }],
+    actions: [{ type: 'set_next_action', text: 'Enviar follow-up', in_days: 0 }],
+  },
+  {
+    name: 'Reunião marcada: preparar',
+    hint: 'Quando passa a Reunião, cria a tarefa de preparar o diagnóstico e as ideias.',
+    enabled: false,
+    conditions: [{ type: 'status_in', values: ['reuniao'] }],
+    actions: [{ type: 'create_task', title: 'Preparar a reunião (diagnóstico e ideias)', due_in_days: 0 }],
+  },
+  {
+    name: 'Proposta enviada: ligar em 3 dias',
+    hint: 'Depois de enviar a proposta, a próxima ação fica: ligar daqui a 3 dias.',
+    enabled: false,
+    conditions: [{ type: 'status_in', values: ['proposta_enviada'] }],
+    actions: [{ type: 'set_next_action', text: 'Ligar sobre a proposta', in_days: 3 }],
+  },
+  {
+    name: 'Proposta parada há 14 dias',
+    hint: 'Propostas sem resposta há 2 semanas: etiqueta e tarefa para ligar hoje.',
+    enabled: false,
+    conditions: [{ type: 'status_in', values: ['proposta_enviada'] }, { type: 'idle_days', days: 14 }],
+    actions: [
+      { type: 'add_tag', value: 'Proposta parada' },
+      { type: 'create_task', title: 'Ligar sobre a proposta', due_in_days: 0 },
+    ],
+  },
+  {
+    name: 'Novo cliente: pedir avaliação',
+    hint: 'Duas semanas depois de passar a Cliente, a tarefa de pedir a avaliação no Google.',
+    enabled: false,
+    conditions: [{ type: 'status_in', values: ['cliente'] }],
+    actions: [{ type: 'create_task', title: 'Pedir a avaliação no Google', due_in_days: 14 }],
+  },
+  {
+    name: 'Em pausa há 90 dias: tentar outra vez',
+    hint: 'Leads em pausa há 3 meses voltam à agenda com a etiqueta "Retomar".',
+    enabled: false,
+    conditions: [{ type: 'status_in', values: ['em_pausa'] }, { type: 'idle_days', days: 90 }],
+    actions: [
+      { type: 'add_tag', value: 'Retomar' },
+      { type: 'set_next_action', text: 'Voltar a contactar', in_days: 0 },
+    ],
+  },
+  {
+    name: 'Veio do Instagram: mensagem',
+    hint: 'Leads encontrados no Instagram: a próxima ação é enviar mensagem por lá.',
+    enabled: false,
+    conditions: [{ type: 'channel_is', value: 'instagram' }, { type: 'status_in', values: ['identificado'] }],
+    actions: [{ type: 'set_next_action', text: 'Enviar mensagem no Instagram', in_days: 0 }],
+  },
+  {
+    name: 'Veio do Google Maps: ligar',
+    hint: 'Leads encontrados no Google Maps: tarefa para ligar no dia seguinte.',
+    enabled: false,
+    conditions: [{ type: 'channel_is', value: 'google_maps' }, { type: 'status_in', values: ['identificado'] }],
+    actions: [{ type: 'create_task', title: 'Ligar ao lead', due_in_days: 1 }],
   },
 ];
 
@@ -437,6 +513,20 @@ export function AutomationSettings() {
   const canEdit = role === 'owner' || role === 'admin';
   const [editing, setEditing] = useState<AutomationRule | (AutomationRuleCreate & { id?: undefined }) | null>(null);
   const unused = IDEAS.filter((idea) => !rules?.some((r) => r.name === idea.name));
+  const saveRule = useSaveAutomationRule();
+  const [addingAll, setAddingAll] = useState(false);
+  async function addAll() {
+    setAddingAll(true);
+    try {
+      // Uma a uma, pela ordem das ideias; todas desligadas (não fazem nada até as ligares).
+      for (const idea of unused) await saveRule.mutateAsync({ body: { name: idea.name, conditions: idea.conditions, actions: idea.actions, enabled: false } });
+      toast.success(`${unused.length} regra${unused.length === 1 ? '' : 's'} juntada${unused.length === 1 ? '' : 's'}, desligada${unused.length === 1 ? '' : 's'}: liga as que quiseres.`);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setAddingAll(false);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -467,7 +557,15 @@ export function AutomationSettings() {
 
       {canEdit && unused.length ? (
         <Card>
-          <CardHeader title="Ideias" description="Abre já preenchida: revês e guardas." />
+          <CardHeader
+            title="Ideias"
+            description="Prontas a usar e desligadas: abre uma para rever, ou junta todas à lista (desligadas) e liga só as que quiseres."
+            actions={
+              <Button size="sm" variant="outline" loading={addingAll} onClick={() => void addAll()}>
+                <Plus className="h-3.5 w-3.5" aria-hidden /> Juntar todas (desligadas)
+              </Button>
+            }
+          />
           <ul className="grid gap-2 p-4 sm:grid-cols-2">
             {unused.map(({ hint, ...idea }) => (
               <li key={idea.name}>

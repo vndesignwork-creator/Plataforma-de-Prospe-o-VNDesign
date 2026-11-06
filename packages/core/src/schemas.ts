@@ -738,6 +738,8 @@ export const WorkspaceSettingsSchema = z
     /** "Analisar o meu site grátis": página pública com código (null = desligada). */
     free_audit: FreeAuditSettingsSchema.default(DEFAULT_FREE_AUDIT),
     /** Fornecedor e modelo de IA de cada função (Definições → Inteligência artificial). */
+    /** Etiquetas criadas em Definições → Etiquetas (ainda sem leads; aparecem nas sugestões). */
+    saved_tags: z.array(z.string()).max(200).default([]),
     ai: AiSettingsSchema.default({
       email: { provider: SERVER_AI_PROVIDER, model: null },
       lead_generation: { provider: SERVER_AI_PROVIDER, model: null },
@@ -1074,3 +1076,19 @@ export const LeadTagRenameSchema = z
   })
   .meta({ id: 'LeadTagRename' });
 export type LeadTagRenameInput = z.input<typeof LeadTagRenameSchema>;
+
+/** Definições → Etiquetas: criar uma etiqueta (fica nas sugestões, mesmo sem leads). */
+export const LeadTagCreateSchema = z
+  .object({
+    tag: z
+      .string()
+      .transform((v, ctx) => {
+        const tag = normalizeTags([v])[0];
+        if (!tag) {
+          ctx.addIssue({ code: 'custom', message: 'Indica o nome da etiqueta.' });
+          return z.NEVER;
+        }
+        return tag;
+      }),
+  })
+  .meta({ id: 'LeadTagCreate' });

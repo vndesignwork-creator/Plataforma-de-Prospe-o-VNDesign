@@ -93,7 +93,7 @@ export function CustomFieldsSettings() {
         <Skeleton className="m-4 h-32" />
       ) : !fields?.length ? (
         <p className="flex items-center gap-2 p-4 text-sm text-muted">
-          <ListPlus className="h-4 w-4" aria-hidden /> Ainda não há campos. Cria o primeiro em “Novo campo”.
+          <ListPlus className="h-4 w-4" aria-hidden /> Ainda não há campos. Cria o primeiro em “Novo campo” ou junta um dos packs prontos aqui em baixo.
         </p>
       ) : (
         <ul aria-label="Campos personalizados" className="divide-y divide-border">
