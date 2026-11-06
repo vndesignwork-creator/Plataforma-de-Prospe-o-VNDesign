@@ -26,7 +26,8 @@ const s = StyleSheet.create({
   desc: { flex: 1, paddingRight: 6 },
   amount: { width: 70, textAlign: 'right' },
   total: { flexDirection: 'row', paddingTop: 5, fontWeight: 700 },
-  empty: { color: MUTED, fontStyle: 'italic' },
+  // Sem itálico: a letra do PDF (Jakarta) não tem a versão itálica e o PDF falhava nos meses sem movimentos.
+  empty: { color: MUTED },
   late: { color: '#b42318' },
   footer: {
     position: 'absolute',
