@@ -1138,30 +1138,34 @@ function LeadsTableView() {
               {(data?.data ?? []).map((lead) => (
                 <li
                   key={lead.id}
-                  className={cn('flex items-start overflow-hidden rounded-xl border border-border bg-surface shadow-card', selected.has(lead.id) && 'bg-accent-soft')}
+                  className={cn(
+                    'relative flex flex-col gap-1.5 overflow-hidden rounded-xl border border-border bg-surface px-4 py-3 shadow-card hover:bg-surface-2',
+                    selected.has(lead.id) && 'bg-accent-soft',
+                  )}
                 >
-                  {/* Caixa fora do link: tocar nela seleciona, tocar no resto abre a ficha. */}
-                  <label className="flex shrink-0 cursor-pointer items-center self-stretch py-3 pr-1 pl-4">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(lead.id)}
-                      onChange={(e) => toggle(lead.id, e.target.checked)}
-                      aria-label={`Selecionar #${lead.number} ${lead.company_name}`}
-                      className="h-4 w-4"
-                    />
-                  </label>
-                  <Link href={leadPath(lead)} className="flex min-w-0 flex-1 flex-col gap-1.5 py-3 pr-4 pl-2 hover:bg-surface-2">
-                    <span className="flex items-start justify-between gap-3">
-                      <span className="font-semibold">
-                        <span className="mr-1.5 text-muted tabular">#{lead.number}</span>
-                        {lead.company_name} {lead.project_title ? <span className="font-normal text-muted">· {lead.project_title}</span> : null}
-                        {lead.archived_at ? <ArchivedBadge /> : null}
-                        <TagChips tags={lead.tags} link={false} className="mt-1 font-normal" />
-                      </span>
-                      <span className="flex shrink-0 flex-col items-end gap-1">
-                        <StatusBadge status={lead.status} />
-                        <LeadScoreBadge lead={lead} />
-                      </span>
+                  {/* Em cima, numa linha: a caixa (seleciona) e o estado e a pontuação. O resto do cartão abre a ficha. */}
+                  <span className="flex items-center gap-2">
+                    <label className="relative z-10 -m-2 flex cursor-pointer items-center p-2">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(lead.id)}
+                        onChange={(e) => toggle(lead.id, e.target.checked)}
+                        aria-label={`Selecionar #${lead.number} ${lead.company_name}`}
+                        className="h-4 w-4"
+                      />
+                    </label>
+                    <span className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
+                      <StatusBadge status={lead.status} />
+                      <LeadScoreBadge lead={lead} />
+                    </span>
+                  </span>
+                  {/* O link cobre o cartão todo (after:inset-0); a caixa fica por cima dele. */}
+                  <Link href={leadPath(lead)} className="flex min-w-0 flex-col gap-1.5 after:absolute after:inset-0 after:content-['']">
+                    <span className="font-semibold">
+                      <span className="mr-1.5 text-muted tabular">#{lead.number}</span>
+                      {lead.company_name} {lead.project_title ? <span className="font-normal text-muted">· {lead.project_title}</span> : null}
+                      {lead.archived_at ? <ArchivedBadge /> : null}
+                      <TagChips tags={lead.tags} link={false} className="mt-1 font-normal" />
                     </span>
                     <span className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted">
                       {lead.sector ? (
