@@ -253,12 +253,13 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
 
       {/* Preencher com IA: o cartão de visita ou umas palavras ditas/escritas (só os campos vazios). */}
       {isEdit ? null : (
-        <div role="group" aria-label="Preencher com IA" className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-border px-4 py-2.5 text-sm">
+        <div role="group" aria-label="Preencher com IA" className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-border px-3 py-2.5 text-sm sm:px-4">
           <span className="inline-flex items-center gap-1.5 font-medium">
             <Sparkles className="h-4 w-4 text-accent-text" aria-hidden /> Preencher com IA
           </span>
-          {/* Os botões encostados à direita e com a mesma largura: um por linha no telemóvel, lado a lado no computador. */}
-          <span className="ml-auto grid grid-cols-1 gap-2 sm:grid-flow-col sm:auto-cols-fr">
+          {/* Telemóvel: a largura toda, dois lado a lado e o terceiro (contactos) por baixo a toda a largura.
+              Computador: à direita, lado a lado e com a mesma largura. */}
+          <span className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:w-auto sm:grid-flow-col sm:auto-cols-fr sm:grid-cols-none [&_svg]:shrink-0 [&>*]:gap-1.5 [&>*]:px-2 [&>*]:text-[13px] sm:[&>*]:px-3 sm:[&>*]:text-sm">
             <CardScanButton onResult={fillFromCard} bare />
             <LeadQuickFill onResult={fillFromCard} bare />
           </span>
