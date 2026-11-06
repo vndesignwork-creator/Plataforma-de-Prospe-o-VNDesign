@@ -38,11 +38,13 @@ import {
   ArrowDown,
   ArrowDownToLine,
   ArrowUp,
+  ArrowUpDown,
   ArrowUpToLine,
   Archive,
   ArchiveRestore,
   BriefcaseBusiness,
   Check,
+  ChevronDown,
   ChevronRight,
   CircleDot,
   Copy,
@@ -106,6 +108,8 @@ type BoardCard = {
   done: TaskListItem[];
 };
 
+/** Sem acentos e em minúsculas (pesquisa nos arquivados). */
+const fold = (text: string) => text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
 const keyOf = (t: Pick<TaskListItem, "lead_id" | "list_id">) =>
   t.lead_id ? `lead:${t.lead_id}` : t.list_id ? `list:${t.list_id}` : "loose";
 const byPosition = (a: LeadTask, b: LeadTask) =>
@@ -141,6 +145,8 @@ type BoardPrefs = {
   colors?: Record<string, string>;
   /** Cartões de leads (e "Sem lista") arquivados: chave → quando. As listas guardam-no na própria lista. */
   archived?: Record<string, string>;
+  /** Cartões recolhidos (só o título e os números). */
+  collapsed?: string[];
 };
 
 export function useTaskLists() {
@@ -364,6 +370,8 @@ function BoardCardView({
   viewer,
   archived = false,
   onArchive,
+  collapsed = false,
+  onCollapse,
 }: {
   index: number;
   count: number;
@@ -378,6 +386,9 @@ function BoardCardView({
   archived?: boolean;
   /** Arquivar/desarquivar um cartão que não é uma lista (lead ou "Sem lista"). */
   onArchive?: (archive: boolean) => void;
+  /** Recolhido: só o título, as por fazer e as em atraso. */
+  collapsed?: boolean;
+  onCollapse?: (collapse: boolean) => void;
   card: BoardCard;
   today: string;
   targets: { key: string; label: string; container: Container }[];
@@ -675,6 +686,9 @@ function BoardCardView({
     card.list?.shared && card.list.created_by && card.list.created_by !== viewer.id
       ? assigneeName(card.list.created_by)
       : null;
+  const overdue = card.pending.filter((t) => t.due_on && t.due_on < today).length;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
   const allText = [
     card.title,
     ...pending.map((t) => `☐ ${t.title}`),
@@ -708,7 +722,36 @@ function BoardCardView({
               <GripVertical className="h-4 w-4" aria-hidden />
             </button>
           ) : null}
+          {onCollapse ? (
+            <button
+              type="button"
+              onClick={() => onCollapse(!collapsed)}
+              aria-expanded={!collapsed}
+              aria-label={`${collapsed ? "Abrir" : "Recolher"} o cartão: ${card.title}`}
+              title={collapsed ? "Abrir o cartão" : "Recolher o cartão (só o título)"}
+              className="-my-0.5 shrink-0 rounded p-1 text-muted hover:bg-surface-3 hover:text-fg"
+            >
+              <ChevronDown className={cn("h-4 w-4 transition-transform", collapsed && "-rotate-90")} aria-hidden />
+            </button>
+          ) : null}
           <CardTitle card={card} onRename={renameList} />
+          {archived ? (
+            <span className="mt-0.5 shrink-0 rounded bg-surface-3 px-1.5 text-xs text-muted">Arquivado</span>
+          ) : null}
+          {overdue ? (
+            <span
+              className="mt-0.5 inline-flex shrink-0 items-center rounded-full bg-danger-soft px-1.5 text-xs font-semibold text-danger tabular"
+              title={`${overdue} em atraso`}
+              aria-label={`${overdue} em atraso`}
+            >
+              {overdue}
+            </span>
+          ) : null}
+          {collapsed ? (
+            <span className="mt-0.5 shrink-0 text-xs text-muted tabular">
+              {pending.length} por fazer
+            </span>
+          ) : null}
           {pinned ? (
             <Pin
               className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted"
@@ -728,7 +771,14 @@ function BoardCardView({
               {sharedBy ? `de ${sharedBy}` : "Partilhada"}
             </span>
           ) : null}
-          <DropdownRoot>
+          <DropdownRoot
+            open={menuOpen}
+            onOpenChange={(v) => {
+              const next = typeof v === "function" ? v(menuOpen) : v;
+              setMenuOpen(next);
+              if (!next) setMoveOpen(false);
+            }}
+          >
             <DropdownTrigger
               aria-label={`Mais ações: ${card.title}`}
               className="-mt-1 -mr-2 shrink-0 rounded p-1.5 text-muted hover:bg-surface-3 hover:text-fg"
@@ -813,33 +863,33 @@ function BoardCardView({
               {count > 1 && !archived ? (
                 <>
                   <DropdownSeparator />
+                  {/* Os quatro "Mover" abrem por baixo, no próprio menu (um submenu ao lado não cabe no telemóvel). */}
                   <DropdownItem
-                    disabled={index === 0}
-                    onSelect={() => onMoveCard("first")}
+                    aria-expanded={moveOpen}
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setMoveOpen((v) => !v);
+                    }}
                   >
-                    <ArrowUpToLine className="h-4 w-4" aria-hidden /> Mover para
-                    o início
+                    <ArrowUpDown className="h-4 w-4" aria-hidden /> Mover
+                    <ChevronRight className={cn("ml-auto h-4 w-4 text-muted transition-transform", moveOpen && "rotate-90")} aria-hidden />
                   </DropdownItem>
-                  <DropdownItem
-                    disabled={index === 0}
-                    onSelect={() => onMoveCard("up")}
-                  >
-                    <ArrowUp className="h-4 w-4" aria-hidden /> Mover para antes
-                  </DropdownItem>
-                  <DropdownItem
-                    disabled={index === count - 1}
-                    onSelect={() => onMoveCard("down")}
-                  >
-                    <ArrowDown className="h-4 w-4" aria-hidden /> Mover para
-                    depois
-                  </DropdownItem>
-                  <DropdownItem
-                    disabled={index === count - 1}
-                    onSelect={() => onMoveCard("last")}
-                  >
-                    <ArrowDownToLine className="h-4 w-4" aria-hidden /> Mover
-                    para o fim
-                  </DropdownItem>
+                  {moveOpen ? (
+                    <>
+                      <DropdownItem className="pl-8" disabled={index === 0} onSelect={() => onMoveCard("first")}>
+                        <ArrowUpToLine className="h-4 w-4" aria-hidden /> Para o início
+                      </DropdownItem>
+                      <DropdownItem className="pl-8" disabled={index === 0} onSelect={() => onMoveCard("up")}>
+                        <ArrowUp className="h-4 w-4" aria-hidden /> Para antes
+                      </DropdownItem>
+                      <DropdownItem className="pl-8" disabled={index === count - 1} onSelect={() => onMoveCard("down")}>
+                        <ArrowDown className="h-4 w-4" aria-hidden /> Para depois
+                      </DropdownItem>
+                      <DropdownItem className="pl-8" disabled={index === count - 1} onSelect={() => onMoveCard("last")}>
+                        <ArrowDownToLine className="h-4 w-4" aria-hidden /> Para o fim
+                      </DropdownItem>
+                    </>
+                  ) : null}
                 </>
               ) : null}
               {card.list ? (
@@ -882,7 +932,7 @@ function BoardCardView({
           </DropdownRoot>
         </div>
         {/* Escrever e Enter: a tarefa entra em cima (aceita "sexta às 10h"). */}
-        {archived ? null : (
+        {archived || collapsed ? null : (
         <form
           onSubmit={add}
           className="flex flex-wrap items-center gap-1.5 border-y border-border px-2 py-1.5"
@@ -905,7 +955,7 @@ function BoardCardView({
           />
         </form>
         )}
-        {pending.length ? (
+        {collapsed ? null : pending.length ? (
           <DndContext
             sensors={sensors}
             modifiers={[verticalOnly]}
@@ -934,7 +984,7 @@ function BoardCardView({
             {card.done.length ? "Tudo feito. 🎉" : "Sem tarefas por fazer."}
           </p>
         )}
-        {card.done.length ? (
+        {card.done.length && !collapsed ? (
           <div className="border-t border-border">
             <button
               type="button"
@@ -1127,8 +1177,17 @@ export function TaskBoard({
       ...all.filter((c) => !pinnedKeys.has(c.key)),
     ];
   }, [boardCards, savedOrder, pinnedKeys]);
-  const pinnedCards = ordered.filter((c) => pinnedKeys.has(c.key));
-  const otherCards = ordered.filter((c) => !pinnedKeys.has(c.key));
+  const collapsedKeys = useMemo(
+    () => new Set(Array.isArray(savedOrder?.collapsed) ? savedOrder.collapsed : []),
+    [savedOrder],
+  );
+  // "Só com atrasadas": os cartões com alguma tarefa com prazo antes de hoje.
+  const [onlyOverdue, setOnlyOverdue] = useState(false);
+  const hasOverdue = (c: BoardCard) => c.pending.some((t) => t.due_on && t.due_on < today);
+  const overdueCount = ordered.filter(hasOverdue).length;
+  const shown = onlyOverdue ? ordered.filter(hasOverdue) : ordered;
+  const pinnedCards = shown.filter((c) => pinnedKeys.has(c.key));
+  const otherCards = shown.filter((c) => !pinnedKeys.has(c.key));
   function savePrefs(next: Partial<BoardPrefs>) {
     saveOrder.mutate(
       {
@@ -1136,6 +1195,7 @@ export function TaskBoard({
         pinned: [...pinnedKeys],
         colors: savedOrder?.colors ?? {},
         archived: archivedAt,
+        collapsed: [...collapsedKeys],
         ...next,
       },
       { onError: (e) => toast.error(errorMessage(e)) },
@@ -1170,6 +1230,21 @@ export function TaskBoard({
         action: { label: "Anular", onClick: () => archiveCard(card, false) },
       });
     else toast.success(`“${card.title}” de volta ao quadro.`);
+  }
+  function collapseCard(key: string, collapse: boolean) {
+    const next = new Set(collapsedKeys);
+    if (collapse) next.add(key);
+    else next.delete(key);
+    savePrefs({ collapsed: [...next].slice(0, 300) });
+  }
+  function collapseAll(collapse: boolean) {
+    const keys = ordered.map((c) => c.key);
+    const next = new Set(collapsedKeys);
+    for (const k of keys) {
+      if (collapse) next.add(k);
+      else next.delete(k);
+    }
+    savePrefs({ collapsed: [...next].slice(0, 300) });
   }
   function colorCard(key: string, color: CardColor | null) {
     const colors = { ...(savedOrder?.colors ?? {}) };
@@ -1226,15 +1301,19 @@ export function TaskBoard({
     hasTeam,
   };
   const [showArchive, setShowArchive] = useState(false);
+  const searchText = fold(query.trim());
   const archive = useQuery({
     queryKey: ["task-lists", "archived"],
     queryFn: () =>
       api<{ data: TaskListWithTasks[] }>("/task-lists", {
         query: { archived: "1" },
       }).then((r) => r.data),
-    enabled: showArchive && showLists,
+    // Com pesquisa, procura também nas listas arquivadas.
+    enabled: (showArchive || !!searchText) && showLists,
   });
-  const archivedLists = showLists ? (archive.data ?? []) : [];
+  const archivedLists = (showLists ? (archive.data ?? []) : []).filter(
+    (l) => !searchText || fold(l.title).includes(searchText) || l.tasks.some((t) => fold(t.title).includes(searchText)),
+  );
   const archiveCount = archivedCards.length + archivedLists.length;
 
   const renderCards = (group: BoardCard[]) => (
@@ -1255,6 +1334,8 @@ export function TaskBoard({
           onPin={(pin) => pinCard(card.key, pin)}
           onColor={(color) => colorCard(card.key, color)}
           onArchive={(archive) => archiveCard(card, archive)}
+          collapsed={collapsedKeys.has(card.key)}
+          onCollapse={(collapse) => collapseCard(card.key, collapse)}
           viewer={viewer}
         />
       ))}
@@ -1267,7 +1348,35 @@ export function TaskBoard({
       {showLists ? (
         <NewListComposer assignTo={assignTo} hasTeam={viewer.hasTeam} />
       ) : null}
-      {ordered.length ? (
+      {ordered.length > 1 || overdueCount ? (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          {overdueCount ? (
+            <button
+              type="button"
+              aria-pressed={onlyOverdue}
+              onClick={() => setOnlyOverdue((v) => !v)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1",
+                onlyOverdue ? "border-danger bg-danger-soft text-danger" : "border-border text-muted hover:text-fg",
+              )}
+            >
+              <span className="h-2 w-2 rounded-full bg-danger" aria-hidden />
+              Só com atrasadas ({overdueCount})
+            </button>
+          ) : null}
+          {ordered.length > 1 ? (
+            <span className="ml-auto flex gap-1">
+              <Button type="button" size="sm" variant="ghost" onClick={() => collapseAll(true)}>
+                Recolher todos
+              </Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => collapseAll(false)}>
+                Abrir todos
+              </Button>
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+      {shown.length ? (
         <DndContext
           sensors={cardSensors}
           collisionDetection={closestCenter}
@@ -1321,6 +1430,7 @@ export function TaskBoard({
         empty
       )}
       {showLists || archivedCards.length ? (
+        // Com pesquisa e resultados nos arquivados, abrem-se sozinhos.
         <div className="flex flex-col gap-3">
           <button
             type="button"
@@ -1338,7 +1448,7 @@ export function TaskBoard({
             <Archive className="h-4 w-4" aria-hidden /> Arquivados
             {archive.data || !showLists ? ` (${archiveCount})` : archivedCards.length ? ` (${archivedCards.length}+)` : ""}
           </button>
-          {showArchive ? (
+          {showArchive || (searchText && archiveCount) ? (
             archive.isLoading ? (
               <Skeleton className="h-24" />
             ) : archiveCount ? (
@@ -1406,8 +1516,10 @@ export function TaskBoard({
       <p className="flex items-center gap-1.5 text-xs text-muted">
         <Pencil className="h-3 w-3" aria-hidden /> Toca no texto de uma tarefa
         para a editar; arrasta pela pega para mudar a ordem (a pega do título
-        muda o cartão de lugar, ou usa o ⋯ do cartão: afixar, cor, arquivar).
-        As concluídas dos últimos 30 dias ficam no fim de cada cartão.
+        muda o cartão de lugar, ou usa o ⋯ do cartão: afixar, cor, mover,
+        arquivar). A seta ao lado do título recolhe o cartão; o número vermelho
+        são as tarefas em atraso. As concluídas dos últimos 30 dias ficam no fim
+        de cada cartão.
       </p>
     </div>
   );

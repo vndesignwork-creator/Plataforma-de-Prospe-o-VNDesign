@@ -414,7 +414,8 @@ export function MyTasksView() {
               </DropdownRoot>
             </div>
           ) : null}
-          <div role="group" aria-label="Vista" className={SEGMENTED}>
+          {/* No telemóvel, numa linha própria e encostado à direita. */}
+          <div role="group" aria-label="Vista" className={cn(SEGMENTED, 'ml-auto sm:ml-0')}>
             <button type="button" aria-pressed={view === 'cartoes'} onClick={() => setView('cartoes')} className={segment(view === 'cartoes', 'gap-1.5')}>
               <LayoutGrid className="h-3.5 w-3.5" aria-hidden /> Cartões
             </button>

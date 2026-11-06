@@ -54,7 +54,7 @@ export const HELP_GUIDES: HelpGuide[] = [
       'As tarefas aparecem agrupadas pelo prazo (atrasadas, hoje, próximos dias, sem prazo); filtra por Leads ou Projetos e por responsável.',
       'Marca como feita com o visto; para mudar a data, carrega no prazo da tarefa.',
       'No telemóvel, desliza uma tarefa para a direita para a marcar como feita e para a esquerda para a adiar.',
-      'No ⋯ de cada cartão: afixar no topo, cor, mudar de lugar e arquivar. A ordem, as cores, os afixados e os cartões de leads arquivados são só teus; os arquivados ficam em “Arquivados”, no fim (um cartão de lead volta sozinho ao quadro se aparecer uma tarefa nova).',
+      'No ⋯ de cada cartão: afixar no topo, cor, Mover ▸ e arquivar. A seta ao lado do título recolhe o cartão (ou “Recolher todos”); o número vermelho são as tarefas em atraso e “Só com atrasadas” mostra só esses cartões. A ordem, as cores, os afixados, os recolhidos e os cartões de leads arquivados são só teus; os arquivados ficam em “Arquivados”, no fim (um cartão de lead volta sozinho ao quadro se aparecer uma tarefa nova), e a pesquisa também os encontra.',
       'Tarefas que se repetem: na janela de editar, escolhe “Repetir” (todos os dias, dias úteis, semanas, meses ou anos). Ao concluir, a próxima é criada sozinha com a data seguinte.',
       'Com equipa: “Partilhar com a equipa” no ⋯ da lista deixa todos verem e mexerem; em cada tarefa feita vê-se quem a marcou.',
     ],
@@ -96,7 +96,7 @@ export const HELP_GUIDES: HelpGuide[] = [
     steps: [
       'Arrasta um cartão para outra coluna para mudar o estado (no telemóvel, mantém o dedo no cartão e arrasta).',
       'Ao passar a "Contactado", o follow-up fica marcado automaticamente para daqui a 3 dias.',
-      'Ao passar a "Sem interesse", a plataforma pergunta o motivo (fica nas estatísticas).',
+      'Ao passar a "Sem interesse", a plataforma pergunta o motivo (fica nas estatísticas) e, se o lead tiver tarefas por fazer, se as conclui, apaga ou deixa como estão.',
       'Usa o olho para mostrar ou esconder colunas e os filtros de cima para ver só o que interessa.',
     ],
   },

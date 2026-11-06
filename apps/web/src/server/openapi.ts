@@ -63,6 +63,8 @@ import {
   TaskListsQuerySchema,
   TaskListWithTasksSchema,
   TaskReorderSchema,
+  TaskCloseOpenSchema,
+  TaskCloseOpenResultSchema,
   AutomationRuleSchema,
   AutomationRuleCreateSchema,
   AutomationRuleUpdateSchema,
@@ -1231,6 +1233,14 @@ export function getOpenApiDocument() {
       },
       '/tasks/reorder': {
         post: op({ tags: ['Tarefas'], summary: 'Nova ordem das tarefas de um cartão (lead, lista ou soltas)', requestBody: body(TaskReorderSchema), responses: { '204': { description: 'Reordenadas' }, ...withNotFound } }),
+      },
+      '/tasks/close-open': {
+        post: op({
+          tags: ['Tarefas'],
+          summary: 'Concluir ou apagar as tarefas por fazer de vários leads (ex.: ao passarem a "Sem interesse")',
+          requestBody: body(TaskCloseOpenSchema),
+          responses: { '200': ok(data(TaskCloseOpenResultSchema)), ...common },
+        }),
       },
       '/task-lists': {
         get: op({

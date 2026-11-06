@@ -726,6 +726,7 @@ export function LeadDetail({ id }: { id: string }) {
         <LostReasonDialog
           open
           subject={`#${lead.number} ${lead.company_name}`}
+          leadIds={[lead.id]}
           onPick={(reason, retryOn) => void changeStatus('sem_interesse', reason, retryOn)}
           onCancel={() => setAskLost(false)}
         />

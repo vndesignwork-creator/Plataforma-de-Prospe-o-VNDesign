@@ -100,6 +100,7 @@ export function DropdownItem({
   disabled,
   className,
   'aria-label': ariaLabel,
+  'aria-expanded': ariaExpanded,
 }: {
   children: ReactNode;
   /** event.preventDefault() mantém o menu aberto. */
@@ -108,12 +109,15 @@ export function DropdownItem({
   disabled?: boolean;
   className?: string;
   'aria-label'?: string;
+  /** Item que abre mais opções por baixo, no próprio menu. */
+  'aria-expanded'?: boolean;
 }) {
   return (
     <Menu.Item
       onSelect={onSelect}
       disabled={disabled}
       aria-label={ariaLabel}
+      aria-expanded={ariaExpanded}
       className={cn(itemClass, danger && 'text-danger data-[highlighted]:bg-danger-soft', className)}
     >
       {children}

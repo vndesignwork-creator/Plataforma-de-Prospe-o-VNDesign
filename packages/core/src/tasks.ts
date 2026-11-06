@@ -293,3 +293,16 @@ export type TaskListWithTasks = z.infer<typeof TaskListWithTasksSchema>;
 
 /** Nova ordem de tarefas (de um mesmo cartão: lead, lista ou soltas). */
 export const TaskReorderSchema = LeadTaskReorderSchema.meta({ id: 'TaskReorder' });
+
+/**
+ * Arrumar as tarefas por fazer de leads (ex.: ao passarem a "Sem interesse"):
+ * "done" conclui-as (sem criar a seguinte das que se repetem); "delete" apaga-as.
+ */
+export const TaskCloseOpenSchema = z
+  .object({
+    lead_ids: z.array(z.uuid()).min(1).max(200).meta({ description: 'Leads cujas tarefas por fazer se arrumam' }),
+    action: z.enum(['done', 'delete']).meta({ description: 'done = concluir; delete = apagar' }),
+  })
+  .meta({ id: 'TaskCloseOpen' });
+export type TaskCloseOpen = z.infer<typeof TaskCloseOpenSchema>;
+export const TaskCloseOpenResultSchema = z.object({ count: z.int().meta({ description: 'Tarefas concluídas ou apagadas' }) }).meta({ id: 'TaskCloseOpenResult' });

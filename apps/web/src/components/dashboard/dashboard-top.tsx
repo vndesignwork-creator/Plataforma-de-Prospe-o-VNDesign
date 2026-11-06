@@ -96,14 +96,17 @@ export function DashboardHeader({ organize }: { organize?: ReactNode }) {
       actions={
         <>
           {organize}
-          {settings?.features.prospecting_session ? (
-            <Link href="/prospecao" className={buttonClasses('outline')}>
-              <Target className="h-4 w-4" aria-hidden /> Começar prospeção
+          {/* No telemóvel, os dois botões com a mesma largura: um por linha, a ocupar a largura toda. */}
+          <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto">
+            {settings?.features.prospecting_session ? (
+              <Link href="/prospecao" className={buttonClasses('outline', 'md', 'w-full justify-center sm:w-auto')}>
+                <Target className="h-4 w-4" aria-hidden /> Começar prospeção
+              </Link>
+            ) : null}
+            <Link href="/leads/novo" className={buttonClasses('primary', 'md', 'w-full justify-center sm:w-auto')}>
+              <Plus className="h-4 w-4" aria-hidden /> Novo lead
             </Link>
-          ) : null}
-          <Link href="/leads/novo" className={buttonClasses('primary')}>
-            <Plus className="h-4 w-4" aria-hidden /> Novo lead
-          </Link>
+          </div>
         </>
       }
     />
@@ -227,14 +230,15 @@ export function SummaryStrip({ totals }: { totals: Dashboard['totals'] }) {
   return (
     <section aria-label="Resumo" className="mb-2 flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
-        <div role="group" aria-label="Período dos números" className="inline-flex h-9 items-center rounded-lg border border-border-input bg-surface-2 p-0.5">
+        {/* No telemóvel ocupa a largura toda (três partes iguais). */}
+        <div role="group" aria-label="Período dos números" className="flex h-9 w-full items-center rounded-lg border border-border-input bg-surface-2 p-0.5 sm:inline-flex sm:w-auto">
           {PERIODS.map((p) => (
             <button
               key={p.value}
               type="button"
               aria-pressed={period === p.value}
               onClick={() => choose(p.value)}
-              className={cn('inline-flex h-full items-center rounded-md px-3 text-sm', period === p.value ? 'bg-surface font-medium shadow-sm' : 'text-muted hover:text-fg')}
+              className={cn('inline-flex h-full flex-1 items-center justify-center rounded-md px-3 text-sm sm:flex-none', period === p.value ? 'bg-surface font-medium shadow-sm' : 'text-muted hover:text-fg')}
             >
               {p.label}
             </button>

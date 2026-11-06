@@ -95,6 +95,82 @@ test('Cartão de um lead: arquivar tira-o do quadro; desarquivar repõe; uma tar
   await page.request.delete(`/api/v1/leads/${lead.id}`);
 });
 
+test('Cartões: atrasadas (número e filtro), recolher, Mover ▸ e pesquisa nos arquivados', async ({ page }) => {
+  test.setTimeout(120_000);
+  const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const mk = async (company: string) => (await (await page.request.post('/api/v1/leads?force=true', { data: { company_name: company } })).json()).data as { id: string; number: number };
+  const late = await mk(`Atrasado ${run}`);
+  const calm = await mk(`Em dia ${run}`);
+  await page.request.post(`/api/v1/leads/${late.id}/tasks`, { data: { title: `Ligar ontem ${run}`, due_on: yesterday } });
+  await page.request.post(`/api/v1/leads/${calm.id}/tasks`, { data: { title: `Sem pressa ${run}` } });
+  const lateName = `#${late.number} Atrasado ${run}`;
+  const calmName = `#${calm.number} Em dia ${run}`;
+  await page.goto('/tarefas?vista=cartoes');
+  const lateCard = page.getByRole('region', { name: lateName });
+  await expect(lateCard.getByLabel('1 em atraso')).toBeVisible();
+  await expect(page.getByRole('region', { name: calmName }).getByLabel(/em atraso/)).toHaveCount(0);
+
+  // Só com atrasadas.
+  await page.getByRole('button', { name: /^Só com atrasadas/ }).click();
+  await expect(lateCard).toBeVisible();
+  await expect(page.getByRole('region', { name: calmName })).toHaveCount(0);
+  await page.getByRole('button', { name: /^Só com atrasadas/ }).click();
+  await expect(page.getByRole('region', { name: calmName })).toBeVisible();
+
+  // Recolher: só o título e os números; fica assim depois de recarregar.
+  await lateCard.getByRole('button', { name: `Recolher o cartão: ${lateName}` }).click();
+  await expect(lateCard.getByText(`Ligar ontem ${run}`)).toHaveCount(0);
+  await expect(lateCard.getByText('1 por fazer')).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('region', { name: lateName }).getByText(`Ligar ontem ${run}`)).toHaveCount(0);
+  await page.getByRole('button', { name: `Abrir o cartão: ${lateName}` }).click();
+  await expect(page.getByRole('region', { name: lateName }).getByText(`Ligar ontem ${run}`)).toBeVisible();
+
+  // Mover ▸ Para o início.
+  await page.getByRole('region', { name: calmName }).getByRole('button', { name: `Mais ações: ${calmName}` }).click();
+  await page.getByRole('menuitem', { name: 'Mover' }).click();
+  await page.getByRole('menuitem', { name: 'Para o início' }).click();
+  await expect.poll(async () => {
+    const names = await page.getByRole('region').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
+    return names.indexOf(calmName) < names.indexOf(lateName);
+  }).toBe(true);
+
+  // Pesquisa: encontra também o cartão arquivado (com "Arquivado").
+  await page.getByRole('region', { name: calmName }).getByRole('button', { name: `Mais ações: ${calmName}` }).click();
+  await page.getByRole('menuitem', { name: 'Arquivar' }).click();
+  await expect(page.getByText(`“${calmName}” arquivado.`)).toBeVisible();
+  await page.getByLabel('Procurar tarefa ou lead').fill(`Sem pressa ${run}`);
+  const found = page.getByRole('region', { name: calmName });
+  await expect(found.getByText('Arquivado', { exact: true })).toBeVisible();
+  await expect(found.getByText(`Sem pressa ${run}`)).toBeVisible();
+  await page.request.delete(`/api/v1/leads/${late.id}`);
+  await page.request.delete(`/api/v1/leads/${calm.id}`);
+});
+
+test('Sem interesse: as tarefas por fazer do lead concluem-se (ou apagam-se) no mesmo passo', async ({ page }) => {
+  const lead = (await (await page.request.post('/api/v1/leads?force=true', { data: { company_name: `Desistiu ${run}`, status: 'contactado' } })).json()).data as { id: string };
+  for (const title of [`Ligar ${run}`, `Enviar proposta ${run}`]) await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title } });
+  await page.goto(`/leads/${lead.id}`);
+  await page.getByLabel('Estado', { exact: true }).selectOption('sem_interesse');
+  const dialog = page.getByRole('dialog', { name: 'Porque fica “Sem interesse”?' });
+  await expect(dialog.getByText('As 2 tarefas por fazer')).toBeVisible();
+  await expect(dialog.getByLabel('Concluir')).toBeChecked();
+  await dialog.getByLabel('Preço').check();
+  await dialog.getByRole('button', { name: 'Guardar' }).click();
+  await expect(page.getByText('2 tarefas concluídas.')).toBeVisible();
+  const tasks = (await (await page.request.get(`/api/v1/leads/${lead.id}/tasks`)).json()).data as { done_at: string | null }[];
+  expect(tasks).toHaveLength(2);
+  expect(tasks.every((t) => t.done_at)).toBe(true);
+
+  // Pela API, também em lote e a apagar.
+  const other = (await (await page.request.post('/api/v1/leads?force=true', { data: { company_name: `Desistiu B ${run}` } })).json()).data as { id: string };
+  await page.request.post(`/api/v1/leads/${other.id}/tasks`, { data: { title: `Apagar ${run}` } });
+  const res = await page.request.post('/api/v1/tasks/close-open', { data: { lead_ids: [other.id, lead.id], action: 'delete' } });
+  expect((await res.json()).data.count).toBe(1);
+  await page.request.delete(`/api/v1/leads/${lead.id}`);
+  await page.request.delete(`/api/v1/leads/${other.id}`);
+});
+
 test('Tarefas que se repetem: escrever "todas as segundas", concluir cria a seguinte, Anular tira-a; quem marcou', async ({ page }) => {
   const list = (await (await page.request.post('/api/v1/task-lists', { data: { title: `Rotina ${run}` } })).json()).data as { id: string };
   await page.goto('/tarefas?vista=cartoes');

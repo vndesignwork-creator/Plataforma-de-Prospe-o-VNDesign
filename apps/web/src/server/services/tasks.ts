@@ -366,6 +366,24 @@ export async function deleteTask(ctx: ApiContext, id: string): Promise<void> {
   if (!count) throw new ApiError(404, TASK_NOT_FOUND);
 }
 
+/**
+ * Arruma as tarefas por fazer de vários leads (ex.: passaram a "Sem interesse").
+ * Concluir aqui não cria a próxima das que se repetem (o lead já não interessa).
+ */
+export async function closeOpenTasks(ctx: ApiContext, leadIds: string[], action: 'done' | 'delete'): Promise<number> {
+  const base = () => ctx.supabase.from('lead_tasks');
+  if (action === 'delete') {
+    const { error, count } = await base().delete({ count: 'exact' }).eq('workspace_id', ctx.workspaceId).in('lead_id', leadIds).is('done_at', null);
+    if (error) throw fromPostgrest(error);
+    return count ?? 0;
+  }
+  const patch: Record<string, unknown> = { done_at: new Date().toISOString() };
+  if (await taskExtrasReady()) patch.done_by = ctx.user.id;
+  const { error, count } = await base().update(patch, { count: 'exact' }).eq('workspace_id', ctx.workspaceId).in('lead_id', leadIds).is('done_at', null);
+  if (error) throw fromPostgrest(error);
+  return count ?? 0;
+}
+
 /** Nova ordem das tarefas do lead (as que não vierem na lista mantêm a posição). */
 export async function reorderTasks(ctx: ApiContext, leadId: string, ids: string[]): Promise<LeadTask[]> {
   const tasks = await listTasks(ctx, leadId);

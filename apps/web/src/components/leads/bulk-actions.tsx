@@ -176,6 +176,7 @@ export function BulkStatusMenu({ rows, onDone }: { rows: Lead[]; onDone: () => v
         <LostReasonDialog
           open
           subject={rows.length === 1 ? `#${rows[0]!.number} ${rows[0]!.company_name}` : `${rows.length} leads`}
+          leadIds={rows.map((r) => r.id)}
           onPick={(reason, retryOn) => void run('sem_interesse', reason, retryOn)}
           onCancel={() => setAskLost(false)}
         />

@@ -788,6 +788,7 @@ export function KanbanBoard() {
         <LostReasonDialog
           open
           subject={`#${askLost.number} ${askLost.company_name}`}
+          leadIds={[askLost.id]}
           onPick={(reason, retryOn) => void saveLostReason(askLost, reason, retryOn)}
           onCancel={() => setAskLost(null)}
         />

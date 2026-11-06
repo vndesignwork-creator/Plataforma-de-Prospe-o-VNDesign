@@ -825,6 +825,7 @@ function LeadRow({
         <LostReasonDialog
           open
           subject={`#${lead.number} ${lead.company_name}`}
+          leadIds={[lead.id]}
           onPick={(reason, retryOn) => void record('not_interested', undefined, reason, retryOn)}
           onCancel={() => setAskLost(false)}
         />

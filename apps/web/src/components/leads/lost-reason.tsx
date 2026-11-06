@@ -4,27 +4,59 @@
  * Motivo de "Sem interesse": perguntado ao mudar o estado (ficha, Kanban, vários
  * de uma vez) e editável na ficha. Serve para ver em Estatísticas porque se
  * perdem leads. "Sem motivo" também vale. Com "Agora não", escolhe-se quando
- * o lead volta sozinho à prospeção (por omissão daqui a 3 meses).
+ * o lead volta sozinho à prospeção (por omissão daqui a 3 meses). Se o lead tiver
+ * tarefas por fazer, pergunta também o que fazer com elas (concluir, apagar ou deixar).
  */
 import { DEFAULT_RETRY_MONTHS, LOST_REASONS, LOST_REASON_LABELS, RETRY_MONTHS, formatDate, retryDate, todayIso, type Lead, type LostReason } from '@vndesign/core';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Undo2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Select } from '@/components/ui/input';
-import { errorMessage } from '@/lib/api-client';
-import { useUpdateLead } from '@/lib/queries';
+import { api, errorMessage } from '@/lib/api-client';
+import { useInvalidateTasks, useUpdateLead } from '@/lib/queries';
+
+type TaskAction = 'done' | 'delete' | 'keep';
+const TASK_ACTIONS: { value: TaskAction; label: string }[] = [
+  { value: 'done', label: 'Concluir' },
+  { value: 'delete', label: 'Apagar' },
+  { value: 'keep', label: 'Deixar como estão' },
+];
+
+/** Quantas tarefas por fazer têm estes leads (um lead: as dele; vários: todas as abertas, contadas por lead). */
+function useOpenTaskCount(leadIds: readonly string[] | undefined) {
+  const ids = leadIds ?? [];
+  const { data } = useQuery({
+    queryKey: ['open-task-count', ids],
+    enabled: ids.length > 0,
+    staleTime: 0,
+    queryFn: async () => {
+      if (ids.length === 1) {
+        const r = await api<{ data: { done_at: string | null }[] }>(`/leads/${ids[0]}/tasks`);
+        return r.data.filter((t) => !t.done_at).length;
+      }
+      const wanted = new Set(ids);
+      const r = await api<{ data: { lead_id: string | null }[] }>('/tasks', { query: { assigned: 'all', limit: '500' } });
+      return r.data.filter((t) => t.lead_id && wanted.has(t.lead_id)).length;
+    },
+  });
+  return data ?? 0;
+}
 
 export function LostReasonDialog({
   open,
   subject,
   onPick,
   onCancel,
+  leadIds,
 }: {
   open: boolean;
   /** "#12 Padaria Estrela" ou "3 leads". */
   subject: string;
+  /** Os leads: com tarefas por fazer, pergunta o que fazer com elas. */
+  leadIds?: readonly string[];
   /** retryOn: dia em que volta à prospeção (só com "Agora não"). */
   onPick: (reason: LostReason | null, retryOn: string | null) => void;
   onCancel: () => void;
@@ -33,6 +65,23 @@ export function LostReasonDialog({
   const [today] = useState(() => todayIso());
   const [months, setMonths] = useState(String(DEFAULT_RETRY_MONTHS));
   const retryOn = reason === 'agora_nao' && months ? retryDate(today, Number(months)) : null;
+  const openTasks = useOpenTaskCount(leadIds);
+  const [taskAction, setTaskAction] = useState<TaskAction>('done');
+  const qc = useQueryClient();
+  const invalidateTasks = useInvalidateTasks();
+  const pick = (r: LostReason | null, retry: string | null) => {
+    onPick(r, retry);
+    if (!openTasks || taskAction === 'keep' || !leadIds?.length) return;
+    const action = taskAction;
+    void api<{ data: { count: number } }>('/tasks/close-open', { method: 'POST', body: { lead_ids: leadIds, action } })
+      .then(({ data }) => {
+        if (data.count) toast.success(`${data.count} tarefa${data.count === 1 ? '' : 's'} ${action === 'done' ? 'concluída' : 'apagada'}${data.count === 1 ? '' : 's'}.`);
+        for (const id of leadIds) invalidateTasks(id);
+        void qc.invalidateQueries({ queryKey: ['my-tasks'] });
+        void qc.invalidateQueries({ queryKey: ['task-lists'] });
+      })
+      .catch((error) => toast.error(errorMessage(error)));
+  };
   return (
     <Dialog
       open={open}
@@ -42,10 +91,10 @@ export function LostReasonDialog({
       className="max-w-md"
       footer={
         <>
-          <Button variant="ghost" onClick={() => onPick(null, null)}>
+          <Button variant="ghost" onClick={() => pick(null, null)}>
             Sem motivo
           </Button>
-          <Button onClick={() => onPick(reason, retryOn)} disabled={!reason}>
+          <Button onClick={() => pick(reason, retryOn)} disabled={!reason}>
             Guardar
           </Button>
         </>
@@ -73,6 +122,22 @@ export function LostReasonDialog({
           </Select>
           {retryOn ? <span className="text-muted">Volta à Prospeção a {formatDate(retryOn)}.</span> : null}
         </div>
+      ) : null}
+      {openTasks ? (
+        <fieldset className="mt-3 flex flex-col gap-1.5 rounded-lg bg-surface-2 px-3 py-2.5 text-sm">
+          <legend className="float-left mb-1 font-medium">
+            {openTasks === 1 ? 'A tarefa por fazer' : `As ${openTasks} tarefas por fazer`}
+          </legend>
+          <div className="clear-both flex flex-wrap gap-x-4 gap-y-1">
+            {TASK_ACTIONS.map((a) => (
+              <label key={a.value} className="flex cursor-pointer items-center gap-2">
+                <input type="radio" name="lost-tasks" checked={taskAction === a.value} onChange={() => setTaskAction(a.value)} className="h-4 w-4 accent-[var(--accent)]" />
+                {a.label}
+              </label>
+            ))}
+          </div>
+          <p className="text-xs text-muted">Assim não ficam a ocupar a Agenda e as Tarefas. As que se repetem não voltam a ser criadas.</p>
+        </fieldset>
       ) : null}
     </Dialog>
   );
