@@ -110,7 +110,7 @@ function NewProjectDialog({ lead, onClose }: { lead: Lead; onClose: () => void }
       onOpenChange={(o) => (!o ? onClose() : undefined)}
       title={`Novo projeto para ${lead.company_name}`}
       description="Um registo próprio, com os contactos do cliente: tarefas, pagamentos, horas, contrato e briefing separados deste."
-      className="max-w-lg"
+      className="max-w-2xl"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
@@ -127,7 +127,7 @@ function NewProjectDialog({ lead, onClose }: { lead: Lead; onClose: () => void }
           <Input placeholder="Ex.: Loja online, Identidade 2026" maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} />
         </Field>
         <Field label="Serviços" hint="O prazo, as revisões e as tarefas vêm dos serviços (como ao passar a Cliente).">
-          <ServicePicker value={services} onChange={setServices} />
+          <ServicePicker value={services} onChange={setServices} compact />
         </Field>
         <Field label="Valor (€)" hint="Opcional: o plano de pagamentos usa este valor.">
           <Input inputMode="decimal" placeholder="0,00" value={value} onChange={(e) => setValue(e.target.value)} className="w-40" />

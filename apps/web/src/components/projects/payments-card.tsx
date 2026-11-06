@@ -141,7 +141,7 @@ function PaymentRow({ lead, payment, today }: { lead: Lead; payment: LeadPayment
 }
 
 /** Plano rápido a partir do valor da proposta aceite (ou do valor estimado). */
-export function PlanForm({ lead, onDone }: { lead: Lead; onDone?: () => void }) {
+export function PlanForm({ lead, onDone, className = 'p-4' }: { lead: Lead; onDone?: () => void; className?: string }) {
   const plan = usePaymentPlan(lead.id);
   const { data: proposals } = useProposals(lead.id);
   const accepted = proposals?.find((p) => p.status === 'aceite') ?? proposals?.find((p) => p.status === 'enviada');
@@ -165,7 +165,7 @@ export function PlanForm({ lead, onDone }: { lead: Lead; onDone?: () => void }) 
   }
 
   return (
-    <div className="flex flex-col gap-3 p-4">
+    <div className={cn('flex flex-col gap-3', className)}>
       <p className="text-sm text-muted">
         Cria o plano de pagamentos do projeto{accepted ? ` (proposta ${accepted.code}: ${euros(accepted.total)})` : ''}. Depois, marca cada
         pagamento quando o receberes.
@@ -196,6 +196,7 @@ export function PaymentsCard({ lead }: { lead: Lead }) {
   // Antes da reunião/proposta não há pagamentos: nem se pergunta ao servidor (o cartão não aparece).
   const { data: payments, isLoading } = usePayments(lead.id, !EARLY_STATUSES.includes(lead.status));
   const [adding, setAdding] = useState(false);
+  const [planning, setPlanning] = useState(false);
   const today = todayIso();
   // Só faz sentido a partir da proposta (ou se já houver pagamentos).
   const relevant = ['proposta_enviada', 'cliente'].includes(lead.status) || !!payments?.length;
@@ -216,7 +217,11 @@ export function PaymentsCard({ lead }: { lead: Lead }) {
             <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
               <Plus className="h-3.5 w-3.5" aria-hidden /> Pagamento
             </Button>
-          ) : null
+          ) : isLoading ? null : (
+            <Button size="sm" variant="outline" onClick={() => setPlanning(true)}>
+              <Wallet className="h-3.5 w-3.5" aria-hidden /> Criar plano
+            </Button>
+          )
         }
       />
       {isLoading ? (
@@ -239,15 +244,36 @@ export function PaymentsCard({ lead }: { lead: Lead }) {
           </ul>
         </>
       ) : (
-        <>
-          <PlanForm lead={lead} />
-          <div className="flex justify-end px-4 pb-4">
-            <Button size="sm" variant="ghost" onClick={() => setAdding(true)}>
-              <Wallet className="h-3.5 w-3.5" aria-hidden /> Acrescentar um pagamento à mão
-            </Button>
-          </div>
-        </>
+        <p className="px-4 py-3 text-sm text-muted">Ainda sem pagamentos. Cria o plano e marca cada pagamento quando o receberes.</p>
       )}
+      {planning ? (
+        <Dialog
+          open
+          onOpenChange={(o) => (!o ? setPlanning(false) : undefined)}
+          title="Plano de pagamentos"
+          description={lead.company_name}
+          className="max-w-xl"
+          footer={
+            <>
+              <Button
+                variant="ghost"
+                className="mr-auto"
+                onClick={() => {
+                  setPlanning(false);
+                  setAdding(true);
+                }}
+              >
+                <Wallet className="h-4 w-4" aria-hidden /> Pagamento à mão
+              </Button>
+              <Button variant="ghost" onClick={() => setPlanning(false)}>
+                Cancelar
+              </Button>
+            </>
+          }
+        >
+          <PlanForm lead={lead} className="" onDone={() => setPlanning(false)} />
+        </Dialog>
+      ) : null}
       {adding ? <PaymentDialog lead={lead} onClose={() => setAdding(false)} /> : null}
     </Card>
   );

@@ -245,7 +245,7 @@ export function ServicePicker({
     );
   }
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="@container grid gap-4 @2xl:grid-cols-2">
       {groups.map(({ category, items }) => {
         return (
           <fieldset key={category} className="flex flex-col gap-2">
@@ -253,7 +253,7 @@ export function ServicePicker({
               <ServiceGlyph icon={catalog.categoryIcon(category)} className="text-muted" />
               {catalog.categoryLabel(category)}
             </legend>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 @md:grid-cols-2">
               {items.map((s) => {
                 const checked = value.includes(s.key);
                 return (

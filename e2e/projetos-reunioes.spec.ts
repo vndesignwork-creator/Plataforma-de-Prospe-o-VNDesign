@@ -118,9 +118,13 @@ test('pagamentos e Projetos: plano 50/50, receber o sinal, concluir o projeto', 
   const lead = await createLead(page.request, { company_name: `Clínica Projeto ${run}`, status: 'cliente', estimated_value: 1500 });
   await page.goto(`/leads/${lead.id}`);
   const card = page.locator('div.rounded-xl').filter({ has: page.getByRole('heading', { name: 'Pagamentos' }) });
-  await expect(card.getByLabel('Total (€)')).toHaveValue('1500');
+  // O plano abre numa janela (botão "Criar plano" no cabeçalho do cartão).
   await card.getByRole('button', { name: 'Criar plano' }).click();
+  const planDialog = page.getByRole('dialog', { name: 'Plano de pagamentos' });
+  await expect(planDialog.getByLabel('Total (€)')).toHaveValue('1500');
+  await planDialog.getByRole('button', { name: 'Criar plano' }).click();
   await expect(page.getByText('Plano de pagamentos criado.')).toBeVisible();
+  await expect(planDialog).toHaveCount(0);
   const list = card.getByRole('list', { name: 'Pagamentos do cliente' });
   await expect(list.getByRole('listitem')).toHaveCount(2);
   await list.getByRole('checkbox', { name: 'Pago: Sinal (50%)' }).check();
