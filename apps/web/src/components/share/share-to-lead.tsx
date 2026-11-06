@@ -97,7 +97,7 @@ export function ShareToLead() {
           </p>
           <LeadForm key={JSON.stringify(draft)} initial={toInitial(draft)} />
           {hasShared ? (
-            <Button variant="ghost" className="self-start" onClick={() => router.replace('/partilhar')}>
+            <Button variant="ghost" className="self-end" onClick={() => router.replace('/partilhar')}>
               Colar outro link
             </Button>
           ) : null}

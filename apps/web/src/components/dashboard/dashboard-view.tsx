@@ -59,10 +59,12 @@ const SHOWN = 5;
 function ShowAll({ total, open, onToggle, what }: { total: number; open: boolean; onToggle: () => void; what: string }) {
   if (total <= SHOWN) return null;
   return (
-    <button type="button" onClick={onToggle} aria-expanded={open} className="mt-1 px-2 py-1 text-xs font-medium text-accent-text hover:underline">
+    <div className="mt-1 flex justify-end">
+    <button type="button" onClick={onToggle} aria-expanded={open} className="px-2 py-1 text-xs font-medium text-accent-text hover:underline">
       {open ? 'Mostrar menos' : `Mostrar todos (${total})`}
       <span className="sr-only"> — {what}</span>
     </button>
+    </div>
   );
 }
 
@@ -500,7 +502,7 @@ function TodayCatchUp({ today, leads, tasks }: { today: string; leads: Lead[]; t
       <DateMenu
         today={today}
         heading="Passar os atrasados para"
-        triggerClassName={buttonClasses('outline', 'sm')}
+        triggerClassName={buttonClasses('outline', 'sm', 'ml-auto')}
         label={
           <>
             <CalendarClock className="h-3.5 w-3.5" aria-hidden /> Pôr em dia
@@ -526,7 +528,7 @@ function TodayStalled({ today, leads }: { today: string; leads: Lead[] }) {
       <DateMenu
         today={today}
         heading="Marcar o follow-up para"
-        triggerClassName={buttonClasses('outline', 'sm')}
+        triggerClassName={buttonClasses('outline', 'sm', 'ml-auto')}
         label={
           <>
             <BellRing className="h-3.5 w-3.5" aria-hidden /> Marcar follow-up

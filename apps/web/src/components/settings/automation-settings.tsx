@@ -313,7 +313,7 @@ function RuleDialog({ initial, onClose }: { initial: AutomationRule | (Automatio
               </Button>
             </div>
           ))}
-          <Button size="sm" variant="outline" className="self-start" onClick={() => setConditions([...conditions, defaultCondition('no_website')])} disabled={conditions.length >= 10}>
+          <Button size="sm" variant="outline" className="self-end" onClick={() => setConditions([...conditions, defaultCondition('no_website')])} disabled={conditions.length >= 10}>
             <Plus className="h-3.5 w-3.5" aria-hidden /> Condição
           </Button>
           {preview ? (
@@ -348,7 +348,7 @@ function RuleDialog({ initial, onClose }: { initial: AutomationRule | (Automatio
               </Button>
             </div>
           ))}
-          <Button size="sm" variant="outline" className="self-start" onClick={() => setActions([...actions, defaultAction('add_tag')])} disabled={actions.length >= 10}>
+          <Button size="sm" variant="outline" className="self-end" onClick={() => setActions([...actions, defaultAction('add_tag')])} disabled={actions.length >= 10}>
             <Plus className="h-3.5 w-3.5" aria-hidden /> Ação
           </Button>
         </fieldset>

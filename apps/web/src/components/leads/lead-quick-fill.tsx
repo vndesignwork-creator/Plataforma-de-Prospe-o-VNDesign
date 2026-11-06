@@ -131,7 +131,7 @@ function TextFillDialog({ onClose, onResult }: { onClose: () => void; onResult: 
           onChange={(e) => setText(e.target.value)}
           placeholder="Ex.: Restaurante O Quintal em Braga, falei com a Ana, telefone 912 345 678, querem um site novo com reservas."
         />
-        <DictateButton value={text} onChange={setText} className="self-start" />
+        <DictateButton value={text} onChange={setText} className="self-end" />
       </div>
     </Dialog>
   );

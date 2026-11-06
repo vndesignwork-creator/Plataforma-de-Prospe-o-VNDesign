@@ -203,7 +203,7 @@ export function PreferencesSettings() {
                 </li>
               ))}
               {steps.length < FOLLOW_UP_SEQUENCE_MAX_STEPS ? (
-                <li>
+                <li className="flex justify-end">
                   <Button
                     type="button"
                     size="sm"

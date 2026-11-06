@@ -187,7 +187,7 @@ export function NewTaskDialog({ onClose }: { onClose: () => void }) {
           <Field label="Tarefa" error={errors.title} hint={recognized ? undefined : 'Podes escrever como falas: “Ligar à Clínica Sorriso sexta às 10h”.'}>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Enviar proposta revista amanhã às 10h" maxLength={TASK_TITLE_MAX} autoFocus />
           </Field>
-          <DictateButton value={title} onChange={setTitle} max={TASK_TITLE_MAX} className="self-start" />
+          <DictateButton value={title} onChange={setTitle} max={TASK_TITLE_MAX} className="self-end" />
           {recognized ? (
             <p role="status" className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-accent-soft px-3 py-2 text-xs text-accent-text">
               <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />

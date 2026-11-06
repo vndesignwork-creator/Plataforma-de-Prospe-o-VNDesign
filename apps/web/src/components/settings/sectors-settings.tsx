@@ -250,7 +250,7 @@ export function SectorsSettings() {
                 </p>
                 {s.opportunity_notes ? <p className="mt-0.5 text-sm text-muted">{s.opportunity_notes}</p> : null}
               </div>
-              <div className="col-start-2 -ml-2 flex gap-1 sm:col-start-auto sm:ml-0">
+              <div className="col-start-2 -mr-2 flex justify-end gap-1 sm:col-start-auto sm:mr-0">
                 <Button
                   size="icon"
                   variant="ghost"

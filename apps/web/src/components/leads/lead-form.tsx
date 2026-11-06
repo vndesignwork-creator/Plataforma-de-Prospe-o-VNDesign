@@ -393,7 +393,7 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
         <Field label="Notas" error={e('notes')} className="md:col-span-2">
           <Textarea rows={4} {...register('notes')} />
         </Field>
-        <DictateButton value={notes ?? ''} onChange={(v) => setValue('notes', v as never, { shouldDirty: true })} className="-mt-2 self-start md:col-span-2" />
+        <DictateButton value={notes ?? ''} onChange={(v) => setValue('notes', v as never, { shouldDirty: true })} className="-mt-2 self-end md:col-span-2" />
       </Section>
 
       {/* Campos que raramente se preenchem ao criar: fechados por omissão (abrem sozinhos se tiverem erros). */}

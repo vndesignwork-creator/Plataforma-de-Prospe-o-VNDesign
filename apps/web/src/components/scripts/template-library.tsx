@@ -416,7 +416,7 @@ function Editor({
                 type="button"
                 size="sm"
                 variant="outline"
-                className="self-start"
+                className="self-end"
                 onClick={() => setValue('body_b', getValues('body') ?? '', { shouldDirty: true })}
               >
                 <FlaskConical className="h-3.5 w-3.5" aria-hidden /> Testar uma versão B

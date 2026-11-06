@@ -64,7 +64,7 @@ export function SearchFields({
       >
         <Textarea rows={2} value={value.query} maxLength={500} onChange={(e) => set({ query: e.target.value })} className="text-base" />
       </Field>
-      <DictateButton value={value.query} onChange={(query) => set({ query })} max={500} className="-mt-2 col-span-full self-start justify-self-start" />
+      <DictateButton value={value.query} onChange={(query) => set({ query })} max={500} className="-mt-2 col-span-full self-end justify-self-end" />
       {ideas?.length ? (
         <div role="group" aria-label="Ideias de pesquisa" className="-mt-2 flex flex-wrap items-center gap-1.5 col-span-full">
           <span className="text-xs text-muted">Ideias:</span>

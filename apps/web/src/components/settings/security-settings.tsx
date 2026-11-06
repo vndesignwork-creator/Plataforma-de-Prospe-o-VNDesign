@@ -94,7 +94,7 @@ export function TwoFactorCard() {
               Instala uma app de autenticação no telemóvel (Google Authenticator, Microsoft Authenticator ou 1Password) e liga a
               verificação. Mesmo que alguém descubra a palavra-passe, não entra sem o teu telemóvel.
             </p>
-            <Button className="self-start" onClick={start} loading={busy}>
+            <Button className="self-end" onClick={start} loading={busy}>
               <ShieldCheck className="h-4 w-4" aria-hidden /> Ligar a verificação
             </Button>
           </>
@@ -139,7 +139,7 @@ export function TwoFactorCard() {
           ) : (
             <>
               <p className="text-muted">Ao entrar num aparelho novo, depois da palavra-passe pedimos o código da app.</p>
-              <Button size="sm" variant="outline" className="self-start" onClick={() => setConfirmOff(true)}>
+              <Button size="sm" variant="outline" className="self-end" onClick={() => setConfirmOff(true)}>
                 <ShieldOff className="h-3.5 w-3.5" aria-hidden /> Desligar
               </Button>
             </>
@@ -225,7 +225,7 @@ export function SessionsCard() {
             </li>
           ))}
           {(data?.length ?? 0) > 6 ? (
-            <li className="px-4 py-2">
+            <li className="flex justify-end px-4 py-2">
               <Button size="sm" variant="ghost" onClick={() => setAll((v) => !v)}>
                 {all ? 'Mostrar menos' : `Ver todas (${data!.length})`}
               </Button>

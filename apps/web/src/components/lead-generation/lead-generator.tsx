@@ -129,7 +129,7 @@ function SearchForm({
         <div className="col-span-full flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
           {/* As pesquisas automáticas são do dono (o prospetor tem um limite semanal). */}
           {prospector ? null : (
-            <Button type="button" variant="ghost" onClick={() => valid() && setScheduling(true)} className="mr-auto">
+            <Button type="button" variant="ghost" onClick={() => valid() && setScheduling(true)} className="sm:mr-auto">
               <Repeat className="h-4 w-4" aria-hidden />
               Repetir todas as semanas
             </Button>

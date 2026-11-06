@@ -260,7 +260,7 @@ function ServicesList() {
                         </p>
                         {s.value_phrase ? <p className="text-sm break-words text-muted italic">“{s.value_phrase}”</p> : null}
                       </div>
-                      <div className="col-start-2 -ml-2 flex flex-wrap gap-0.5 sm:col-start-auto sm:ml-0">
+                      <div className="col-start-2 -mr-2 flex flex-wrap justify-end gap-0.5 sm:col-start-auto sm:mr-0">
                         <Button size="icon" variant="ghost" aria-label={`Subir ${s.label}`} disabled={busy || i === 0} onClick={() => move(s, -1)}>
                           <ArrowUp className="h-4 w-4" aria-hidden />
                         </Button>
@@ -518,7 +518,7 @@ function CategoriesList() {
                   <p className="font-medium break-words">{c.label}</p>
                   <p className="text-sm text-muted">{usage(c)}</p>
                 </div>
-                <div className="col-start-2 -ml-2 flex flex-wrap gap-0.5 sm:col-start-auto sm:ml-0">
+                <div className="col-start-2 -mr-2 flex flex-wrap justify-end gap-0.5 sm:col-start-auto sm:mr-0">
                   <Button size="icon" variant="ghost" aria-label={`Subir ${c.label}`} disabled={busy || i === 0} onClick={() => move(i, -1)}>
                     <ArrowUp className="h-4 w-4" aria-hidden />
                   </Button>

@@ -159,16 +159,19 @@ export function ProjectRow({
               {lead.company_name} {lead.project_title ? <span className="font-normal text-muted">· {lead.project_title}</span> : null}
             </Link>
           </div>
+          {/* Os serviços à esquerda; a fase (e o prazo) encostados à direita. */}
           <div className="flex flex-wrap items-center gap-2">
-            {completed ? (
-              <Badge tone="success">Concluído a {formatDate(lead.project_completed_at!.slice(0, 10))}</Badge>
-            ) : (
-              <>
-                <StageMenu leadId={lead.id} stage={info.stage} />
-                <DueBadge dueOn={info.due_on} today={today} />
-              </>
-            )}
             {lead.services?.length ? <ServiceChips services={lead.services} /> : null}
+            <span className="ml-auto flex flex-wrap items-center justify-end gap-2">
+              {completed ? (
+                <Badge tone="success">Concluído a {formatDate(lead.project_completed_at!.slice(0, 10))}</Badge>
+              ) : (
+                <>
+                  <DueBadge dueOn={info.due_on} today={today} />
+                  <StageMenu leadId={lead.id} stage={info.stage} />
+                </>
+              )}
+            </span>
           </div>
           {collapsed ? (
             <p className="text-xs text-muted tabular">

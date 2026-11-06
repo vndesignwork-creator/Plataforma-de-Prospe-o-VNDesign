@@ -97,7 +97,7 @@ export function DuplicatesView() {
         <p className="text-sm text-muted">
           {groups.length} grupo{groups.length === 1 ? '' : 's'} · {total} lead{total === 1 ? '' : 's'} a mais
         </p>
-        <Button variant="outline" onClick={() => setConfirmAll(true)}>
+        <Button variant="outline" onClick={() => setConfirmAll(true)} className="ml-auto">
           <Merge className="h-4 w-4" aria-hidden /> Juntar todos nos principais
         </Button>
       </div>

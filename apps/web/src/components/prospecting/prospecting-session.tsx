@@ -616,8 +616,8 @@ function LeadRow({
         // outros quando cabe (encostado à direita) e só passa para baixo quando não cabe.
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div role="group" aria-label="Contactar" className="flex w-full flex-wrap items-center gap-2">
-            {/* Telemóvel, com outros botões: o email numa linha; por baixo "Ligar"/WhatsApp à esquerda e "Registar" à direita. */}
-            <span className={cn('inline-flex', (lead.phone || wa || !lead.email || lead.email_bounced_at) && 'max-sm:basis-full')}>
+            {/* Telemóvel, com outros botões: o email numa linha, encostado à direita; por baixo "Ligar"/WhatsApp à esquerda e "Registar" à direita. */}
+            <span className={cn('inline-flex', (lead.phone || wa || !lead.email || lead.email_bounced_at) && 'max-sm:basis-full max-sm:justify-end')}>
               <EmailAction lead={lead} onSent={onEmailed} />
             </span>
             {!lead.email || lead.email_bounced_at ? (
@@ -790,8 +790,8 @@ function LeadRow({
             placeholder="Ex.: falei com a dona, pediu para ligar depois das 15h"
           />
           <div className="flex flex-wrap items-start gap-2">
-            <DictateButton value={note} onChange={setNote} max={2000} />
-            <p className="ml-auto text-xs text-muted">Fica guardada com o próximo resultado que registares.</p>
+            <p className="text-xs text-muted">Fica guardada com o próximo resultado que registares.</p>
+            <DictateButton value={note} onChange={setNote} max={2000} className="ml-auto" />
           </div>
         </div>
       ) : null}

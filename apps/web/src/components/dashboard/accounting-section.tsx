@@ -58,7 +58,7 @@ export function AccountingSection() {
             ))}
           </dl>
         )}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           <a href={`${base}&format=pdf`} className={buttonClasses('outline', 'sm')} download>
             <FileText className="h-4 w-4" aria-hidden /> Descarregar PDF
           </a>

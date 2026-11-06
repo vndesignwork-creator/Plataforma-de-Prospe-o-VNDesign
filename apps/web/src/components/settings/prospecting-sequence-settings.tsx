@@ -112,7 +112,7 @@ function Editor({ initial }: { initial: { enabled: boolean; steps: ProspectingSe
           })}
         </ol>
         {canEdit ? (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             {steps.length < SEQUENCE_MAX_STEPS ? (
               <Button
                 size="sm"

@@ -169,7 +169,8 @@ function QuickContact({ lead, whatsappMessages }: { lead: Lead; whatsappMessages
   const classes = buttonClasses('outline', 'sm', 'w-full justify-center whitespace-nowrap pointer-coarse:min-h-11');
   return (
     <nav aria-label="Contactar" className="mb-5 -mt-2">
-      <ul className="grid grid-cols-[repeat(auto-fit,minmax(5.5rem,1fr))] gap-2 sm:flex sm:flex-wrap">
+      {/* Telemóvel: três por linha, da mesma largura; os que sobram encostam à direita. */}
+      <ul className="flex flex-wrap justify-end gap-2 sm:justify-start [&>li]:w-[calc((100%-1rem)/3)] max-[359px]:[&>li]:w-[calc((100%-0.5rem)/2)] sm:[&>li]:w-auto">
         {links.map(({ key, href, label, icon: Icon, external }) => (
           <li key={key}>
             {/* WhatsApp com mensagens prontas (desliga-se em Definições → Funcionalidades). */}
@@ -268,7 +269,7 @@ function NextStepBar({ lead }: { lead: Lead }) {
         <DateMenu
           today={today}
           heading="Marcar o follow-up para"
-          triggerClassName={buttonClasses('outline', 'sm')}
+          triggerClassName={buttonClasses('outline', 'sm', 'ml-auto')}
           label={
             <>
               <BellRing className="h-3.5 w-3.5" aria-hidden /> Marcar follow-up
@@ -312,7 +313,8 @@ function NextStepBar({ lead }: { lead: Lead }) {
           {origin ? <span className="block text-xs text-muted">{originText(origin, who)}</span> : null}
         </span>
       </p>
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Os botões à direita (no telemóvel, quando passam para baixo, também). */}
+      <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
         <FollowUpEmailButton lead={lead} />
         <FollowUpActions lead={lead} quickDone />
       </div>

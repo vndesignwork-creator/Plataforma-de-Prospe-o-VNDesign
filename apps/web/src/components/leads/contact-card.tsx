@@ -448,7 +448,9 @@ export function ContactCard({ lead }: { lead: Lead }) {
               ) : (
                 <>
                   <Textarea id="script-body" rows={12} value={body} onChange={(e) => setDraft({ subject, body: e.target.value })} className="leading-relaxed" />
-                  <DictateButton value={body} onChange={(text) => setDraft({ subject, body: text })} className="mt-1.5" />
+                  <div className="mt-1.5 flex justify-end">
+                    <DictateButton value={body} onChange={(text) => setDraft({ subject, body: text })} />
+                  </div>
                 </>
               )}
               {current?.type === 'ai' ? <p className="mt-1 text-xs text-muted">Revê sempre antes de enviar: a IA pode enganar-se.</p> : null}

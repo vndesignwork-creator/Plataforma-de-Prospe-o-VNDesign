@@ -239,8 +239,8 @@ export function TaskEditor({
             className="leading-relaxed"
           />
           <div className="mt-1.5 flex flex-wrap items-start gap-2">
-            <DictateButton size="md" value={title} onChange={setTitle} max={TASK_TITLE_MAX} />
-            <p className="ml-auto text-right text-xs text-muted tabular">{title.length}/{TASK_TITLE_MAX}</p>
+            <p className="text-xs text-muted tabular">{title.length}/{TASK_TITLE_MAX}</p>
+            <DictateButton size="md" value={title} onChange={setTitle} max={TASK_TITLE_MAX} className="ml-auto" />
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -825,8 +825,9 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
           maxLength={TASK_TITLE_MAX}
           className="min-w-0 basis-full sm:flex-[1_1_10rem] sm:basis-auto"
         />
+        {/* Ditar, prazo, lembrete e Acrescentar juntos e encostados à direita (no telemóvel, por baixo da caixa). */}
+        <span className="ml-auto flex flex-wrap items-center justify-end gap-2">
         <DictateButton size="sm" value={title} onChange={setTitle} max={TASK_TITLE_MAX} />
-        <PhraseHint text={title} today={today} manualDue={!!due} />
         <DuePicker
           value={due}
           today={today}
@@ -848,11 +849,13 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
           <Bell className="h-4 w-4" aria-hidden />
         </Button>
         {/* Sem "a carregar": o Enter tem de continuar a funcionar enquanto a anterior grava. */}
-        <Button type="submit" size="sm" disabled={!title.trim()} className="max-sm:ml-auto">
+        <Button type="submit" size="sm" disabled={!title.trim()}>
           <Plus className="h-4 w-4" aria-hidden />
           {/* Em ecrãs muito estreitos fica só o "+", para caber na mesma linha que o prazo e o lembrete. */}
           <span className="max-[380px]:sr-only">Acrescentar</span>
         </Button>
+        </span>
+        <PhraseHint text={title} today={today} manualDue={!!due} />
         {showDueInput ? (
           <div className="flex w-full flex-wrap items-center gap-2 text-sm">
             <label htmlFor={`due-${lead.id}`} className="text-muted">

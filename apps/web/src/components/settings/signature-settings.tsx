@@ -222,7 +222,7 @@ export function SignatureSettings() {
                   Vai por baixo da assinatura nos emails que envias pela plataforma (embutido no email, com link para o teu site). PNG com fundo
                   transparente fica melhor; também aceita JPEG, SVG e WebP.
                 </p>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-2">
                   <input
                     ref={fileInput}
                     type="file"

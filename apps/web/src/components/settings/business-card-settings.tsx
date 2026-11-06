@@ -86,7 +86,7 @@ export function BusinessCardSettings() {
                     <Copy className="h-4 w-4" aria-hidden />
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap justify-end gap-2">
                   <a href={card.url!} target="_blank" rel="noreferrer" className={buttonClasses('outline', 'sm')}>
                     <ExternalLink className="h-3.5 w-3.5" aria-hidden /> Ver o cartão
                   </a>

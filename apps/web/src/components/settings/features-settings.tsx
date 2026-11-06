@@ -185,7 +185,7 @@ export function FeaturesSettings() {
               onChange={(e) => setReview(e.target.value)}
             />
           </Field>
-          <Button type="submit" loading={savingReview} disabled={review === null}>
+          <Button type="submit" loading={savingReview} disabled={review === null} className="ml-auto">
             <Star className="h-4 w-4" aria-hidden /> Guardar link
           </Button>
         </form>

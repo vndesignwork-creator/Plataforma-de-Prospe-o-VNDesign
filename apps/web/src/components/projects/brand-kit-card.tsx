@@ -164,7 +164,7 @@ function KitEditor({ lead, kit, onDone }: { lead: Lead; kit: BrandKit; onDone: (
             </Button>
           </div>
         ))}
-        <Button type="button" size="sm" variant="ghost" className="self-start" onClick={() => setColors([...colors, { name: '', hex: '#000000' }])}>
+        <Button type="button" size="sm" variant="ghost" className="self-end" onClick={() => setColors([...colors, { name: '', hex: '#000000' }])}>
           <Plus className="h-3.5 w-3.5" aria-hidden /> Cor
         </Button>
       </fieldset>
@@ -181,7 +181,7 @@ function KitEditor({ lead, kit, onDone }: { lead: Lead; kit: BrandKit; onDone: (
             </Button>
           </div>
         ))}
-        <Button type="button" size="sm" variant="ghost" className="self-start" onClick={() => setFonts([...fonts, { name: '', usage: '' }])}>
+        <Button type="button" size="sm" variant="ghost" className="self-end" onClick={() => setFonts([...fonts, { name: '', usage: '' }])}>
           <Plus className="h-3.5 w-3.5" aria-hidden /> Tipo de letra
         </Button>
       </fieldset>
@@ -198,7 +198,7 @@ function KitEditor({ lead, kit, onDone }: { lead: Lead; kit: BrandKit; onDone: (
             </Button>
           </div>
         ))}
-        <Button type="button" size="sm" variant="ghost" className="self-start" onClick={() => setLinks([...links, { label: '', url: '' }])}>
+        <Button type="button" size="sm" variant="ghost" className="self-end" onClick={() => setLinks([...links, { label: '', url: '' }])}>
           <Plus className="h-3.5 w-3.5" aria-hidden /> Link
         </Button>
       </fieldset>

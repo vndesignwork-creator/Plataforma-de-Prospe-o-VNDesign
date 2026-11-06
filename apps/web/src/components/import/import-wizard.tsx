@@ -101,7 +101,7 @@ function ImportHistory() {
         ))}
       </ul>
       {data.length > HISTORY_SHOWN ? (
-        <div className="border-t border-border px-4 py-2">
+        <div className="flex justify-end border-t border-border px-4 py-2">
           <Button size="sm" variant="ghost" onClick={() => setAll((v) => !v)}>
             {all ? 'Mostrar só as últimas' : `Ver todas (${data.length})`}
           </Button>

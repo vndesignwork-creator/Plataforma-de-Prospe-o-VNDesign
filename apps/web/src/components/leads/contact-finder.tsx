@@ -69,14 +69,15 @@ export function ContactFinder({ lead, onSaved, className }: { lead: Lead; onSave
         <p className="inline-flex items-center gap-1.5 text-sm font-medium">
           <Search className="h-4 w-4 text-muted" aria-hidden /> Sem {missing}: procurar contacto
         </p>
-        <Button size="sm" onClick={() => void search()} loading={searching}>
+        <Button size="sm" onClick={() => void search()} loading={searching} className="w-full sm:w-auto">
           <Sparkles className="h-3.5 w-3.5" aria-hidden /> Procurar automaticamente
         </Button>
       </div>
 
-      <div className="flex flex-wrap gap-2" aria-label="Pesquisar">
+      {/* Telemóvel: duas colunas a toda a largura (sem espaço vazio à direita). */}
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap [&>a:last-child:nth-child(odd)]:col-span-2" aria-label="Pesquisar">
         {links.map((l) => (
-          <a key={l.key} href={l.url} target="_blank" rel="noreferrer noopener" className={buttonClasses('outline', 'sm')}>
+          <a key={l.key} href={l.url} target="_blank" rel="noreferrer noopener" className={buttonClasses('outline', 'sm', 'w-full sm:w-auto')}>
             <ExternalLink className="h-3.5 w-3.5" aria-hidden /> {l.label}
             <span className="sr-only">(abre num novo separador)</span>
           </a>

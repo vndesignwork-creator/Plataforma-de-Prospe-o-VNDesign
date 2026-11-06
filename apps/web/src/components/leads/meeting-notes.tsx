@@ -203,7 +203,7 @@ function MeetingNotesDialog({ lead, onClose }: { lead: Lead; onClose: () => void
                 />
               </Field>
               {source === 'notes' ? (
-                <DictateButton value={notes} onChange={setNotes} max={60_000} className="self-start" />
+                <DictateButton value={notes} onChange={setNotes} max={60_000} className="self-end" />
               ) : source === 'recording' ? (
                 <button type="button" onClick={() => setTranscribed(false)} className="self-start text-xs text-muted underline">
                   Gravar ou escolher outra vez
