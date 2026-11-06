@@ -53,6 +53,8 @@ function vnd_fa_sanitize($input) {
 			$out[$key] = sanitize_hex_color($value) ?: $default;
 		} elseif ($key === 'radius' || $key === 'max_width' || $key === 'max_width_wide') {
 			$out[$key] = is_numeric($value) ? (string) absint($value) : $default;
+		} elseif ($key === 'columns_gap') {
+			$out[$key] = is_numeric($value) ? (string) absint($value) : ''; // vazio = automático
 		} elseif (in_array($key, $textareas, true)) {
 			$out[$key] = sanitize_textarea_field($value);
 		} else {
@@ -222,6 +224,7 @@ function vnd_fa_settings_page() {
 				$select('promo_image_position', 'Posição da imagem');
 				$number('max_width_wide', 'Largura máxima com o texto', 600, 2000);
 				?>
+				<tr><td colspan="2" style="padding-left:0"><p class="description">As larguras máximas só contam com “Largura: Até à largura máxima” (em Aspeto). Com “Toda a largura”, o formulário ocupa a secção onde está, como o teu formulário de contacto.</p></td></tr>
 			</table>
 
 			<h2>Campos</h2>
@@ -246,8 +249,10 @@ function vnd_fa_settings_page() {
 				$color('accent', 'Cor de destaque (botão e foco)');
 				$color('button_text', 'Cor do texto do botão');
 				$number('radius', 'Cantos arredondados', 0, 40);
-				$number('max_width', 'Largura máxima', 280, 1600);
+				$select('width', 'Largura');
+				$number('max_width', 'Largura máxima só com o formulário', 280, 1600);
 				$select('align', 'Posição');
+				$number('columns_gap', 'Espaço entre o formulário e o texto', 0, 200);
 				?>
 				<tr><th scope="row">Caixa</th><td><?php $check_box('card', 'Caixa à volta do formulário'); ?></td></tr>
 			</table>

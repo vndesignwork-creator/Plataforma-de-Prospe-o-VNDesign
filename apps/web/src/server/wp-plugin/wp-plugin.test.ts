@@ -106,6 +106,11 @@ describe('plugin de WordPress', () => {
     // Por omissão, no telemóvel o formulário vem primeiro.
     expect(on.indexOf('vnd-fa__main')).toBeLessThan(on.indexOf('vnd-fa__promo'));
     expect(on).toContain('--vnd-fa-cols:minmax(0,1fr) minmax(0,1fr)');
+    // Largura: de origem ocupa o sítio onde está; com "máxima", o valor escolhido.
+    expect(on).toContain('--vnd-fa-max:none');
+    expect(render({ page_url: PAGE }, { width: 'max' })).toContain('--vnd-fa-max:1120px');
+    expect(render({ page_url: PAGE }, { width: 'max', promo: '0' })).toContain('--vnd-fa-max:640px');
+    expect(render({ page_url: PAGE }, { columns_gap: '64' })).toContain('--vnd-fa-gap:64px');
 
     const left = render({ page_url: PAGE }, { promo_position: 'left', promo_mobile: 'before', promo_ratio: 'form', promo_points: 'Um<b>\nDois', promo_image: 'https://site.test/foto.jpg' });
     expect(left).toContain('vnd-fa--promo-left');

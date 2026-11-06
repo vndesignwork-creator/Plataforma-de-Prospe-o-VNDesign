@@ -77,9 +77,15 @@ function vnd_fa_root_style($o) {
 	if (is_numeric($o['radius'])) {
 		$vars[] = '--vnd-fa-radius:' . max(0, min(40, (int) $o['radius'])) . 'px';
 	}
+	// "Toda a largura": ocupa o sítio onde está (a secção/contentor do Bricks manda).
 	$max = vnd_fa_on($o['promo']) ? $o['max_width_wide'] : $o['max_width'];
-	if (is_numeric($max) && (int) $max > 0) {
+	if ($o['width'] === 'full') {
+		$vars[] = '--vnd-fa-max:none';
+	} elseif (is_numeric($max) && (int) $max > 0) {
 		$vars[] = '--vnd-fa-max:' . max(280, min(2000, (int) $max)) . 'px';
+	}
+	if (is_numeric($o['columns_gap']) && $o['columns_gap'] !== '') {
+		$vars[] = '--vnd-fa-gap:' . max(0, min(200, (int) $o['columns_gap'])) . 'px';
 	}
 	if (vnd_fa_on($o['promo'])) {
 		// Larguras das colunas (formulário | texto), trocadas se o texto ficar à esquerda.
@@ -105,7 +111,7 @@ function vnd_fa_render_promo($o) {
 	$image = '';
 	if (vnd_fa_on($o['promo_image_show'])) {
 		$own = trim((string) $o['promo_image']) !== '';
-		$image = '<img class="vnd-fa__image" src="' . esc_url(vnd_fa_promo_image_url($o)) . '" alt="' . esc_attr($o['promo_image_alt']) . '" loading="lazy" decoding="async"' . ($own ? '' : ' width="560" height="420"') . '>';
+		$image = '<img class="vnd-fa__image' . ($own ? '' : ' vnd-fa__image--illustration') . '" src="' . esc_url(vnd_fa_promo_image_url($o)) . '" alt="' . esc_attr($o['promo_image_alt']) . '" loading="lazy" decoding="async"' . ($own ? '' : ' width="560" height="420"') . '>';
 	}
 	$text = '';
 	if (trim($o['promo_eyebrow']) !== '') {

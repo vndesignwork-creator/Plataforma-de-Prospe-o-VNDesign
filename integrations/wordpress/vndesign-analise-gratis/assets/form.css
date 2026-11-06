@@ -192,7 +192,7 @@
 .vnd-fa__grid {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr);
-	gap: clamp(1.75rem, 5vw, 3.5rem);
+	gap: var(--vnd-fa-gap, clamp(1.75rem, 5vw, 3.5rem));
 	align-items: center;
 }
 .vnd-fa__main { min-width: 0; }
@@ -216,6 +216,8 @@
 	object-fit: cover;
 	border-radius: calc(var(--vnd-fa-radius) * 1.4);
 }
+/* A ilustração do plugin encolhe sem ser cortada; as fotos preenchem a caixa. */
+.vnd-fa__image--illustration { object-fit: contain; object-position: left center; }
 .vnd-fa__promo--image-top .vnd-fa__image { margin-bottom: 0.4rem; }
 .vnd-fa__promo--image-bottom .vnd-fa__image { margin-top: 0.4rem; }
 .vnd-fa__eyebrow {

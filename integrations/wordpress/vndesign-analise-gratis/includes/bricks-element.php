@@ -269,14 +269,6 @@ class VND_FA_Bricks_Element extends \Bricks\Element {
 			'type'  => 'border',
 			'css'   => array(array('property' => 'border', 'selector' => '.vnd-fa__image')),
 		);
-		$this->controls['promo_gap'] = array(
-			'tab'   => 'content',
-			'group' => 'vnd_promo_style',
-			'label' => 'Espaço entre o formulário e o texto',
-			'type'  => 'number',
-			'units' => true,
-			'css'   => array(array('property' => 'gap', 'selector' => '.vnd-fa__grid')),
-		);
 
 		// Aspeto
 		$this->controls['theme'] = array(
@@ -326,10 +318,28 @@ class VND_FA_Bricks_Element extends \Bricks\Element {
 			'max'         => 40,
 			'placeholder' => $d['radius'],
 		);
+		$this->controls['width'] = array(
+			'tab'         => 'content',
+			'group'       => 'vnd_look',
+			'label'       => 'Largura',
+			'type'        => 'select',
+			'options'     => $choices['width'],
+			'placeholder' => $choices['width'][$d['width']],
+			'description' => 'Toda a largura = a do contentor do Bricks onde está (como o resto da secção).',
+		);
+		$this->controls['columns_gap'] = array(
+			'tab'         => 'content',
+			'group'       => 'vnd_look',
+			'label'       => 'Espaço entre o formulário e o texto (px)',
+			'type'        => 'number',
+			'min'         => 0,
+			'max'         => 200,
+			'placeholder' => 'Automático',
+		);
 		$this->controls['max_width'] = array(
 			'tab'         => 'content',
 			'group'       => 'vnd_look',
-			'label'       => 'Largura máxima (px)',
+			'label'       => 'Largura máxima só com o formulário (px)',
 			'type'        => 'number',
 			'min'         => 280,
 			'max'         => 1600,

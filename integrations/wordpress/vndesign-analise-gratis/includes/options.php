@@ -61,9 +61,11 @@ function vnd_fa_defaults() {
 		'accent'              => '#ef5c32',
 		'button_text'         => '#0d0d0d',
 		'radius'              => '10',
+		'width'               => 'full',
 		'max_width'           => '640',
 		'max_width_wide'      => '1120',
 		'align'               => 'center',
+		'columns_gap'         => '',
 	);
 }
 
@@ -74,6 +76,7 @@ function vnd_fa_choices() {
 		'layout'    => array('stack' => 'Um campo por linha', 'two' => 'Nome e negócio lado a lado'),
 		'theme'     => array('dark' => 'Escuro', 'light' => 'Claro', 'auto' => 'Automático (claro/escuro do visitante)', 'inherit' => 'Usar as cores do meu site'),
 		'align'     => array('center' => 'Ao centro', 'left' => 'À esquerda'),
+		'width'     => array('full' => 'Toda a largura do sítio onde está', 'max' => 'Até à largura máxima'),
 		'promo_position'       => array('right' => 'À direita do formulário', 'left' => 'À esquerda do formulário'),
 		'promo_mobile'         => array('after' => 'Depois do formulário', 'before' => 'Antes do formulário'),
 		'promo_ratio'          => array('equal' => 'Colunas iguais', 'form' => 'Formulário mais largo', 'promo' => 'Texto mais largo'),
