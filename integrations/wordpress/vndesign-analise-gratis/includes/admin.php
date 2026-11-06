@@ -22,6 +22,9 @@ add_action('admin_enqueue_scripts', function ($hook) {
 	wp_enqueue_style('wp-color-picker');
 	wp_enqueue_script('wp-color-picker');
 	wp_add_inline_script('wp-color-picker', 'jQuery(function($){$(".vnd-fa-color").wpColorPicker();});');
+	// Escolher a imagem do texto de persuasão na biblioteca.
+	wp_enqueue_media();
+	wp_add_inline_script('wp-color-picker', 'jQuery(function($){var frame;$(document).on("click",".vnd-fa-pick",function(e){e.preventDefault();var box=$(this).closest(".vnd-fa-image");if(!frame){frame=wp.media({title:"Imagem do texto de persuasão",button:{text:"Usar esta imagem"},library:{type:"image"},multiple:false});}frame.off("select").on("select",function(){var a=frame.state().get("selection").first().toJSON();var url=(a.sizes&&a.sizes.large?a.sizes.large.url:a.url);box.find("input").val(url);box.find("img").attr("src",url);if(a.alt){$("#vnd-fa-promo_image_alt").val(a.alt);}});frame.open();});$(document).on("click",".vnd-fa-reset",function(e){e.preventDefault();var box=$(this).closest(".vnd-fa-image");box.find("input").val("");box.find("img").attr("src",box.data("default"));});});');
 	vnd_fa_enqueue();
 	wp_add_inline_style('vnd-fa', '.vnd-fa-preview{padding:24px;border-radius:8px;background:#0d0d0d}.vnd-fa-preview--light{background:#f5f2ed}@media (prefers-color-scheme:light){.vnd-fa-preview--auto{background:#f5f2ed}}.vnd-fa-admin .form-table th{width:260px}.vnd-fa-admin textarea.large-text{min-height:72px}.vnd-fa-admin code{user-select:all}');
 });
@@ -31,8 +34,8 @@ function vnd_fa_sanitize($input) {
 	$input = is_array($input) ? $input : array();
 	$defaults = vnd_fa_defaults();
 	$choices = vnd_fa_choices();
-	$checkboxes = array('show_title', 'show_intro', 'show_name', 'show_company', 'privacy_link', 'card');
-	$textareas = array('intro', 'consent', 'success');
+	$checkboxes = array('show_title', 'show_intro', 'show_name', 'show_company', 'privacy_link', 'card', 'promo', 'promo_image_show');
+	$textareas = array('intro', 'consent', 'success', 'promo_text', 'promo_points', 'promo_note');
 	$out = array();
 	foreach ($defaults as $key => $default) {
 		if (in_array($key, $checkboxes, true)) {
@@ -44,11 +47,11 @@ function vnd_fa_sanitize($input) {
 			$out[$key] = isset($choices[$key][$value]) ? $value : $default;
 		} elseif ($key === 'page_url' && preg_match('~^[A-Za-z0-9_-]{16,64}$~', trim((string) $value))) {
 			$out[$key] = trim((string) $value); // só o código também serve
-		} elseif ($key === 'page_url' || $key === 'redirect') {
+		} elseif ($key === 'page_url' || $key === 'redirect' || $key === 'promo_image') {
 			$out[$key] = trim(esc_url_raw(trim((string) $value)));
 		} elseif ($key === 'accent' || $key === 'button_text') {
 			$out[$key] = sanitize_hex_color($value) ?: $default;
-		} elseif ($key === 'radius' || $key === 'max_width') {
+		} elseif ($key === 'radius' || $key === 'max_width' || $key === 'max_width_wide') {
 			$out[$key] = is_numeric($value) ? (string) absint($value) : $default;
 		} elseif (in_array($key, $textareas, true)) {
 			$out[$key] = sanitize_textarea_field($value);
@@ -187,6 +190,37 @@ function vnd_fa_settings_page() {
 				$text('success_title', 'Depois de enviar: título');
 				$area('success', 'Depois de enviar: texto');
 				$text('redirect', 'Depois de enviar, abrir esta página (opcional)', 'Ex.: uma página “Obrigado” com o pixel do Facebook ou o Google Ads. Vazio = mostra o texto acima.');
+				?>
+			</table>
+
+			<h2>Texto de persuasão</h2>
+			<p class="description">Ao lado do formulário: uma imagem, um título, o texto e as vantagens. No telemóvel fica por baixo (ou por cima) do formulário.</p>
+			<table class="form-table" role="presentation">
+				<tr><th scope="row">Mostrar</th><td><?php $check_box('promo', 'Mostrar o texto de persuasão ao lado do formulário'); ?></td></tr>
+				<?php
+				$select('promo_position', 'Posição');
+				$select('promo_mobile', 'No telemóvel, o texto fica');
+				$select('promo_ratio', 'Largura das colunas');
+				$text('promo_eyebrow', 'Etiqueta por cima do título', 'Vazio = sem etiqueta.');
+				$text('promo_title', 'Título');
+				$select('promo_title_tag', 'Etiqueta do título');
+				$area('promo_text', 'Texto');
+				$area('promo_points', 'Vantagens', 'Uma por linha (aparecem com um visto).');
+				$area('promo_note', 'Nota no fim', 'Ex.: o que recebe e quando. Vazio = sem nota.');
+				?>
+				<tr><th scope="row">Imagem</th><td>
+					<?php $check_box('promo_image_show', 'Mostrar a imagem'); ?>
+					<div class="vnd-fa-image" data-default="<?php echo esc_url(VND_FA_URL . 'assets/promo.svg'); ?>" style="margin-top:8px">
+						<img src="<?php echo esc_url(vnd_fa_promo_image_url($o)); ?>" alt="" style="display:block;width:240px;max-width:100%;height:auto;border-radius:8px;border:1px solid #dcdcde;margin-bottom:8px">
+						<input type="hidden" name="<?php echo esc_attr($name . '[promo_image]'); ?>" value="<?php echo esc_attr($o['promo_image']); ?>">
+						<button type="button" class="button vnd-fa-pick">Escolher imagem</button>
+						<button type="button" class="button-link vnd-fa-reset" style="margin-left:8px">Usar a ilustração do plugin</button>
+					</div>
+				</td></tr>
+				<?php
+				$text('promo_image_alt', 'Descrição da imagem', 'Para quem não vê a imagem (leitores de ecrã) e para o Google.');
+				$select('promo_image_position', 'Posição da imagem');
+				$number('max_width_wide', 'Largura máxima com o texto', 600, 2000);
 				?>
 			</table>
 

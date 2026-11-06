@@ -97,6 +97,29 @@ describe('plugin de WordPress', () => {
     expect(html).not.toContain('red;}');
   });
 
+  it.skipIf(!hasPhp)('texto de persuasão: liga e desliga, direita ou esquerda, ordem no telemóvel', () => {
+    const on = render({ page_url: PAGE });
+    expect(on).toContain('vnd-fa--promo vnd-fa--promo-right');
+    expect(on).toContain('O seu site está a afastar clientes');
+    expect(on).toContain('assets/promo.svg');
+    expect(on.match(/<li>/g)?.length).toBe(4);
+    // Por omissão, no telemóvel o formulário vem primeiro.
+    expect(on.indexOf('vnd-fa__main')).toBeLessThan(on.indexOf('vnd-fa__promo'));
+    expect(on).toContain('--vnd-fa-cols:minmax(0,1fr) minmax(0,1fr)');
+
+    const left = render({ page_url: PAGE }, { promo_position: 'left', promo_mobile: 'before', promo_ratio: 'form', promo_points: 'Um<b>\nDois', promo_image: 'https://site.test/foto.jpg' });
+    expect(left).toContain('vnd-fa--promo-left');
+    expect(left.indexOf('vnd-fa__promo')).toBeLessThan(left.indexOf('vnd-fa__main'));
+    expect(left).toContain('--vnd-fa-cols:minmax(0,1fr) minmax(0,1.25fr)');
+    expect(left).toContain('<span>Um&lt;b&gt;</span>');
+    expect(left).toContain('src="https://site.test/foto.jpg"');
+
+    const off = render({ page_url: PAGE, promo: '0' });
+    expect(off).not.toContain('vnd-fa__promo');
+    expect(off).not.toContain('vnd-fa__grid');
+    expect(render({ page_url: PAGE }, { promo_image_show: '0' })).not.toContain('<img');
+  });
+
   it.skipIf(!hasPhp)('sem ligação: só o administrador vê o aviso', () => {
     expect(render({}).replace(/\n<!--.*-->/, '')).toBe('');
     expect(render({}, {}, true)).toContain('Falta ligar o formulário à plataforma');

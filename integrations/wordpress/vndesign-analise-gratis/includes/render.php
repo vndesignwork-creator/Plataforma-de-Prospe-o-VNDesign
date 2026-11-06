@@ -56,6 +56,10 @@ function vnd_fa_root_classes($o) {
 	if ($o['layout'] === 'two') {
 		$classes[] = 'vnd-fa--two';
 	}
+	if (vnd_fa_on($o['promo'])) {
+		$classes[] = 'vnd-fa--promo';
+		$classes[] = 'vnd-fa--promo-' . $o['promo_position'];
+	}
 	return $classes;
 }
 
@@ -73,10 +77,60 @@ function vnd_fa_root_style($o) {
 	if (is_numeric($o['radius'])) {
 		$vars[] = '--vnd-fa-radius:' . max(0, min(40, (int) $o['radius'])) . 'px';
 	}
-	if (is_numeric($o['max_width']) && (int) $o['max_width'] > 0) {
-		$vars[] = '--vnd-fa-max:' . max(280, min(1600, (int) $o['max_width'])) . 'px';
+	$max = vnd_fa_on($o['promo']) ? $o['max_width_wide'] : $o['max_width'];
+	if (is_numeric($max) && (int) $max > 0) {
+		$vars[] = '--vnd-fa-max:' . max(280, min(2000, (int) $max)) . 'px';
+	}
+	if (vnd_fa_on($o['promo'])) {
+		// Larguras das colunas (formulário | texto), trocadas se o texto ficar à esquerda.
+		$cols = array('equal' => array('1fr', '1fr'), 'form' => array('1.25fr', '1fr'), 'promo' => array('1fr', '1.25fr'));
+		$pair = $cols[$o['promo_ratio']];
+		if ($o['promo_position'] === 'left') {
+			$pair = array_reverse($pair);
+		}
+		$vars[] = '--vnd-fa-cols:minmax(0,' . $pair[0] . ') minmax(0,' . $pair[1] . ')';
 	}
 	return implode(';', $vars);
+}
+
+/** A imagem do texto de persuasão: a escolhida ou a que vem com o plugin. */
+function vnd_fa_promo_image_url($o) {
+	$url = trim((string) $o['promo_image']);
+	return $url !== '' ? $url : VND_FA_URL . 'assets/promo.svg';
+}
+
+/** O texto de persuasão (imagem, título, texto, vantagens e nota). */
+function vnd_fa_render_promo($o) {
+	$tag = $o['promo_title_tag'];
+	$image = '';
+	if (vnd_fa_on($o['promo_image_show'])) {
+		$own = trim((string) $o['promo_image']) !== '';
+		$image = '<img class="vnd-fa__image" src="' . esc_url(vnd_fa_promo_image_url($o)) . '" alt="' . esc_attr($o['promo_image_alt']) . '" loading="lazy" decoding="async"' . ($own ? '' : ' width="560" height="420"') . '>';
+	}
+	$text = '';
+	if (trim($o['promo_eyebrow']) !== '') {
+		$text .= '<p class="vnd-fa__eyebrow">' . esc_html($o['promo_eyebrow']) . '</p>';
+	}
+	if (trim($o['promo_title']) !== '') {
+		$text .= '<' . $tag . ' class="vnd-fa__promo-title">' . esc_html($o['promo_title']) . '</' . $tag . '>';
+	}
+	if (trim($o['promo_text']) !== '') {
+		$text .= '<p class="vnd-fa__promo-text">' . nl2br(esc_html(trim($o['promo_text'])), false) . '</p>';
+	}
+	$points = array_values(array_filter(array_map('trim', preg_split('~\R~u', (string) $o['promo_points']))));
+	if ($points) {
+		$check = '<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="10" fill="currentColor" opacity=".16"/><path d="M6 10.4l2.6 2.6L14.2 7.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+		$text .= '<ul class="vnd-fa__points">';
+		foreach ($points as $point) {
+			$text .= '<li>' . $check . '<span>' . esc_html($point) . '</span></li>';
+		}
+		$text .= '</ul>';
+	}
+	if (trim($o['promo_note']) !== '') {
+		$text .= '<p class="vnd-fa__note">' . esc_html($o['promo_note']) . '</p>';
+	}
+	$body = $o['promo_image_position'] === 'bottom' ? $text . $image : $image . $text;
+	return '<div class="vnd-fa__promo vnd-fa__promo--image-' . esc_attr($o['promo_image_position']) . '">' . $body . '</div>';
 }
 
 /** O nome de quem oferece a análise (para o texto do consentimento). */
@@ -172,7 +226,14 @@ function vnd_fa_render_inner($o, $preview = false) {
 		. '<p data-success-text>' . esc_html($o['success']) . '</p>'
 		. '</div>';
 
-	return $html;
+	if (!vnd_fa_on($o['promo'])) {
+		return $html;
+	}
+	// Com o texto de persuasão: duas colunas (no telemóvel, uma por baixo da outra, pela ordem escolhida).
+	$main = '<div class="vnd-fa__main">' . $html . '</div>';
+	$promo = vnd_fa_render_promo($o);
+	$order = $o['promo_mobile'] === 'before' ? $promo . $main : $main . $promo;
+	return '<div class="vnd-fa__grid">' . $order . '</div>';
 }
 
 /** O bloco completo, com o elemento à volta. */

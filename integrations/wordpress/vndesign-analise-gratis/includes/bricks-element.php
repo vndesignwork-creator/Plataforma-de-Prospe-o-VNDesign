@@ -29,10 +29,12 @@ class VND_FA_Bricks_Element extends \Bricks\Element {
 	public function set_control_groups() {
 		$this->control_groups['vnd_texts']  = array('title' => 'Textos', 'tab' => 'content');
 		$this->control_groups['vnd_fields'] = array('title' => 'Campos e comportamento', 'tab' => 'content');
+		$this->control_groups['vnd_promo']  = array('title' => 'Texto de persuasão', 'tab' => 'content');
 		$this->control_groups['vnd_look']   = array('title' => 'Aspeto', 'tab' => 'content');
 		$this->control_groups['vnd_title']  = array('title' => 'Estilo: título e texto', 'tab' => 'content');
 		$this->control_groups['vnd_inputs'] = array('title' => 'Estilo: campos', 'tab' => 'content');
 		$this->control_groups['vnd_button'] = array('title' => 'Estilo: botão', 'tab' => 'content');
+		$this->control_groups['vnd_promo_style'] = array('title' => 'Estilo: texto de persuasão', 'tab' => 'content');
 	}
 
 	public function set_controls() {
@@ -122,6 +124,158 @@ class VND_FA_Bricks_Element extends \Bricks\Element {
 			'type'        => 'text',
 			'placeholder' => 'O das definições',
 			'description' => 'Só se este formulário for de outra conta da plataforma.',
+		);
+
+		// Texto de persuasão
+		$this->controls['promo'] = array(
+			'tab'         => 'content',
+			'group'       => 'vnd_promo',
+			'label'       => 'Texto de persuasão ao lado do formulário',
+			'type'        => 'select',
+			'options'     => $show,
+			'inline'      => true,
+			'placeholder' => $show[vnd_fa_on($d['promo']) ? '1' : '0'],
+		);
+		foreach (array(
+			'promo_position'       => 'Posição do texto',
+			'promo_mobile'         => 'No telemóvel, o texto fica',
+			'promo_ratio'          => 'Largura das colunas',
+		) as $key => $label) {
+			$this->controls[$key] = array(
+				'tab'         => 'content',
+				'group'       => 'vnd_promo',
+				'label'       => $label,
+				'type'        => 'select',
+				'options'     => $choices[$key],
+				'placeholder' => $choices[$key][$d[$key]],
+				'required'    => array('promo', '!=', '0'),
+			);
+		}
+		$promo_texts = array(
+			'promo_eyebrow' => array('Etiqueta por cima do título', 'text'),
+			'promo_title'   => array('Título', 'text'),
+			'promo_text'    => array('Texto', 'textarea'),
+			'promo_points'  => array('Vantagens (uma por linha)', 'textarea'),
+			'promo_note'    => array('Nota no fim', 'textarea'),
+		);
+		foreach ($promo_texts as $key => $def) {
+			$this->controls[$key] = array(
+				'tab'            => 'content',
+				'group'          => 'vnd_promo',
+				'label'          => $def[0],
+				'type'           => $def[1],
+				'placeholder'    => wp_strip_all_tags((string) $d[$key]),
+				'hasDynamicData' => $def[1] === 'text' ? 'text' : false,
+				'required'       => array('promo', '!=', '0'),
+			);
+		}
+		$this->controls['promo_title_tag'] = array(
+			'tab'         => 'content',
+			'group'       => 'vnd_promo',
+			'label'       => 'Etiqueta do título',
+			'type'        => 'select',
+			'options'     => $choices['promo_title_tag'],
+			'inline'      => true,
+			'placeholder' => $choices['promo_title_tag'][$d['promo_title_tag']],
+			'required'    => array('promo', '!=', '0'),
+		);
+		$this->controls['promo_image_show'] = array(
+			'tab'         => 'content',
+			'group'       => 'vnd_promo',
+			'label'       => 'Imagem',
+			'type'        => 'select',
+			'options'     => $show,
+			'inline'      => true,
+			'placeholder' => $show[vnd_fa_on($d['promo_image_show']) ? '1' : '0'],
+			'required'    => array('promo', '!=', '0'),
+		);
+		$this->controls['promo_image'] = array(
+			'tab'         => 'content',
+			'group'       => 'vnd_promo',
+			'label'       => 'Escolher outra imagem',
+			'type'        => 'image',
+			'description' => 'Vazio = a das definições (ou a ilustração do relatório).',
+			'required'    => array('promo', '!=', '0'),
+		);
+		$this->controls['promo_image_alt'] = array(
+			'tab'         => 'content',
+			'group'       => 'vnd_promo',
+			'label'       => 'Descrição da imagem (para quem não vê)',
+			'type'        => 'text',
+			'placeholder' => $d['promo_image_alt'],
+			'required'    => array('promo', '!=', '0'),
+		);
+		$this->controls['promo_image_position'] = array(
+			'tab'         => 'content',
+			'group'       => 'vnd_promo',
+			'label'       => 'Posição da imagem',
+			'type'        => 'select',
+			'options'     => $choices['promo_image_position'],
+			'inline'      => true,
+			'placeholder' => $choices['promo_image_position'][$d['promo_image_position']],
+			'required'    => array('promo', '!=', '0'),
+		);
+		$this->controls['max_width_wide'] = array(
+			'tab'         => 'content',
+			'group'       => 'vnd_promo',
+			'label'       => 'Largura máxima com o texto (px)',
+			'type'        => 'number',
+			'min'         => 600,
+			'max'         => 2000,
+			'placeholder' => $d['max_width_wide'],
+			'required'    => array('promo', '!=', '0'),
+		);
+
+		// Estilo: texto de persuasão
+		foreach (array(
+			'promo_title_typography' => array('Título', '.vnd-fa__promo-title'),
+			'promo_text_typography'  => array('Texto', '.vnd-fa__promo-text'),
+			'promo_points_typography' => array('Vantagens', '.vnd-fa__points'),
+			'promo_eyebrow_typography' => array('Etiqueta', '.vnd-fa__eyebrow'),
+		) as $key => $def) {
+			$this->controls[$key] = array(
+				'tab'   => 'content',
+				'group' => 'vnd_promo_style',
+				'label' => $def[0],
+				'type'  => 'typography',
+				'css'   => array(array('property' => 'font', 'selector' => $def[1])),
+			);
+		}
+		$this->controls['promo_background'] = array(
+			'tab'   => 'content',
+			'group' => 'vnd_promo_style',
+			'label' => 'Fundo do texto',
+			'type'  => 'color',
+			'css'   => array(array('property' => 'background-color', 'selector' => '.vnd-fa__promo')),
+		);
+		$this->controls['promo_padding'] = array(
+			'tab'   => 'content',
+			'group' => 'vnd_promo_style',
+			'label' => 'Espaço à volta do texto',
+			'type'  => 'dimensions',
+			'css'   => array(array('property' => 'padding', 'selector' => '.vnd-fa__promo')),
+		);
+		$this->controls['promo_border'] = array(
+			'tab'   => 'content',
+			'group' => 'vnd_promo_style',
+			'label' => 'Contorno do texto',
+			'type'  => 'border',
+			'css'   => array(array('property' => 'border', 'selector' => '.vnd-fa__promo')),
+		);
+		$this->controls['promo_image_border'] = array(
+			'tab'   => 'content',
+			'group' => 'vnd_promo_style',
+			'label' => 'Contorno e cantos da imagem',
+			'type'  => 'border',
+			'css'   => array(array('property' => 'border', 'selector' => '.vnd-fa__image')),
+		);
+		$this->controls['promo_gap'] = array(
+			'tab'   => 'content',
+			'group' => 'vnd_promo_style',
+			'label' => 'Espaço entre o formulário e o texto',
+			'type'  => 'number',
+			'units' => true,
+			'css'   => array(array('property' => 'gap', 'selector' => '.vnd-fa__grid')),
 		);
 
 		// Aspeto
@@ -334,6 +488,12 @@ class VND_FA_Bricks_Element extends \Bricks\Element {
 
 	public function render() {
 		$s = is_array($this->settings) ? $this->settings : array();
+		// A imagem do Bricks vem como { id, url, size }.
+		if (isset($s['promo_image']) && is_array($s['promo_image'])) {
+			$img = $s['promo_image'];
+			$url = !empty($img['id']) && function_exists('wp_get_attachment_image_url') ? wp_get_attachment_image_url((int) $img['id'], !empty($img['size']) ? $img['size'] : 'large') : '';
+			$s['promo_image'] = $url ?: (!empty($img['url']) ? (string) $img['url'] : '');
+		}
 		$overrides = array();
 		foreach (array_keys(vnd_fa_defaults()) as $key) {
 			if (!isset($s[$key]) || in_array($key, array('accent', 'button_text'), true)) {

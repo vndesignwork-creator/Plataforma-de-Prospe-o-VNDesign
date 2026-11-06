@@ -33,6 +33,21 @@ function vnd_fa_defaults() {
 		'success_title'       => 'Pedido recebido!',
 		'success'             => 'Estamos a analisar o seu site: vai receber a análise por email dentro de alguns minutos.',
 		'redirect'            => '',
+		// Texto de persuasão (ao lado do formulário)
+		'promo'                => '1',
+		'promo_position'       => 'right',
+		'promo_mobile'         => 'after',
+		'promo_ratio'          => 'equal',
+		'promo_eyebrow'        => 'Análise gratuita · Sem compromisso',
+		'promo_title'          => 'O seu site está a afastar clientes sem dar por isso?',
+		'promo_title_tag'      => 'h3',
+		'promo_text'           => 'Um site lento, com o aviso “Não seguro” ou difícil de encontrar no Google faz perder pedidos todos os dias. Em poucos minutos mostramos-lhe o que está a correr mal e como resolver.',
+		'promo_points'         => "Velocidade no telemóvel: quanto tempo os clientes esperam\nSegurança: se aparece o aviso “Não seguro”\nGoogle: como o seu negócio aparece nas pesquisas\nOs pormenores que levam os visitantes a desistir",
+		'promo_note'           => 'Recebe o relatório em PDF no seu email, em linguagem simples. Sem custos e sem compromisso.',
+		'promo_image_show'     => '1',
+		'promo_image'          => '',
+		'promo_image_alt'      => 'Exemplo do relatório da análise do site',
+		'promo_image_position' => 'top',
 		// Campos
 		'show_title'          => '1',
 		'show_intro'          => '1',
@@ -47,6 +62,7 @@ function vnd_fa_defaults() {
 		'button_text'         => '#0d0d0d',
 		'radius'              => '10',
 		'max_width'           => '640',
+		'max_width_wide'      => '1120',
 		'align'               => 'center',
 	);
 }
@@ -58,6 +74,11 @@ function vnd_fa_choices() {
 		'layout'    => array('stack' => 'Um campo por linha', 'two' => 'Nome e negócio lado a lado'),
 		'theme'     => array('dark' => 'Escuro', 'light' => 'Claro', 'auto' => 'Automático (claro/escuro do visitante)', 'inherit' => 'Usar as cores do meu site'),
 		'align'     => array('center' => 'Ao centro', 'left' => 'À esquerda'),
+		'promo_position'       => array('right' => 'À direita do formulário', 'left' => 'À esquerda do formulário'),
+		'promo_mobile'         => array('after' => 'Depois do formulário', 'before' => 'Antes do formulário'),
+		'promo_ratio'          => array('equal' => 'Colunas iguais', 'form' => 'Formulário mais largo', 'promo' => 'Texto mais largo'),
+		'promo_title_tag'      => array('h2' => 'H2', 'h3' => 'H3', 'h4' => 'H4', 'p' => 'Parágrafo'),
+		'promo_image_position' => array('top' => 'Em cima do texto', 'bottom' => 'Em baixo do texto'),
 	);
 }
 

@@ -123,7 +123,7 @@ export function FreeAuditSettings() {
                   <Download className="h-3.5 w-3.5" aria-hidden /> Descarregar o plugin
                 </a>
               </div>
-              <p className="text-muted">O formulário fica no teu site, com o aspeto do teu site: textos, cores, letras e campos mudam-se no WordPress ou no próprio Bricks. Já vem ligado a esta página.</p>
+              <p className="text-muted">O formulário fica no teu site, com o aspeto do teu site: textos, cores, letras e campos mudam-se no WordPress ou no próprio Bricks. Traz também um texto de persuasão com imagem ao lado do formulário (liga e desliga, à direita ou à esquerda). Já vem ligado a esta página.</p>
               <ol className="ml-4 list-decimal space-y-0.5 text-muted">
                 <li>
                   No WordPress: <strong className="text-fg">Plugins → Adicionar novo → Carregar plugin</strong> → escolhe o ficheiro .zip → Instalar → Ativar.

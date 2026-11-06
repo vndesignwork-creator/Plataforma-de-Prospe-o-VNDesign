@@ -187,6 +187,89 @@
 	border-radius: 8px;
 }
 
+/* Texto de persuasão ao lado do formulário. */
+.vnd-fa--promo { container-type: inline-size; }
+.vnd-fa__grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: clamp(1.75rem, 5vw, 3.5rem);
+	align-items: center;
+}
+.vnd-fa__main { min-width: 0; }
+@container (min-width: 760px) {
+	.vnd-fa__grid { grid-template-columns: var(--vnd-fa-cols, minmax(0, 1fr) minmax(0, 1fr)); grid-template-areas: "main promo"; }
+	.vnd-fa--promo-left .vnd-fa__grid { grid-template-areas: "promo main"; }
+	.vnd-fa__main { grid-area: main; }
+	.vnd-fa__promo { grid-area: promo; }
+}
+.vnd-fa__promo {
+	display: flex;
+	flex-direction: column;
+	gap: 0.9rem;
+	min-width: 0;
+}
+.vnd-fa__image {
+	display: block;
+	width: 100%;
+	height: auto;
+	max-height: 26rem;
+	object-fit: cover;
+	border-radius: calc(var(--vnd-fa-radius) * 1.4);
+}
+.vnd-fa__promo--image-top .vnd-fa__image { margin-bottom: 0.4rem; }
+.vnd-fa__promo--image-bottom .vnd-fa__image { margin-top: 0.4rem; }
+.vnd-fa__eyebrow {
+	align-self: flex-start;
+	margin: 0;
+	padding: 0.3rem 0.75rem;
+	color: var(--vnd-fa-accent);
+	font-size: 0.8em;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	background: color-mix(in srgb, var(--vnd-fa-accent) 14%, transparent);
+	border-radius: 999px;
+}
+.vnd-fa__promo-title {
+	margin: 0;
+	color: inherit;
+	font-size: clamp(1.45rem, 3.4vw, 2rem);
+	line-height: 1.18;
+}
+.vnd-fa__promo-text {
+	margin: 0;
+	color: var(--vnd-fa-muted);
+	font-size: 1.05em;
+}
+.vnd-fa__points {
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+	margin: 0.2rem 0 0;
+	padding: 0;
+	list-style: none;
+}
+.vnd-fa__points li {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.65rem;
+	margin: 0;
+}
+.vnd-fa__points svg {
+	flex: none;
+	width: 1.3rem;
+	height: 1.3rem;
+	margin-top: 0.1rem;
+	color: var(--vnd-fa-accent);
+}
+.vnd-fa__note {
+	margin: 0.3rem 0 0;
+	padding-top: 0.9rem;
+	color: var(--vnd-fa-muted);
+	font-size: 0.92em;
+	border-top: 1px solid var(--vnd-fa-border);
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.vnd-fa * { transition: none !important; }
 }
