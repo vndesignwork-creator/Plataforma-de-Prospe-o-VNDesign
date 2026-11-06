@@ -195,7 +195,9 @@ export async function runRenewalReminders(options: { dryRun?: boolean; now?: Dat
     if (!lead || lead.anonymized_at) continue;
     const userId = (lead.assigned_to ?? lead.created_by) as string | null;
     const title = `Renovar: ${r.title} (${lead.company_name as string})`.slice(0, 300);
-    const { error: taskError } = await admin.from('lead_tasks').insert({
+    // A da vez anterior ainda por fazer (ex.: avença mensal): não cria outra igual, só avisa.
+    const { data: openTask } = await admin.from('lead_tasks').select('id').eq('workspace_id', r.workspace_id).eq('lead_id', r.lead_id).eq('title', title).is('done_at', null).limit(1);
+    const { error: taskError } = openTask?.length ? { error: null } : await admin.from('lead_tasks').insert({
       workspace_id: r.workspace_id,
       lead_id: r.lead_id,
       title,
@@ -208,7 +210,7 @@ export async function runRenewalReminders(options: { dryRun?: boolean; now?: Dat
       console.warn('[renovações] tarefa', taskError.message);
       continue;
     }
-    tasks++;
+    if (!openTask?.length) tasks++;
     await admin.from('client_renewals').update({ reminded_for: r.next_due_on }).eq('id', r.id);
     if (userId) {
       const late = r.next_due_on < today;

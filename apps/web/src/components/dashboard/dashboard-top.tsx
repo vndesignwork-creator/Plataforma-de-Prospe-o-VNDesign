@@ -41,11 +41,15 @@ export function DashboardHeader({ organize }: { organize?: ReactNode }) {
   const day = now ? lisbon({ weekday: 'long', day: '2-digit', month: '2-digit' }).format(now).replace(',', '') : null;
   const time = now ? lisbon({ hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now) : null;
 
-  const meetingsToday = today ? (today.meetings ?? []).filter((m) => lisbonDate(m.starts_at) === today.today).length : 0;
+  const meetingsTodayList = today ? (today.meetings ?? []).filter((m) => lisbonDate(m.starts_at) === today.today) : [];
+  const meetingsToday = meetingsTodayList.length;
+  // A próxima ação "Reunião às …" de quem tem reunião hoje não conta outra vez como follow-up.
+  const meetingLeads = new Set(meetingsTodayList.map((m) => m.lead.id));
+  const followUpsToday = today ? today.due_today.filter((l) => !meetingLeads.has(l.id)).length : 0;
   const tasksToday = today?.tasks ? today.tasks.due_today.length + today.tasks.overdue.length : 0;
   const parts: { text: string; href: string; tone?: 'danger' }[] = today
     ? [
-        today.due_today.length ? { text: `${today.due_today.length} follow-up${today.due_today.length === 1 ? '' : 's'} para hoje`, href: '/leads?due=today' } : null,
+        followUpsToday ? { text: `${followUpsToday} follow-up${followUpsToday === 1 ? '' : 's'} para hoje`, href: '/leads?due=today' } : null,
         today.overdue.length ? { text: `${today.overdue.length} em atraso`, href: '/leads?due=overdue', tone: 'danger' as const } : null,
         meetingsToday ? { text: `${meetingsToday} reuni${meetingsToday === 1 ? 'ão' : 'ões'} hoje`, href: '#hoje' } : null,
         tasksToday ? { text: `${tasksToday} tarefa${tasksToday === 1 ? '' : 's'} para hoje`, href: '/tarefas' } : null,

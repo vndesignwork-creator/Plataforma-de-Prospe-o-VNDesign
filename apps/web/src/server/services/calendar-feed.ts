@@ -120,7 +120,12 @@ export async function calendarFeedIcs(token: string, appUrl: string): Promise<st
     if (!live(t.lead)) continue;
     events.push({ uid: `task-${t.id}@vndesign-leads`, title: `☐ ${t.title} · ${t.lead.company_name}`, date: t.due_on, url: link(t.lead) });
   }
+  // A reunião já está no calendário: a próxima ação desse lead nesse dia ("Reunião às …") não se repete.
+  const meetingDays = new Set(
+    ((meetings.data ?? []) as unknown as { starts_at: string; lead: LeadRef }[]).map((m) => `${m.lead.id}|${todayIso(new Date(m.starts_at))}`),
+  );
   for (const l of (followups.data ?? []) as unknown as (LeadRef & { next_action_text: string | null; next_action_on: string })[]) {
+    if (meetingDays.has(`${l.id}|${l.next_action_on}`)) continue;
     events.push({
       uid: `followup-${l.id}@vndesign-leads`,
       title: `🔔 ${l.next_action_text?.trim() || 'Follow-up'} · ${l.company_name}`,

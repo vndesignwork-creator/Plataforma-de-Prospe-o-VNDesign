@@ -267,6 +267,9 @@ async function alertProblems(client: SupabaseClient, workspaceId: string, m: Row
     }
   })();
   const task = async (title: string, due: string) => {
+    // Já há uma igual por fazer (ex.: o site foi abaixo outra vez): não cria outra.
+    const { data: open } = await client.from('lead_tasks').select('id').eq('workspace_id', workspaceId).eq('lead_id', m.lead_id).eq('title', title.slice(0, 300)).is('done_at', null).limit(1);
+    if (open?.length) return;
     const { error } = await client.from('lead_tasks').insert({ workspace_id: workspaceId, lead_id: m.lead_id, title: title.slice(0, 300), due_on: due, assigned_to: userId, created_by: null, position: -1 });
     if (error) console.warn('[sites] tarefa', error.message);
   };

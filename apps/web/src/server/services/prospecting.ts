@@ -67,7 +67,7 @@ export function lisbonMidnight(day: string): string {
   return new Date(guess.getTime() - hour * 3_600_000).toISOString();
 }
 
-/** Emails enviados hoje pela plataforma por esta pessoa (modo email da Prospeção). */
+/** Emails enviados hoje por esta pessoa (modo email da Prospeção), sem os das propostas (como nas metas do mês). */
 async function emailsToday(ctx: ApiContext): Promise<number> {
   const { count, error } = await ctx.supabase
     .from('lead_activities')
@@ -75,21 +75,24 @@ async function emailsToday(ctx: ApiContext): Promise<number> {
     .eq('workspace_id', ctx.workspaceId)
     .eq('actor_user_id', ctx.user.id)
     .eq('type', 'email_sent')
+    .or('payload->>template.is.null,payload->>template.not.like.Proposta *')
     .gte('created_at', lisbonMidnight(todayIso()));
   if (error) throw fromPostgrest(error);
   return count ?? 0;
 }
 
 async function doneToday(ctx: ApiContext): Promise<number> {
-  const { count, error } = await ctx.supabase
+  // Leads contactados hoje (registar duas vezes o mesmo lead conta uma, como nas metas do mês).
+  const { data, error } = await ctx.supabase
     .from('lead_activities')
-    .select('id', { count: 'exact', head: true })
+    .select('lead_id')
     .eq('workspace_id', ctx.workspaceId)
     .eq('actor_user_id', ctx.user.id)
     .eq('payload->>via', 'prospecting')
-    .gte('created_at', lisbonMidnight(todayIso()));
+    .gte('created_at', lisbonMidnight(todayIso()))
+    .limit(5000);
   if (error) throw fromPostgrest(error);
-  return count ?? 0;
+  return new Set(((data ?? []) as { lead_id: string }[]).map((r) => r.lead_id)).size;
 }
 
 export async function getProspectingQueue(ctx: ApiContext, filter: ProspectingView = 'all', mode?: ProspectingMode): Promise<ProspectingQueue> {

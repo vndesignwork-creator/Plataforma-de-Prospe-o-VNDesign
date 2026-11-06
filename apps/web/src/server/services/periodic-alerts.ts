@@ -109,7 +109,14 @@ export async function runMonthlyUpdateReminders(
       .eq('workspace_id', workspaceId)
       .eq('title', MONTHLY_UPDATE_TASK)
       .gte('created_at', monthStart);
-    const done = new Set((existing ?? []).map((t) => t.lead_id as string));
+    // Nem se a do mês anterior ainda está por fazer (não ficam duas iguais em aberto).
+    const { data: open } = await admin
+      .from('lead_tasks')
+      .select('lead_id')
+      .eq('workspace_id', workspaceId)
+      .eq('title', MONTHLY_UPDATE_TASK)
+      .is('done_at', null);
+    const done = new Set([...(existing ?? []), ...(open ?? [])].map((t) => t.lead_id as string));
     const todo = projects.filter((p) => !done.has(p.id as string));
     if (options.dryRun) {
       tasks += todo.length;

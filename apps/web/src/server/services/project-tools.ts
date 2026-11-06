@@ -583,7 +583,10 @@ export async function projectCalendar(ctx: ApiContext, from: string, to: string,
   for (const t of (tasks.data ?? []) as unknown as { id: string; title: string; due_on: string; done_at: string | null; lead: LeadRef }[]) {
     events.push({ id: `task-${t.id}`, date: t.due_on, type: 'task', title: t.title, starts_at: null, amount: null, done: !!t.done_at, lead: leadRef(t.lead) });
   }
+  // A reunião já está no dia: a próxima ação "Reunião às …" desse lead nesse dia não se repete.
+  const meetingDays = new Set(events.filter((e) => e.type === 'meeting').map((e) => `${e.lead.id}|${e.date}`));
   for (const l of (followups.data ?? []) as { id: string; number: number; company_name: string; next_action_text: string | null; next_action_on: string }[]) {
+    if (meetingDays.has(`${l.id}|${l.next_action_on}`)) continue;
     events.push({ id: `followup-${l.id}`, date: l.next_action_on, type: 'followup', title: l.next_action_text ?? 'Próxima ação', starts_at: null, amount: null, done: false, lead: leadRef(l) });
   }
   const order = { due: 0, meeting: 1, followup: 2, payment: 3, task: 4 } as const;

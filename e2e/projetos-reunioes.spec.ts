@@ -231,6 +231,7 @@ test('cópia de segurança: enviar agora (Excel em anexo) e o dia da semana', as
   // Desligar no interruptor do cartão.
   await page.getByRole('switch', { name: 'Desligar a cópia de segurança semanal' }).click();
   await page.getByRole('button', { name: 'Guardar', exact: true }).click();
-  await expect(page.getByText('Cópia de segurança guardada.')).toBeVisible();
+  // (a mensagem da primeira gravação pode ainda estar à vista)
+  await expect(page.getByText('Cópia de segurança guardada.').last()).toBeVisible();
   expect((await (await page.request.get('/api/v1/settings')).json()).data.weekly_backup.enabled).toBe(false);
 });

@@ -310,7 +310,7 @@ export async function teamStats(ctx: ApiContext, days = 30): Promise<TeamStats> 
   const since = new Date(Date.now() - days * 86_400_000).toISOString();
   const today = todayIso();
   const admin = createSupabaseAdminClient();
-  type Act = { id: string; actor_user_id: string; type: string; payload: Record<string, unknown> | null; created_at: string };
+  type Act = { id: string; lead_id: string; actor_user_id: string; type: string; payload: Record<string, unknown> | null; created_at: string };
   type Moved = { lead_id: string; actor_user_id: string | null; to: string | null; lead: { assigned_to: string | null } | null };
   // Tudo página a página: o Supabase devolve no máximo 1000 linhas por pedido.
   const [contactActs, moved, created, open] = await Promise.all([
@@ -318,7 +318,7 @@ export async function teamStats(ctx: ApiContext, days = 30): Promise<TeamStats> 
     selectAllPages<Act>((from, to) =>
       admin
         .from('lead_activities')
-        .select('id, actor_user_id, type, payload, created_at')
+        .select('id, lead_id, actor_user_id, type, payload, created_at')
         .eq('workspace_id', ctx.workspaceId)
         .in('actor_user_id', ids)
         .or(`type.in.(${[...CONTACT_TYPES].join(',')}),payload->>via.eq.prospecting`)
@@ -372,9 +372,14 @@ export async function teamStats(ctx: ApiContext, days = 30): Promise<TeamStats> 
     return m;
   };
   const isContact = (a: Act) => CONTACT_TYPES.has(a.type) || a.payload?.via === 'prospecting';
-  const contacts = count(contactActs.filter(isContact), (a) => a.actor_user_id);
+  // Cada lead conta uma vez por dia e por pessoa: abrir o WhatsApp e depois "Marcar como enviado"
+  // (ou enviar e depois registar "Contactado") é um só contacto, como nas metas do mês.
+  const contactDays = new Map<string, Act>();
+  for (const a of contactActs.filter(isContact)) contactDays.set(`${a.actor_user_id}|${a.lead_id}|${todayIso(new Date(a.created_at))}`, a);
+  const uniqueContacts = [...contactDays.values()];
+  const contacts = count(uniqueContacts, (a) => a.actor_user_id);
   const contactsToday = count(
-    contactActs.filter((a) => isContact(a) && todayIso(new Date(a.created_at)) === today),
+    uniqueContacts.filter((a) => todayIso(new Date(a.created_at)) === today),
     (a) => a.actor_user_id,
   );
   // Cada lead conta uma vez por fase (ir e voltar a "Respondeu" não conta duas vezes).

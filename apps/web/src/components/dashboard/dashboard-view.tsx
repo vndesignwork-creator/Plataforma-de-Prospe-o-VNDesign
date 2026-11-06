@@ -542,12 +542,17 @@ function TodayCard({ className }: { className?: string }) {
   const { data, isLoading } = useToday();
   // Tarefas em atraso e de hoje logo a seguir aos follow-ups de hoje; as da semana no fim.
   const urgentTasks = data?.tasks ? [...data.tasks.overdue, ...data.tasks.due_today] : [];
+  // Marcar reunião põe a próxima ação "Reunião às …" no mesmo dia: aparece só em "Reuniões" (sem repetir).
+  const meetingDays = new Set((data?.meetings ?? []).map((m) => `${m.lead.id}|${lisbonDay(m.starts_at)}`));
+  const notMeeting = (leads: Lead[]) => leads.filter((l) => !meetingDays.has(`${l.id}|${l.next_action_on}`));
+  const dueToday = data ? notMeeting(data.due_today) : [];
+  const upcoming = data ? notMeeting(data.upcoming) : [];
   const weekTasks = data?.tasks?.upcoming ?? [];
   const empty =
     data &&
     !data.overdue.length &&
-    !data.due_today.length &&
-    !data.upcoming.length &&
+    !dueToday.length &&
+    !upcoming.length &&
     !urgentTasks.length &&
     !weekTasks.length &&
     !data.meetings?.length &&
@@ -576,10 +581,10 @@ function TodayCard({ className }: { className?: string }) {
             <TodayStalled today={data.today} leads={data.stalled ?? []} />
             {/* Pela urgência: atrasados, hoje (reuniões, follow-ups, tarefas), quem abriu o email e só depois a semana. */}
             <MeetingList title="Reuniões de hoje" meetings={(data.meetings ?? []).filter((m) => lisbonDay(m.starts_at) === data.today)} />
-            <TodayGroup title="Para hoje" when="today" today={data.today} icon={<CalendarClock className="h-4 w-4" aria-hidden />} leads={data.due_today} />
+            <TodayGroup title="Para hoje" when="today" today={data.today} icon={<CalendarClock className="h-4 w-4" aria-hidden />} leads={dueToday} />
             <TodayTasks title="Tarefas para hoje" today={data.today} tasks={urgentTasks} />
             <TodayOpened items={data.opened ?? []} />
-            <TodayGroup title="Próximos 7 dias" when="future" today={data.today} icon={<CalendarDays className="h-4 w-4" aria-hidden />} leads={data.upcoming} />
+            <TodayGroup title="Próximos 7 dias" when="future" today={data.today} icon={<CalendarDays className="h-4 w-4" aria-hidden />} leads={upcoming} />
             <MeetingList title="Reuniões nos próximos 7 dias" meetings={(data.meetings ?? []).filter((m) => lisbonDay(m.starts_at) !== data.today)} />
             <TodayTasks title="Tarefas nos próximos 7 dias" today={data.today} tasks={weekTasks} />
           </>
@@ -605,8 +610,12 @@ function TodayCard({ className }: { className?: string }) {
 function HotLeadsCard({ className, fitToday }: { className?: string; fitToday?: boolean }) {
   const { data } = useToday();
   const list = useRef<HTMLUListElement>(null);
-  const rows = useRowsThatFit(list, data?.hot?.length ?? 0, !!fitToday);
-  const hot = rows === null ? (data?.hot ?? []) : (data?.hot ?? []).slice(0, rows);
+  // Sem repetir o "Hoje": os que já lá estão (follow-up em atraso ou para hoje) não aparecem aqui outra vez.
+  const inToday = new Set([...(data?.overdue ?? []), ...(data?.due_today ?? [])].map((l) => l.id));
+  const allHot = data?.hot ?? [];
+  const fresh = allHot.filter((l) => !inToday.has(l.id));
+  const rows = useRowsThatFit(list, fresh.length, !!fitToday);
+  const hot = rows === null ? fresh : fresh.slice(0, rows);
   const common = hot.length > 1 ? (hot[0]!.score_reasons ?? []).filter((r) => hot.every((l) => l.score_reasons?.includes(r))) : [];
   return (
     <Card className={cn('flex flex-col', className, rows !== null && 'lg:self-stretch')}>
@@ -626,7 +635,9 @@ function HotLeadsCard({ className, fitToday }: { className?: string; fitToday?: 
         }
       />
       {data && !hot.length ? (
-        <p className="flex flex-1 items-center justify-center p-4 text-center text-sm text-muted">Sem leads quentes de momento.</p>
+        <p className="flex flex-1 items-center justify-center p-4 text-center text-sm text-muted">
+          {allHot.length ? 'Os mais quentes já estão no “Hoje”.' : 'Sem leads quentes de momento.'}
+        </p>
       ) : null}
       <ul ref={list} className={cn('flex flex-col p-2 empty:hidden', rows !== null && 'flex-1 justify-evenly')} aria-label="Leads mais quentes">
         {hot.map((l) => {
