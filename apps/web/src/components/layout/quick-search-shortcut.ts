@@ -13,7 +13,17 @@ export function useQuickSearchShortcut(onOpen: () => void) {
       }
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // Um Ctrl+K carregado antes de a app arrancar (guardado no layout) abre já a pesquisa.
+    const w = window as Window & { __vndQuickSearchReady?: boolean; __vndQuickSearchPending?: boolean };
+    w.__vndQuickSearchReady = true;
+    if (w.__vndQuickSearchPending) {
+      w.__vndQuickSearchPending = false;
+      onOpen();
+    }
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      w.__vndQuickSearchReady = false;
+    };
   }, [onOpen]);
 }
 

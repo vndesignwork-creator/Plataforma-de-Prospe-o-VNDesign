@@ -435,7 +435,8 @@ test('Tarefas em cartões: lista com título, criar com Enter, duplicar, mover, 
 
   // Mudar o cartão de lugar (menu ⋯ do cartão): fica guardado para a próxima visita.
   await page.getByRole('button', { name: `Mais ações: #${lead.number} Cartões ${run2}` }).click();
-  await page.getByRole('menuitem', { name: 'Mover para o início' }).click();
+  await page.getByRole('menuitem', { name: 'Mover' }).click();
+  await page.getByRole('menuitem', { name: 'Para o início' }).click();
   await expect(page.getByRole('region').first()).toHaveAccessibleName(`#${lead.number} Cartões ${run2}`);
   await page.reload();
   await expect(page.getByRole('region').first()).toHaveAccessibleName(`#${lead.number} Cartões ${run2}`);

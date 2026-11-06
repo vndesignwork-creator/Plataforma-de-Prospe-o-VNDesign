@@ -11,6 +11,11 @@ const syne = Syne({ subsets: ['latin', 'latin-ext'], variable: '--font-syne', di
  * Entrada da app instalada (ícone no telemóvel): VN em cima, D e L por baixo, e a app surge por trás.
  * Uma vez por abertura (sessionStorage); no browser normal só com ?intro=1 (para experimentar).
  */
+/**
+ * Ctrl+K / ⌘K carregado antes de a página estar pronta: fica guardado e a pesquisa
+ * rápida abre-se logo que a app arranca (useQuickSearchShortcut lê o pedido).
+ */
+const earlySearchScript = `(function(){window.addEventListener('keydown',function(e){if(window.__vndQuickSearchReady)return;if((e.ctrlKey||e.metaKey)&&!e.altKey&&e.key&&e.key.toLowerCase()==='k'){e.preventDefault();window.__vndQuickSearchPending=true;}});})();`;
 const introScript = `(function(){try{var s=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;var f=/[?&]intro=1/.test(location.search);if(!(s||f)||(!f&&sessionStorage.getItem('vnd-intro')))return;sessionStorage.setItem('vnd-intro','1');var d=document.documentElement;d.dataset.intro='';setTimeout(function(){delete d.dataset.intro;},1900);}catch(e){}})();`;
 
 export const metadata: Metadata = {
@@ -35,6 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <script dangerouslySetInnerHTML={{ __html: introScript }} />
+        <script dangerouslySetInnerHTML={{ __html: earlySearchScript }} />
       </head>
       {/* Extensões do browser (ex.: ColorZilla) acrescentam atributos ao <body>: não é um erro da aplicação. */}
       <body className="min-h-dvh antialiased" suppressHydrationWarning>
