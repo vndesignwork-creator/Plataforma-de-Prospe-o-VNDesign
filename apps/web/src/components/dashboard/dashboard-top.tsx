@@ -92,7 +92,7 @@ export function DashboardHeader({ organize }: { organize?: ReactNode }) {
           'Nada marcado para hoje. Bom momento para prospetar.'
         )
       }
-      actionsClassName="ml-auto"
+      actionsClassName="ml-auto w-full sm:w-auto"
       actions={
         <>
           {organize}

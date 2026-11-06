@@ -424,10 +424,10 @@ export function MyTasksView() {
             </button>
           </div>
           {showKind ? (
-            // À direita (no telemóvel, quando passa para a linha de baixo, também).
-            <div role="group" aria-label="Tipo de tarefa" className={cn(SEGMENTED, 'ml-auto')}>
+            // No telemóvel ocupa a largura toda (partes iguais); no computador fica à direita.
+            <div role="group" aria-label="Tipo de tarefa" className={cn(SEGMENTED, 'flex w-full sm:ml-auto sm:inline-flex sm:w-auto')}>
               {KINDS.map((k) => (
-                <button key={k.value} type="button" aria-pressed={kind === k.value} onClick={() => setKind(k.value)} className={segment(kind === k.value)}>
+                <button key={k.value} type="button" aria-pressed={kind === k.value} onClick={() => setKind(k.value)} className={segment(kind === k.value, 'flex-1 justify-center sm:flex-none')}>
                   {k.label}
                 </button>
               ))}
