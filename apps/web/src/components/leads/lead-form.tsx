@@ -257,9 +257,12 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
           <span className="inline-flex items-center gap-1.5 font-medium">
             <Sparkles className="h-4 w-4 text-accent-text" aria-hidden /> Preencher com IA
           </span>
-          <CardScanButton onResult={fillFromCard} bare />
-          <LeadQuickFill onResult={fillFromCard} bare />
-          <span className="text-xs text-muted">Só preenche os campos vazios.</span>
+          {/* Os botões encostados à direita (no telemóvel, quando passam para baixo, também). */}
+          <span className="ml-auto flex flex-wrap justify-end gap-2">
+            <CardScanButton onResult={fillFromCard} bare />
+            <LeadQuickFill onResult={fillFromCard} bare />
+          </span>
+          <span className="w-full text-right text-xs text-muted">Só preenche os campos vazios.</span>
         </div>
       )}
 
