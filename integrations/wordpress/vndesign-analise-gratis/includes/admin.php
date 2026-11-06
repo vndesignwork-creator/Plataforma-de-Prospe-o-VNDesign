@@ -128,12 +128,16 @@ function vnd_fa_settings_page() {
 	$check_box = function ($key, $label) use ($o, $name) {
 		echo '<label style="display:block;margin:0 0 6px"><input type="checkbox" name="' . esc_attr($name . '[' . $key . ']') . '" value="1"' . checked(vnd_fa_on($o[$key]), true, false) . '> ' . esc_html($label) . '</label>';
 	};
-	$select = function ($key, $label) use ($o, $name, $choices) {
+	$select = function ($key, $label, $help = '') use ($o, $name, $choices) {
 		echo '<tr><th scope="row"><label for="vnd-fa-' . esc_attr($key) . '">' . esc_html($label) . '</label></th><td><select id="vnd-fa-' . esc_attr($key) . '" name="' . esc_attr($name . '[' . $key . ']') . '">';
 		foreach ($choices[$key] as $value => $text) {
-			echo '<option value="' . esc_attr($value) . '"' . selected($o[$key], $value, false) . '>' . esc_html($text) . '</option>';
+			echo '<option value="' . esc_attr($value) . '"' . selected((string) $o[$key], (string) $value, false) . '>' . esc_html($text) . '</option>';
 		}
-		echo '</select></td></tr>';
+		echo '</select>';
+		if ($help) {
+			echo '<p class="description">' . esc_html($help) . '</p>';
+		}
+		echo '</td></tr>';
 	};
 	$color = function ($key, $label) use ($o, $name) {
 		echo '<tr><th scope="row"><label for="vnd-fa-' . esc_attr($key) . '">' . esc_html($label) . '</label></th><td>';
@@ -249,6 +253,11 @@ function vnd_fa_settings_page() {
 				$color('accent', 'Cor de destaque (botão e foco)');
 				$color('button_text', 'Cor do texto do botão');
 				$number('radius', 'Cantos arredondados', 0, 40);
+				$select('font_body', 'Letra do texto');
+				$text('font_body_custom', 'Nome da letra do texto', 'Só com “Outra”: o nome exato, ex.: <code>Urbanist</code>.');
+				$select('font_heading', 'Letra dos títulos');
+				$text('font_heading_custom', 'Nome da letra dos títulos', 'Só com “Outra”.');
+				$select('font_source', 'Carregar a letra', 'Se a letra já estiver no site (ex.: carregada no Bricks ou no tema), escolhe “Não carregar”.');
 				$select('width', 'Largura');
 				$number('max_width', 'Largura máxima só com o formulário', 280, 1600);
 				$select('align', 'Posição');

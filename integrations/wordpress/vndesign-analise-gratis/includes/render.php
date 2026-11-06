@@ -47,6 +47,58 @@ function vnd_fa_on($value) {
 	return in_array(strtolower((string) $value), array('1', 'true', 'yes', 'sim', 'on'), true);
 }
 
+/** Um nome de letra seguro (letras, números, espaços e hífens), ou ''. */
+function vnd_fa_clean_font($name) {
+	$name = trim(preg_replace('~[^A-Za-z0-9 \-]~', '', (string) $name));
+	return substr(preg_replace('~\s+~', ' ', $name), 0, 60);
+}
+
+/** As letras escolhidas: ['body' => nome|'' , 'heading' => nome|''|'body']. */
+function vnd_fa_fonts_for($o) {
+	$pick = function ($value, $custom) {
+		if ($value === 'custom') {
+			return vnd_fa_clean_font($custom);
+		}
+		return in_array($value, array('', 'inherit', 'body'), true) ? $value : vnd_fa_clean_font($value);
+	};
+	$body = $pick($o['font_body'], $o['font_body_custom']);
+	$heading = $pick($o['font_heading'], $o['font_heading_custom']);
+	if ($heading === 'body') {
+		$heading = $body !== '' ? $body : 'inherit';
+	}
+	return array('body' => $body, 'heading' => $heading === 'inherit' ? '' : $heading);
+}
+
+/** "Plus Jakarta Sans" → '"Plus Jakarta Sans", sans-serif' (com a reserva certa). */
+function vnd_fa_font_stack($name) {
+	$known = vnd_fa_fonts();
+	$fallback = isset($known[$name]) ? $known[$name][0] : 'sans-serif';
+	return '"' . $name . '", ' . ($fallback === 'serif' ? 'Georgia, serif' : 'system-ui, sans-serif');
+}
+
+/** Carrega as letras escolhidas do Bunny Fonts ou do Google Fonts (uma só folha). */
+function vnd_fa_enqueue_fonts($o) {
+	if ($o['font_source'] === 'none') {
+		return;
+	}
+	$fonts = array_unique(array_filter(array_values(vnd_fa_fonts_for($o))));
+	if (!$fonts) {
+		return;
+	}
+	$known = vnd_fa_fonts();
+	$families = array();
+	foreach ($fonts as $name) {
+		$weights = isset($known[$name]) ? $known[$name][1] : '400;600;700';
+		$families[] = $o['font_source'] === 'google'
+			? 'family=' . str_replace(' ', '+', $name) . ':wght@' . $weights
+			: strtolower(str_replace(' ', '-', $name)) . ':' . str_replace(';', ',', $weights);
+	}
+	$url = $o['font_source'] === 'google'
+		? 'https://fonts.googleapis.com/css2?' . implode('&', $families) . '&display=swap'
+		: 'https://fonts.bunny.net/css?family=' . implode('|', $families) . '&display=swap';
+	wp_enqueue_style('vnd-fa-fonts-' . substr(md5($url), 0, 8), $url, array(), null);
+}
+
 /** As classes do bloco (para o Bricks as pôr no elemento raiz). */
 function vnd_fa_root_classes($o) {
 	$classes = array('vnd-fa', 'vnd-fa--' . $o['theme'], 'vnd-fa--align-' . $o['align']);
@@ -55,6 +107,13 @@ function vnd_fa_root_classes($o) {
 	}
 	if ($o['layout'] === 'two') {
 		$classes[] = 'vnd-fa--two';
+	}
+	$fonts = vnd_fa_fonts_for($o);
+	if ($fonts['body'] !== '') {
+		$classes[] = 'vnd-fa--font';
+	}
+	if ($fonts['heading'] !== '') {
+		$classes[] = 'vnd-fa--font-heading';
 	}
 	if (vnd_fa_on($o['promo'])) {
 		$classes[] = 'vnd-fa--promo';
@@ -83,6 +142,13 @@ function vnd_fa_root_style($o) {
 		$vars[] = '--vnd-fa-max:none';
 	} elseif (is_numeric($max) && (int) $max > 0) {
 		$vars[] = '--vnd-fa-max:' . max(280, min(2000, (int) $max)) . 'px';
+	}
+	$fonts = vnd_fa_fonts_for($o);
+	if ($fonts['body'] !== '') {
+		$vars[] = '--vnd-fa-font:' . vnd_fa_font_stack($fonts['body']);
+	}
+	if ($fonts['heading'] !== '') {
+		$vars[] = '--vnd-fa-font-heading:' . vnd_fa_font_stack($fonts['heading']);
 	}
 	if (is_numeric($o['columns_gap']) && $o['columns_gap'] !== '') {
 		$vars[] = '--vnd-fa-gap:' . max(0, min(200, (int) $o['columns_gap'])) . 'px';
@@ -250,6 +316,7 @@ function vnd_fa_render($overrides = array(), $preview = false) {
 		return '';
 	}
 	vnd_fa_enqueue();
+	vnd_fa_enqueue_fonts($o);
 	$style = vnd_fa_root_style($o);
 	return '<div class="' . esc_attr(implode(' ', vnd_fa_root_classes($o))) . '"' . ($style !== '' ? ' style="' . esc_attr($style) . '"' : '') . ' data-vnd-fa>' . $inner . '</div>';
 }

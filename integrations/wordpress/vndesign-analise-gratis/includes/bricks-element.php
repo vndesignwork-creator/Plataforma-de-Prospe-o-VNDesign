@@ -24,6 +24,8 @@ class VND_FA_Bricks_Element extends \Bricks\Element {
 
 	public function enqueue_scripts() {
 		vnd_fa_enqueue();
+		// A letra escolhida carrega-se já aqui (antes do elemento), também dentro do editor do Bricks.
+		vnd_fa_enqueue_fonts(vnd_fa_resolve($this->overrides()));
 	}
 
 	public function set_control_groups() {
@@ -318,6 +320,49 @@ class VND_FA_Bricks_Element extends \Bricks\Element {
 			'max'         => 40,
 			'placeholder' => $d['radius'],
 		);
+		$this->controls['font_body'] = array(
+			'tab'         => 'content',
+			'group'       => 'vnd_look',
+			'label'       => 'Letra do texto',
+			'type'        => 'select',
+			'options'     => $choices['font_body'],
+			'searchable'  => true,
+			'placeholder' => $choices['font_body'][$d['font_body']] ?? 'A do site',
+		);
+		$this->controls['font_body_custom'] = array(
+			'tab'         => 'content',
+			'group'       => 'vnd_look',
+			'label'       => 'Nome da letra do texto',
+			'type'        => 'text',
+			'placeholder' => 'ex.: Urbanist',
+			'required'    => array('font_body', '=', 'custom'),
+		);
+		$this->controls['font_heading'] = array(
+			'tab'         => 'content',
+			'group'       => 'vnd_look',
+			'label'       => 'Letra dos títulos',
+			'type'        => 'select',
+			'options'     => $choices['font_heading'],
+			'searchable'  => true,
+			'placeholder' => $choices['font_heading'][$d['font_heading']] ?? 'A dos títulos do site',
+		);
+		$this->controls['font_heading_custom'] = array(
+			'tab'         => 'content',
+			'group'       => 'vnd_look',
+			'label'       => 'Nome da letra dos títulos',
+			'type'        => 'text',
+			'placeholder' => 'ex.: Urbanist',
+			'required'    => array('font_heading', '=', 'custom'),
+		);
+		$this->controls['font_source'] = array(
+			'tab'         => 'content',
+			'group'       => 'vnd_look',
+			'label'       => 'Carregar a letra',
+			'type'        => 'select',
+			'options'     => $choices['font_source'],
+			'placeholder' => $choices['font_source'][$d['font_source']],
+			'description' => 'Escolhe “Não carregar” se a letra já estiver no site (ex.: carregada no Bricks).',
+		);
 		$this->controls['width'] = array(
 			'tab'         => 'content',
 			'group'       => 'vnd_look',
@@ -496,7 +541,8 @@ class VND_FA_Bricks_Element extends \Bricks\Element {
 		return is_string($value) ? $value : '';
 	}
 
-	public function render() {
+	/** As definições deste elemento por cima das gerais (os vazios ficam com as gerais). */
+	private function overrides() {
 		$s = is_array($this->settings) ? $this->settings : array();
 		// A imagem do Bricks vem como { id, url, size }.
 		if (isset($s['promo_image']) && is_array($s['promo_image'])) {
@@ -515,7 +561,12 @@ class VND_FA_Bricks_Element extends \Bricks\Element {
 			}
 			$overrides[$key] = is_scalar($value) ? (string) $value : '';
 		}
-		$o = vnd_fa_resolve($overrides);
+		return $overrides;
+	}
+
+	public function render() {
+		$s = is_array($this->settings) ? $this->settings : array();
+		$o = vnd_fa_resolve($this->overrides());
 		// As cores do Bricks podem ser variáveis (var(--…)): vão diretas para o CSS.
 		$extra = array();
 		foreach (array('accent' => '--vnd-fa-accent', 'button_text' => '--vnd-fa-button-text') as $key => $var) {
@@ -529,6 +580,7 @@ class VND_FA_Bricks_Element extends \Bricks\Element {
 		if ($inner === '') {
 			return;
 		}
+		vnd_fa_enqueue_fonts($o); // se o Bricks não chamou enqueue_scripts (ex.: num modelo), o WordPress põe-na no fim da página
 		$style = trim(vnd_fa_root_style($o) . ($extra ? ';' . implode(';', $extra) : ''), ';');
 		$this->set_attribute('_root', 'class', vnd_fa_root_classes($o));
 		if ($style !== '') {

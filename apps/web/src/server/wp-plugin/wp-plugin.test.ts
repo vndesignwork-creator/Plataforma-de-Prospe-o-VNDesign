@@ -126,6 +126,28 @@ describe('plugin de WordPress', () => {
     expect(render({ page_url: PAGE }, { promo_image_show: '0' })).not.toContain('<img');
   });
 
+  it.skipIf(!hasPhp)('letra: a do site de origem; ou uma da lista / outra, carregada do Bunny ou do Google', () => {
+    const site = render({ page_url: PAGE });
+    expect(site).not.toContain('vnd-fa--font');
+    expect(site).not.toContain('fonts.');
+
+    const bunny = render({ page_url: PAGE, font_body: 'Plus Jakarta Sans', font_heading: 'body' });
+    expect(bunny).toContain('vnd-fa--font vnd-fa--font-heading');
+    expect(bunny).toContain('--vnd-fa-font:&quot;Plus Jakarta Sans&quot;, system-ui, sans-serif');
+    expect(bunny).toContain('https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700,800&display=swap');
+
+    const google = render({ page_url: PAGE, font_body: 'Inter', font_heading: 'custom', font_heading_custom: 'Urbanist<script>', font_source: 'google' });
+    expect(google).toContain('--vnd-fa-font-heading:&quot;Urbanistscript&quot;');
+    expect(google).not.toContain('<script>');
+    expect(google).toContain('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Urbanistscript:wght@400;600;700&display=swap');
+
+    const none = render({ page_url: PAGE, font_body: 'Lora', font_source: 'none' });
+    expect(none).toContain('&quot;Lora&quot;, Georgia, serif');
+    expect(none).not.toContain('fonts.');
+    // Títulos "a do site": só o texto muda.
+    expect(none).not.toContain('vnd-fa--font-heading');
+  });
+
   it.skipIf(!hasPhp)('sem ligação: só o administrador vê o aviso', () => {
     expect(render({}).replace(/\n<!--.*-->/, '')).toBe('');
     expect(render({}, {}, true)).toContain('Falta ligar o formulário à plataforma');

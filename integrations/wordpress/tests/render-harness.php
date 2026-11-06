@@ -31,7 +31,7 @@ function wp_style_is() { return false; }
 function wp_script_is() { return false; }
 function wp_register_style($h) {}
 function wp_register_script($h) {}
-function wp_enqueue_style($h) { $GLOBALS['vnd_enqueued'][] = "style:$h"; }
+function wp_enqueue_style($h, $src = '') { $GLOBALS['vnd_enqueued'][] = "style:$h" . ($src ? " $src" : ''); }
 function wp_enqueue_script($h) { $GLOBALS['vnd_enqueued'][] = "script:$h"; }
 
 require __DIR__ . '/../vndesign-analise-gratis/vndesign-analise-gratis.php';

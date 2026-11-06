@@ -66,6 +66,12 @@ function vnd_fa_defaults() {
 		'max_width_wide'      => '1120',
 		'align'               => 'center',
 		'columns_gap'         => '',
+		// Letra: '' = a do site; um nome da lista; 'custom' = escrever o nome.
+		'font_body'           => '',
+		'font_body_custom'    => '',
+		'font_heading'        => 'inherit',
+		'font_heading_custom' => '',
+		'font_source'         => 'bunny',
 	);
 }
 
@@ -77,12 +83,46 @@ function vnd_fa_choices() {
 		'theme'     => array('dark' => 'Escuro', 'light' => 'Claro', 'auto' => 'Automático (claro/escuro do visitante)', 'inherit' => 'Usar as cores do meu site'),
 		'align'     => array('center' => 'Ao centro', 'left' => 'À esquerda'),
 		'width'     => array('full' => 'Toda a largura do sítio onde está', 'max' => 'Até à largura máxima'),
+		'font_body'    => array('' => 'A do site') + vnd_fa_font_choices() + array('custom' => 'Outra (escrever o nome)'),
+		'font_heading' => array('inherit' => 'A dos títulos do site', 'body' => 'A mesma do texto do formulário') + vnd_fa_font_choices() + array('custom' => 'Outra (escrever o nome)'),
+		'font_source'  => array('bunny' => 'Carregar do Bunny Fonts (europeu, sem enviar dados à Google)', 'google' => 'Carregar do Google Fonts', 'none' => 'Não carregar (a letra já está no site)'),
 		'promo_position'       => array('left' => 'À esquerda do formulário', 'right' => 'À direita do formulário'),
 		'promo_mobile'         => array('before' => 'Antes do formulário', 'after' => 'Depois do formulário'),
 		'promo_ratio'          => array('equal' => 'Colunas iguais', 'form' => 'Formulário mais largo', 'promo' => 'Texto mais largo'),
 		'promo_title_tag'      => array('h2' => 'H2', 'h3' => 'H3', 'h4' => 'H4', 'p' => 'Parágrafo'),
 		'promo_image_position' => array('top' => 'Em cima do texto', 'bottom' => 'Em baixo do texto'),
 	);
+}
+
+/** Letras conhecidas (Google Fonts e Bunny Fonts): nome => [tipo, pesos]. */
+function vnd_fa_fonts() {
+	return array(
+		'Plus Jakarta Sans' => array('sans-serif', '400;500;600;700;800'),
+		'Inter'             => array('sans-serif', '400;500;600;700;800'),
+		'Poppins'           => array('sans-serif', '400;500;600;700;800'),
+		'Montserrat'        => array('sans-serif', '400;500;600;700;800'),
+		'Manrope'           => array('sans-serif', '400;500;600;700;800'),
+		'DM Sans'           => array('sans-serif', '400;500;600;700;800'),
+		'Outfit'            => array('sans-serif', '400;500;600;700;800'),
+		'Sora'              => array('sans-serif', '400;500;600;700;800'),
+		'Figtree'           => array('sans-serif', '400;500;600;700;800'),
+		'Space Grotesk'     => array('sans-serif', '400;500;600;700'),
+		'Work Sans'         => array('sans-serif', '400;500;600;700;800'),
+		'Rubik'             => array('sans-serif', '400;500;600;700;800'),
+		'Nunito'            => array('sans-serif', '400;500;600;700;800'),
+		'Raleway'           => array('sans-serif', '400;500;600;700;800'),
+		'Roboto'            => array('sans-serif', '400;500;700'),
+		'Open Sans'         => array('sans-serif', '400;500;600;700;800'),
+		'Lato'              => array('sans-serif', '400;700'),
+		'Playfair Display'  => array('serif', '400;500;600;700;800'),
+		'Lora'              => array('serif', '400;500;600;700'),
+		'Merriweather'      => array('serif', '400;700'),
+	);
+}
+
+function vnd_fa_font_choices() {
+	$names = array_keys(vnd_fa_fonts());
+	return array_combine($names, $names);
 }
 
 /** O endereço que vem no plugin descarregado da plataforma (já configurado). */

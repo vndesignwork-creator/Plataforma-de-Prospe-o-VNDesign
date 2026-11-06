@@ -189,6 +189,12 @@
 	border-radius: 8px;
 }
 
+/* Letra escolhida no plugin (sem escolha: a do site). Os campos e o botão herdam-na. */
+.vnd-fa.vnd-fa--font { font-family: var(--vnd-fa-font); }
+.vnd-fa.vnd-fa--font-heading .vnd-fa__title,
+.vnd-fa.vnd-fa--font-heading .vnd-fa__promo-title,
+.vnd-fa.vnd-fa--font-heading .vnd-fa__success-title { font-family: var(--vnd-fa-font-heading); }
+
 /* Texto de persuasão ao lado do formulário. */
 .vnd-fa--promo { container-type: inline-size; }
 .vnd-fa__grid {
