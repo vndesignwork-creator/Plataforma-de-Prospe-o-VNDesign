@@ -58,11 +58,12 @@ export function AccountingSection() {
             ))}
           </dl>
         )}
-        <div className="flex flex-wrap justify-end gap-2">
-          <a href={`${base}&format=pdf`} className={buttonClasses('outline', 'sm')} download>
+        {/* Os dois com a mesma largura: lado a lado (a toda a largura no telemóvel, à direita no computador). */}
+        <div className="ml-auto grid w-full grid-cols-2 gap-2 sm:w-fit">
+          <a href={`${base}&format=pdf`} className={buttonClasses('outline', 'sm', 'w-full')} download>
             <FileText className="h-4 w-4" aria-hidden /> Descarregar PDF
           </a>
-          <a href={`${base}&format=xlsx`} className={buttonClasses('outline', 'sm')} download>
+          <a href={`${base}&format=xlsx`} className={buttonClasses('outline', 'sm', 'w-full')} download>
             <FileSpreadsheet className="h-4 w-4" aria-hidden /> Descarregar Excel
           </a>
         </div>
