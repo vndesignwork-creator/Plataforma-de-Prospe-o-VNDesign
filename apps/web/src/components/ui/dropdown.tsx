@@ -79,7 +79,8 @@ export function DropdownContent({
         collisionPadding={12}
         className={cn(
           // Fundo e borda mais claros que os cartões, para o menu não se confundir com o que está por baixo.
-          'z-50 max-h-[70dvh] max-w-[calc(100vw-1.5rem)] min-w-56 overflow-y-auto rounded-xl border border-border-strong bg-surface-2 p-1.5 shadow-card',
+          // A altura nunca passa do espaço livre no ecrã (um menu comprido desliza por dentro, não sai do ecrã).
+          'z-50 max-h-[min(70dvh,var(--radix-dropdown-menu-content-available-height))] max-w-[calc(100vw-1.5rem)] min-w-56 overflow-y-auto rounded-xl border border-border-strong bg-surface-2 p-1.5 shadow-card',
           className,
         )}
       >

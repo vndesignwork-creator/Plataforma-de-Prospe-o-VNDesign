@@ -31,7 +31,7 @@ test('Cartões: cor, afixar, arquivar e desarquivar (de cada pessoa) e partilhar
   await page.reload();
   await expect(page.getByRole('group', { name: 'Afixados' }).getByRole('region', { name: `Keep ${run}` })).toHaveAttribute('data-color', 'green');
 
-  // Arquivar: sai do quadro e fica em "Listas arquivadas"; Desarquivar volta.
+  // Arquivar: sai do quadro e fica em "Arquivados"; Desarquivar volta.
   await page.getByRole('button', { name: `Mais ações: Keep ${run}` }).click();
   await page.getByRole('menuitem', { name: 'Arquivar' }).click();
   await expect(page.getByText(`Lista “Keep ${run}” arquivada.`)).toBeVisible();
@@ -41,7 +41,7 @@ test('Cartões: cor, afixar, arquivar e desarquivar (de cada pessoa) e partilhar
   // As tarefas das arquivadas não aparecem nas listas de tarefas.
   const open = (await (await page.request.get('/api/v1/tasks?assigned=all&lists=all')).json()).data as { list_id: string | null }[];
   expect(open.some((t) => t.list_id === list.id)).toBe(false);
-  await page.getByRole('button', { name: /Listas arquivadas/ }).click();
+  await page.getByRole('button', { name: /^Arquivados/ }).click();
   const archivedCard = page.getByRole('region', { name: `Keep ${run}` });
   await expect(archivedCard.getByText(`Item ${run}`)).toBeVisible();
   await expect(archivedCard.getByLabel(`Nova tarefa em Keep ${run}`)).toHaveCount(0);
@@ -59,6 +59,40 @@ test('Cartões: cor, afixar, arquivar e desarquivar (de cada pessoa) e partilhar
   await page.getByRole('menuitem', { name: 'Desafixar' }).click();
   await expect(page.getByRole('group', { name: 'Afixados' })).toHaveCount(0);
   expect((await page.request.delete(`/api/v1/task-lists/${list.id}`)).status()).toBe(204);
+});
+
+test('Cartão de um lead: arquivar tira-o do quadro; desarquivar repõe; uma tarefa nova trá-lo de volta', async ({ page }) => {
+  const lead = (await (await page.request.post('/api/v1/leads?force=true', { data: { company_name: `Arquivo Lead ${run}` } })).json()).data as { id: string; number: number };
+  await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title: `Ligar ${run}` } });
+  const name = `#${lead.number} Arquivo Lead ${run}`;
+  await page.goto('/tarefas?vista=cartoes');
+  const card = page.getByRole('region', { name });
+  await expect(card.getByText(`Ligar ${run}`)).toBeVisible();
+
+  await card.getByRole('button', { name: `Mais ações: ${name}` }).click();
+  await page.getByRole('menuitem', { name: 'Arquivar' }).click();
+  await expect(page.getByText(`“${name}” arquivado.`)).toBeVisible();
+  await expect(page.getByRole('region', { name })).toHaveCount(0);
+  // Fica arquivado depois de recarregar (preferência guardada) e aparece em "Arquivados".
+  await page.reload();
+  await expect(page.getByText(`Ligar ${run}`)).toHaveCount(0);
+  await page.getByRole('button', { name: /^Arquivados/ }).click();
+  const archived = page.getByRole('region', { name });
+  await expect(archived.getByText(`Ligar ${run}`)).toBeVisible();
+  await archived.getByRole('button', { name: `Mais ações: ${name}` }).click();
+  await page.getByRole('menuitem', { name: 'Desarquivar' }).click();
+  await expect(page.getByText(`“${name}” de volta ao quadro.`)).toBeVisible();
+  await expect(page.getByRole('region', { name }).getByLabel(`Nova tarefa em ${name}`)).toBeVisible();
+
+  // Arquivado de novo, uma tarefa nova no lead trá-lo de volta ao quadro.
+  await page.getByRole('region', { name }).getByRole('button', { name: `Mais ações: ${name}` }).click();
+  await page.getByRole('menuitem', { name: 'Arquivar' }).click();
+  await expect(page.getByText(`“${name}” arquivado.`)).toBeVisible();
+  await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title: `Enviar proposta ${run}` } });
+  await page.reload();
+  await expect(page.getByRole('region', { name }).getByLabel(`Nova tarefa em ${name}`)).toBeVisible();
+  await expect(page.getByRole('region', { name }).getByText(`Enviar proposta ${run}`)).toBeVisible();
+  await page.request.delete(`/api/v1/leads/${lead.id}`);
 });
 
 test('Tarefas que se repetem: escrever "todas as segundas", concluir cria a seguinte, Anular tira-a; quem marcou', async ({ page }) => {

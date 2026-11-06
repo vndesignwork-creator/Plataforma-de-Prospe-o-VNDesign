@@ -134,11 +134,13 @@ const CARD_COLORS = {
 type CardColor = keyof typeof CARD_COLORS;
 const isCardColor = (v: unknown): v is CardColor =>
   typeof v === "string" && v in CARD_COLORS;
-/** Preferência do quadro: a ordem, os afixados e as cores (por cartão). */
+/** Preferência do quadro: a ordem, os afixados, as cores e os arquivados (por cartão). */
 type BoardPrefs = {
   order?: string[];
   pinned?: string[];
   colors?: Record<string, string>;
+  /** Cartões de leads (e "Sem lista") arquivados: chave → quando. As listas guardam-no na própria lista. */
+  archived?: Record<string, string>;
 };
 
 export function useTaskLists() {
@@ -361,6 +363,7 @@ function BoardCardView({
   onColor,
   viewer,
   archived = false,
+  onArchive,
 }: {
   index: number;
   count: number;
@@ -373,6 +376,8 @@ function BoardCardView({
   viewer: { id: string | null; role: string | null; hasTeam: boolean };
   /** No arquivo: sem caixa de nova tarefa; o menu desarquiva ou apaga. */
   archived?: boolean;
+  /** Arquivar/desarquivar um cartão que não é uma lista (lead ou "Sem lista"). */
+  onArchive?: (archive: boolean) => void;
   card: BoardCard;
   today: string;
   targets: { key: string; label: string; container: Container }[];
@@ -756,6 +761,19 @@ function BoardCardView({
                   )}
                 </DropdownItem>
               ) : null}
+              {!card.list && onArchive ? (
+                <DropdownItem onSelect={() => onArchive(!archived)}>
+                  {archived ? (
+                    <>
+                      <ArchiveRestore className="h-4 w-4" aria-hidden /> Desarquivar
+                    </>
+                  ) : (
+                    <>
+                      <Archive className="h-4 w-4" aria-hidden /> Arquivar
+                    </>
+                  )}
+                </DropdownItem>
+              ) : null}
               <DropdownSeparator />
               <DropdownLabel>
                 <span className="inline-flex items-center gap-1.5">
@@ -1084,11 +1102,23 @@ export function TaskBoard({
     const c = savedOrder?.colors?.[key];
     return isCardColor(c) ? c : null;
   };
+  // Um cartão de lead arquivado volta ao quadro sozinho se entretanto aparecer uma tarefa nova.
+  const archivedAt = useMemo(() => {
+    const raw = savedOrder?.archived;
+    return raw && typeof raw === "object" ? raw : {};
+  }, [savedOrder]);
+  const [boardCards, archivedCards] = useMemo(() => {
+    const isArchived = (c: BoardCard) => {
+      const at = archivedAt[c.key];
+      return !c.list && !!at && c.pending.every((t) => (t.created_at ?? "") <= at);
+    };
+    return [cards.filter((c) => !isArchived(c)), cards.filter(isArchived)];
+  }, [cards, archivedAt]);
   const ordered = useMemo(() => {
     const order = Array.isArray(savedOrder?.order) ? savedOrder.order : [];
     const at = new Map(order.map((k, i) => [k, i]));
-    const fresh = cards.filter((c) => !at.has(c.key));
-    const known = cards
+    const fresh = boardCards.filter((c) => !at.has(c.key));
+    const known = boardCards
       .filter((c) => at.has(c.key))
       .sort((a, b) => at.get(a.key)! - at.get(b.key)!);
     const all = [...fresh, ...known];
@@ -1096,7 +1126,7 @@ export function TaskBoard({
       ...all.filter((c) => pinnedKeys.has(c.key)),
       ...all.filter((c) => !pinnedKeys.has(c.key)),
     ];
-  }, [cards, savedOrder, pinnedKeys]);
+  }, [boardCards, savedOrder, pinnedKeys]);
   const pinnedCards = ordered.filter((c) => pinnedKeys.has(c.key));
   const otherCards = ordered.filter((c) => !pinnedKeys.has(c.key));
   function savePrefs(next: Partial<BoardPrefs>) {
@@ -1105,6 +1135,7 @@ export function TaskBoard({
         order: Array.isArray(savedOrder?.order) ? savedOrder.order : [],
         pinned: [...pinnedKeys],
         colors: savedOrder?.colors ?? {},
+        archived: archivedAt,
         ...next,
       },
       { onError: (e) => toast.error(errorMessage(e)) },
@@ -1121,6 +1152,24 @@ export function TaskBoard({
     if (pin) next.add(key);
     else next.delete(key);
     savePrefs({ pinned: [...next].slice(0, 200) });
+  }
+  function archiveCard(card: BoardCard, archive: boolean) {
+    const archived = { ...archivedAt };
+    if (archive) archived[card.key] = new Date().toISOString();
+    else delete archived[card.key];
+    // Guarda só os mais recentes (não cresce para sempre).
+    const kept = Object.fromEntries(
+      Object.entries(archived)
+        .sort((a, b) => b[1].localeCompare(a[1]))
+        .slice(0, 300),
+    );
+    savePrefs({ archived: kept, pinned: [...pinnedKeys].filter((k) => !archive || k !== card.key) });
+    if (archive)
+      toast.success(`“${card.title}” arquivado.`, {
+        description: "Volta ao quadro se aparecer uma tarefa nova.",
+        action: { label: "Anular", onClick: () => archiveCard(card, false) },
+      });
+    else toast.success(`“${card.title}” de volta ao quadro.`);
   }
   function colorCard(key: string, color: CardColor | null) {
     const colors = { ...(savedOrder?.colors ?? {}) };
@@ -1183,8 +1232,10 @@ export function TaskBoard({
       api<{ data: TaskListWithTasks[] }>("/task-lists", {
         query: { archived: "1" },
       }).then((r) => r.data),
-    enabled: showArchive,
+    enabled: showArchive && showLists,
   });
+  const archivedLists = showLists ? (archive.data ?? []) : [];
+  const archiveCount = archivedCards.length + archivedLists.length;
 
   const renderCards = (group: BoardCard[]) => (
     <div className="columns-1 gap-4 md:columns-2 2xl:columns-3">
@@ -1203,6 +1254,7 @@ export function TaskBoard({
           pinned={pinnedKeys.has(card.key)}
           onPin={(pin) => pinCard(card.key, pin)}
           onColor={(color) => colorCard(card.key, color)}
+          onArchive={(archive) => archiveCard(card, archive)}
           viewer={viewer}
         />
       ))}
@@ -1268,7 +1320,7 @@ export function TaskBoard({
       ) : (
         empty
       )}
-      {showLists ? (
+      {showLists || archivedCards.length ? (
         <div className="flex flex-col gap-3">
           <button
             type="button"
@@ -1283,15 +1335,35 @@ export function TaskBoard({
               )}
               aria-hidden
             />
-            <Archive className="h-4 w-4" aria-hidden /> Listas arquivadas
-            {archive.data ? ` (${archive.data.length})` : ""}
+            <Archive className="h-4 w-4" aria-hidden /> Arquivados
+            {archive.data || !showLists ? ` (${archiveCount})` : archivedCards.length ? ` (${archivedCards.length}+)` : ""}
           </button>
           {showArchive ? (
             archive.isLoading ? (
               <Skeleton className="h-24" />
-            ) : archive.data?.length ? (
+            ) : archiveCount ? (
               <div className="columns-1 gap-4 opacity-90 md:columns-2 2xl:columns-3">
-                {archive.data.map((list, i) => {
+                {archivedCards.map((card) => (
+                  <BoardCardView
+                    key={card.key}
+                    card={card}
+                    today={today}
+                    targets={[]}
+                    assigneeName={assigneeName}
+                    assignTo={assignTo}
+                    index={0}
+                    count={1}
+                    onMoveCard={() => undefined}
+                    color={colorOf(card.key)}
+                    pinned={false}
+                    onPin={() => undefined}
+                    onColor={(color) => colorCard(card.key, color)}
+                    onArchive={(archive) => archiveCard(card, archive)}
+                    viewer={viewer}
+                    archived
+                  />
+                ))}
+                {archivedLists.map((list, i) => {
                   const tasks = list.tasks.map((t) => ({ ...t, lead: null }));
                   const card: BoardCard = {
                     key: `list:${list.id}`,
@@ -1324,8 +1396,8 @@ export function TaskBoard({
               </div>
             ) : (
               <p className="text-sm text-muted">
-                Sem listas arquivadas. No ⋯ de uma lista, “Arquivar” tira-a do
-                quadro sem a apagar.
+                Nada arquivado. No ⋯ de um cartão, “Arquivar” tira-o do quadro
+                sem apagar as tarefas.
               </p>
             )
           ) : null}

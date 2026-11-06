@@ -54,7 +54,7 @@ export const HELP_GUIDES: HelpGuide[] = [
       'As tarefas aparecem agrupadas pelo prazo (atrasadas, hoje, próximos dias, sem prazo); filtra por Leads ou Projetos e por responsável.',
       'Marca como feita com o visto; para mudar a data, carrega no prazo da tarefa.',
       'No telemóvel, desliza uma tarefa para a direita para a marcar como feita e para a esquerda para a adiar.',
-      'No ⋯ de cada cartão: afixar no topo, cor, mudar de lugar e (nas listas) arquivar. A ordem, as cores e os afixados são só teus; as listas arquivadas ficam em “Listas arquivadas”, no fim.',
+      'No ⋯ de cada cartão: afixar no topo, cor, mudar de lugar e arquivar. A ordem, as cores, os afixados e os cartões de leads arquivados são só teus; os arquivados ficam em “Arquivados”, no fim (um cartão de lead volta sozinho ao quadro se aparecer uma tarefa nova).',
       'Tarefas que se repetem: na janela de editar, escolhe “Repetir” (todos os dias, dias úteis, semanas, meses ou anos). Ao concluir, a próxima é criada sozinha com a data seguinte.',
       'Com equipa: “Partilhar com a equipa” no ⋯ da lista deixa todos verem e mexerem; em cada tarefa feita vê-se quem a marcou.',
     ],

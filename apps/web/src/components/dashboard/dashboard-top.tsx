@@ -23,7 +23,7 @@ function greeting(now: Date) {
   return hour < 12 ? 'Bom dia' : hour < 20 ? 'Boa tarde' : 'Boa noite';
 }
 
-/** "Bom dia, Ana · quinta, 30/10 · 14:35" e, por baixo, o que há para hoje (cada parte leva à lista certa). */
+/** "Bom dia, Ana · quinta, 30/10 · 14:35" (a hora só no computador) e, por baixo, o que há para hoje (cada parte leva à lista certa). */
 export function DashboardHeader({ organize }: { organize?: ReactNode }) {
   const { data: me } = useMe();
   const { data: today } = useToday();
@@ -62,10 +62,14 @@ export function DashboardHeader({ organize }: { organize?: ReactNode }) {
         now ? (
           <>
             {greeting(now)}
-            {first ? `, ${first}` : ''} · {day} ·{' '}
-            <time dateTime={now.toISOString()} className="tabular">
-              {time}
-            </time>
+            {first ? `, ${first}` : ''} · {day}
+            {/* A hora só no computador: no telemóvel e no tablet já está no ecrã. */}
+            <span className="hidden lg:inline">
+              {' · '}
+              <time dateTime={now.toISOString()} className="tabular">
+                {time}
+              </time>
+            </span>
           </>
         ) : undefined
       }
