@@ -209,7 +209,8 @@ function ProposalDocument({ proposal, lead, signature, settings }: ProposalPdfDa
             {settings.tax_note ? <Text style={s.note}>{settings.tax_note}</Text> : null}
           </View>
 
-          <View style={s.box} wrap={false}>
+          {proposal.valid_until || proposal.payment_terms || proposal.notes ? (
+            <View style={s.box} wrap={false}>
             {proposal.valid_until ? (
               <View style={s.boxRow}>
                 <Text style={s.boxLabel}>Validade</Text>
@@ -226,9 +227,10 @@ function ProposalDocument({ proposal, lead, signature, settings }: ProposalPdfDa
               <View style={s.boxRow}>
                 <Text style={s.boxLabel}>Notas</Text>
                 <Text style={s.boxValue}>{proposal.notes}</Text>
-              </View>
+                </View>
             ) : null}
-          </View>
+            </View>
+          ) : null}
 
           {settings.next_steps ? (
             <>

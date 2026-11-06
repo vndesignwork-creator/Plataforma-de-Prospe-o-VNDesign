@@ -142,12 +142,15 @@ export function ServiceChips({ services, className }: { services?: readonly stri
         <li
           key={s}
           className={cn(
-            'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap',
+            'inline-flex max-w-full items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium',
             categoryChipClass(catalog.get(s)!.category),
           )}
         >
-          <ServiceIcon service={s} className="h-3.5 w-3.5" />
-          {serviceLabel(s, catalog.all)}
+          <ServiceIcon service={s} className="h-3.5 w-3.5 shrink-0" />
+          {/* Num ecrã estreito, um nome comprido corta com "…" em vez de sair da ficha. */}
+          <span className="truncate" title={serviceLabel(s, catalog.all)}>
+            {serviceLabel(s, catalog.all)}
+          </span>
         </li>
       ))}
     </ul>

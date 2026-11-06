@@ -103,14 +103,14 @@ export function TagEditor({ lead }: { lead: Lead }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {tags.map((tag) => (
-        <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-surface-3 py-0.5 pr-1 pl-2 text-xs font-medium">
-          <Link href={`/leads?etiqueta=${encodeURIComponent(tag)}`} className="hover:underline">
+        <span key={tag} className="inline-flex max-w-full items-center gap-1 rounded-full bg-surface-3 py-0.5 pr-1 pl-2 text-xs font-medium">
+          <Link href={`/leads?etiqueta=${encodeURIComponent(tag)}`} className="truncate hover:underline">
             {tag}
           </Link>
           <button
             type="button"
             onClick={() => void remove(tag)}
-            className="rounded-full p-0.5 text-muted hover:bg-surface-2 hover:text-fg"
+            className="shrink-0 rounded-full p-0.5 text-muted hover:bg-surface-2 hover:text-fg"
             aria-label={`Tirar a etiqueta ${tag}`}
           >
             <X className="h-3 w-3" aria-hidden />
@@ -118,8 +118,8 @@ export function TagEditor({ lead }: { lead: Lead }) {
         </span>
       ))}
       {tags.length < 10 ? (
-        <span className="inline-flex items-center">
-          <Plus className="mr-1 h-3.5 w-3.5 text-muted" aria-hidden />
+        <span className="inline-flex max-w-full items-center">
+          <Plus className="mr-1 h-3.5 w-3.5 shrink-0 text-muted" aria-hidden />
           <input
             value={text}
             list={listId}
@@ -139,7 +139,7 @@ export function TagEditor({ lead }: { lead: Lead }) {
             onBlur={() => text.trim() && add(text)}
             placeholder={tags.length ? 'Outra etiqueta' : 'Acrescentar etiqueta'}
             aria-label="Nova etiqueta"
-            className="h-7 w-48 rounded-md border border-transparent bg-transparent px-1 text-sm outline-none placeholder:text-muted focus:border-border focus-visible:border-accent"
+            className="h-7 w-48 min-w-0 max-w-full rounded-md border border-transparent bg-transparent px-1 text-sm outline-none placeholder:text-muted focus:border-border focus-visible:border-accent"
           />
           <datalist id={listId}>
             {suggestions.slice(0, 30).map((t) => (

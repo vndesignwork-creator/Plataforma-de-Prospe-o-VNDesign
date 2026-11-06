@@ -325,10 +325,11 @@ export function QuoteSettingsCard({ settings }: { settings: SettingsWithMail }) 
         <Field label="Valor por hora (€)" hint="O mesmo das Horas (converte o tempo em dinheiro). Vazio = sem comparação." className="w-64">
           <Input inputMode="decimal" placeholder="35" value={targetValue} onChange={(e) => setTarget(e.target.value)} />
         </Field>
-        <div className="relative overflow-x-auto">
-          <table className="w-full min-w-[40rem] text-sm">
+        {/* No telemóvel, cada extra é um cartão com os campos identificados; no computador, uma tabela. */}
+        <div className="relative sm:overflow-x-auto">
+          <table className="block w-full text-sm sm:table sm:min-w-[40rem]">
             <caption className="sr-only">Extras da calculadora</caption>
-            <thead>
+            <thead className="hidden sm:table-header-group">
               <tr className="text-left text-xs text-muted">
                 <th className="py-1 pr-2 font-medium">Extra</th>
                 <th className="py-1 pr-2 font-medium">Preço</th>
@@ -341,28 +342,33 @@ export function QuoteSettingsCard({ settings }: { settings: SettingsWithMail }) 
                 </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="flex flex-col gap-3 sm:table-row-group">
               {list.map((r, i) => (
-                <tr key={i}>
-                  <td className="py-1 pr-2">
+                <tr key={i} className="grid grid-cols-2 gap-x-2 gap-y-2 rounded-lg border border-border p-3 sm:table-row sm:rounded-none sm:border-0 sm:p-0">
+                  <td className="col-span-2 sm:py-1 sm:pr-2">
+                    <MobileLabel>Extra</MobileLabel>
                     <Input aria-label={`Nome do extra ${i + 1}`} maxLength={80} value={r.name} onChange={(e) => edit(i, { name: e.target.value })} />
                   </td>
-                  <td className="py-1 pr-2">
-                    <Input aria-label={`Preço do extra ${i + 1}`} inputMode="decimal" className="w-24" value={r.price} onChange={(e) => edit(i, { price: e.target.value })} />
+                  <td className="sm:py-1 sm:pr-2">
+                    <MobileLabel>Preço</MobileLabel>
+                    <Input aria-label={`Preço do extra ${i + 1}`} inputMode="decimal" className="w-full sm:w-24" value={r.price} onChange={(e) => edit(i, { price: e.target.value })} />
                   </td>
-                  <td className="py-1 pr-2">
+                  <td className="sm:py-1 sm:pr-2">
+                    <MobileLabel>Tipo</MobileLabel>
                     <Select aria-label={`Tipo do extra ${i + 1}`} value={r.kind} onChange={(e) => edit(i, { kind: e.target.value as QuoteExtra['kind'] })}>
                       <option value="fixed">€ por unidade</option>
                       <option value="percent">% sobre o total</option>
                     </Select>
                   </td>
-                  <td className="py-1 pr-2">
-                    <Input aria-label={`Unidade do extra ${i + 1}`} maxLength={20} className="w-24" placeholder="página" value={r.unit} onChange={(e) => edit(i, { unit: e.target.value })} />
+                  <td className="sm:py-1 sm:pr-2">
+                    <MobileLabel>Unidade</MobileLabel>
+                    <Input aria-label={`Unidade do extra ${i + 1}`} maxLength={20} className="w-full sm:w-24" placeholder="página" value={r.unit} onChange={(e) => edit(i, { unit: e.target.value })} />
                   </td>
-                  <td className="py-1 pr-2">
-                    <Input aria-label={`Horas do extra ${i + 1}`} inputMode="decimal" className="w-20" value={r.hours} onChange={(e) => edit(i, { hours: e.target.value })} />
+                  <td className="sm:py-1 sm:pr-2">
+                    <MobileLabel>Horas por unidade</MobileLabel>
+                    <Input aria-label={`Horas do extra ${i + 1}`} inputMode="decimal" className="w-full sm:w-20" value={r.hours} onChange={(e) => edit(i, { hours: e.target.value })} />
                   </td>
-                  <td className="py-1 pr-2 text-center">
+                  <td className="flex items-center gap-2 text-sm sm:table-cell sm:py-1 sm:pr-2 sm:text-center">
                     <input
                       type="checkbox"
                       className="h-4 w-4"
@@ -371,8 +377,11 @@ export function QuoteSettingsCard({ settings }: { settings: SettingsWithMail }) 
                       checked={r.kind === 'fixed' && r.recurring}
                       onChange={(e) => edit(i, { recurring: e.target.checked })}
                     />
+                    <span className="text-muted sm:hidden" aria-hidden>
+                      Mensal
+                    </span>
                   </td>
-                  <td className="py-1">
+                  <td className="flex justify-end sm:table-cell sm:py-1">
                     <Button type="button" size="sm" variant="ghost" onClick={() => setRows(list.filter((_, j) => j !== i))}>
                       <Trash2 className="h-3.5 w-3.5" aria-hidden />
                       <span className="sr-only">Apagar extra {r.name || i + 1}</span>
@@ -409,6 +418,15 @@ export function QuoteSettingsCard({ settings }: { settings: SettingsWithMail }) 
         </div>
       </form>
     </Card>
+  );
+}
+
+/** Nome do campo por cima de cada caixa, só no telemóvel (no computador está no cabeçalho da tabela). */
+function MobileLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="mb-1 block text-xs text-muted sm:hidden" aria-hidden>
+      {children}
+    </span>
   );
 }
 

@@ -45,7 +45,36 @@ export function TeamStatsSection({ bare }: { bare?: boolean } = {}) {
       )}
       <Card>
         <CardHeader title="Por pessoa" description="Contactos que cada pessoa registou; leads de que é responsável que responderam, tiveram reunião ou passaram a cliente (cada lead conta uma vez); leads criados." />
-        <div className="relative overflow-x-auto">
+        {/* No telemóvel, um cartão por pessoa (a tabela de 8 colunas obrigava a deslizar para o lado). */}
+        <ul className="flex flex-col gap-2 p-3 sm:hidden" aria-label="Trabalho de cada pessoa da equipa">
+          {data.members.map((m) => {
+            const cells = [
+              { label: 'Contactos (hoje)', value: `${m.contacts} (${m.contacts_today})` },
+              { label: 'Responderam', value: String(m.replied) },
+              { label: 'Reuniões', value: String(m.meetings) },
+              { label: 'Clientes', value: String(m.won) },
+              { label: 'Leads criados', value: String(m.generated) },
+              { label: 'Em aberto', value: String(m.assigned_open) },
+              { label: 'Gerador (7 dias)', value: generator(m) },
+            ];
+            return (
+              <li key={m.user_id} className="rounded-lg border border-border px-3 py-2.5">
+                <p className="text-sm break-words">
+                  <span className="font-medium">{m.name}</span> <span className="text-xs text-muted">· {MEMBER_ROLE_LABELS[m.role]}</span>
+                </p>
+                <dl className="mt-2 grid grid-cols-1 gap-y-1 min-[360px]:grid-cols-2 min-[360px]:gap-x-4">
+                  {cells.map((c) => (
+                    <div key={c.label} className="flex min-w-0 items-baseline justify-between gap-2">
+                      <dt className="text-xs text-muted">{c.label}</dt>
+                      <dd className="text-sm font-medium tabular">{c.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="relative hidden overflow-x-auto sm:block">
           <table className="w-full min-w-[44rem] text-sm">
             <caption className="sr-only">Trabalho de cada pessoa da equipa</caption>
             <thead>
