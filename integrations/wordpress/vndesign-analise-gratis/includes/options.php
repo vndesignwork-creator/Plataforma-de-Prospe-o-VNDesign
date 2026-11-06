@@ -78,6 +78,15 @@ function vnd_fa_defaults() {
 	);
 }
 
+/** Textos de origem das versões anteriores (para os trocar pelos novos). */
+function vnd_fa_old_defaults() {
+	return array(
+		'promo_points' => array("Velocidade no telemóvel: quanto tempo os clientes esperam\nSegurança: se aparece o aviso “Não seguro”\nGoogle: como o seu negócio aparece nas pesquisas\nOs pormenores que levam os visitantes a desistir"),
+		'promo_text'   => array('Um site lento, com o aviso “Não seguro” ou difícil de encontrar no Google faz perder pedidos todos os dias. Em poucos minutos mostramos-lhe o que está a correr mal e como resolver.'),
+		'intro'        => array('Em poucos minutos recebe por email um relatório simples do seu site: a velocidade no telemóvel, a segurança, como aparece no Google e o que pode estar a afastar clientes. Sem compromisso.'),
+	);
+}
+
 /** Valores permitidos nas opções de escolha. */
 function vnd_fa_choices() {
 	return array(
@@ -141,7 +150,15 @@ function vnd_fa_bundled_page_url() {
 /** As opções guardadas, por cima dos valores de origem. */
 function vnd_fa_options() {
 	$saved = get_option(VND_FA_OPTION, array());
-	$options = array_merge(vnd_fa_defaults(), is_array($saved) ? $saved : array());
+	$saved = is_array($saved) ? $saved : array();
+	// Textos de origem antigos (guardados antes de haver o GEO): passam aos novos. Os escritos à mão ficam.
+	$defaults = vnd_fa_defaults();
+	foreach (vnd_fa_old_defaults() as $key => $olds) {
+		if (isset($saved[$key]) && in_array(str_replace("\r\n", "\n", trim((string) $saved[$key])), $olds, true)) {
+			$saved[$key] = $defaults[$key];
+		}
+	}
+	$options = array_merge($defaults, $saved);
 	if ($options['page_url'] === '') {
 		$options['page_url'] = vnd_fa_bundled_page_url();
 	}

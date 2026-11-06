@@ -170,6 +170,14 @@ describe('plugin de WordPress', () => {
     expect(bad.stdout).not.toContain('vnd-fa__turnstile');
   });
 
+  it.skipIf(!hasPhp)('textos de origem antigos guardados passam aos novos (GEO); os escritos à mão ficam', () => {
+    const old = 'Velocidade no telemóvel: quanto tempo os clientes esperam\r\nSegurança: se aparece o aviso “Não seguro”\r\nGoogle: como o seu negócio aparece nas pesquisas\r\nOs pormenores que levam os visitantes a desistir';
+    expect(render({ page_url: PAGE, promo_points: old })).toContain('IA: se o ChatGPT');
+    const mine = render({ page_url: PAGE, promo_points: 'A minha vantagem' });
+    expect(mine).toContain('<span>A minha vantagem</span>');
+    expect(mine).not.toContain('IA: se o ChatGPT');
+  });
+
   it.skipIf(!hasPhp)('sem ligação: só o administrador vê o aviso', () => {
     expect(render({}).replace(/\n<!--.*-->/, '')).toBe('');
     expect(render({}, {}, true)).toContain('Falta ligar o formulário à plataforma');

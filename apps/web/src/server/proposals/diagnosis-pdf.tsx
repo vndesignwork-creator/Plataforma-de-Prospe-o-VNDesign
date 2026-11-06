@@ -10,7 +10,9 @@ import {
   AUDIT_SEVERITY_LABELS,
   formatDate,
   formatSignature,
+  geoChecklist,
   topAuditIssues,
+  type GeoFacts,
   type ServiceInfo,
   type Signature,
   type SiteAudit,
@@ -43,6 +45,8 @@ const s = StyleSheet.create({
   issueHead: { flexDirection: 'row', alignItems: 'center' },
   issueTag: { fontSize: 7.5, fontWeight: 700, color: '#ffffff', borderRadius: 3, paddingHorizontal: 5, paddingVertical: 1.5, marginRight: 7 },
   issueTitle: { fontWeight: 700, fontSize: 11, flex: 1 },
+  /** O mesmo título, mas sozinho numa coluna (sem flex: com flex:1 a altura ficava 0 e o texto de baixo ia por cima). */
+  blockTitle: { fontWeight: 700, fontSize: 11, lineHeight: 1.35 },
   issueWhy: { color: MUTED, marginTop: 3 },
   service: { flexDirection: 'row', marginTop: 4 },
   bullet: { width: 5, height: 5, backgroundColor: ACCENT, borderRadius: 1, marginTop: 4.5, marginRight: 7 },
@@ -134,6 +138,8 @@ function DiagnosisDocument({ audit, lead, services, signature, screenshots = [],
     .map((key) => services.find((s) => s.key === key))
     .filter((s): s is ServiceInfo => !!s && !s.archived_at);
   const url = bareHost(audit.final_url ?? audit.url);
+  // GEO: o que a análise viu no site (robots das IAs, dados estruturados, conteúdo, contactos, FAQ).
+  const geo = (audit.metrics as { geo?: GeoFacts } | null)?.geo ?? null;
 
   return (
     <Document
@@ -174,8 +180,9 @@ function DiagnosisDocument({ audit, lead, services, signature, screenshots = [],
 
         <View style={s.body}>
           <Text style={s.paragraph}>
-            {lead.contact_name ? `${lead.contact_name}, analisei` : 'Analisei'} o vosso site com as mesmas ferramentas que o Google usa. Este
-            é o resumo do que encontrei e do que faria para trazer mais clientes através dele.
+            {lead.contact_name ? `${lead.contact_name}, analisei` : 'Analisei'} o vosso site com as mesmas ferramentas que o Google usa e vi se
+            está preparado para as IAs (ChatGPT, Gemini), que cada vez mais pessoas usam para escolher onde comprar. Este é o resumo do que
+            encontrei e do que faria para trazer mais clientes através dele.
           </Text>
 
           <Text style={s.h2}>Resumo</Text>
@@ -236,11 +243,28 @@ function DiagnosisDocument({ audit, lead, services, signature, screenshots = [],
             </Text>
           ) : null}
 
+          {geo ? (
+            <View wrap={false}>
+              <Text style={s.h2}>Está preparado para as IAs?</Text>
+              <Text style={[s.paragraph, { marginBottom: 6 }]}>
+                O ChatGPT, o Gemini e outras IAs só recomendam negócios que conseguem ler e perceber. Isto é o que verifiquei no vosso site:
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                {geoChecklist(geo).map((c) => (
+                  <View key={c.key} style={{ width: '50%', flexDirection: 'row', alignItems: 'flex-start', paddingRight: 10, marginBottom: 5 }}>
+                    <View style={{ width: 7, height: 7, borderRadius: 3.5, marginTop: 3, marginRight: 6, backgroundColor: c.ok ? GOOD : BAD }} />
+                    <Text style={{ flex: 1, fontSize: 9.5, lineHeight: 1.35 }}>{c.label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
           {visibility ? (
             <View wrap={false}>
               <Text style={s.h2}>Aparece nas respostas das IAs?</Text>
               <View style={[s.issue, { borderLeftColor: visibility.mentioned === 0 ? BAD : visibility.mentioned === visibility.total ? GOOD : WARN }]}>
-                <Text style={s.issueTitle}>{visibility.summary}</Text>
+                <Text style={s.blockTitle}>{visibility.summary}</Text>
                 <Text style={s.issueWhy}>
                   Cada vez mais pessoas pedem recomendações ao ChatGPT, ao Claude ou ao Google em vez de pesquisar. Quem não aparece nessas
                   respostas perde clientes para quem aparece.
@@ -277,7 +301,7 @@ function DiagnosisDocument({ audit, lead, services, signature, screenshots = [],
             ))
           ) : !lead.approach_angle ? (
             <Text style={s.paragraph}>
-              Corrigir os pontos acima: um site rápido, seguro e fácil de usar no telemóvel, para quem vos encontra no Google vos contactar.
+              Corrigir os pontos acima: um site rápido, seguro, fácil de usar no telemóvel e preparado para as IAs, para quem vos encontra no Google ou no ChatGPT vos contactar.
             </Text>
           ) : null}
 

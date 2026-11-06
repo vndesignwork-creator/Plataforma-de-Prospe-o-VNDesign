@@ -332,7 +332,11 @@ export async function freeAuditExamplePdf(token: string): Promise<Buffer | null>
     has_viewport: true,
     zoom_blocked: true,
     pagespeed_mobile: 38,
-    metrics: { lcp_ms: 6200, cls: 0.21 },
+    metrics: {
+      lcp_ms: 6200,
+      cls: 0.21,
+      geo: { structured_types: [], business_schema: false, faq: false, word_count: 140, phone: true, address: false, maps_link: false, ai_bots_blocked: [] },
+    },
     title: 'Padaria Exemplo',
     meta_description: null,
     cms: 'WordPress',
