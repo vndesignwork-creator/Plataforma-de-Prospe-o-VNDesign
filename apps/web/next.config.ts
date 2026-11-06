@@ -64,6 +64,9 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: '/:path*', headers: securityHeaders },
+      // "Analisar o meu site grátis" pode ficar dentro do site do dono (iframe): só esta página.
+      // (Com frame-ancestors, os browsers ignoram o X-Frame-Options.)
+      { source: '/analise/:path*', headers: [{ key: 'Content-Security-Policy', value: 'frame-ancestors *' }] },
       // Dados dos leads: nunca guardados em caches partilhadas (CDN/proxy do alojamento).
       { source: '/api/:path*', headers: [{ key: 'Cache-Control', value: 'private, no-store' }] },
       // O service worker tem de ser sempre revalidado para as atualizações chegarem.

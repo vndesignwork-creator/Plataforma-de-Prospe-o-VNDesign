@@ -205,6 +205,12 @@ FEATURES.push(
     icon: Activity,
   },
   {
+    key: 'prospect_watch',
+    label: 'Oportunidades nos sites dos leads',
+    description: 'Vê os sites dos 20 leads mais quentes de 6 em 6 horas. Se um estiver em baixo, "Não seguro" ou muito lento, avisa e deixa a mensagem pronta para contactar.',
+    icon: Target,
+  },
+  {
     key: 'monthly_goals',
     label: 'Metas do mês',
     description: 'Recebido, propostas, clientes novos, emails, chamadas e WhatsApp: a barra de cada meta no Dashboard e na Prospeção.',
@@ -226,7 +232,7 @@ export const FEATURE_GROUPS: { title: string; description: string; master?: keyo
   {
     title: 'Leads e prospeção',
     description: 'Encontrar, analisar e contactar leads.',
-    parts: [{ keys: ['prospecting_session', 'monthly_goals', 'email_tracking', 'whatsapp_templates', 'meetings', 'diagnosis_report', 'site_screenshots'] }],
+    parts: [{ keys: ['prospecting_session', 'monthly_goals', 'prospect_watch', 'email_tracking', 'whatsapp_templates', 'meetings', 'diagnosis_report', 'site_screenshots'] }],
   },
   {
     title: 'Vendas e faturação',

@@ -9,6 +9,8 @@
 import {
   DOMAIN_WARN_DAYS,
   DOWN_AFTER_FAILS,
+  PROSPECT_CHECK_MINUTES,
+  PROSPECT_WATCH_COUNT,
   SSL_WARN_DAYS,
   WorkspaceSettingsSchema,
   daysBetween,
@@ -19,7 +21,9 @@ import {
   rdapBaseFor,
   rdapExpiry,
   registrableDomain,
+  siteOpportunity,
   todayIso,
+  type Opportunity,
   type SiteMonitor,
   type SiteMonitorListItem,
   type SiteMonitorUpdate,
@@ -209,7 +213,7 @@ export async function lookupDomainExpiry(domain: string): Promise<string | null>
 async function checkAndSave(
   client: SupabaseClient,
   m: Row,
-  options: { alerts: boolean; forceDomain?: boolean; now?: Date; workspaceId?: string },
+  options: { alerts: boolean; forceDomain?: boolean; now?: Date; workspaceId?: string; prospect?: boolean },
 ): Promise<SiteMonitor> {
   const now = options.now ?? new Date();
   const today = todayIso(now);
@@ -218,7 +222,8 @@ async function checkAndSave(
   const down = !check.ok && failCount >= DOWN_AFTER_FAILS;
   const update: Record<string, unknown> = {
     checked_at: now.toISOString(),
-    next_check_at: nextCheckAt(now, !check.ok),
+    // Leads (não clientes): de 6 em 6 horas chega.
+    next_check_at: nextCheckAt(now, !check.ok, options.prospect ? PROSPECT_CHECK_MINUTES : 60),
     is_up: check.ok ? true : down ? false : m.is_up,
     status_code: check.status_code,
     response_ms: check.response_ms,
@@ -228,7 +233,8 @@ async function checkAndSave(
     // O certificado só se lê quando o site responde (senão fica o último conhecido).
     ...(check.status_code !== null ? { ssl_expires_at: check.ssl_expires_at, ssl_error: check.ssl_error } : {}),
   };
-  if (options.forceDomain || domainLookupDue(m, today)) {
+  // O domínio só interessa nos clientes (o dos leads é problema deles).
+  if (!options.prospect && (options.forceDomain || domainLookupDue(m, today))) {
     const domain = registrableDomain(m.url);
     const expiry = domain ? await lookupDomainExpiry(domain) : null;
     update.domain_checked_at = now.toISOString();
@@ -238,11 +244,130 @@ async function checkAndSave(
   if (error) throw fromPostgrest(error);
   const saved = data as unknown as SiteMonitor;
   if (options.alerts && options.workspaceId) {
-    await alertProblems(client, options.workspaceId, { ...saved, alerted: m.alerted ?? {} }, { wasDown: !!m.down_since, today }).catch((e) =>
-      console.warn('[sites] aviso', e instanceof Error ? e.message : e),
-    );
+    const alert = options.prospect
+      ? alertOpportunity(client, options.workspaceId, { ...saved, alerted: m.alerted ?? {} }, today)
+      : alertProblems(client, options.workspaceId, { ...saved, alerted: m.alerted ?? {} }, { wasDown: !!m.down_since, today });
+    await alert.catch((e) => console.warn('[sites] aviso', e instanceof Error ? e.message : e));
   }
   return saved;
+}
+
+/**
+ * Lead (ainda não cliente) com o site com um problema: aviso "Leads quentes" e uma tarefa
+ * "Contactar…" (uma vez por problema; lento, no máximo uma vez por mês).
+ */
+async function alertOpportunity(client: SupabaseClient, workspaceId: string, m: Row, today: string) {
+  const opportunity = siteOpportunity(m, today);
+  if (!opportunity) return;
+  const alerted = { ...(m.alerted ?? {}) };
+  const key = opportunity.kind === 'down' ? (m.down_since ?? today) : opportunity.kind === 'slow' ? today.slice(0, 7) : (m.ssl_expires_at?.slice(0, 10) ?? today);
+  if (alerted[`opp_${opportunity.kind}`] === key) return;
+  const { data: lead } = await client
+    .from('leads')
+    .select('id, number, company_name, status, assigned_to, created_by, anonymized_at, archived_at')
+    .eq('workspace_id', workspaceId)
+    .eq('id', m.lead_id)
+    .maybeSingle();
+  if (!lead || lead.anonymized_at || lead.archived_at || lead.status === 'cliente' || lead.status === 'sem_interesse') return;
+  alerted[`opp_${opportunity.kind}`] = key;
+  await client.from('site_monitors').update({ alerted }).eq('id', m.id);
+  const userId = ((lead.assigned_to as string | null) ?? (lead.created_by as string | null) ?? (await workspaceOwner(client, workspaceId))) as string | null;
+  const name = lead.company_name as string;
+  const url = `${leadPath(lead as { id: string; number: number; company_name: string })}#contacto`;
+  if (userId) {
+    await saveAlert(workspaceId, userId, {
+      kind: 'email_open',
+      leadId: m.lead_id,
+      title: `🎯 Oportunidade: ${name}`,
+      body: `${opportunity.label} — bom momento para contactar (a mensagem está pronta na ficha).`,
+      url,
+      tag: `opp-${m.id}-${opportunity.kind}-${key}`,
+    }).catch(() => undefined);
+  }
+  const title = `Contactar ${name}: ${opportunity.label.charAt(0).toLowerCase()}${opportunity.label.slice(1)} (oportunidade)`.slice(0, 300);
+  const { data: open } = await client.from('lead_tasks').select('id').eq('workspace_id', workspaceId).eq('lead_id', m.lead_id).eq('title', title).is('done_at', null).limit(1);
+  if (!open?.length) {
+    await client.from('lead_tasks').insert({ workspace_id: workspaceId, lead_id: m.lead_id, title, due_on: today, assigned_to: userId, created_by: null, position: -1 });
+  }
+}
+
+/**
+ * Os leads quentes vigiados sozinhos: os PROSPECT_WATCH_COUNT de maior pontuação com site
+ * (em pipeline). Junta os que entraram e tira os que saíram (só os juntados sozinhos;
+ * os que alguém juntou à mão e os clientes ficam).
+ */
+export async function syncProspectWatch(options: { dryRun?: boolean } = {}): Promise<{ workspaces: number; added: number; removed: number; skipped?: string }> {
+  const admin = createSupabaseAdminClient();
+  const probe = await admin.from('site_monitors').select('id').limit(0);
+  if (missingTable(probe.error)) return { workspaces: 0, added: 0, removed: 0, skipped: 'sem a tabela' };
+  const { data: workspaces } = await admin.from('workspaces').select('id, settings');
+  const on = ((workspaces ?? []) as { id: string; settings: unknown }[]).filter((w) => {
+    const f = WorkspaceSettingsSchema.parse(w.settings ?? {}).features;
+    return f.prospect_watch && f.site_monitoring;
+  });
+  let added = 0;
+  let removed = 0;
+  for (const w of on) {
+    const { data: hot } = await admin
+      .from('leads')
+      .select('id, website')
+      .eq('workspace_id', w.id)
+      .is('archived_at', null)
+      .is('anonymized_at', null)
+      .not('status', 'in', '(cliente,sem_interesse,em_pausa)')
+      .not('website', 'is', null)
+      .gt('score', 0)
+      .order('score', { ascending: false })
+      .limit(PROSPECT_WATCH_COUNT);
+    const wanted = ((hot ?? []) as { id: string; website: string }[]).filter((l) => /^(https?:\/\/)?[^\s/]+\.[^\s]+/i.test(l.website.trim()));
+    const { data: existing } = await admin.from('site_monitors').select('id, lead_id, created_by, lead:leads!inner(status)').eq('workspace_id', w.id);
+    type Ex = { id: string; lead_id: string; created_by: string | null; lead: { status: string } };
+    const rows = (existing ?? []) as unknown as Ex[];
+    const have = new Set(rows.map((r) => r.lead_id));
+    const toAdd = wanted.filter((l) => !have.has(l.id));
+    const wantedIds = new Set(wanted.map((l) => l.id));
+    const toRemove = rows.filter((r) => !r.created_by && r.lead.status !== 'cliente' && !wantedIds.has(r.lead_id));
+    if (options.dryRun) {
+      added += toAdd.length;
+      removed += toRemove.length;
+      continue;
+    }
+    if (toAdd.length) {
+      const { error } = await admin.from('site_monitors').insert(
+        toAdd.map((l) => ({
+          workspace_id: w.id,
+          lead_id: l.id,
+          url: /^https?:\/\//i.test(l.website.trim()) ? l.website.trim() : `https://${l.website.trim()}`,
+          created_by: null,
+          next_check_at: new Date().toISOString(),
+        })),
+      );
+      if (error) console.warn('[sites] leads quentes', error.message);
+      else added += toAdd.length;
+    }
+    if (toRemove.length) {
+      await admin.from('site_monitors').delete().in(
+        'id',
+        toRemove.map((r) => r.id),
+      );
+      removed += toRemove.length;
+    }
+  }
+  return { workspaces: on.length, added, removed };
+}
+
+/** Prospeção: as oportunidades (problema no site agora) dos leads da lista. */
+export async function opportunitiesFor(ctx: ApiContext, leadIds: string[]): Promise<Map<string, Opportunity>> {
+  const map = new Map<string, Opportunity>();
+  if (!leadIds.length) return map;
+  const { data, error } = await ctx.supabase.from('site_monitors').select(SELECT).eq('workspace_id', ctx.workspaceId).in('lead_id', leadIds);
+  if (error) return map;
+  const today = todayIso();
+  for (const m of (data ?? []) as unknown as SiteMonitor[]) {
+    const o = siteOpportunity(m, today);
+    if (o) map.set(m.lead_id, o);
+  }
+  return map;
 }
 
 /** Avisos e tarefas (uma vez por problema): em baixo / voltou, SSL e domínio a expirar. */
@@ -325,21 +450,23 @@ export async function runSiteMonitors(options: { dryRun?: boolean; now?: Date; l
   const now = options.now ?? new Date();
   const { data, error } = await admin
     .from('site_monitors')
-    .select(`workspace_id, alerted, ${SELECT}`)
+    .select(`workspace_id, alerted, lead:leads!inner(status), ${SELECT}`)
     .eq('active', true)
     .lte('next_check_at', now.toISOString())
     .order('next_check_at')
     .limit(options.limit ?? 30);
   if (missingTable(error)) return { due: 0, checked: 0, skipped: 'sem a tabela' };
   if (error) throw new Error(error.message);
-  const rows = (data ?? []) as unknown as (Row & { workspace_id: string })[];
+  const rows = (data ?? []) as unknown as (Row & { workspace_id: string; lead: { status: string } })[];
   if (!rows.length) return { due: 0, checked: 0 };
   const workspaceIds = [...new Set(rows.map((r) => r.workspace_id))];
   const { data: workspaces } = await admin.from('workspaces').select('id, settings').in('id', workspaceIds);
-  const enabled = new Set(
-    ((workspaces ?? []) as { id: string; settings: unknown }[]).filter((w) => WorkspaceSettingsSchema.parse(w.settings ?? {}).features.site_monitoring).map((w) => w.id),
-  );
-  const todo = rows.filter((r) => enabled.has(r.workspace_id));
+  const features = new Map(((workspaces ?? []) as { id: string; settings: unknown }[]).map((w) => [w.id, WorkspaceSettingsSchema.parse(w.settings ?? {}).features]));
+  // Clientes: "Vigiar os sites dos clientes"; leads: também "Avisar quando o site de um lead quente tem um problema".
+  const todo = rows.filter((r) => {
+    const f = features.get(r.workspace_id);
+    return !!f?.site_monitoring && (r.lead.status === 'cliente' || f.prospect_watch);
+  });
   if (options.dryRun) return { due: todo.length, checked: 0 };
   let checked = 0;
   // 5 de cada vez (cada site pode demorar até 15 s).
@@ -347,7 +474,7 @@ export async function runSiteMonitors(options: { dryRun?: boolean; now?: Date; l
     await Promise.all(
       todo.slice(i, i + 5).map(async (m) => {
         try {
-          await checkAndSave(admin, m, { alerts: true, now, workspaceId: m.workspace_id });
+          await checkAndSave(admin, m, { alerts: true, now, workspaceId: m.workspace_id, prospect: m.lead.status !== 'cliente' });
           checked++;
         } catch (e) {
           console.warn('[sites] verificação', m.url, e instanceof Error ? e.message : e);

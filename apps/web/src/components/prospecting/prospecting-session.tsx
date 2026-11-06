@@ -57,6 +57,7 @@ import { BellOff,
   ThumbsDown,
   ThumbsUp,
   UserCheck,
+  Target,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -67,6 +68,7 @@ import { ContactFinder } from '@/components/leads/contact-finder';
 import { LeadScoreBadge } from '@/components/leads/lead-score';
 import { LostReasonDialog } from '@/components/leads/lost-reason';
 import { WhatsAppMenu } from '@/components/leads/whatsapp-menu';
+import { ObjectionButton } from '@/components/leads/objection-helper';
 import { ContactCard } from '@/components/leads/contact-card';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Badge, Card, EmptyState, Skeleton } from '@/components/ui/card';
@@ -599,6 +601,15 @@ function LeadRow({
           <Pin className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden /> {lead.pinned_note}
         </p>
       ) : null}
+      {/* O site dele tem um problema agora: bom momento (a mensagem pronta está na ficha). */}
+      {item.opportunity ? (
+        <p role="note" aria-label="Oportunidade" className="-mt-1 flex flex-wrap items-start gap-x-1.5 text-sm font-medium text-accent-text">
+          <Target className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden /> Oportunidade: {item.opportunity.label}.
+          <Link href={`${leadPath(lead)}#contacto`} className="font-normal underline underline-offset-2">
+            Mensagem pronta
+          </Link>
+        </p>
+      ) : null}
 
       {mode === 'email' ? (
         // Os botões e o "Registar" no mesmo grupo e alinhados: o "Registar" fica na linha dos
@@ -747,6 +758,8 @@ function LeadRow({
         >
           <NotebookPen className="h-3.5 w-3.5" aria-hidden /> {note.trim() ? 'Nota (por guardar)' : 'Nota'}
         </button>
+        {/* "É caro", "Já tenho site"…: a resposta pronta para este lead. */}
+        <ObjectionButton lead={lead} channel={channel === 'whatsapp' ? 'whatsapp' : mode === 'email' ? 'email' : 'phone'} className="inline-flex items-center gap-1.5 text-muted hover:text-fg" />
         <button
           type="button"
           aria-expanded={more}

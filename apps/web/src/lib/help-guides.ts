@@ -111,7 +111,11 @@ export const HELP_GUIDES: HelpGuide[] = [
       'Para cada lead: liga ou envia o email, regista o resultado e passa ao seguinte.',
       'O resultado registado agenda o próximo passo (follow-up, reunião) e atualiza o estado do lead.',
     ],
-    tips: ['"Procurar contacto" tenta encontrar o email e o telefone no site do lead.'],
+    tips: [
+      '"Procurar contacto" tenta encontrar o email e o telefone no site do lead.',
+      'O lead disse "É caro" ou "Já tenho site"? Carrega em "Objeção", escolhe o que ele disse e aparece a resposta pronta para o telefone, WhatsApp ou email (escrita pela IA para esse lead, se a IA estiver ligada). Também está na ficha.',
+      '"Oportunidade" num lead quer dizer que o site dele está em baixo, aparece como "Não seguro" ou demora muito a abrir: é uma boa razão para ligar, e a mensagem já vem escrita. A plataforma vigia sozinha os sites dos 20 leads mais quentes.',
+    ],
   },
   {
     id: 'gerar-leads',
@@ -191,6 +195,7 @@ export const HELP_GUIDES: HelpGuide[] = [
       'Ao enviar, o email fica na linha do tempo do lead; as aberturas e cliques aparecem nos avisos.',
       'As respostas chegam sozinhas: o lead passa a "Respondeu" e aparece em "Respostas" no Dashboard.',
       'Emails devolvidos ficam assinalados no lead, para procurar outro contacto.',
+      '"Verificar o domínio" (em Definições → Email de envio) confirma o SPF, DKIM e DMARC do teu domínio: se faltar algum, os emails podem ir para o spam. Mostra o registo a acrescentar no DNS.',
     ],
   },
   {
@@ -217,6 +222,7 @@ export const HELP_GUIDES: HelpGuide[] = [
       'Não contactar: emails e domínios que nunca devem receber mensagens.',
       'Regras automáticas: “se o lead não tem site, pôr a etiqueta Sem site”, “se não responde há 21 dias, passar a Em pausa”… Cada regra aplica-se uma vez a cada lead.',
       'Assinatura → Cartão de contacto: um link e um QR para mostrar em reuniões e feiras; quem deixa o contacto fica lead.',
+      'Formulário do site → Analisar o meu site grátis: uma página para pores no teu site. O visitante escreve o site e o email, fica lead quente (com "Ligar" para hoje) e recebe o diagnóstico em PDF pelo teu email de envio.',
     ],
   },
 ];

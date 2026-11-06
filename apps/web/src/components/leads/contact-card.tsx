@@ -36,7 +36,7 @@ import { useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { SendEmailButton } from '@/components/email/send-email-dialog';
 import { useServiceCatalog, useServiceFilterOptions } from '@/components/services/services';
-import { Button } from '@/components/ui/button';
+import { Button, buttonClasses } from '@/components/ui/button';
 import { Badge, Card, CardHeader } from '@/components/ui/card';
 import { CollapseButton, useProspectingCollapsed } from '@/components/ui/collapse';
 import { Field } from '@/components/ui/field';
@@ -49,6 +49,7 @@ import { useAiEmail, useLogActivity, useSettings, useTemplates, useUpdateLead } 
 import { EMAIL_KINDS, usesAiVisibility, useTemplateContext } from '@/lib/template-context';
 import { cn, whatsappUrl } from '@/lib/utils';
 import { MultiSelectFilter } from './multi-select';
+import { ObjectionButton } from './objection-helper';
 
 const VAR_LABEL = Object.fromEntries(TEMPLATE_VARIABLES.map((v) => [v.key, v.label]));
 
@@ -454,6 +455,12 @@ export function ContactCard({ lead }: { lead: Lead }) {
             </div>
 
             <div className="flex flex-wrap justify-end gap-2">
+              {/* "É caro", "Já tenho site"…: a resposta pronta, no canal deste modelo. */}
+              <ObjectionButton
+                lead={lead}
+                channel={isEmail ? 'email' : kind === 'whatsapp' ? 'whatsapp' : 'phone'}
+                className={cn(buttonClasses('ghost', 'sm'), 'mr-auto')}
+              />
               {isEmail ? <SendEmailButton lead={lead} subject={subject} body={body} template={sourceName} onSent={() => setDraft(null)} /> : null}
               {canWhatsApp ? (
                 <Button size="sm" onClick={onWhatsApp}>

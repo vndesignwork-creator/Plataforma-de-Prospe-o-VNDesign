@@ -107,7 +107,7 @@ export const ALERT_KIND_LABELS: Record<AlertKind, { label: string; hint: string 
   reminder: { label: 'Lembretes', hint: 'Tarefas com lembrete e reuniões daqui a 1 hora' },
   daily: { label: 'Atrasados e para hoje', hint: 'Um resumo por dia dos follow-ups e tarefas em atraso ou para hoje' },
   reply: { label: 'Respostas aos emails', hint: 'Respostas dos leads, ausências e emails devolvidos' },
-  email_open: { label: 'Emails abertos', hint: 'Quando um lead abre o email ou carrega num link' },
+  email_open: { label: 'Leads quentes', hint: 'Quando um lead abre o email, carrega num link ou o site dele tem um problema (bom momento para contactar)' },
   site_form: { label: 'Pedidos pelo site', hint: 'Formulário do site' },
   client: { label: 'Clientes e colaboradores', hint: 'Briefings, aprovações, pedidos de alterações e contratos aceites' },
   system: { label: 'Gerador de leads e equipa', hint: 'Pesquisas semanais terminadas e convites aceites' },

@@ -5,6 +5,7 @@
  * valores em euros com 2 casas decimais.
  */
 import { MonthlyGoalsSchema } from './goals';
+import { DEFAULT_FREE_AUDIT, FreeAuditSettingsSchema } from './free-audit';
 import { CallAvoidSchema } from './call-windows';
 import { z } from 'zod';
 import { ProfileSchema } from './profile';
@@ -596,6 +597,7 @@ export const FeaturesSchema = z.object({
   renewals: z.boolean().default(true).meta({ description: 'Renovações e avenças (domínio, alojamento, manutenção) com aviso antes' }),
   accounting_report: z.boolean().default(true).meta({ description: 'Relatório mensal para a contabilidade (PDF e Excel)' }),
   site_monitoring: z.boolean().default(true).meta({ description: 'Vigiar os sites dos clientes (no ar, certificado SSL e domínio)' }),
+  prospect_watch: z.boolean().default(true).meta({ description: 'Avisar quando o site de um lead quente tem um problema (em baixo, "Não seguro", lento)' }),
   monthly_goals: z.boolean().default(true).meta({ description: 'Metas do mês (Dashboard e Prospeção)' }),
 });
 export type Features = z.infer<typeof FeaturesSchema>;
@@ -626,6 +628,7 @@ export const DEFAULT_FEATURES: Features = {
   renewals: true,
   accounting_report: true,
   site_monitoring: true,
+  prospect_watch: true,
   monthly_goals: true,
 };
 
@@ -732,6 +735,8 @@ export const WorkspaceSettingsSchema = z
     call_avoid: CallAvoidSchema.default({}),
     /** Metas do mês (valem todos os meses até serem mudadas). */
     goals: MonthlyGoalsSchema.default({}),
+    /** "Analisar o meu site grátis": página pública com código (null = desligada). */
+    free_audit: FreeAuditSettingsSchema.default(DEFAULT_FREE_AUDIT),
     /** Fornecedor e modelo de IA de cada função (Definições → Inteligência artificial). */
     ai: AiSettingsSchema.default({
       email: { provider: SERVER_AI_PROVIDER, model: null },

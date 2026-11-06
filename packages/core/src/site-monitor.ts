@@ -153,9 +153,71 @@ export function rdapBaseFor(domain: string, bootstrap: unknown): string | null {
   return null;
 }
 
-/** Próxima verificação: 1 hora depois (ou 5 minutos depois de uma falha, para confirmar). */
-export function nextCheckAt(now: Date, failed: boolean): string {
-  return new Date(now.getTime() + (failed ? 5 : 60) * 60_000).toISOString();
+/** Próxima verificação: 1 hora depois (leads: 6 horas), ou 5 minutos depois de uma falha, para confirmar. */
+export function nextCheckAt(now: Date, failed: boolean, everyMinutes = 60): string {
+  return new Date(now.getTime() + (failed ? 5 : everyMinutes) * 60_000).toISOString();
+}
+
+// -----------------------------------------------------------------------------
+// Oportunidades: o site de um lead quente com problemas (bom momento para contactar)
+// -----------------------------------------------------------------------------
+/** Quantos leads quentes (os de maior pontuação, com site) se vigiam sozinhos. */
+export const PROSPECT_WATCH_COUNT = 20;
+/** De quanto em quanto tempo se vê o site de um lead (minutos). */
+export const PROSPECT_CHECK_MINUTES = 360;
+/** Primeira resposta acima disto (ms) = muito lento. */
+export const SLOW_RESPONSE_MS = 5000;
+
+export type OpportunityKind = 'down' | 'ssl' | 'slow';
+export interface Opportunity {
+  kind: OpportunityKind;
+  label: string;
+}
+
+/** O problema do site de um lead que vale um contacto (ou null). */
+export function siteOpportunity(
+  m: Pick<SiteMonitor, 'is_up' | 'down_since' | 'ssl_expires_at' | 'ssl_error' | 'response_ms' | 'url' | 'fail_count' | 'active'>,
+  today: string,
+): Opportunity | null {
+  if (!m.active) return null;
+  if (m.down_since) return { kind: 'down', label: 'O site está em baixo' };
+  const sslDay = m.ssl_expires_at?.slice(0, 10) ?? null;
+  if (sslDay && daysBetween(today, sslDay) < 0) return { kind: 'ssl', label: 'O certificado do site expirou ("Não seguro")' };
+  if (/^https:/i.test(m.url) && m.ssl_error) return { kind: 'ssl', label: `O site aparece como "Não seguro" (${m.ssl_error.replace(/\.$/, '')})` };
+  if (sslDay && daysBetween(today, sslDay) <= 7) return { kind: 'ssl', label: 'O certificado do site expira esta semana' };
+  if (m.is_up && m.fail_count === 0 && (m.response_ms ?? 0) >= SLOW_RESPONSE_MS) {
+    return { kind: 'slow', label: `O site demora ${Math.round((m.response_ms ?? 0) / 1000)} s a responder` };
+  }
+  return null;
+}
+
+/** Mensagem pronta para contactar o lead por causa do problema do site. */
+export function opportunityMessage(
+  kind: OpportunityKind,
+  lead: { company_name: string; contact_name?: string | null },
+  host: string,
+): { subject: string; body: string } {
+  const first = lead.contact_name?.trim().split(/\s+/)[0];
+  const hello = first ? `Olá ${first},` : 'Olá,';
+  const company = lead.company_name;
+  const what: Record<OpportunityKind, { subject: string; text: string }> = {
+    down: {
+      subject: `O site da ${company} está em baixo`,
+      text: `Tentei abrir o site da ${company} (${host}) e não está a abrir neste momento. Não sei se já sabem: quem procura a ${company} na internet não está a conseguir ver nada.`,
+    },
+    ssl: {
+      subject: `O site da ${company} aparece como "Não seguro"`,
+      text: `Reparei que o site da ${company} (${host}) aparece como "Não seguro" no browser. Muita gente desiste quando vê esse aviso, sobretudo no telemóvel.`,
+    },
+    slow: {
+      subject: `O site da ${company} está muito lento`,
+      text: `Reparei que o site da ${company} (${host}) está a demorar muito a abrir. No telemóvel, a maioria das pessoas desiste se o site não abrir em poucos segundos.`,
+    },
+  };
+  return {
+    subject: what[kind].subject,
+    body: `${hello}\n\n${what[kind].text}\n\nSe quiserem, posso ajudar a resolver isto rapidamente (ou a fazer um site novo e mais rápido). Querem que vos diga o que é preciso?\n\nCumprimentos,`,
+  };
 }
 
 /** Consultar o domínio outra vez? (de 7 em 7 dias; todos os dias no último mês). */

@@ -61,6 +61,8 @@ export const ProspectingItemSchema = z
       .object({ step: z.int(), total: z.int(), day: z.int(), channel: z.enum(SEQUENCE_CHANNELS), template_id: z.uuid().nullable() })
       .nullable()
       .optional(),
+    /** O site do lead tem um problema agora (em baixo, "Não seguro", lento): bom momento para contactar. */
+    opportunity: z.object({ kind: z.enum(['down', 'ssl', 'slow']), label: z.string() }).nullable().optional(),
   })
   .meta({ id: 'ProspectingItem' });
 export type ProspectingItem = z.infer<typeof ProspectingItemSchema>;

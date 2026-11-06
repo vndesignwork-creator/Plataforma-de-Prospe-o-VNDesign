@@ -100,6 +100,7 @@ import { LeadPager } from './lead-pager';
 import { CardLayoutButton, LEAD_BOARD, useCardLayout } from './card-layout';
 import { LeadSummaryButton } from './lead-summary';
 import { PinnedNoteBox, PinnedNoteDialog } from './pinned-note';
+import { OpportunityBanner } from './opportunity-banner';
 import { restoreDeletedLeads } from './trash-view';
 import { SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 import { ServiceChips, useServiceCatalog } from '@/components/services/services';
@@ -717,6 +718,7 @@ export function LeadDetail({ id }: { id: string }) {
       />
 
       {!lead.anonymized_at ? <PinnedNoteBox note={lead.pinned_note} onEdit={() => setPinOpen(true)} className="mb-3 -mt-2" /> : null}
+      <OpportunityBanner lead={lead} />
       {!lead.anonymized_at ? <QuickContact lead={lead} whatsappMessages={!!settings?.features.whatsapp_templates} /> : null}
       <NextStepBar lead={lead} />
       {!lead.anonymized_at ? <PinnedNoteDialog lead={lead} open={pinOpen} onOpenChange={setPinOpen} /> : null}

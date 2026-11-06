@@ -12,6 +12,7 @@ import { purgeExpiredTrash } from '@/server/services/lead-trash';
 import { purgeOldActivities } from '@/server/services/activity-cleanup';
 import { runMonthlyUpdateReminders, saveCoolingAlerts } from '@/server/services/periodic-alerts';
 import { runRenewalReminders } from '@/server/services/renewals';
+import { syncProspectWatch } from '@/server/services/site-monitors';
 import { runTimedRules } from '@/server/services/automation';
 
 export const dynamic = 'force-dynamic';
@@ -36,7 +37,7 @@ async function handler(req: Request) {
     const archived = await autoArchiveLeads(createSupabaseAdminClient(), dryRun);
     // Os leads "agora não" com a data de voltar a tentar chegada voltam à prospeção (e ao resumo de hoje).
     const retried = await retryLostLeads(createSupabaseAdminClient(), dryRun);
-    const [results, push, alerts, leadGeneration, backups, trashPurged, notificationEmails, activitiesPurged, cooling, monthlyUpdates, renewals, rules] = await Promise.all([
+    const [results, push, alerts, leadGeneration, backups, trashPurged, notificationEmails, activitiesPurged, cooling, monthlyUpdates, renewals, rules, prospectWatch] = await Promise.all([
       sendDailyDigests({ appUrl: publicOrigin(req), dryRun }),
       sendDailyPushes({ dryRun }),
       // O mesmo resumo (atrasados e para hoje) no sino do dono e dos administradores.
@@ -59,8 +60,10 @@ async function handler(req: Request) {
       runRenewalReminders({ dryRun }).catch((e: unknown) => ({ error: e instanceof Error ? e.message : String(e) })),
       // Regras automáticas que dependem do tempo ("parado na fase há N dias").
       runTimedRules({ dryRun }).catch((e: unknown) => ({ error: e instanceof Error ? e.message : String(e) })),
+      // Leads quentes cujo site se vigia (os de maior pontuação): junta os novos e tira os que saíram.
+      syncProspectWatch({ dryRun }).catch((e: unknown) => ({ error: e instanceof Error ? e.message : String(e) })),
     ]);
-    return json({ data: results, push, alerts, archived, retried, lead_generation: leadGeneration, backups, trash_purged: trashPurged, notification_emails: notificationEmails, activities_purged: activitiesPurged, cooling, monthly_updates: monthlyUpdates, renewals, automation_rules: rules });
+    return json({ data: results, push, alerts, archived, retried, lead_generation: leadGeneration, backups, trash_purged: trashPurged, notification_emails: notificationEmails, activities_purged: activitiesPurged, cooling, monthly_updates: monthlyUpdates, renewals, automation_rules: rules, prospect_watch: prospectWatch });
   } catch (e) {
     return handleError(e);
   }

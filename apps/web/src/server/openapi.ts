@@ -50,6 +50,13 @@ import {
   SiteMonitorUpdateSchema,
   SiteMonitorListItemSchema,
   GoalProgressSchema,
+  DeliverabilityQuerySchema,
+  ObjectionRequestSchema,
+  FreeAuditToggleSchema,
+  FreeAuditSettingsSchema,
+  FreeAuditSubmitSchema,
+  ObjectionReplySchema,
+  DeliverabilityReportSchema,
   GoalProgressQuerySchema,
   TaskListsQuerySchema,
   TaskListWithTasksSchema,
@@ -1259,6 +1266,24 @@ export function getOpenApiDocument() {
           responses: { '200': ok(data(BusinessCardSchema)), ...common },
         }),
       },
+      '/free-audit': {
+        post: op({
+          tags: ['Definições'],
+          summary: 'Ligar/desligar a página "Analisar o meu site grátis" (ou trocar o código); dono ou administrador',
+          requestBody: body(FreeAuditToggleSchema),
+          responses: { '200': ok(data(FreeAuditSettingsSchema)), ...common },
+        }),
+      },
+      '/public/free-audit/{token}': {
+        post: op({
+          tags: ['Público'],
+          summary: 'Sem login: pedido da análise grátis do site — cria o lead (ou junta ao do mesmo email/site), analisa o site e envia o diagnóstico em PDF por email',
+          security: [],
+          requestParams: { path: z.object({ token: z.string() }) },
+          requestBody: body(FreeAuditSubmitSchema),
+          responses: { '200': { description: 'Recebido' }, '404': { description: 'Página desconhecida ou desligada' }, '422': { description: 'Dados inválidos' }, '429': { description: 'Demasiados pedidos' } },
+        }),
+      },
       '/public/cards/{token}': {
         post: op({
           tags: ['Público'],
@@ -2181,6 +2206,23 @@ export function getOpenApiDocument() {
       },
       '/site-monitors/{id}/check': {
         post: op({ tags: ['Projetos'], summary: 'Verificar o site agora', requestParams: { path: idParam }, responses: { '200': ok(data(SiteMonitorSchema)), ...withNotFound } }),
+      },
+      '/leads/{id}/objection': {
+        post: op({
+          tags: ['Leads'],
+          summary: 'Resposta pronta a uma objeção ("É caro", "Já tenho site"…), para o telefone, WhatsApp ou email (com IA ou a resposta-base)',
+          requestParams: { path: idParam },
+          requestBody: body(ObjectionRequestSchema),
+          responses: { '200': ok(data(ObjectionReplySchema)), ...withNotFound },
+        }),
+      },
+      '/mail-account/deliverability': {
+        get: op({
+          tags: ['Email'],
+          summary: 'Os emails chegam à caixa de entrada? SPF, DKIM, DMARC e MX do domínio de envio (com o registo a acrescentar)',
+          requestParams: { query: DeliverabilityQuerySchema },
+          responses: { '200': ok(data(DeliverabilityReportSchema)), ...common },
+        }),
       },
       '/goals': {
         get: op({

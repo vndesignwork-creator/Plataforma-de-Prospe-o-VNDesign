@@ -73,3 +73,6 @@ export * from './replies';
 export * from './rich-text';
 export * from './goals';
 export * from './site-monitor';
+export * from './deliverability';
+export * from './objections';
+export * from './free-audit';

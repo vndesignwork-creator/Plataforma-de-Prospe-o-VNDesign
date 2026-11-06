@@ -31,6 +31,7 @@ import { ApiError, fromPostgrest } from '../http';
 import { fetchRecentlyOpened } from './email-tracking';
 import { completeFollowUp } from './follow-up';
 import { LEAD_SELECT, getLead, updateLead } from './leads';
+import { opportunitiesFor } from './site-monitors';
 import { getSettings } from './workspace';
 
 const MAX_ITEMS = 150;
@@ -196,6 +197,13 @@ export async function getProspectingQueue(ctx: ApiContext, filter: ProspectingVi
   // Quantas vezes já se carregou em "Não atendeu" e "Contactado" em cada lead.
   const attempts = await outcomesByLead(ctx, items.map((i) => i.lead.id));
   for (const item of items) item.attempts = countAttempts(attempts.get(item.lead.id) ?? []);
+
+  // O site do lead com um problema agora (em baixo, "Não seguro", lento): bom momento para contactar.
+  const opportunities = await opportunitiesFor(
+    ctx,
+    items.map((i) => i.lead.id),
+  ).catch(() => new Map());
+  for (const item of items) item.opportunity = opportunities.get(item.lead.id) ?? null;
 
   // Sequência multicanal: o passo a fazer agora em cada lead (com o canal e o modelo).
   const seq = (await getSettings(ctx)).prospecting_sequence;
