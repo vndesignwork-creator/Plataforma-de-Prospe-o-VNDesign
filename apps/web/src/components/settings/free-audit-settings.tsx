@@ -2,12 +2,12 @@
 
 /**
  * Definições → Formulário do site → "Analisar o meu site grátis": liga uma página pública
- * para pôr no teu site (link ou moldura). Quem a usa entra como lead quente, o site é
+ * para pôr no teu site (plugin de WordPress/Bricks, link ou moldura). Quem a usa entra como lead quente, o site é
  * analisado e recebe o diagnóstico em PDF por email.
  */
 import { freeAuditSnippets } from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { Copy, ExternalLink, RefreshCcw, Search } from 'lucide-react';
+import { ChevronRight, Copy, Download, ExternalLink, RefreshCcw, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -116,24 +116,52 @@ export function FreeAuditSettings() {
                 )
               ) : null}
             </div>
-            <section className="flex flex-col gap-1.5" aria-label="Botão para o site">
+            <section className="flex flex-col gap-2 rounded-lg border border-border p-3" aria-label="Plugin para WordPress">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="font-medium">Botão para o site (abre a página)</h3>
-                <Button size="sm" variant="outline" onClick={() => void copy(snippets.button, 'HTML')}>
-                  <Copy className="h-3.5 w-3.5" aria-hidden /> Copiar HTML
-                </Button>
+                <h3 className="font-medium">Plugin para WordPress e Bricks (recomendado)</h3>
+                <a href="/api/v1/free-audit/wordpress-plugin" download className={buttonClasses('primary', 'sm')}>
+                  <Download className="h-3.5 w-3.5" aria-hidden /> Descarregar o plugin
+                </a>
               </div>
-              <p className="text-muted">No Bricks: elemento “Código” (ou um botão com este link). Fica bem no topo da página inicial ou no fim de cada página.</p>
+              <p className="text-muted">O formulário fica no teu site, com o aspeto do teu site: textos, cores, letras e campos mudam-se no WordPress ou no próprio Bricks. Já vem ligado a esta página.</p>
+              <ol className="ml-4 list-decimal space-y-0.5 text-muted">
+                <li>
+                  No WordPress: <strong className="text-fg">Plugins → Adicionar novo → Carregar plugin</strong> → escolhe o ficheiro .zip → Instalar → Ativar.
+                </li>
+                <li>
+                  Em <strong className="text-fg">Definições → Análise grátis</strong> confirma que diz “Ligado à plataforma” e muda os textos e as cores.
+                </li>
+                <li>
+                  No Bricks, junta o elemento <strong className="text-fg">“Análise grátis do site”</strong> (categoria VNDesign). Noutros editores, um bloco Shortcode com <code className="rounded bg-surface-2 px-1">[vndesign_analise_gratis]</code>.
+                </li>
+              </ol>
+              <p className="text-xs text-muted">Se criares outro endereço, descarrega o plugin outra vez ou cola o endereço novo nas definições do plugin.</p>
             </section>
-            <section className="flex flex-col gap-1.5" aria-label="Página dentro do site">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="font-medium">Ou a página dentro do site (moldura)</h3>
-                <Button size="sm" variant="outline" onClick={() => void copy(snippets.iframe, 'HTML')}>
-                  <Copy className="h-3.5 w-3.5" aria-hidden /> Copiar HTML
-                </Button>
+            <details className="group">
+              <summary className="inline-flex cursor-pointer list-none items-center gap-1 font-medium [&::-webkit-details-marker]:hidden">
+                <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" aria-hidden /> Sem plugin: botão ou moldura
+              </summary>
+              <div className="mt-3 flex flex-col gap-4">
+              <section className="flex flex-col gap-1.5" aria-label="Botão para o site">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-medium">Botão para o site (abre a página)</h3>
+                  <Button size="sm" variant="outline" onClick={() => void copy(snippets.button, 'HTML')}>
+                    <Copy className="h-3.5 w-3.5" aria-hidden /> Copiar HTML
+                  </Button>
+                </div>
+                <p className="text-muted">No Bricks: elemento “Código” (ou um botão com este link). Fica bem no topo da página inicial ou no fim de cada página.</p>
+              </section>
+              <section className="flex flex-col gap-1.5" aria-label="Página dentro do site">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-medium">Ou a página dentro do site (moldura)</h3>
+                  <Button size="sm" variant="outline" onClick={() => void copy(snippets.iframe, 'HTML')}>
+                    <Copy className="h-3.5 w-3.5" aria-hidden /> Copiar HTML
+                  </Button>
+                </div>
+                <p className="text-muted">Mostra o formulário dentro de uma página tua (ex.: “Análise grátis”).</p>
+              </section>
               </div>
-              <p className="text-muted">Mostra o formulário dentro de uma página tua (ex.: “Análise grátis”).</p>
-            </section>
+            </details>
           </>
         )}
       </div>

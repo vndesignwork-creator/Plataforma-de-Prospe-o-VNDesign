@@ -1274,7 +1274,21 @@ export function getOpenApiDocument() {
           responses: { '200': ok(data(FreeAuditSettingsSchema)), ...common },
         }),
       },
+      '/free-audit/wordpress-plugin': {
+        get: op({
+          tags: ['Definições'],
+          summary: 'O plugin de WordPress/Bricks "Análise grátis do site" (.zip), já ligado à página desta conta',
+          responses: { '200': { description: 'Ficheiro .zip', content: { 'application/zip': { schema: z.string().meta({ format: 'binary' }) } } }, '409': { description: 'Análise grátis desligada' }, ...common },
+        }),
+      },
       '/public/free-audit/{token}': {
+        get: op({
+          tags: ['Público'],
+          summary: 'Sem login: confirma que a página está ligada (usado pelo plugin de WordPress para "Testar ligação")',
+          security: [],
+          requestParams: { path: z.object({ token: z.string() }) },
+          responses: { '200': { description: 'Ligada' }, '404': { description: 'Página desconhecida ou desligada' } },
+        }),
         post: op({
           tags: ['Público'],
           summary: 'Sem login: pedido da análise grátis do site — cria o lead (ou junta ao do mesmo email/site), analisa o site e envia o diagnóstico em PDF por email',

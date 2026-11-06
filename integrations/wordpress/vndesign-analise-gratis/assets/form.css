@@ -1,0 +1,192 @@
+/* VNDesign — Análise grátis do site. As cores mudam-se nas definições do plugin ou no Bricks. */
+.vnd-fa {
+	--vnd-fa-accent: #ef5c32;
+	--vnd-fa-button-text: #0d0d0d;
+	--vnd-fa-radius: 10px;
+	--vnd-fa-max: 640px;
+	--vnd-fa-bg: #121212;
+	--vnd-fa-fg: #f5f2ed;
+	--vnd-fa-muted: #a8a39c;
+	--vnd-fa-field: #1c1c1c;
+	--vnd-fa-border: #3a3a3a;
+	--vnd-fa-error: #ff8a73;
+	box-sizing: border-box;
+	width: 100%;
+	max-width: var(--vnd-fa-max);
+	color: var(--vnd-fa-fg);
+	line-height: 1.5;
+	text-align: left;
+}
+.vnd-fa--align-center { margin-inline: auto; }
+.vnd-fa *,
+.vnd-fa *::before,
+.vnd-fa *::after { box-sizing: border-box; }
+.vnd-fa [hidden] { display: none !important; }
+
+.vnd-fa--light {
+	--vnd-fa-bg: #ffffff;
+	--vnd-fa-fg: #0d0d0d;
+	--vnd-fa-muted: #5c5852;
+	--vnd-fa-field: #ffffff;
+	--vnd-fa-border: #d6d1c9;
+	--vnd-fa-error: #b42318;
+}
+@media (prefers-color-scheme: light) {
+	.vnd-fa--auto {
+		--vnd-fa-bg: #ffffff;
+		--vnd-fa-fg: #0d0d0d;
+		--vnd-fa-muted: #5c5852;
+		--vnd-fa-field: #ffffff;
+		--vnd-fa-border: #d6d1c9;
+		--vnd-fa-error: #b42318;
+	}
+}
+.vnd-fa--inherit {
+	--vnd-fa-bg: transparent;
+	--vnd-fa-fg: inherit;
+	--vnd-fa-muted: inherit;
+	--vnd-fa-field: transparent;
+	--vnd-fa-border: color-mix(in srgb, currentColor 35%, transparent);
+	--vnd-fa-error: #c4320a;
+}
+
+.vnd-fa__title {
+	margin: 0 0 0.5em;
+	color: inherit;
+	font-size: clamp(1.6rem, 4vw, 2.2rem);
+	line-height: 1.15;
+}
+.vnd-fa__intro {
+	margin: 0 0 1.25em;
+	color: var(--vnd-fa-muted);
+	font-size: 1.05em;
+}
+
+.vnd-fa__form {
+	display: flex;
+	flex-direction: column;
+	gap: 1.1rem;
+	margin: 0;
+}
+.vnd-fa--card .vnd-fa__form,
+.vnd-fa--card .vnd-fa__success {
+	padding: clamp(1rem, 4vw, 1.5rem);
+	background: var(--vnd-fa-bg);
+	border: 1px solid var(--vnd-fa-border);
+	border-radius: calc(var(--vnd-fa-radius) * 1.4);
+}
+
+.vnd-fa__row { display: grid; gap: 1.1rem; }
+.vnd-fa--two .vnd-fa__row { grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
+
+.vnd-fa__field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+	min-width: 0;
+}
+.vnd-fa__label {
+	color: inherit;
+	font-size: 0.95em;
+	font-weight: 600;
+}
+.vnd-fa .vnd-fa__input {
+	width: 100%;
+	min-height: 3rem;
+	margin: 0;
+	padding: 0.7rem 0.9rem;
+	color: inherit;
+	font: inherit;
+	font-size: 16px; /* no telemóvel, menos de 16px faz zoom ao escrever */
+	background: var(--vnd-fa-field);
+	border: 1px solid var(--vnd-fa-border);
+	border-radius: var(--vnd-fa-radius);
+	box-shadow: none;
+	outline: none;
+	transition: border-color 0.15s, box-shadow 0.15s;
+}
+.vnd-fa .vnd-fa__input::placeholder { color: var(--vnd-fa-muted); opacity: 0.85; }
+.vnd-fa .vnd-fa__input:focus {
+	border-color: var(--vnd-fa-accent);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--vnd-fa-accent) 30%, transparent);
+}
+.vnd-fa .vnd-fa__input[aria-invalid="true"] { border-color: var(--vnd-fa-error); }
+
+.vnd-fa__consent {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.65rem;
+	font-size: 0.95em;
+}
+.vnd-fa__consent input {
+	flex: none;
+	width: 1.15rem;
+	height: 1.15rem;
+	margin: 0.2rem 0 0;
+	accent-color: var(--vnd-fa-accent);
+}
+.vnd-fa__consent label { cursor: pointer; }
+.vnd-fa__consent a { color: var(--vnd-fa-accent); text-decoration: underline; }
+
+.vnd-fa__error {
+	margin: 0;
+	color: var(--vnd-fa-error);
+	font-size: 0.875em;
+}
+.vnd-fa__status {
+	margin: 0;
+	padding: 0.65rem 0.85rem;
+	color: var(--vnd-fa-error);
+	background: color-mix(in srgb, var(--vnd-fa-error) 14%, transparent);
+	border-radius: var(--vnd-fa-radius);
+}
+
+.vnd-fa .vnd-fa__button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	min-height: 3rem;
+	margin: 0;
+	padding: 0.75rem 1.25rem;
+	color: var(--vnd-fa-button-text);
+	font: inherit;
+	font-weight: 600;
+	line-height: 1.2;
+	background: var(--vnd-fa-accent);
+	border: 0;
+	border-radius: var(--vnd-fa-radius);
+	cursor: pointer;
+	transition: filter 0.15s;
+}
+.vnd-fa .vnd-fa__button:hover { filter: brightness(1.07); }
+.vnd-fa .vnd-fa__button:focus-visible { outline: 2px solid var(--vnd-fa-accent); outline-offset: 3px; }
+.vnd-fa .vnd-fa__button[disabled] { cursor: progress; opacity: 0.7; }
+
+.vnd-fa__success {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	outline: none;
+}
+.vnd-fa__success-title { font-size: 1.2em; }
+.vnd-fa__success p { margin: 0; }
+
+.vnd-fa__hp {
+	position: absolute !important;
+	left: -10000px !important;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+}
+.vnd-fa__notice {
+	padding: 0.75rem 1rem;
+	color: #0d0d0d;
+	background: #fff4d6;
+	border: 1px solid #f0c36d;
+	border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.vnd-fa * { transition: none !important; }
+}

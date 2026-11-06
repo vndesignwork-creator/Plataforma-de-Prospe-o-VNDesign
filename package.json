@@ -14,6 +14,7 @@
     "dev": "npm run dev -w @vndesign/web",
     "build": "npm run build -w @vndesign/web",
     "build:standalone": "node scripts/build-standalone.mjs",
+    "build:wp-plugin": "node scripts/build-wp-plugin.mjs",
     "start": "npm run start -w @vndesign/web",
     "start:standalone": "node apps/web/.next/standalone/apps/web/server.js",
     "lint": "npm run lint --workspaces --if-present",

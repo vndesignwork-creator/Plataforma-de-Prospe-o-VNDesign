@@ -1,5 +1,9 @@
+import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { join } from 'node:path';
+import { inflateRawSync } from 'node:zlib';
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
 const run = Date.now().toString(36);
@@ -111,7 +115,7 @@ test('Analisar o meu site grátis: ligar, pedir pela página pública, lead quen
   await connectAccount(page);
   const { server, url } = await localSite();
   try {
-    const settings = (await (await page.request.post('/api/v1/free-audit', { data: { enabled: true } })).json()).data as { token: string };
+    const settings = (await (await page.request.post('/api/v1/free-audit', { data: { enabled: true, rotate: true } })).json()).data as { token: string };
     expect(settings.token).toMatch(/^[\w-]{16,}$/);
     await page.goto('/definicoes/formulario');
     await expect(page.getByLabel('Endereço da página')).toContainText(`/analise/${settings.token}`);
@@ -149,5 +153,76 @@ test('Analisar o meu site grátis: ligar, pedir pela página pública, lead quen
     await page.request.delete(`/api/v1/leads/${leads[0]!.id}`);
   } finally {
     server.close();
+  }
+});
+
+const WP = join(__dirname, '../integrations/wordpress');
+const hasPhp = spawnSync('php', ['-v']).status === 0;
+
+test('Plugin de WordPress: descarregar já ligado e o formulário (noutro site) cria o lead', async ({ page, browser }) => {
+  await connectAccount(page);
+  const settings = (await (await page.request.post('/api/v1/free-audit', { data: { enabled: true, rotate: true } })).json()).data as { token: string };
+  await page.goto('/definicoes/formulario');
+  const download = page.waitForEvent('download');
+  await page.getByRole('link', { name: 'Descarregar o plugin' }).click();
+  expect((await download).suggestedFilename()).toMatch(/^vndesign-analise-gratis-[\d.]+\.zip$/);
+  const res = await page.request.get('/api/v1/free-audit/wordpress-plugin');
+  expect(res.headers()['content-type']).toBe('application/zip');
+  // O config.php dentro do .zip leva o endereço desta conta.
+  const zip = await res.body();
+  const at = zip.indexOf(Buffer.from('vndesign-analise-gratis/config.php'));
+  expect(at).toBeGreaterThan(30);
+  const head = at - 30;
+  const config = inflateRawSync(zip.subarray(at + zip.readUInt16LE(head + 26) + zip.readUInt16LE(head + 28), at + zip.readUInt16LE(head + 26) + zip.readUInt16LE(head + 28) + zip.readUInt32LE(head + 18))).toString('utf8');
+  expect(config).toContain(`/analise/${settings.token}'`);
+
+  // "Testar ligação" do plugin e código errado.
+  expect((await page.request.get(`/api/v1/public/free-audit/${settings.token}`)).status()).toBe(200);
+  expect((await page.request.get('/api/v1/public/free-audit/nao-existe-este-codigo')).status()).toBe(404);
+
+  test.skip(!hasPhp, 'Sem PHP: o formulário do plugin não é gerado.');
+  const pageUrl = `${new URL(page.url()).origin}/analise/${settings.token}`;
+  const rendered = spawnSync('php', [join(WP, 'tests/render-harness.php'), JSON.stringify({ page_url: pageUrl }), JSON.stringify({ title: 'Quer saber o que falha no seu site?', success_title: 'Obrigado!' })], { encoding: 'utf8' });
+  expect(rendered.stderr).toBe('');
+  const html = `<!doctype html><html lang="pt"><head><meta charset="utf-8"><title>Site WordPress</title><link rel="stylesheet" href="/form.css"></head><body style="background:#0d0d0d;padding:24px">${rendered.stdout}<script src="/form.js"></script></body></html>`;
+  const wp = http.createServer((req, r) => {
+    const file = req.url === '/form.css' ? 'form.css' : req.url === '/form.js' ? 'form.js' : null;
+    if (file) {
+      r.writeHead(200, { 'content-type': file.endsWith('.css') ? 'text/css' : 'text/javascript' });
+      r.end(readFileSync(join(WP, 'vndesign-analise-gratis/assets', file)));
+      return;
+    }
+    r.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    r.end(html);
+  });
+  await new Promise<void>((resolve) => wp.listen(0, '127.0.0.1', resolve));
+  const { server, url } = await localSite();
+  try {
+    const visitor = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const pub = await visitor.newPage();
+    await pub.goto(`http://127.0.0.1:${(wp.address() as AddressInfo).port}/`);
+    await expect(pub.getByRole('heading', { name: 'Quer saber o que falha no seu site?' })).toBeVisible();
+    // Validação no próprio site.
+    await pub.getByRole('button', { name: 'Analisar o meu site' }).click();
+    await expect(pub.getByText('Escreva o endereço do site.')).toBeVisible();
+    await expect(pub.getByText('Aceite que o contactemos com a análise.')).toBeVisible();
+    // Erro vindo da plataforma, junto do campo.
+    await pub.getByLabel('Endereço do site').fill('isto não é um site');
+    await pub.getByLabel('Email para receber a análise').fill(`wp@padaria-wp-${run}.pt`);
+    await pub.getByRole('checkbox').check();
+    await pub.getByRole('button', { name: 'Analisar o meu site' }).click();
+    await expect(pub.getByText(/Endereço inválido/)).toBeVisible();
+    // Certo: mensagem de sucesso e o lead quente.
+    await pub.getByLabel('Endereço do site').fill(url);
+    await pub.getByLabel('Nome do negócio').fill(`Padaria WP ${run}`);
+    await pub.getByRole('button', { name: 'Analisar o meu site' }).click();
+    await expect(pub.getByRole('status')).toContainText('Obrigado!');
+    await visitor.close();
+    const leads = (await (await page.request.get(`/api/v1/leads?q=${encodeURIComponent(`Padaria WP ${run}`)}`)).json()).data as { id: string; status: string; next_action_text: string }[];
+    expect(leads[0]).toMatchObject({ status: 'respondeu', next_action_text: 'Ligar: pediu a análise grátis do site' });
+    await page.request.delete(`/api/v1/leads/${leads[0]!.id}`);
+  } finally {
+    server.close();
+    wp.close();
   }
 });

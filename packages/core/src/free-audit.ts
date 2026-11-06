@@ -27,10 +27,15 @@ const site = z
   .transform((v) => (/^https?:\/\//i.test(v) ? v : `https://${v}`))
   .pipe(z.url({ protocol: /^https?$/, error: 'Endereço inválido (ex.: www.o-meu-negocio.pt).' }))
   // Precisa de um domínio com ponto (ex.: padaria.pt); endereços locais só servem em testes (o servidor recusa-os em produção).
+  // (O zod corre esta verificação mesmo quando o endereço já falhou acima: daí o try.)
   .refine((v) => {
-    const host = new URL(v).hostname;
-    return host === 'localhost' || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host) || /\.(?:[a-z]{2,}|xn--[a-z0-9-]+)$/i.test(host);
-  }, { error: 'Endereço inválido (ex.: www.o-meu-negocio.pt).' });
+    try {
+      const host = new URL(v).hostname;
+      return host === 'localhost' || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host) || /\.(?:[a-z]{2,}|xn--[a-z0-9-]+)$/i.test(host);
+    } catch {
+      return false;
+    }
+  }, { error: 'Endereço inválido (ex.: www.o-meu-negocio.pt).', abort: true });
 
 export const FreeAuditSubmitSchema = z
   .object({

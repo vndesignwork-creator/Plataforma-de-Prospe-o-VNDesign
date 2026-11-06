@@ -222,7 +222,7 @@ export const HELP_GUIDES: HelpGuide[] = [
       'Não contactar: emails e domínios que nunca devem receber mensagens.',
       'Regras automáticas: “se o lead não tem site, pôr a etiqueta Sem site”, “se não responde há 21 dias, passar a Em pausa”… Cada regra aplica-se uma vez a cada lead.',
       'Assinatura → Cartão de contacto: um link e um QR para mostrar em reuniões e feiras; quem deixa o contacto fica lead.',
-      'Formulário do site → Analisar o meu site grátis: uma página para pores no teu site. O visitante escreve o site e o email, fica lead quente (com "Ligar" para hoje) e recebe o diagnóstico em PDF pelo teu email de envio.',
+      'Formulário do site → Analisar o meu site grátis: uma página para pores no teu site. O visitante escreve o site e o email, fica lead quente (com "Ligar" para hoje) e recebe o diagnóstico em PDF pelo teu email de envio. Para um site em WordPress, "Descarregar o plugin": dá o elemento "Análise grátis do site" no Bricks (textos e cores à tua escolha) e o shortcode [vndesign_analise_gratis].',
     ],
   },
 ];
