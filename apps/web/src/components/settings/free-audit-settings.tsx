@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Card, CardHeader, Skeleton } from '@/components/ui/card';
+import { FreeAuditExtras } from './free-audit-extras';
 import { api, errorMessage } from '@/lib/api-client';
 import { useMailAccount, usePreference, useRole, useSetPreference, useSettings } from '@/lib/queries';
 
@@ -199,6 +200,7 @@ export function FreeAuditSettings() {
               </section>
               </div>
             </details>
+            <FreeAuditExtras canEdit={canEdit} />
           </>
         )}
       </div>

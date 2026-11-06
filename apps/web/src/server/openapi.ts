@@ -53,7 +53,9 @@ import {
   DeliverabilityQuerySchema,
   ObjectionRequestSchema,
   FreeAuditToggleSchema,
+  FreeAuditConfigSchema,
   FreeAuditSettingsSchema,
+  FreeAuditStatusSchema,
   FreeAuditSubmitSchema,
   ObjectionReplySchema,
   DeliverabilityReportSchema,
@@ -1272,6 +1274,46 @@ export function getOpenApiDocument() {
           summary: 'Ligar/desligar a página "Analisar o meu site grátis" (ou trocar o código); dono ou administrador',
           requestBody: body(FreeAuditToggleSchema),
           responses: { '200': ok(data(FreeAuditSettingsSchema)), ...common },
+        }),
+        patch: op({
+          tags: ['Definições'],
+          summary: 'Análise grátis: follow-up automático (dias) e Cloudflare Turnstile (a chave secreta fica cifrada); dono ou administrador',
+          requestBody: body(FreeAuditConfigSchema),
+          responses: { '200': ok(data(FreeAuditSettingsSchema)), ...common },
+        }),
+      },
+      '/free-audit/stats': {
+        get: op({
+          tags: ['Definições'],
+          summary: 'Análise grátis: pedidos (mês e total), quantos responderam, quantos são clientes e de onde vieram',
+          responses: { '200': { description: 'Números' }, ...common },
+        }),
+      },
+      '/public/free-audit/{token}/estado/{request}': {
+        get: op({
+          tags: ['Público'],
+          summary: 'Sem login: o resultado da análise para mostrar no ecrã (o pedido vem da resposta do envio, assinado)',
+          security: [],
+          requestParams: { path: z.object({ token: z.string(), request: z.string() }) },
+          responses: { '200': ok(FreeAuditStatusSchema), '404': { description: 'Pedido desconhecido' } },
+        }),
+      },
+      '/public/free-audit/{token}/verificar-site': {
+        get: op({
+          tags: ['Público'],
+          summary: 'Sem login: confirma se o site abre antes de enviar (só endereços públicos; limite por visitante)',
+          security: [],
+          requestParams: { path: z.object({ token: z.string() }), query: z.object({ url: z.string() }) },
+          responses: { '200': { description: '{ ok, message }' }, '404': { description: 'Página desconhecida ou desligada' } },
+        }),
+      },
+      '/public/free-audit/{token}/exemplo': {
+        get: op({
+          tags: ['Público'],
+          summary: 'Sem login: o relatório de exemplo em PDF (dados fictícios, com a faixa EXEMPLO)',
+          security: [],
+          requestParams: { path: z.object({ token: z.string() }) },
+          responses: { '200': { description: 'PDF', content: { 'application/pdf': { schema: z.string().meta({ format: 'binary' }) } } }, '404': { description: 'Página desconhecida ou desligada' } },
         }),
       },
       '/free-audit/wordpress-plugin': {

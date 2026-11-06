@@ -223,6 +223,7 @@ export const HELP_GUIDES: HelpGuide[] = [
       'Regras automáticas: “se o lead não tem site, pôr a etiqueta Sem site”, “se não responde há 21 dias, passar a Em pausa”… Cada regra aplica-se uma vez a cada lead.',
       'Assinatura → Cartão de contacto: um link e um QR para mostrar em reuniões e feiras; quem deixa o contacto fica lead.',
       'Formulário do site → Analisar o meu site grátis: uma página para pores no teu site. O visitante escreve o site e o email, fica lead quente (com "Ligar" para hoje) e recebe o diagnóstico em PDF pelo teu email de envio. Para um site em WordPress, "Descarregar o plugin": dá o elemento "Análise grátis do site" no Bricks (textos e cores à tua escolha) e o shortcode [vndesign_analise_gratis].',
+      'Na análise grátis: depois de enviar, o visitante vê logo um primeiro resultado (velocidade, telemóvel, segurança) e pode abrir um relatório de exemplo. Cada pedido guarda de onde veio (página e campanha), quem não responde recebe um follow-up automático (3 dias, de origem) e o cartão mostra os números do mês. Se chegarem pedidos falsos, liga o Cloudflare Turnstile no mesmo cartão.',
     ],
   },
 ];

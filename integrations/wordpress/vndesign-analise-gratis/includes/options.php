@@ -17,7 +17,7 @@ function vnd_fa_defaults() {
 		// Textos
 		'title'               => 'Analisar o meu site grátis',
 		'title_tag'           => 'h2',
-		'intro'               => 'Em poucos minutos recebe por email um relatório simples do seu site: a velocidade no telemóvel, a segurança, como aparece no Google e o que pode estar a afastar clientes. Sem compromisso.',
+		'intro'               => 'Em poucos minutos recebe por email um relatório simples do seu site: a velocidade no telemóvel, a segurança, como aparece no Google e nas IAs (ChatGPT, Gemini) e o que pode estar a afastar clientes. Sem compromisso.',
 		'label_website'       => 'Endereço do site',
 		'placeholder_website' => 'www.o-meu-negocio.pt',
 		'label_email'         => 'Email para receber a análise',
@@ -33,6 +33,9 @@ function vnd_fa_defaults() {
 		'success_title'       => 'Pedido recebido!',
 		'success'             => 'Estamos a analisar o seu site: vai receber a análise por email dentro de alguns minutos.',
 		'redirect'            => '',
+		'show_example'        => '1',
+		'example_label'       => 'Ver um exemplo do relatório (PDF)',
+		'promo_hide_form_title' => '1',
 		// Texto de persuasão (ao lado do formulário)
 		'promo'                => '1',
 		'promo_position'       => 'left',
@@ -41,8 +44,8 @@ function vnd_fa_defaults() {
 		'promo_eyebrow'        => 'Análise gratuita · Sem compromisso',
 		'promo_title'          => 'O seu site está a afastar clientes sem dar por isso?',
 		'promo_title_tag'      => 'h3',
-		'promo_text'           => 'Um site lento, com o aviso “Não seguro” ou difícil de encontrar no Google faz perder pedidos todos os dias. Em poucos minutos mostramos-lhe o que está a correr mal e como resolver.',
-		'promo_points'         => "Velocidade no telemóvel: quanto tempo os clientes esperam\nSegurança: se aparece o aviso “Não seguro”\nGoogle: como o seu negócio aparece nas pesquisas\nOs pormenores que levam os visitantes a desistir",
+		'promo_text'           => 'Um site lento, com o aviso “Não seguro” ou difícil de encontrar no Google e nas IAs faz perder pedidos todos os dias. Em poucos minutos mostramos-lhe o que está a correr mal e como resolver.',
+		'promo_points'         => "Velocidade no telemóvel: quanto tempo os clientes esperam\nSegurança: se aparece o aviso “Não seguro”\nGoogle: como o seu negócio aparece nas pesquisas\nIA: se o ChatGPT, o Gemini e outras IAs encontram e recomendam o seu negócio\nOs pormenores que levam os visitantes a desistir",
 		'promo_note'           => 'Recebe o relatório em PDF no seu email, em linguagem simples. Sem custos e sem compromisso.',
 		'promo_image_show'     => '1',
 		'promo_image'          => '',
@@ -56,7 +59,7 @@ function vnd_fa_defaults() {
 		'privacy_link'        => '1',
 		'layout'              => 'stack',
 		// Aspeto
-		'theme'               => 'dark',
+		'theme'               => 'site',
 		'card'                => '1',
 		'accent'              => '#ef5c32',
 		'button_text'         => '#0d0d0d',
@@ -80,7 +83,7 @@ function vnd_fa_choices() {
 	return array(
 		'title_tag' => array('h1' => 'H1', 'h2' => 'H2', 'h3' => 'H3', 'h4' => 'H4', 'p' => 'Parágrafo'),
 		'layout'    => array('stack' => 'Um campo por linha', 'two' => 'Nome e negócio lado a lado'),
-		'theme'     => array('dark' => 'Escuro', 'light' => 'Claro', 'auto' => 'Automático (claro/escuro do visitante)', 'inherit' => 'Usar as cores do meu site'),
+		'theme'     => array('site' => 'Seguir o site (claro/escuro, também o botão ☀ do site)', 'dark' => 'Escuro', 'light' => 'Claro', 'auto' => 'Automático (claro/escuro do computador do visitante)', 'inherit' => 'Usar as cores do meu site'),
 		'align'     => array('center' => 'Ao centro', 'left' => 'À esquerda'),
 		'width'     => array('full' => 'Toda a largura do sítio onde está', 'max' => 'Até à largura máxima'),
 		'font_body'    => array('' => 'A do site') + vnd_fa_font_choices() + array('custom' => 'Outra (escrever o nome)'),

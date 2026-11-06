@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { freeAuditPage } from '@/server/services/free-audit';
 import { EmbedHeight } from './embed-height';
 import { FreeAuditForm } from './free-audit-form';
+import { PromoImage } from './promo-image';
 
 /*
  * "Analisar o meu site grátis" (/analise/<código>, sem login): para pôr no site do dono
@@ -22,15 +23,13 @@ export const metadata: Metadata = { title: { absolute: 'Analisar o meu site grá
 
 function Promo() {
   const p = FREE_AUDIT_PROMO;
+  // O título grande da página é o do texto de persuasão (o formulário fica sem título próprio).
   return (
     <section aria-label="Porquê analisar o site" className="flex h-full min-w-0 flex-col gap-4">
       {/* Imagem na horizontal: no computador estica ou encolhe até a coluna ficar da altura do formulário. */}
-      <div className="relative aspect-[4/3] overflow-hidden rounded-2xl lg:aspect-auto lg:min-h-36 lg:flex-1 lg:basis-0">
-        {/* eslint-disable-next-line @next/next/no-img-element -- ilustração SVG estática */}
-        <img src="/analise/ilustracao-relatorio.svg?v=3" alt={p.imageAlt} width={1000} height={500} className="absolute inset-0 h-full w-full object-cover" />
-      </div>
+      <PromoImage alt={p.imageAlt} />
       <p className="w-fit rounded-full bg-accent-soft px-3 py-1 text-xs font-bold tracking-wide text-accent-text uppercase">{p.eyebrow}</p>
-      <h2 className="font-display text-2xl leading-tight font-bold">{p.title}</h2>
+      <h1 className="font-display text-2xl leading-tight font-bold sm:text-3xl lg:text-2xl xl:text-3xl">{p.title}</h1>
       <p className="text-muted">{p.text}</p>
       <ul className="flex flex-col gap-2">
         {p.points.map((point) => (
@@ -67,15 +66,19 @@ export default async function FreeAuditPage({ params, searchParams }: Props) {
       )}
     </p>
   );
-  const main = (
+  const form = <FreeAuditForm token={token} brand={brand} turnstileSiteKey={info.turnstile_site_key} stretch={layout.promo} />;
+  // Com o texto de persuasão ao lado, o formulário fica sem título (um título a menos).
+  const main = layout.promo ? (
+    <div className="flex min-w-0 flex-1 flex-col gap-5">{form}</div>
+  ) : (
     <div className="flex min-w-0 flex-col gap-5">
       <header className="flex flex-col gap-2">
         <h1 className="font-display text-2xl font-bold sm:text-3xl">Analisar o meu site grátis</h1>
         <p className="text-muted">
-          Em poucos minutos recebe por email um relatório simples do seu site: a velocidade no telemóvel, a segurança, como aparece no Google e o que pode estar a afastar clientes. Sem compromisso.
+          Em poucos minutos recebe por email um relatório simples do seu site: a velocidade no telemóvel, a segurança, como aparece no Google e nas IAs (ChatGPT, Gemini) e o que pode estar a afastar clientes. Sem compromisso.
         </p>
       </header>
-      <FreeAuditForm token={token} brand={brand} />
+      {form}
     </div>
   );
   return (
@@ -93,7 +96,7 @@ export default async function FreeAuditPage({ params, searchParams }: Props) {
           <div className={layout.side === 'right' ? 'lg:order-last' : undefined}>
             <Promo />
           </div>
-          <div className="flex flex-col justify-center">{main}</div>
+          <div className="flex flex-col">{main}</div>
         </div>
       ) : (
         main

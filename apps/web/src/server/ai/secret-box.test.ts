@@ -1,31 +1,15 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { keyHint, openSecret, sealSecret } from './secret-box';
+import { describe, expect, it } from 'vitest';
+import { signValue, verifySigned } from './secret-box';
 
-describe('cifra das chaves de IA', () => {
-  const saved = process.env.AI_KEYS_SECRET;
-  beforeEach(() => {
-    process.env.AI_KEYS_SECRET = 'segredo-de-teste-1234567890';
-  });
-  afterEach(() => {
-    process.env.AI_KEYS_SECRET = saved;
-  });
-
-  it('cifra e decifra; cada cifra é diferente', () => {
-    const a = sealSecret('sk-teste-abcdef1234');
-    const b = sealSecret('sk-teste-abcdef1234');
-    expect(a).not.toBe(b);
-    expect(a).not.toContain('sk-teste');
-    expect(openSecret(a)).toBe('sk-teste-abcdef1234');
-  });
-
-  it('não abre com outro segredo nem adulterada', () => {
-    const sealed = sealSecret('sk-teste-abcdef1234');
-    expect(openSecret(sealed.slice(0, -2) + 'AA')).toBeNull();
-    process.env.AI_KEYS_SECRET = 'outro-segredo-0987654321';
-    expect(openSecret(sealed)).toBeNull();
-  });
-
-  it('mostra só os últimos carateres', () => {
-    expect(keyHint('sk-or-v1-123456789abcd')).toBe('…abcd');
+describe('assinaturas', () => {
+  it('só aceita o valor assinado, e só para o mesmo fim', () => {
+    process.env.AI_KEYS_SECRET ||= 'segredo-de-teste';
+    const signed = signValue('ws.lead.2026-01-01T00:00:00Z', 'free-audit-request');
+    expect(verifySigned(signed, 'free-audit-request')).toBe('ws.lead.2026-01-01T00:00:00Z');
+    expect(verifySigned(signed, 'outro-fim')).toBeNull();
+    const [encoded, mac] = signed.split('.');
+    expect(verifySigned(`${Buffer.from('ws.outro.2026').toString('base64url')}.${mac}`, 'free-audit-request')).toBeNull();
+    expect(verifySigned(`${encoded}.x${mac!.slice(1)}`, 'free-audit-request')).toBeNull();
+    expect(verifySigned('lixo', 'free-audit-request')).toBeNull();
   });
 });

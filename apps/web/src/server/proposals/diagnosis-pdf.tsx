@@ -76,6 +76,8 @@ export interface DiagnosisPdfData {
   google?: { sentence: string | null; source: 'places' | 'ia'; date: string } | null;
   /** Último teste "Aparece nas IAs?" (GEO), se houver. */
   visibility?: { summary: string; assistant: string | null; mentioned: number; total: number; competitors: string[]; date: string } | null;
+  /** Relatório de exemplo (dados fictícios): mostra uma faixa a dizê-lo. */
+  example?: boolean;
   /** Imagens do site (PageSpeed): no computador e no telemóvel. */
   screenshots?: { device: 'mobile' | 'desktop'; buffer: Buffer; contentType: string; width: number | null; height: number | null }[];
 }
@@ -123,7 +125,7 @@ function tiles(audit: SiteAudit) {
   ];
 }
 
-function DiagnosisDocument({ audit, lead, services, signature, screenshots = [], visibility = null, google = null }: DiagnosisPdfData) {
+function DiagnosisDocument({ audit, lead, services, signature, screenshots = [], visibility = null, google = null, example = false }: DiagnosisPdfData) {
   const company = signature.company || 'VNDesign';
   const contactLine = [signature.full_name, signature.phone, signature.email, bareHost(signature.website)].filter(Boolean).join(' · ');
   const analysed = audit.created_at.slice(0, 10);
@@ -158,6 +160,11 @@ function DiagnosisDocument({ audit, lead, services, signature, screenshots = [],
               <Text style={s.headerMeta}>{formatDate(analysed)}</Text>
             </View>
           </View>
+          {example ? (
+            <Text style={{ marginBottom: 8, padding: 6, fontSize: 9, fontWeight: 700, color: '#ffffff', backgroundColor: '#ef5c32', borderRadius: 4 }}>
+              EXEMPLO — dados fictícios, para mostrar como é o relatório que vai receber.
+            </Text>
+          ) : null}
           <Text style={s.title}>Diagnóstico do site da {lead.company_name}</Text>
           <Text style={s.forLine}>
             {url ?? 'Sem site próprio'}

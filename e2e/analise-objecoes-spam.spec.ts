@@ -124,7 +124,10 @@ test('Analisar o meu site grátis: ligar, pedir pela página pública, lead quen
     const visitor = await browser.newContext({ storageState: { cookies: [], origins: [] } });
     const pub = await visitor.newPage();
     await pub.goto(`/analise/${settings.token}`);
-    await expect(pub.getByRole('heading', { name: 'Analisar o meu site grátis' })).toBeVisible();
+    // Com o texto de persuasão, o título da página é o dele (um título a menos).
+    await expect(pub.getByRole('heading', { level: 1, name: 'O seu site está a afastar clientes sem dar por isso?' })).toBeVisible();
+    await expect(pub.getByText('IA: se o ChatGPT, o Gemini e outras IAs encontram e recomendam o seu negócio')).toBeVisible();
+    await expect(pub.getByRole('link', { name: 'Ver um exemplo do relatório (PDF)' })).toHaveAttribute('href', `/api/v1/public/free-audit/${settings.token}/exemplo`);
     const to = `dono@padaria-${run}.pt`;
     await pub.getByLabel('Endereço do site *').fill(url);
     await pub.getByLabel('Email para receber a análise *').fill(to);
@@ -136,6 +139,9 @@ test('Analisar o meu site grátis: ligar, pedir pela página pública, lead quen
     await pub.getByRole('checkbox').check();
     await pub.getByRole('button', { name: 'Analisar o meu site' }).click();
     await expect(pub.getByText(/vai receber a análise por email/)).toBeVisible();
+    // O primeiro resultado aparece no ecrã quando a análise acaba.
+    await expect(pub.getByText('O primeiro resultado:')).toBeVisible({ timeout: 90_000 });
+    await expect(pub.getByText('Velocidade no telemóvel', { exact: true })).toBeVisible();
     await visitor.close();
 
     // O lead quente, com "Ligar" para hoje, e o email com o PDF em anexo.
@@ -144,6 +150,26 @@ test('Analisar o meu site grátis: ligar, pedir pela página pública, lead quen
     const message = await mailTo(page.request, to);
     expect(message.Subject).toContain('A análise do site');
     expect(message.Attachments).toBe(1);
+
+    // A origem fica na linha do tempo; os números contam o pedido.
+    const stats = (await (await page.request.get('/api/v1/free-audit/stats')).json()).data as { month: number; total: number; sources: { key: string }[] };
+    expect(stats.month).toBeGreaterThanOrEqual(1);
+    expect(stats.sources.length).toBeGreaterThanOrEqual(1);
+    // O PDF de exemplo e "o site abre?".
+    const example = await page.request.get(`/api/v1/public/free-audit/${settings.token}/exemplo`);
+    expect(example.headers()['content-type']).toBe('application/pdf');
+    expect((await example.body()).subarray(0, 4).toString()).toBe('%PDF');
+    expect((await (await page.request.get(`/api/v1/public/free-audit/${settings.token}/verificar-site?url=${encodeURIComponent(url)}`)).json()).ok).toBe(true);
+    expect((await (await page.request.get(`/api/v1/public/free-audit/${settings.token}/verificar-site?url=${encodeURIComponent('http://127.0.0.1:9/')}`)).json()).ok).toBe(false);
+    // Um pedido inventado não mostra o resultado de ninguém.
+    expect((await page.request.get(`/api/v1/public/free-audit/${settings.token}/estado/inventado.abc`)).status()).toBe(404);
+    // Follow-up e Turnstile (as chaves de teste ficam e saem).
+    const cfg = (await (await page.request.patch('/api/v1/free-audit', { data: { follow_up_days: 5, turnstile_site_key: '1x00000000000000000000AA', turnstile_secret: '1x0000000000000000000000000000000AA' } })).json()).data as Record<string, unknown>;
+    expect(cfg).toMatchObject({ follow_up_days: 5, turnstile_site_key: '1x00000000000000000000AA', turnstile_secret_hint: '…00AA' });
+    expect(String(cfg.turnstile_secret)).not.toContain('1x0000000000');
+    expect((await (await page.request.get(`/api/v1/public/free-audit/${settings.token}`)).json()).turnstile_site_key).toBe('1x00000000000000000000AA');
+    await page.request.patch('/api/v1/free-audit', { data: { follow_up_days: 3, turnstile_site_key: null, turnstile_secret: null } });
+    expect((await (await page.request.get(`/api/v1/public/free-audit/${settings.token}`)).json()).turnstile_site_key).toBeNull();
 
     // Código errado e desligar.
     expect((await page.request.post('/api/v1/public/free-audit/nao-existe-este-codigo', { data: { website: url, email: to, consent: true } })).status()).toBe(404);
@@ -182,7 +208,7 @@ test('Plugin de WordPress: descarregar já ligado e o formulário (noutro site) 
 
   test.skip(!hasPhp, 'Sem PHP: o formulário do plugin não é gerado.');
   const pageUrl = `${new URL(page.url()).origin}/analise/${settings.token}`;
-  const rendered = spawnSync('php', [join(WP, 'tests/render-harness.php'), JSON.stringify({ page_url: pageUrl }), JSON.stringify({ title: 'Quer saber o que falha no seu site?', success_title: 'Obrigado!' })], { encoding: 'utf8' });
+  const rendered = spawnSync('php', [join(WP, 'tests/render-harness.php'), JSON.stringify({ page_url: pageUrl }), JSON.stringify({ title: 'Quer saber o que falha no seu site?', success_title: 'Obrigado!', promo_hide_form_title: '0' })], { encoding: 'utf8' });
   expect(rendered.stderr).toBe('');
   const html = `<!doctype html><html lang="pt"><head><meta charset="utf-8"><title>Site WordPress</title><link rel="stylesheet" href="/form.css"></head><body style="background:#0d0d0d;padding:24px">${rendered.stdout}<script src="/form.js"></script></body></html>`;
   const wp = http.createServer((req, r) => {

@@ -62,6 +62,7 @@ class VND_FA_Bricks_Element extends \Bricks\Element {
 			'label_company'       => array('Campo do negócio: nome', 'text'),
 			'consent'             => array('Texto do consentimento ({negocio} = o teu nome)', 'textarea'),
 			'button'              => array('Texto do botão', 'text'),
+			'example_label'       => array('Texto do link do exemplo', 'text'),
 			'sending'             => array('Botão enquanto envia', 'text'),
 			'success_title'       => array('Depois de enviar: título', 'text'),
 			'success'             => array('Depois de enviar: texto', 'textarea'),
@@ -93,6 +94,8 @@ class VND_FA_Bricks_Element extends \Bricks\Element {
 			'show_name'    => 'Campo “O seu nome”',
 			'show_company' => 'Campo “Nome do negócio”',
 			'privacy_link' => 'Link da política de privacidade',
+			'show_example' => 'Link “Ver um exemplo do relatório”',
+			'promo_hide_form_title' => 'Com o texto ao lado, esconder o título do formulário',
 		) as $key => $label) {
 			$this->controls[$key] = array(
 				'tab'         => 'content',

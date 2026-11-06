@@ -4,7 +4,7 @@
  * (HKDF). Se essa chave mudar, as chaves guardadas deixam de abrir e é preciso
  * voltar a colá-las em Definições → Inteligência artificial.
  */
-import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHmac, hkdfSync, randomBytes, timingSafeEqual } from 'node:crypto';
 
 const VERSION = 'v1';
 
@@ -38,4 +38,27 @@ export function openSecret(sealed: string): string | null {
 /** "…a1b2" — só para reconhecer a chave, sem a revelar. */
 export function keyHint(key: string): string {
   return `…${key.slice(-4)}`;
+}
+
+/** Assina um valor curto (ex.: "leadId.momento"): `valor.assinatura`, para ligações públicas que não se podem adivinhar. */
+function signingKey(purpose: string): Buffer {
+  const secret = process.env.AI_KEYS_SECRET || process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!secret) throw new Error('Falta AI_KEYS_SECRET (ou SUPABASE_SECRET_KEY) no servidor.');
+  return Buffer.from(hkdfSync('sha256', secret, 'vndesign-leads', `sign:${purpose}`, 32));
+}
+
+export function signValue(value: string, purpose: string): string {
+  const mac = createHmac('sha256', signingKey(purpose)).update(value).digest('base64url').slice(0, 22);
+  return `${Buffer.from(value).toString('base64url')}.${mac}`;
+}
+
+/** O valor assinado, ou null se a assinatura não bater certo. */
+export function verifySigned(signed: string, purpose: string): string | null {
+  const [encoded, mac] = signed.split('.');
+  if (!encoded || !mac) return null;
+  const value = Buffer.from(encoded, 'base64url').toString('utf8');
+  const expected = createHmac('sha256', signingKey(purpose)).update(value).digest('base64url').slice(0, 22);
+  const a = Buffer.from(mac);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b) ? value : null;
 }

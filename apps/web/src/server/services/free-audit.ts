@@ -1,8 +1,11 @@
 /**
- * "Analisar o meu site grátis" (/analise/<código>): o visitante escreve o site e o email,
- * entra como lead quente (canal "Formulário do site", "Ligar: pediu a análise…" para hoje),
- * o site é analisado em segundo plano e o diagnóstico em PDF segue por email (pelo email
- * de envio do dono). Se não for possível enviar, o dono é avisado para o enviar ele.
+ * "Analisar o meu site grátis" (/analise/<código> e plugin de WordPress): o visitante escreve
+ * o site e o email, entra como lead quente (canal "Formulário do site", "Ligar: pediu a
+ * análise…" para hoje), o site é analisado em segundo plano e o diagnóstico em PDF segue por
+ * email (pelo email de envio do dono). Se não for possível enviar, o dono é avisado.
+ *
+ * Também: o resumo do resultado no ecrã (pelo "pedido" assinado), confirmar se o site abre,
+ * o PDF de exemplo, os números do mês, o follow-up automático e o Cloudflare Turnstile.
  */
 import { randomBytes } from 'node:crypto';
 import {
@@ -10,14 +13,25 @@ import {
   LeadCreateSchema,
   LeadEmailSendSchema,
   freeAuditEmail,
+  freeAuditFollowUpEmail,
+  freeAuditSourceKey,
+  freeAuditSourceLabel,
+  freeAuditSummary,
   leadPath,
   normalizeEmail,
+  replySubject,
   todayIso,
   websiteKey,
+  type FreeAuditConfig,
   type FreeAuditSettings,
+  type FreeAuditStatus,
+  type SiteAudit,
 } from '@vndesign/core';
+import { keyHint, openSecret, sealSecret, signValue, verifySigned } from '../ai/secret-box';
+import { AuditRequestError, safeGet } from '../audit/safe-request';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
+import { renderDiagnosisPdf } from '../proposals/diagnosis-pdf';
 import { createSupabaseAdminClient } from '../supabase-admin';
 import { systemContext } from '../system-context';
 import { createActivity } from './activities';
@@ -25,51 +39,113 @@ import { runLeadAudit } from './audits';
 import { sendLeadEmail } from './lead-email';
 import { createLead, updateLead } from './leads';
 import { alertUser } from './push';
+import { loadServiceCatalog } from './service-catalog';
 import { getSettings, getSignature } from './workspace';
 
 const NEXT_ACTION = 'Ligar: pediu a análise grátis do site';
+const EMAIL_TEMPLATE = 'Análise grátis do site';
+const FOLLOW_UP_TEMPLATE = 'Análise grátis: follow-up';
+const REQUEST_PURPOSE = 'free-audit-request';
+
+function assertManager(ctx: ApiContext) {
+  if (ctx.role !== 'owner' && ctx.role !== 'admin') throw new ApiError(403, 'Sem permissão', 'Só o dono ou um administrador pode mudar a análise grátis.');
+}
+
+async function saveFreeAudit(ctx: ApiContext, next: FreeAuditSettings): Promise<FreeAuditSettings> {
+  const current = await getSettings(ctx);
+  const { error } = await ctx.supabase.from('workspaces').update({ settings: { ...current, free_audit: next } }).eq('id', ctx.workspaceId);
+  if (error) throw fromPostgrest(error);
+  return next;
+}
 
 /** Ligar/desligar (ou trocar o código). Só o dono ou um administrador. */
 export async function setFreeAudit(ctx: ApiContext, input: { enabled: boolean; rotate: boolean }): Promise<FreeAuditSettings> {
-  if (ctx.role !== 'owner' && ctx.role !== 'admin') throw new ApiError(403, 'Sem permissão', 'Só o dono ou um administrador pode mudar a análise grátis.');
-  const current = await getSettings(ctx);
-  const token = !input.enabled ? null : input.rotate || !current.free_audit.token ? randomBytes(18).toString('base64url') : current.free_audit.token;
-  const next = { ...current, free_audit: { token } };
-  const { error } = await ctx.supabase.from('workspaces').update({ settings: next }).eq('id', ctx.workspaceId);
-  if (error) throw fromPostgrest(error);
-  return next.free_audit;
+  assertManager(ctx);
+  const current = (await getSettings(ctx)).free_audit;
+  const token = !input.enabled ? null : input.rotate || !current.token ? randomBytes(18).toString('base64url') : current.token;
+  return saveFreeAudit(ctx, { ...current, token });
+}
+
+/** Follow-up automático e Cloudflare Turnstile. A chave secreta fica cifrada. */
+export async function setFreeAuditConfig(ctx: ApiContext, input: FreeAuditConfig): Promise<FreeAuditSettings> {
+  assertManager(ctx);
+  const current = (await getSettings(ctx)).free_audit;
+  const next: FreeAuditSettings = { ...current };
+  if (input.follow_up_days !== undefined) next.follow_up_days = input.follow_up_days;
+  if (input.turnstile_site_key !== undefined) next.turnstile_site_key = input.turnstile_site_key || null;
+  if (input.turnstile_secret !== undefined) {
+    next.turnstile_secret = input.turnstile_secret ? sealSecret(input.turnstile_secret) : null;
+    next.turnstile_secret_hint = input.turnstile_secret ? keyHint(input.turnstile_secret) : null;
+  }
+  // Sem uma das duas chaves, a proteção não funciona: ficam as duas ou nenhuma.
+  if (!next.turnstile_site_key || !next.turnstile_secret) {
+    if (input.turnstile_site_key === null || input.turnstile_secret === null) {
+      next.turnstile_site_key = null;
+      next.turnstile_secret = null;
+      next.turnstile_secret_hint = null;
+    }
+  }
+  return saveFreeAudit(ctx, next);
 }
 
 const validToken = (t: string) => /^[A-Za-z0-9_-]{16,64}$/.test(t);
 
-async function workspaceFor(token: string): Promise<string | null> {
+async function workspaceFor(token: string): Promise<{ id: string; settings: FreeAuditSettings } | null> {
   if (!validToken(token)) return null;
-  const { data } = await createSupabaseAdminClient().from('workspaces').select('id').eq('settings->free_audit->>token', token).maybeSingle();
-  return (data?.id as string | undefined) ?? null;
+  const { data } = await createSupabaseAdminClient().from('workspaces').select('id, settings').eq('settings->free_audit->>token', token).maybeSingle();
+  if (!data) return null;
+  const fa = ((data.settings as { free_audit?: Partial<FreeAuditSettings> } | null)?.free_audit ?? {}) as Partial<FreeAuditSettings>;
+  return {
+    id: data.id as string,
+    settings: {
+      token: fa.token ?? null,
+      follow_up_days: fa.follow_up_days === undefined ? 3 : fa.follow_up_days,
+      turnstile_site_key: fa.turnstile_site_key ?? null,
+      turnstile_secret: fa.turnstile_secret ?? null,
+      turnstile_secret_hint: fa.turnstile_secret_hint ?? null,
+    },
+  };
 }
 
-/** Para a página pública: o nome de quem oferece a análise (da assinatura do dono). */
-export async function freeAuditPage(token: string): Promise<{ company: string | null } | null> {
+/** Para a página pública e o plugin: quem oferece a análise e a chave pública do Turnstile. */
+export async function freeAuditPage(token: string): Promise<{ company: string | null; turnstile_site_key: string | null } | null> {
   const ws = await workspaceFor(token);
   if (!ws) return null;
-  const ctx = await systemContext(ws, null);
+  const ctx = await systemContext(ws.id, null);
   if (!ctx) return null;
   const signature = await getSignature(ctx).catch(() => null);
-  return { company: signature?.company?.trim() || signature?.full_name?.trim() || null };
+  const turnstile = ws.settings.turnstile_site_key && ws.settings.turnstile_secret ? ws.settings.turnstile_site_key : null;
+  return { company: signature?.company?.trim() || signature?.full_name?.trim() || null, turnstile_site_key: turnstile };
 }
 
-// Contra spam: 3 pedidos por 30 minutos por endereço.
+// Contra spam: N pedidos por janela, por endereço.
 const hits = new Map<string, number[]>();
-function rateLimited(key: string): boolean {
+function rateLimited(key: string, max = 3, windowMs = 30 * 60_000): boolean {
   const now = Date.now();
-  const recent = (hits.get(key) ?? []).filter((t) => now - t < 30 * 60_000);
+  const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
   recent.push(now);
   hits.set(key, recent);
   if (hits.size > 5_000) hits.clear();
-  return recent.length > 3;
+  return recent.length > max;
 }
 
-export type FreeAuditResult = { ok: true; message: string } | { ok: false; status: number; message: string; errors?: Record<string, string[]> };
+/** Cloudflare Turnstile: true se a resposta do visitante for válida. */
+async function turnstileOk(secret: string, response: string | undefined, ip: string | null): Promise<boolean> {
+  if (!response) return false;
+  try {
+    const body = new URLSearchParams({ secret, response, ...(ip ? { remoteip: ip } : {}) });
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body, signal: AbortSignal.timeout(8000) });
+    const data = (await res.json().catch(() => null)) as { success?: boolean } | null;
+    return data?.success === true;
+  } catch {
+    // Sem resposta da Cloudflare: não se perde o pedido de uma pessoa por isso.
+    return true;
+  }
+}
+
+export type FreeAuditResult =
+  | { ok: true; message: string; request?: string }
+  | { ok: false; status: number; message: string; errors?: Record<string, string[]> };
 const THANKS = 'Obrigado! Estamos a analisar o seu site: vai receber a análise por email dentro de alguns minutos.';
 
 export async function submitFreeAudit(token: string, fields: Record<string, unknown>, meta: { ip: string | null }): Promise<FreeAuditResult> {
@@ -78,19 +154,26 @@ export async function submitFreeAudit(token: string, fields: Record<string, unkn
   const ws = await workspaceFor(token);
   if (!ws) return { ok: false, status: 404, message: 'Esta página não existe ou foi desligada.' };
   if (rateLimited(`${token}:${meta.ip ?? '?'}`)) return { ok: false, status: 429, message: 'Demasiados pedidos. Tente daqui a alguns minutos.' };
-  const parsed = FreeAuditSubmitSchema.safeParse({ ...fields, consent: fields.consent === true || fields.consent === 'on' || fields.consent === 'true' });
+  // Formulário HTML normal: a origem e o Turnstile vêm em campos soltos.
+  const source = typeof fields.source === 'object' && fields.source ? fields.source : Object.fromEntries(Object.entries(fields).filter(([k]) => /^(page|referrer|utm_\w+)$/.test(k)));
+  const turnstile = typeof fields.turnstile === 'string' ? fields.turnstile : typeof fields['cf-turnstile-response'] === 'string' ? fields['cf-turnstile-response'] : undefined;
+  const parsed = FreeAuditSubmitSchema.safeParse({ ...fields, source, turnstile, consent: fields.consent === true || fields.consent === 'on' || fields.consent === 'true' });
   if (!parsed.success) {
     const errors: Record<string, string[]> = {};
     for (const issue of parsed.error.issues) (errors[String(issue.path[0] ?? 'form')] ??= []).push(issue.message);
     return { ok: false, status: 422, message: 'Verifique os campos assinalados.', errors };
   }
   const input = parsed.data;
+  const secret = ws.settings.turnstile_site_key && ws.settings.turnstile_secret ? openSecret(ws.settings.turnstile_secret) : null;
+  if (secret && !(await turnstileOk(secret, input.turnstile, meta.ip))) {
+    return { ok: false, status: 422, message: 'Confirme que não é um robô e envie outra vez.', errors: { turnstile: ['Confirme que não é um robô.'] } };
+  }
   // Endereços locais (IP, localhost) só nos testes; em produção não há site para analisar.
   const rawHost = new URL(input.website).hostname;
   if (process.env.AUDIT_ALLOW_PRIVATE !== '1' && (rawHost === 'localhost' || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(rawHost))) {
     return { ok: false, status: 422, message: 'Verifique os campos assinalados.', errors: { website: ['Endereço inválido (ex.: www.o-meu-negocio.pt).'] } };
   }
-  const ctx = await systemContext(ws, null);
+  const ctx = await systemContext(ws.id, null);
   if (!ctx) return { ok: false, status: 404, message: 'Esta página não existe.' };
 
   const host = rawHost.replace(/^www\./, '');
@@ -134,15 +217,17 @@ export async function submitFreeAudit(token: string, fields: Record<string, unkn
     return { ok: false, status: 500, message: 'Não foi possível enviar o pedido. Tente outra vez daqui a pouco.' };
   }
 
+  const startedAt = new Date().toISOString();
+  const origin = freeAuditSourceLabel(input.source);
   await createActivity(ctx, leadId, {
     type: 'note',
-    body: `🔎 Pediu a análise grátis do site (${host}) pela tua página${input.name ? ` — ${input.name}` : ''} <${input.email}>.`,
-    payload: { via: 'site_form', free_audit: true, created },
+    body: `🔎 Pediu a análise grátis do site (${host}) pela tua página${input.name ? ` — ${input.name}` : ''} <${input.email}>.${origin ? `\nOrigem: ${origin}.` : ''}`,
+    payload: { via: 'site_form', free_audit: true, created, source: input.source ?? null, source_key: freeAuditSourceKey(input.source) },
   }).catch(() => undefined);
 
   // Em segundo plano: analisar, enviar o PDF e avisar (o visitante não fica à espera).
   void finishFreeAudit(ctx, leadId, input.website, input.email, input.name, company, host);
-  return { ok: true, message: THANKS };
+  return { ok: true, message: THANKS, request: signValue(`${ws.id}.${leadId}.${startedAt}`, REQUEST_PURPOSE) };
 }
 
 async function finishFreeAudit(ctx: ApiContext, leadId: string, website: string, to: string, name: string | null, company: string, host: string) {
@@ -159,7 +244,7 @@ async function finishFreeAudit(ctx: ApiContext, leadId: string, website: string,
       if (!settings.features.diagnosis_report) throw new ApiError(422, 'Relatório desligado', 'o relatório de diagnóstico está desligado (Definições → Funcionalidades)');
       const signature = await getSignature(ctx).catch(() => null);
       const email = freeAuditEmail({ name, company, host, sender: signature?.full_name ?? null });
-      await sendLeadEmail(ctx, leadId, LeadEmailSendSchema.parse({ to, subject: email.subject, body: email.body, attach_diagnosis: true, template: 'Análise grátis do site' }));
+      await sendLeadEmail(ctx, leadId, LeadEmailSendSchema.parse({ to, subject: email.subject, body: email.body, attach_diagnosis: true, template: EMAIL_TEMPLATE }));
       sent = true;
     } catch (error) {
       problem = error instanceof ApiError ? (error.detail ?? error.title) : error instanceof Error ? error.message : 'erro ao enviar';
@@ -174,4 +259,230 @@ async function finishFreeAudit(ctx: ApiContext, leadId: string, website: string,
     url: lead ? leadPath(lead as { id: string; number: number; company_name: string }) : '/leads',
     tag: `free-audit-${leadId}`,
   }).catch(() => undefined);
+}
+
+/**
+ * O resultado para mostrar logo no ecrã. `request` é o que o envio devolveu (assinado:
+ * ninguém consegue ver o resultado de outra pessoa).
+ */
+export async function freeAuditStatus(token: string, request: string): Promise<FreeAuditStatus | null> {
+  const ws = await workspaceFor(token);
+  const value = verifySigned(request, REQUEST_PURPOSE);
+  if (!ws || !value) return null;
+  const [wsId, leadId, startedAt] = value.split('.');
+  if (wsId !== ws.id || !leadId || !startedAt) return null;
+  const { data } = await createSupabaseAdminClient()
+    .from('site_audits')
+    .select('status, pagespeed_mobile, has_viewport, zoom_blocked, suggested_mobile, https, ssl_valid, issues')
+    .eq('workspace_id', ws.id)
+    .eq('lead_id', leadId)
+    .gte('created_at', startedAt)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (data?.status === 'done') return { state: 'done', summary: freeAuditSummary(data as unknown as SiteAudit) };
+  // Sem análise ao fim de 3 minutos (site em baixo, erro): o PDF ou o aviso seguem por email.
+  if (data?.status === 'error' || Date.now() - Date.parse(startedAt) > 3 * 60_000) return { state: 'failed', summary: null };
+  return { state: 'pending', summary: null };
+}
+
+/** "O site abre?" antes de enviar (só endereços públicos; limitado por visitante). */
+export async function checkFreeAuditSite(token: string, url: string, meta: { ip: string | null }): Promise<{ ok: boolean; message: string | null } | null> {
+  const ws = await workspaceFor(token);
+  if (!ws) return null;
+  if (rateLimited(`check:${token}:${meta.ip ?? '?'}`, 20, 10 * 60_000)) return { ok: true, message: null };
+  const parsed = FreeAuditSubmitSchema.shape.website.safeParse(url);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? 'Endereço inválido.' };
+  try {
+    const res = await safeGet(parsed.data, { timeoutMs: 7000, maxBytes: 64_000 });
+    if (res.status >= 500) return { ok: false, message: 'Este site não está a responder bem. Confirme o endereço (pode enviar na mesma).' };
+    return { ok: true, message: null };
+  } catch (error) {
+    const blocked = error instanceof AuditRequestError && error.code === 'blocked';
+    return { ok: false, message: blocked ? 'Endereço inválido (ex.: www.o-meu-negocio.pt).' : 'Este site não está a responder. Confirme o endereço (pode enviar na mesma).' };
+  }
+}
+
+// O PDF de exemplo muda pouco: guarda-se 1 hora por conta.
+const exampleCache = new Map<string, { at: number; pdf: Buffer }>();
+
+/** O relatório de exemplo, com dados fictícios e a faixa "EXEMPLO". */
+export async function freeAuditExamplePdf(token: string): Promise<Buffer | null> {
+  const ws = await workspaceFor(token);
+  if (!ws) return null;
+  const cached = exampleCache.get(ws.id);
+  if (cached && Date.now() - cached.at < 60 * 60_000) return cached.pdf;
+  const ctx = await systemContext(ws.id, null);
+  if (!ctx) return null;
+  const [signature, services] = await Promise.all([getSignature(ctx), loadServiceCatalog(ctx)]);
+  const now = new Date().toISOString();
+  const audit: SiteAudit = {
+    id: '00000000-0000-4000-8000-000000000000',
+    lead_id: '00000000-0000-4000-8000-000000000001',
+    url: 'https://www.padaria-exemplo.pt',
+    final_url: 'https://www.padaria-exemplo.pt/',
+    status: 'done',
+    http_status: 200,
+    response_ms: 2400,
+    https: false,
+    ssl_valid: null,
+    ssl_issuer: null,
+    ssl_expires_at: null,
+    ssl_error: null,
+    has_viewport: true,
+    zoom_blocked: true,
+    pagespeed_mobile: 38,
+    metrics: { lcp_ms: 6200, cls: 0.21 },
+    title: 'Padaria Exemplo',
+    meta_description: null,
+    cms: 'WordPress',
+    copyright_year: 2019,
+    issues: [
+      { code: 'no_https', severity: 'high', message: 'Não usa HTTPS — o browser mostra «Não seguro».', short: 'Sem HTTPS' },
+      { code: 'pagespeed_low', severity: 'high', message: 'PageSpeed mobile baixo: 38/100.', short: 'PageSpeed 38' },
+      { code: 'slow_lcp', severity: 'medium', message: 'Demora 6,2 s a mostrar o conteúdo principal (LCP).', short: 'Carrega em 6,2 s' },
+      { code: 'zoom_blocked', severity: 'medium', message: 'Não deixa ampliar no telemóvel (zoom bloqueado).', short: 'Zoom bloqueado' },
+      { code: 'no_meta_description', severity: 'medium', message: 'Sem meta descrição — o Google escolhe um texto qualquer.', short: 'Sem meta descrição' },
+    ],
+    suggested_problems: null,
+    suggested_mobile: 'parcial',
+    error: null,
+    screenshots: [],
+    created_at: now,
+  };
+  const pdf = await renderDiagnosisPdf({
+    example: true,
+    audit,
+    lead: { company_name: 'Padaria Exemplo', contact_name: null, city: 'Lisboa', approach_angle: null, services: [] },
+    services,
+    signature,
+    visibility: { summary: 'Quando se pergunta às IAs por uma padaria em Lisboa, a Padaria Exemplo não aparece; aparecem 3 concorrentes.', assistant: 'ChatGPT', mentioned: 0, total: 3, competitors: ['Concorrente A', 'Concorrente B', 'Concorrente C'], date: now.slice(0, 10) },
+  });
+  exampleCache.set(ws.id, { at: Date.now(), pdf });
+  return pdf;
+}
+
+export interface FreeAuditStats {
+  month: number;
+  total: number;
+  replied: number;
+  clients: number;
+  sources: { key: string; count: number }[];
+}
+
+/** Os números do cartão: pedidos (mês e total), quantos responderam e quantos são clientes. */
+export async function freeAuditStats(ctx: ApiContext): Promise<FreeAuditStats> {
+  const { data, error } = await ctx.supabase
+    .from('lead_activities')
+    .select('lead_id, created_at, payload')
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('type', 'note')
+    .eq('payload->>free_audit', 'true')
+    .order('created_at', { ascending: false })
+    .limit(2000);
+  if (error) throw fromPostgrest(error);
+  const all = (data ?? []) as { lead_id: string; created_at: string; payload: { source_key?: string } | null }[];
+  const ids = [...new Set(all.map((r) => r.lead_id))].slice(0, 1000);
+  const [{ data: leads }, { data: replies }] = ids.length
+    ? await Promise.all([
+        ctx.supabase.from('leads').select('id, status').in('id', ids),
+        ctx.supabase.from('lead_activities').select('lead_id, created_at').eq('workspace_id', ctx.workspaceId).eq('type', 'email_received').in('lead_id', ids),
+      ])
+    : [{ data: [] }, { data: [] }];
+  // Só os pedidos cujo lead ainda existe (os apagados vão para a reciclagem e saem da conta).
+  const alive = new Set((leads ?? []).map((l) => l.id as string));
+  const rows = all.filter((r) => alive.has(r.lead_id));
+  const monthStart = `${todayIso().slice(0, 7)}-01`;
+  const first = new Map<string, string>();
+  const sources = new Map<string, number>();
+  for (const r of rows) {
+    first.set(r.lead_id, r.created_at);
+    const key = r.payload?.source_key ?? 'direto';
+    sources.set(key, (sources.get(key) ?? 0) + 1);
+  }
+  const clients = (leads ?? []).filter((l) => l.status === 'cliente').length;
+  const answered = new Set((replies ?? []).filter((r) => r.created_at >= (first.get(r.lead_id as string) ?? '')).map((r) => r.lead_id as string));
+  // Também conta quem avançou (reunião, proposta, cliente) mesmo sem email.
+  for (const l of leads ?? []) if (['reuniao', 'proposta_enviada', 'cliente'].includes(l.status as string)) answered.add(l.id as string);
+  const replied = answered.size;
+  return {
+    month: rows.filter((r) => r.created_at >= monthStart).length,
+    total: rows.length,
+    replied,
+    clients,
+    sources: [...sources.entries()].map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count).slice(0, 5),
+  };
+}
+
+/**
+ * Cron diário: quem recebeu o PDF há N dias e não respondeu recebe um follow-up curto, na
+ * mesma conversa (uma só vez). Só leads ainda em "Respondeu" (quem avançou não recebe).
+ */
+export async function runFreeAuditFollowUps(): Promise<{ sent: number; skipped: number }> {
+  const admin = createSupabaseAdminClient();
+  const { data: workspaces } = await admin.from('workspaces').select('id, settings').not('settings->free_audit->>token', 'is', null);
+  let sent = 0;
+  let skipped = 0;
+  for (const w of workspaces ?? []) {
+    const fa = ((w.settings as { free_audit?: Partial<FreeAuditSettings> } | null)?.free_audit ?? {}) as Partial<FreeAuditSettings>;
+    const days = fa.follow_up_days === undefined ? 3 : fa.follow_up_days;
+    if (!days) continue;
+    const until = new Date(Date.now() - days * 86_400_000).toISOString();
+    const since = new Date(Date.now() - (days + 7) * 86_400_000).toISOString();
+    const { data: emails } = await admin
+      .from('lead_activities')
+      .select('lead_id, created_at, body, payload')
+      .eq('workspace_id', w.id)
+      .eq('type', 'email_sent')
+      .eq('payload->>template', EMAIL_TEMPLATE)
+      .gte('created_at', since)
+      .lte('created_at', until)
+      .limit(50);
+    if (!emails?.length) continue;
+    const ctx = await systemContext(w.id as string, null);
+    if (!ctx) continue;
+    for (const e of emails) {
+      const leadId = e.lead_id as string;
+      const [{ data: later }, { data: lead }] = await Promise.all([
+        admin
+          .from('lead_activities')
+          .select('type, payload')
+          .eq('lead_id', leadId)
+          .gt('created_at', e.created_at as string)
+          .in('type', ['email_received', 'email_sent', 'email_bounced']),
+        admin.from('leads').select('id, status, email, contact_name, website').eq('id', leadId).maybeSingle(),
+      ]);
+      const answered = (later ?? []).some((a) => a.type !== 'email_sent' || (a.payload as { template?: string } | null)?.template === FOLLOW_UP_TEMPLATE);
+      if (answered || !lead || lead.status !== 'respondeu' || !lead.email) {
+        skipped += 1;
+        continue;
+      }
+      const host = (() => {
+        try {
+          return new URL(String(lead.website)).hostname.replace(/^www\./, '');
+        } catch {
+          return 'o seu site';
+        }
+      })();
+      const payload = (e.payload ?? {}) as { message_id?: string | null };
+      try {
+        await sendLeadEmail(
+          ctx,
+          leadId,
+          LeadEmailSendSchema.parse({
+            to: lead.email,
+            subject: replySubject(String(e.body ?? `A análise do site ${host}`)),
+            body: freeAuditFollowUpEmail({ name: (lead.contact_name as string | null) ?? null, host }).body,
+            template: FOLLOW_UP_TEMPLATE,
+            ...(payload.message_id ? { in_reply_to: payload.message_id } : {}),
+          }),
+        );
+        sent += 1;
+      } catch (error) {
+        skipped += 1;
+        console.error('[análise grátis] follow-up', error instanceof Error ? error.message : error);
+      }
+    }
+  }
+  return { sent, skipped };
 }

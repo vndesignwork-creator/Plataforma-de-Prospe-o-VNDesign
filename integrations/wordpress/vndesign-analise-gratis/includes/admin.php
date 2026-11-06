@@ -34,7 +34,7 @@ function vnd_fa_sanitize($input) {
 	$input = is_array($input) ? $input : array();
 	$defaults = vnd_fa_defaults();
 	$choices = vnd_fa_choices();
-	$checkboxes = array('show_title', 'show_intro', 'show_name', 'show_company', 'privacy_link', 'card', 'promo', 'promo_image_show');
+	$checkboxes = array('show_title', 'show_intro', 'show_name', 'show_company', 'privacy_link', 'card', 'promo', 'promo_image_show', 'show_example', 'promo_hide_form_title');
 	$textareas = array('intro', 'consent', 'success', 'promo_text', 'promo_points', 'promo_note');
 	$out = array();
 	foreach ($defaults as $key => $default) {
@@ -195,6 +195,7 @@ function vnd_fa_settings_page() {
 				$text('sending', 'Botão enquanto envia');
 				$text('success_title', 'Depois de enviar: título');
 				$area('success', 'Depois de enviar: texto');
+				$text('example_label', 'Texto do link do exemplo');
 				$text('redirect', 'Depois de enviar, abrir esta página (opcional)', 'Ex.: uma página “Obrigado” com o pixel do Facebook ou o Google Ads. Vazio = mostra o texto acima.');
 				?>
 			</table>
@@ -202,7 +203,7 @@ function vnd_fa_settings_page() {
 			<h2>Texto de persuasão</h2>
 			<p class="description">Ao lado do formulário: uma imagem, um título, o texto e as vantagens. No telemóvel fica por baixo (ou por cima) do formulário.</p>
 			<table class="form-table" role="presentation">
-				<tr><th scope="row">Mostrar</th><td><?php $check_box('promo', 'Mostrar o texto de persuasão ao lado do formulário'); ?></td></tr>
+				<tr><th scope="row">Mostrar</th><td><?php $check_box('promo', 'Mostrar o texto de persuasão ao lado do formulário'); $check_box('promo_hide_form_title', 'Com o texto ao lado, esconder o título e o texto do formulário (um título a menos)'); ?></td></tr>
 				<?php
 				$select('promo_position', 'Posição');
 				$select('promo_mobile', 'No telemóvel, o texto fica');
@@ -240,6 +241,7 @@ function vnd_fa_settings_page() {
 					$check_box('show_name', 'Campo “O seu nome”');
 					$check_box('show_company', 'Campo “Nome do negócio”');
 					$check_box('privacy_link', 'Link para a política de privacidade (Definições → Privacidade)');
+					$check_box('show_example', 'Link “Ver um exemplo do relatório (PDF)” por baixo do botão');
 					?>
 					<p class="description">O site e o email são sempre pedidos, e o consentimento também (RGPD).</p>
 				</td></tr>

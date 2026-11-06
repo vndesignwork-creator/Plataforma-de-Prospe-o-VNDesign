@@ -34,6 +34,15 @@ function wp_register_script($h) {}
 function wp_enqueue_style($h, $src = '') { $GLOBALS['vnd_enqueued'][] = "style:$h" . ($src ? " $src" : ''); }
 function wp_enqueue_script($h) { $GLOBALS['vnd_enqueued'][] = "script:$h"; }
 
+// Pedidos à plataforma (configuração remota): VND_REMOTE = o JSON que a plataforma devolve.
+define('HOUR_IN_SECONDS', 3600);
+define('MINUTE_IN_SECONDS', 60);
+function get_transient($k) { return false; }
+function set_transient($k, $v, $t) { return true; }
+function wp_remote_get($url, $args = array()) { return array('body' => getenv('VND_REMOTE') ?: '{"ok":true}'); }
+function is_wp_error($v) { return false; }
+function wp_remote_retrieve_body($r) { return $r['body']; }
+
 require __DIR__ . '/../vndesign-analise-gratis/vndesign-analise-gratis.php';
 $GLOBALS['vnd_admin'] = getenv('VND_ADMIN') === '1';
 $atts = json_decode($argv[2] ?? '{}', true) ?: array();

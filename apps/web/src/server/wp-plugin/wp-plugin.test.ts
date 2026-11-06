@@ -75,7 +75,7 @@ describe('plugin de WordPress', () => {
   });
 
   it.skipIf(!hasPhp)('o formulário envia para a plataforma, com os textos escapados', () => {
-    const html = render({ page_url: PAGE }, { title: 'Olá <script>x</script>', theme: 'light', show_company: '0' });
+    const html = render({ page_url: PAGE }, { title: 'Olá <script>x</script>', theme: 'light', show_company: '0', promo_hide_form_title: '0' });
     expect(html).toContain('action="https://leads.vndesign.pt/api/v1/public/free-audit/abcdefghijklmnop1234"');
     expect(html).toContain('data-vnd-fa-form');
     expect(html).toContain('vnd-fa--light');
@@ -93,7 +93,7 @@ describe('plugin de WordPress', () => {
   it.skipIf(!hasPhp)('o código sozinho também serve; valores inválidos voltam ao de origem', () => {
     const html = render({ page_url: 'abcdefghijklmnop1234', theme: 'roxo', accent: 'red;}' });
     expect(html).toContain('https://leads.vndesign.pt/api/v1/public/free-audit/abcdefghijklmnop1234');
-    expect(html).toContain('vnd-fa--dark');
+    expect(html).toContain('vnd-fa--site'); // o tema de origem: seguir o site
     expect(html).not.toContain('red;}');
   });
 
@@ -102,7 +102,8 @@ describe('plugin de WordPress', () => {
     expect(on).toContain('vnd-fa--promo vnd-fa--promo-left');
     expect(on).toContain('O seu site está a afastar clientes');
     expect(on).toMatch(/assets\/ilustracao-relatorio\.svg\?ver=[\d.]+"/);
-    expect(on.match(/<li>/g)?.length).toBe(4);
+    expect(on.match(/<li>/g)?.length).toBe(5);
+    expect(on).toContain('IA: se o ChatGPT');
     // De origem: o texto à esquerda e, no telemóvel, por cima do formulário.
     expect(on.indexOf('vnd-fa__promo')).toBeLessThan(on.indexOf('vnd-fa__main'));
     expect(on).toContain('width="1000" height="500"');
@@ -146,6 +147,27 @@ describe('plugin de WordPress', () => {
     expect(none).not.toContain('fonts.');
     // Títulos "a do site": só o texto muda.
     expect(none).not.toContain('vnd-fa--font-heading');
+  });
+
+  it.skipIf(!hasPhp)('1.6: sem título repetido, exemplo, resultado, verificar o site, Turnstile e tema do site', () => {
+    const html = render({ page_url: PAGE });
+    // Com o texto de persuasão, o formulário fica sem título próprio.
+    expect(html).not.toContain('class="vnd-fa__title"');
+    expect(render({ page_url: PAGE, promo_hide_form_title: '0' })).toContain('class="vnd-fa__title"');
+    expect(render({ page_url: PAGE, promo: '0' })).toContain('class="vnd-fa__title"');
+    expect(html).toContain('href="https://leads.vndesign.pt/api/v1/public/free-audit/abcdefghijklmnop1234/exemplo"');
+    expect(html).toContain('data-check="https://leads.vndesign.pt/api/v1/public/free-audit/abcdefghijklmnop1234/verificar-site"');
+    expect(html).toContain('data-status="https://leads.vndesign.pt/api/v1/public/free-audit/abcdefghijklmnop1234/estado/"');
+    expect(html).toContain('data-result hidden');
+    expect(html).toMatch(/data-wide="[^"]*ilustracao-relatorio-larga\.svg\?ver=/);
+    expect(html).toContain('vnd-fa--site');
+    expect(html).not.toContain('vnd-fa__turnstile');
+    expect(render({ page_url: PAGE, show_example: '0' })).not.toContain('vnd-fa__example');
+    const res = spawnSync('php', [HARNESS, JSON.stringify({ page_url: PAGE }), '{}'], { encoding: 'utf8', env: { ...process.env, VND_REMOTE: '{"ok":true,"turnstile_site_key":"0x4AAAAtest"}' } });
+    expect(res.stdout).toContain('class="vnd-fa__turnstile" data-sitekey="0x4AAAAtest"');
+    // Uma chave com caracteres estranhos não entra.
+    const bad = spawnSync('php', [HARNESS, JSON.stringify({ page_url: PAGE }), '{}'], { encoding: 'utf8', env: { ...process.env, VND_REMOTE: '{"ok":true,"turnstile_site_key":"x\\"><script>"}' } });
+    expect(bad.stdout).not.toContain('vnd-fa__turnstile');
   });
 
   it.skipIf(!hasPhp)('sem ligação: só o administrador vê o aviso', () => {

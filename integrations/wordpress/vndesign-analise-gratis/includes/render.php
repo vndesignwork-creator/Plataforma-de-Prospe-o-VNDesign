@@ -165,6 +165,28 @@ function vnd_fa_root_style($o) {
 	return implode(';', $vars);
 }
 
+/** O que a plataforma diz desta página (ex.: a chave pública do Turnstile), guardado 1 hora. */
+function vnd_fa_remote_config($endpoint) {
+	$empty = array('turnstile_site_key' => null, 'company' => null);
+	if (!$endpoint || !function_exists('wp_remote_get')) {
+		return $empty;
+	}
+	$key = 'vnd_fa_cfg_' . md5($endpoint);
+	$cached = get_transient($key);
+	if (is_array($cached)) {
+		return $cached + $empty;
+	}
+	$res = wp_remote_get($endpoint, array('timeout' => 4, 'headers' => array('Accept' => 'application/json')));
+	$body = is_wp_error($res) ? null : json_decode(wp_remote_retrieve_body($res), true);
+	$config = array(
+		'turnstile_site_key' => is_array($body) && !empty($body['turnstile_site_key']) && preg_match('~^[\w-]{1,100}$~', $body['turnstile_site_key']) ? $body['turnstile_site_key'] : null,
+		'company'            => is_array($body) && !empty($body['company']) ? (string) $body['company'] : null,
+	);
+	// Sem resposta: tenta outra vez daqui a 10 minutos.
+	set_transient($key, $config, is_array($body) ? HOUR_IN_SECONDS : 10 * MINUTE_IN_SECONDS);
+	return $config;
+}
+
 /** A imagem do texto de persuasão: a escolhida ou a que vem com o plugin. */
 function vnd_fa_promo_image_url($o) {
 	$url = trim((string) $o['promo_image']);
@@ -179,7 +201,9 @@ function vnd_fa_render_promo($o) {
 	if (vnd_fa_on($o['promo_image_show'])) {
 		$own = trim((string) $o['promo_image']) !== '';
 		// Na horizontal: no computador estica ou encolhe até a coluna ficar da altura do formulário.
-		$image = '<div class="vnd-fa__media"><img class="vnd-fa__image' . ($own ? '' : ' vnd-fa__image--illustration') . '" src="' . esc_url(vnd_fa_promo_image_url($o)) . '" alt="' . esc_attr($o['promo_image_alt']) . '" loading="lazy" decoding="async"' . ($own ? '' : ' width="1000" height="500"') . '></div>';
+		// A ilustração do plugin tem uma versão larga (telemóvel, relatório, IAs, Google): o JS escolhe-a quando a moldura é bem larga.
+		$wide = $own ? '' : ' data-wide="' . esc_url(VND_FA_URL . 'assets/ilustracao-relatorio-larga.svg?ver=' . VND_FA_VERSION) . '"';
+		$image = '<div class="vnd-fa__media"><img class="vnd-fa__image' . ($own ? '' : ' vnd-fa__image--illustration') . '" src="' . esc_url(vnd_fa_promo_image_url($o)) . '"' . $wide . ' alt="' . esc_attr($o['promo_image_alt']) . '" loading="lazy" decoding="async"' . ($own ? '' : ' width="1000" height="500"') . '></div>';
 	}
 	$text = '';
 	if (trim($o['promo_eyebrow']) !== '') {
@@ -248,10 +272,12 @@ function vnd_fa_render_inner($o, $preview = false) {
 	};
 
 	$html = '';
-	if (vnd_fa_on($o['show_title']) && trim($o['title']) !== '') {
+	// Com o texto de persuasão ao lado, o título e o texto do formulário podem sair (um título a menos).
+	$hide_head = vnd_fa_on($o['promo']) && vnd_fa_on($o['promo_hide_form_title']);
+	if (!$hide_head && vnd_fa_on($o['show_title']) && trim($o['title']) !== '') {
 		$html .= '<' . $tag . ' class="vnd-fa__title">' . esc_html($o['title']) . '</' . $tag . '>';
 	}
-	if (vnd_fa_on($o['show_intro']) && trim($o['intro']) !== '') {
+	if (!$hide_head && vnd_fa_on($o['show_intro']) && trim($o['intro']) !== '') {
 		$html .= '<p class="vnd-fa__intro">' . esc_html($o['intro']) . '</p>';
 	}
 
@@ -259,6 +285,8 @@ function vnd_fa_render_inner($o, $preview = false) {
 		. ($preview ? ' action="#" data-vnd-fa-preview' : ' action="' . esc_url($endpoint) . '" data-vnd-fa-form')
 		. ' data-endpoint="' . esc_url($endpoint) . '"'
 		. ' data-redirect="' . esc_attr($redirect) . '"'
+		. ' data-check="' . esc_url($endpoint . '/verificar-site') . '"'
+		. ' data-status="' . esc_url($endpoint . '/estado/') . '"'
 		. ' data-sending="' . esc_attr($o['sending']) . '"'
 		. ' data-msg-website="' . esc_attr('Escreva o endereço do site.') . '"'
 		. ' data-msg-email="' . esc_attr('Escreva um email válido.') . '"'
@@ -291,13 +319,24 @@ function vnd_fa_render_inner($o, $preview = false) {
 	if ($redirect !== '') {
 		$html .= '<input type="hidden" name="_next" value="' . esc_attr($redirect) . '">';
 	}
+	// Cloudflare Turnstile (só se o dono o ligou na plataforma).
+	$turnstile = $preview ? null : vnd_fa_remote_config($endpoint)['turnstile_site_key'];
+	if ($turnstile) {
+		$html .= '<div class="vnd-fa__turnstile" data-sitekey="' . esc_attr($turnstile) . '"></div>';
+	}
 	$html .= '<p class="vnd-fa__status" role="alert" hidden></p>';
-	$html .= '<button class="vnd-fa__button" type="' . ($preview ? 'button' : 'submit') . '">' . esc_html($o['button']) . '</button>';
+	$html .= '<button class="vnd-fa__button" type="' . ($preview ? 'button' : 'submit') . '" data-label="' . esc_attr($o['button']) . '">' . esc_html($o['button']) . '</button>';
+	if (vnd_fa_on($o['show_example']) && trim($o['example_label']) !== '') {
+		$html .= '<a class="vnd-fa__example" href="' . esc_url($endpoint . '/exemplo') . '" target="_blank" rel="noopener">'
+			. '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z M14 3v5h5 M9 13h6 M9 17h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+			. '<span>' . esc_html($o['example_label']) . '</span></a>';
+	}
 	$html .= '</form>';
 
 	$html .= '<div class="vnd-fa__success" role="status" tabindex="-1" hidden>'
 		. (trim($o['success_title']) !== '' ? '<strong class="vnd-fa__success-title">' . esc_html($o['success_title']) . '</strong>' : '')
 		. '<p data-success-text>' . esc_html($o['success']) . '</p>'
+		. '<div class="vnd-fa__result" data-result hidden></div>'
 		. '</div>';
 
 	if (!vnd_fa_on($o['promo'])) {

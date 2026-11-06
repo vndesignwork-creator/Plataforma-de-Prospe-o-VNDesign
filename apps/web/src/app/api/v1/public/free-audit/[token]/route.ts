@@ -42,7 +42,7 @@ const page = (message: string) =>
 export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
   const info = await freeAuditPage((await params).token);
   if (!info) return NextResponse.json({ ok: false, message: 'Esta página não existe ou foi desligada.' }, { status: 404, headers: CORS });
-  return NextResponse.json({ ok: true, company: info.company }, { headers: { ...CORS, 'Cache-Control': 'no-store' } });
+  return NextResponse.json({ ok: true, company: info.company, turnstile_site_key: info.turnstile_site_key }, { headers: { ...CORS, 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ token: string }> }) {
@@ -58,7 +58,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   }
   const wantsJson = (req.headers.get('accept') ?? '').includes('application/json') || (req.headers.get('content-type') ?? '').includes('application/json');
   if (wantsJson) {
-    return NextResponse.json(result.ok ? { ok: true, message: result.message } : { ok: false, message: result.message, errors: result.errors ?? null }, { status: result.ok ? 200 : result.status, headers: CORS });
+    return NextResponse.json(result.ok ? { ok: true, message: result.message, request: result.request ?? null } : { ok: false, message: result.message, errors: result.errors ?? null }, { status: result.ok ? 200 : result.status, headers: CORS });
   }
   const next = safeNext(fields._next);
   if (result.ok && next) return NextResponse.redirect(next, { status: 303, headers: CORS });
