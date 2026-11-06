@@ -87,21 +87,21 @@ export type FreeAuditLayout = {
   /** De que lado fica o texto (o formulário fica do outro). */
   side: 'right' | 'left';
 };
-export const DEFAULT_FREE_AUDIT_LAYOUT: FreeAuditLayout = { promo: true, side: 'right' };
+export const DEFAULT_FREE_AUDIT_LAYOUT: FreeAuditLayout = { promo: true, side: 'left' };
 
-/** O endereço da página com as escolhas (?texto=0, ?lado=esquerda, ?embed=1). */
+/** O endereço da página com as escolhas (?texto=0, ?lado=direita, ?embed=1). De origem: texto à esquerda. */
 export function freeAuditPageUrl(url: string, layout: FreeAuditLayout = DEFAULT_FREE_AUDIT_LAYOUT, embed = false): string {
   const q = new URLSearchParams();
   if (embed) q.set('embed', '1');
   if (!layout.promo) q.set('texto', '0');
-  else if (layout.side === 'left') q.set('lado', 'esquerda');
+  else if (layout.side === 'right') q.set('lado', 'direita');
   const qs = q.toString();
   return qs ? `${url}?${qs}` : url;
 }
 
 /** Lê as escolhas do endereço da página. */
 export function freeAuditLayoutFrom(params: { texto?: string; lado?: string }): FreeAuditLayout {
-  return { promo: params.texto !== '0', side: params.lado === 'esquerda' ? 'left' : 'right' };
+  return { promo: params.texto !== '0', side: params.lado === 'direita' ? 'right' : 'left' };
 }
 
 /**

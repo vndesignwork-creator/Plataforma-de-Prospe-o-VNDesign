@@ -111,7 +111,7 @@ function vnd_fa_render_promo($o) {
 	$image = '';
 	if (vnd_fa_on($o['promo_image_show'])) {
 		$own = trim((string) $o['promo_image']) !== '';
-		$image = '<img class="vnd-fa__image' . ($own ? '' : ' vnd-fa__image--illustration') . '" src="' . esc_url(vnd_fa_promo_image_url($o)) . '" alt="' . esc_attr($o['promo_image_alt']) . '" loading="lazy" decoding="async"' . ($own ? '' : ' width="560" height="420"') . '>';
+		$image = '<img class="vnd-fa__image' . ($own ? '' : ' vnd-fa__image--illustration') . '" src="' . esc_url(vnd_fa_promo_image_url($o)) . '" alt="' . esc_attr($o['promo_image_alt']) . '" loading="lazy" decoding="async"' . ($own ? '' : ' width="800" height="420"') . '>';
 	}
 	$text = '';
 	if (trim($o['promo_eyebrow']) !== '') {

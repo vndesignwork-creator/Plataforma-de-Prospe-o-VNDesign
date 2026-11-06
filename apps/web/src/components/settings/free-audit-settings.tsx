@@ -134,8 +134,8 @@ export function FreeAuditSettings() {
                 <div role="radiogroup" aria-label="Lado do texto de persuasão" className="inline-flex w-fit rounded-lg border border-border p-0.5">
                   {(
                     [
-                      ['right', 'Texto à direita'],
                       ['left', 'Texto à esquerda'],
+                      ['right', 'Texto à direita'],
                     ] as const
                   ).map(([side, label]) => (
                     <button
@@ -151,7 +151,7 @@ export function FreeAuditSettings() {
                   ))}
                 </div>
               ) : null}
-              <p className="text-xs text-muted">No telemóvel o texto fica por baixo do formulário. No plugin de WordPress estas escolhas fazem-se no próprio plugin.</p>
+              <p className="text-xs text-muted">No telemóvel o texto fica por cima do formulário. No plugin de WordPress estas escolhas fazem-se no próprio plugin.</p>
             </fieldset>
             <section className="flex flex-col gap-2 rounded-lg border border-border p-3" aria-label="Plugin para WordPress">
               <div className="flex flex-wrap items-center justify-between gap-2">

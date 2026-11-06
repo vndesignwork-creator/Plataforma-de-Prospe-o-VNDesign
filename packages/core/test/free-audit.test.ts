@@ -28,18 +28,21 @@ describe('aspeto da página e HTML sem plugin', () => {
 
   it('o endereço leva as escolhas e lê-as de volta', () => {
     expect(freeAuditPageUrl(url)).toBe(url);
-    expect(freeAuditPageUrl(url, { promo: true, side: 'left' })).toBe(`${url}?lado=esquerda`);
+    expect(freeAuditPageUrl(url, { promo: true, side: 'left' })).toBe(url);
+    expect(freeAuditPageUrl(url, { promo: true, side: 'right' })).toBe(`${url}?lado=direita`);
     expect(freeAuditPageUrl(url, { promo: false, side: 'left' }, true)).toBe(`${url}?embed=1&texto=0`);
+    expect(freeAuditLayoutFrom({})).toEqual({ promo: true, side: 'left' });
     expect(freeAuditLayoutFrom({ lado: 'esquerda' })).toEqual({ promo: true, side: 'left' });
-    expect(freeAuditLayoutFrom({ texto: '0' })).toEqual({ promo: false, side: 'right' });
+    expect(freeAuditLayoutFrom({ lado: 'direita' })).toEqual({ promo: true, side: 'right' });
+    expect(freeAuditLayoutFrom({ texto: '0' })).toEqual({ promo: false, side: 'left' });
   });
 
   it('a moldura ocupa a largura toda e só aceita a altura vinda da plataforma', () => {
-    const { iframe, button } = freeAuditSnippets(url, { promo: true, side: 'left' });
-    expect(iframe).toContain(`src="${url}?embed=1&lado=esquerda"`);
+    const { iframe, button } = freeAuditSnippets(url, { promo: true, side: 'right' });
+    expect(iframe).toContain(`src="${url}?embed=1&lado=direita"`);
     expect(iframe).toContain('width:100%');
     expect(iframe).not.toContain('max-width');
     expect(iframe).toContain('e.origin==="https://leads.vndesign.pt"');
-    expect(button).toContain(`href="${url}?lado=esquerda"`);
+    expect(button).toContain(`href="${url}?lado=direita"`);
   });
 });

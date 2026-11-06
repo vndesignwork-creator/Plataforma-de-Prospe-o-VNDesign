@@ -11,7 +11,8 @@ import { FreeAuditForm } from './free-audit-form';
  * "Analisar o meu site grátis" (/analise/<código>, sem login): para pôr no site do dono
  * (link ou dentro de uma moldura com ?embed=1). O visitante recebe a análise por email.
  * Ao lado do formulário, o texto de persuasão com imagem (como no plugin de WordPress):
- * ?texto=0 esconde-o, ?lado=esquerda põe-no à esquerda.
+ * De origem fica à esquerda (no telemóvel, por cima do formulário); ?lado=direita põe-no à
+ * direita e ?texto=0 esconde-o.
  */
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +25,7 @@ function Promo() {
   return (
     <section aria-label="Porquê analisar o site" className="flex min-w-0 flex-col gap-4">
       {/* eslint-disable-next-line @next/next/no-img-element -- ilustração SVG estática */}
-      <img src="/analise/promo.svg" alt={p.imageAlt} width={560} height={420} className="h-auto max-h-[26rem] w-full rounded-2xl object-contain object-left" />
+      <img src="/analise/promo.svg" alt={p.imageAlt} width={800} height={420} className="h-auto w-full rounded-2xl" />
       <p className="w-fit rounded-full bg-accent-soft px-3 py-1 text-xs font-bold tracking-wide text-accent-text uppercase">{p.eyebrow}</p>
       <h2 className="font-display text-2xl leading-tight font-bold sm:text-3xl">{p.title}</h2>
       <p className="text-muted">{p.text}</p>
@@ -84,12 +85,12 @@ export default async function FreeAuditPage({ params, searchParams }: Props) {
     >
       {logo}
       {layout.promo ? (
-        // No telemóvel: o formulário primeiro. No computador: o texto do lado escolhido.
+        // No telemóvel: o texto por cima do formulário. No computador: o texto do lado escolhido.
         <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14">
-          {main}
-          <div className={layout.side === 'left' ? 'lg:order-first' : undefined}>
+          <div className={layout.side === 'right' ? 'lg:order-last' : undefined}>
             <Promo />
           </div>
+          {main}
         </div>
       ) : (
         main

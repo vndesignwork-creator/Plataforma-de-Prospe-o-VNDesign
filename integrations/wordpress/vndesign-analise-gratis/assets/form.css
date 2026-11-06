@@ -13,6 +13,8 @@
 	box-sizing: border-box;
 	width: 100%;
 	max-width: var(--vnd-fa-max);
+	/* A letra é a do site: os campos e o botão herdam-na (font: inherit); os títulos usam a dos títulos do tema. */
+	font-family: inherit;
 	color: var(--vnd-fa-fg);
 	line-height: 1.5;
 	text-align: left;
@@ -217,7 +219,7 @@
 	border-radius: calc(var(--vnd-fa-radius) * 1.4);
 }
 /* A ilustração do plugin encolhe sem ser cortada; as fotos preenchem a caixa. */
-.vnd-fa__image--illustration { object-fit: contain; object-position: left center; }
+.vnd-fa .vnd-fa__image--illustration { max-height: none; object-fit: fill; }
 .vnd-fa__promo--image-top .vnd-fa__image { margin-bottom: 0.4rem; }
 .vnd-fa__promo--image-bottom .vnd-fa__image { margin-top: 0.4rem; }
 .vnd-fa__eyebrow {
@@ -251,17 +253,26 @@
 	padding: 0;
 	list-style: none;
 }
-.vnd-fa__points li {
+.vnd-fa .vnd-fa__points li {
 	display: flex;
 	align-items: flex-start;
 	gap: 0.65rem;
 	margin: 0;
+	padding: 0;
+	list-style: none;
 }
-.vnd-fa__points svg {
+.vnd-fa .vnd-fa__points li::before,
+.vnd-fa .vnd-fa__points li::marker { content: none; }
+.vnd-fa .vnd-fa__points li > svg {
+	display: block;
 	flex: none;
-	width: 1.3rem;
-	height: 1.3rem;
-	margin-top: 0.1rem;
+	width: 1.3em;
+	min-width: 1.3em;
+	height: 1.3em;
+	max-width: none;
+	margin: 0.1em 0 0;
+	/* Ao centro da 1.ª linha, seja qual for a altura de linha do site. */
+	margin-top: calc((1lh - 1.3em) / 2);
 	color: var(--vnd-fa-accent);
 }
 .vnd-fa__note {

@@ -99,12 +99,13 @@ describe('plugin de WordPress', () => {
 
   it.skipIf(!hasPhp)('texto de persuasão: liga e desliga, direita ou esquerda, ordem no telemóvel', () => {
     const on = render({ page_url: PAGE });
-    expect(on).toContain('vnd-fa--promo vnd-fa--promo-right');
+    expect(on).toContain('vnd-fa--promo vnd-fa--promo-left');
     expect(on).toContain('O seu site está a afastar clientes');
     expect(on).toContain('assets/promo.svg');
     expect(on.match(/<li>/g)?.length).toBe(4);
-    // Por omissão, no telemóvel o formulário vem primeiro.
-    expect(on.indexOf('vnd-fa__main')).toBeLessThan(on.indexOf('vnd-fa__promo'));
+    // De origem: o texto à esquerda e, no telemóvel, por cima do formulário.
+    expect(on.indexOf('vnd-fa__promo')).toBeLessThan(on.indexOf('vnd-fa__main'));
+    expect(on).toContain('width="800" height="420"');
     expect(on).toContain('--vnd-fa-cols:minmax(0,1fr) minmax(0,1fr)');
     // Largura: de origem ocupa o sítio onde está; com "máxima", o valor escolhido.
     expect(on).toContain('--vnd-fa-max:none');
@@ -112,12 +113,12 @@ describe('plugin de WordPress', () => {
     expect(render({ page_url: PAGE }, { width: 'max', promo: '0' })).toContain('--vnd-fa-max:640px');
     expect(render({ page_url: PAGE }, { columns_gap: '64' })).toContain('--vnd-fa-gap:64px');
 
-    const left = render({ page_url: PAGE }, { promo_position: 'left', promo_mobile: 'before', promo_ratio: 'form', promo_points: 'Um<b>\nDois', promo_image: 'https://site.test/foto.jpg' });
-    expect(left).toContain('vnd-fa--promo-left');
-    expect(left.indexOf('vnd-fa__promo')).toBeLessThan(left.indexOf('vnd-fa__main'));
-    expect(left).toContain('--vnd-fa-cols:minmax(0,1fr) minmax(0,1.25fr)');
-    expect(left).toContain('<span>Um&lt;b&gt;</span>');
-    expect(left).toContain('src="https://site.test/foto.jpg"');
+    const right = render({ page_url: PAGE }, { promo_position: 'right', promo_mobile: 'after', promo_ratio: 'form', promo_points: 'Um<b>\nDois', promo_image: 'https://site.test/foto.jpg' });
+    expect(right).toContain('vnd-fa--promo-right');
+    expect(right.indexOf('vnd-fa__main')).toBeLessThan(right.indexOf('vnd-fa__promo'));
+    expect(right).toContain('--vnd-fa-cols:minmax(0,1.25fr) minmax(0,1fr)');
+    expect(right).toContain('<span>Um&lt;b&gt;</span>');
+    expect(right).toContain('src="https://site.test/foto.jpg"');
 
     const off = render({ page_url: PAGE, promo: '0' });
     expect(off).not.toContain('vnd-fa__promo');
