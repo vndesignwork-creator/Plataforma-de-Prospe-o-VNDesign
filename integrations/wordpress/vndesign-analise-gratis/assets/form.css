@@ -207,7 +207,7 @@
 @container (min-width: 760px) {
 	.vnd-fa__grid { grid-template-columns: var(--vnd-fa-cols, minmax(0, 1fr) minmax(0, 1fr)); grid-template-areas: "main promo"; align-items: stretch; }
 	.vnd-fa__main { display: flex; flex-direction: column; justify-content: center; }
-	.vnd-fa__promo .vnd-fa__media { flex: 1 1 0; min-height: 11rem; aspect-ratio: auto; }
+	.vnd-fa__promo .vnd-fa__media { flex: 1 1 0; min-height: max(11rem, 15cqw); aspect-ratio: auto; } /* nunca mais larga que ~3,5:1 */
 	.vnd-fa--promo-left .vnd-fa__grid { grid-template-areas: "promo main"; }
 	.vnd-fa__main { grid-area: main; }
 	.vnd-fa__promo { grid-area: promo; }

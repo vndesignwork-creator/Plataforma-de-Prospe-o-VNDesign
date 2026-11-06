@@ -27,7 +27,7 @@ function Promo() {
       {/* Imagem na horizontal: no computador estica ou encolhe até a coluna ficar da altura do formulário. */}
       <div className="relative aspect-[4/3] overflow-hidden rounded-2xl lg:aspect-auto lg:min-h-36 lg:flex-1 lg:basis-0">
         {/* eslint-disable-next-line @next/next/no-img-element -- ilustração SVG estática */}
-        <img src="/analise/promo.svg" alt={p.imageAlt} width={1000} height={500} className="absolute inset-0 h-full w-full object-cover" />
+        <img src="/analise/ilustracao-relatorio.svg?v=3" alt={p.imageAlt} width={1000} height={500} className="absolute inset-0 h-full w-full object-cover" />
       </div>
       <p className="w-fit rounded-full bg-accent-soft px-3 py-1 text-xs font-bold tracking-wide text-accent-text uppercase">{p.eyebrow}</p>
       <h2 className="font-display text-2xl leading-tight font-bold">{p.title}</h2>

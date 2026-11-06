@@ -168,7 +168,8 @@ function vnd_fa_root_style($o) {
 /** A imagem do texto de persuasão: a escolhida ou a que vem com o plugin. */
 function vnd_fa_promo_image_url($o) {
 	$url = trim((string) $o['promo_image']);
-	return $url !== '' ? $url : VND_FA_URL . 'assets/promo.svg';
+	// Com a versão no endereço: ao atualizar o plugin, o browser e a cache do site vão buscar a nova.
+	return $url !== '' ? $url : VND_FA_URL . 'assets/ilustracao-relatorio.svg?ver=' . VND_FA_VERSION;
 }
 
 /** O texto de persuasão (imagem, título, texto, vantagens e nota). */

@@ -216,7 +216,7 @@ function vnd_fa_settings_page() {
 				?>
 				<tr><th scope="row">Imagem</th><td>
 					<?php $check_box('promo_image_show', 'Mostrar a imagem'); ?>
-					<div class="vnd-fa-image" data-default="<?php echo esc_url(VND_FA_URL . 'assets/promo.svg'); ?>" style="margin-top:8px">
+					<div class="vnd-fa-image" data-default="<?php echo esc_url(VND_FA_URL . 'assets/ilustracao-relatorio.svg?ver=' . VND_FA_VERSION); ?>" style="margin-top:8px">
 						<img src="<?php echo esc_url(vnd_fa_promo_image_url($o)); ?>" alt="" style="display:block;width:240px;max-width:100%;height:auto;border-radius:8px;border:1px solid #dcdcde;margin-bottom:8px">
 						<input type="hidden" name="<?php echo esc_attr($name . '[promo_image]'); ?>" value="<?php echo esc_attr($o['promo_image']); ?>">
 						<button type="button" class="button vnd-fa-pick">Escolher imagem</button>

@@ -101,7 +101,7 @@ describe('plugin de WordPress', () => {
     const on = render({ page_url: PAGE });
     expect(on).toContain('vnd-fa--promo vnd-fa--promo-left');
     expect(on).toContain('O seu site está a afastar clientes');
-    expect(on).toContain('assets/promo.svg');
+    expect(on).toMatch(/assets\/ilustracao-relatorio\.svg\?ver=[\d.]+"/);
     expect(on.match(/<li>/g)?.length).toBe(4);
     // De origem: o texto à esquerda e, no telemóvel, por cima do formulário.
     expect(on.indexOf('vnd-fa__promo')).toBeLessThan(on.indexOf('vnd-fa__main'));
