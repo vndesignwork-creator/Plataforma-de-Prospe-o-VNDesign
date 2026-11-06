@@ -1,4 +1,5 @@
 import { PageHeader } from '@/components/layout/page-header';
+import { AppVersion } from '@/components/settings/app-version';
 import { SettingsNav, SettingsSearch } from '@/components/settings/settings-nav';
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
@@ -12,7 +13,10 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       />
       <div className="grid gap-4 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-8">
         <SettingsNav />
-        <div className="flex min-w-0 flex-col gap-5">{children}</div>
+        <div className="flex min-w-0 flex-col gap-5">
+          {children}
+          <AppVersion />
+        </div>
       </div>
     </div>
   );

@@ -20,6 +20,8 @@ function buildId(): string {
   return id;
 }
 const BUILD_ID = buildId();
+// Hora da publicação (mostrada em Definições, ao lado da versão).
+process.env.NEXT_PUBLIC_BUILD_TIME ||= new Date().toISOString();
 
 const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },

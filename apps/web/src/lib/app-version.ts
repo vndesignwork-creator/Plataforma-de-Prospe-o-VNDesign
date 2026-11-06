@@ -6,6 +6,9 @@
 /** A versão que este separador tem aberta (fixada no build). */
 export const CLIENT_BUILD: string | null = process.env.NEXT_PUBLIC_BUILD_ID ?? null;
 
+/** Quando esta versão foi gerada (ISO), para mostrar em Definições. */
+export const CLIENT_BUILD_TIME: string | null = process.env.NEXT_PUBLIC_BUILD_TIME ?? null;
+
 export type ServerState = { status: 'ok'; build: string | null } | { status: 'down' } | { status: 'offline' };
 
 /** Pergunta ao servidor que versão está publicada (sem rede: "offline"; erro 5xx ou sem resposta: "down"). */

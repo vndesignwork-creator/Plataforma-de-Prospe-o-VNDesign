@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-/* Definições: criar etiquetas, packs de campos personalizados, ideias de regras (desligadas) e listas de Motion/Vídeo. */
+/* Definições: etiquetas, packs de campos, ideias de regras (desligadas), listas e serviços de Motion/Vídeo e a versão. */
 const run = Date.now().toString(36);
 
 test('Etiquetas: criar uma etiqueta sem leads, aparece nas sugestões; apagar tira-a', async ({ page }) => {
@@ -61,4 +61,24 @@ test('Listas de tarefas: Motion design e Edição de vídeo prontas a usar', asy
   const res = await page.request.get('/api/v1/task-templates');
   const names = ((await res.json()).data as { name: string; items: string[] }[]).map((t) => t.name);
   expect(names).toEqual(expect.arrayContaining(['Motion design', 'Edição de vídeo']));
+});
+
+test('Serviços: Vídeo e Motion Design com serviços e pacotes prontos (o mensal é recorrente)', async ({ page }) => {
+  const services = ((await (await page.request.get('/api/v1/services')).json()).data as { key: string; label: string }[]).map((s) => s.key);
+  expect(services).toEqual(expect.arrayContaining(['motion_design', 'edicao_video', 'reels', 'video_institucional', 'animacao_logotipo']));
+  const packages = (await (await page.request.get('/api/v1/packages')).json()).data as { name: string; service: string | null }[];
+  expect(packages.find((p) => p.name === 'Reels — pack de 4')?.service).toBe('reels');
+  expect(packages.find((p) => p.name === 'Motion design (até 30 s)')?.service).toBe('motion_design');
+  await page.goto('/definicoes/servicos');
+  await expect(page.getByText('Vídeo e Motion Design').first()).toBeVisible();
+  await page.goto('/definicoes/propostas');
+  await expect(page.getByText('Edição de vídeo — mensal').first()).toBeVisible();
+});
+
+test('Definições: mostra a versão da plataforma (a mesma de /api/version)', async ({ page }) => {
+  const { build } = (await (await page.request.get('/api/version')).json()) as { build: string };
+  await page.goto('/definicoes/campos');
+  const footer = page.getByRole('region', { name: 'Versão da plataforma' });
+  await expect(footer).toContainText(build);
+  await expect(footer).toContainText('É a mais recente');
 });
