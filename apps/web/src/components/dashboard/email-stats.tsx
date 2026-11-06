@@ -39,21 +39,47 @@ export function EmailStatsSection() {
     <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2">
       <Card>
         <CardHeader title="Emails: o que resulta" description="Os emails enviados pela plataforma, por modelo" actions={period} />
-        <div className="relative overflow-x-auto p-4">
+        <div className="p-4">
           {isLoading ? (
             <Skeleton className="h-32" />
           ) : !data?.templates.length ? (
             <p className="text-sm text-muted">Ainda não enviaste emails pela plataforma neste período.</p>
           ) : (
             <>
+              {/* Telemóvel: um cartão por modelo (o nome inteiro e os números por baixo, cada um com o título). */}
+              <ul className="flex flex-col gap-2 sm:hidden" aria-label="Emails por modelo">
+                {data.templates.map((t) => {
+                  const best = t.sent >= 5 && bestReply > 0 && t.replied / t.sent === bestReply;
+                  const cells = [
+                    { label: 'Enviados', value: String(t.sent) },
+                    { label: 'Abertos', value: t.tracked ? pct(t.opened, t.tracked) : '—' },
+                    { label: 'Cliques', value: t.tracked ? pct(t.clicked, t.tracked) : '—' },
+                    { label: 'Respostas', value: `${pct(t.replied, t.sent)}${best ? ' ★' : ''}`, best },
+                  ];
+                  return (
+                    <li key={t.template ?? '—'} className="rounded-lg border border-border px-3 py-2.5">
+                      <p className="text-sm font-medium break-words">{t.template ?? <span className="text-muted">Escrito à mão</span>}</p>
+                      <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
+                        {cells.map((c) => (
+                          <div key={c.label} className="flex min-w-0 items-baseline justify-between gap-2">
+                            <dt className="text-xs text-muted">{c.label}</dt>
+                            <dd className={cn('text-sm font-medium tabular', c.best && 'font-semibold text-success')}>{c.value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="relative hidden overflow-x-auto sm:block">
               <table className="w-full text-sm" aria-label="Emails por modelo">
                 <thead>
                   <tr className="text-left text-xs text-muted">
                     <th scope="col" className="pb-2 font-medium">Modelo</th>
-                    <th scope="col" className="pb-2 text-right font-medium">Enviados</th>
-                    <th scope="col" className="pb-2 text-right font-medium">Abertos</th>
-                    <th scope="col" className="pb-2 text-right font-medium">Clicaram</th>
-                    <th scope="col" className="pb-2 text-right font-medium">Responderam</th>
+                    <th scope="col" className="pb-2 pl-3 text-right font-medium">Enviados</th>
+                    <th scope="col" className="pb-2 pl-3 text-right font-medium">Abertos</th>
+                    <th scope="col" className="pb-2 pl-3 text-right font-medium">Clicaram</th>
+                    <th scope="col" className="pb-2 pl-3 text-right font-medium">Responderam</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -64,10 +90,10 @@ export function EmailStatsSection() {
                         <th scope="row" className="max-w-56 truncate py-2 pr-3 text-left font-medium" title={t.template ?? undefined}>
                           {t.template ?? <span className="text-muted">Escrito à mão</span>}
                         </th>
-                        <td className="py-2 text-right tabular">{t.sent}</td>
-                        <td className="py-2 text-right tabular">{t.tracked ? pct(t.opened, t.tracked) : '—'}</td>
-                        <td className="py-2 text-right tabular">{t.tracked ? pct(t.clicked, t.tracked) : '—'}</td>
-                        <td className={cn('py-2 text-right tabular', best && 'font-semibold text-success')} title={`${t.replied} de ${t.sent}`}>
+                        <td className="py-2 pl-3 text-right tabular">{t.sent}</td>
+                        <td className="py-2 pl-3 text-right tabular">{t.tracked ? pct(t.opened, t.tracked) : '—'}</td>
+                        <td className="py-2 pl-3 text-right tabular">{t.tracked ? pct(t.clicked, t.tracked) : '—'}</td>
+                        <td className={cn('py-2 pl-3 text-right tabular', best && 'font-semibold text-success')} title={`${t.replied} de ${t.sent}`}>
                           {pct(t.replied, t.sent)}
                           {best ? ' ★' : ''}
                         </td>
@@ -76,6 +102,7 @@ export function EmailStatsSection() {
                   })}
                 </tbody>
               </table>
+              </div>
               <p className="mt-3 text-xs text-muted">
                 {totals.sent} emails · {pct(totals.replied, totals.sent)} com resposta. A resposta conta para o último email enviado ao lead (até 30 dias antes).
                 {bestReply > 0 ? ' ★ = o modelo com mais respostas (com 5 envios ou mais).' : ''}
