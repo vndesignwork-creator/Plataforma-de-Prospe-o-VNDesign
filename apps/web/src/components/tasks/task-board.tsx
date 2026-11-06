@@ -1513,14 +1513,20 @@ export function TaskBoard({
           ) : null}
         </div>
       ) : null}
-      <p className="flex items-center gap-1.5 text-xs text-muted">
-        <Pencil className="h-3 w-3" aria-hidden /> Toca no texto de uma tarefa
-        para a editar; arrasta pela pega para mudar a ordem (a pega do título
-        muda o cartão de lugar, ou usa o ⋯ do cartão: afixar, cor, mover,
-        arquivar). A seta ao lado do título recolhe o cartão; o número vermelho
-        são as tarefas em atraso. As concluídas dos últimos 30 dias ficam no fim
-        de cada cartão.
-      </p>
+      {/* As dicas recolhidas (curtas, só para quem quiser ver). */}
+      <details className="group text-xs text-muted">
+        <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 hover:text-fg [&::-webkit-details-marker]:hidden">
+          <ChevronRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90" aria-hidden />
+          <Pencil className="h-3 w-3" aria-hidden /> Dicas
+        </summary>
+        <ul className="mt-1.5 flex list-disc flex-col gap-0.5 pl-9">
+          <li>Toca numa tarefa para a editar.</li>
+          <li>Arrasta pela pega ⠿ para mudar a ordem (a do título muda o cartão de lugar).</li>
+          <li>No ⋯ do cartão: afixar, cor, mover e arquivar.</li>
+          <li>A seta recolhe o cartão; o número vermelho são as atrasadas.</li>
+          <li>As concluídas dos últimos 30 dias ficam no fim de cada cartão.</li>
+        </ul>
+      </details>
     </div>
   );
 }

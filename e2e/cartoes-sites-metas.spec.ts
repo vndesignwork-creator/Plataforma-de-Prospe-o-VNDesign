@@ -262,7 +262,8 @@ test('Site do cliente: vigiar, no ar, 2 falhas = em baixo, data do domínio à m
     await page.goto('/');
     const sites = page.getByRole('heading', { name: 'Sites dos clientes' }).locator('xpath=ancestor::div[contains(@class,"rounded-xl")][1]');
     await expect(sites.getByText(`#${lead.number} Site ${run}`)).toBeVisible();
-    await expect(sites.getByText(/Em baixo/)).toBeVisible();
+    // Só na linha deste lead (pode haver outros sites em baixo de outros testes).
+    await expect(sites.getByRole('listitem').filter({ hasText: `#${lead.number} Site ${run}` }).getByText(/Em baixo/)).toBeVisible();
 
     // Volta ao ar.
     up = true;

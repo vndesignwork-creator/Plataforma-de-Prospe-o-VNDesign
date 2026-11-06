@@ -62,11 +62,12 @@ export function TeamStatsSection({ bare }: { bare?: boolean } = {}) {
                 <p className="text-sm break-words">
                   <span className="font-medium">{m.name}</span> <span className="text-xs text-muted">· {MEMBER_ROLE_LABELS[m.role]}</span>
                 </p>
-                <dl className="mt-2 grid grid-cols-1 gap-y-1 min-[360px]:grid-cols-2 min-[360px]:gap-x-4">
+                {/* Duas colunas; o último, se sobrar sozinho, a toda a largura. Os números nunca partem. */}
+                <dl className="mt-2 grid grid-cols-1 gap-y-1 min-[360px]:grid-cols-2 min-[360px]:gap-x-4 min-[360px]:[&>div:last-child:nth-child(odd)]:col-span-2">
                   {cells.map((c) => (
                     <div key={c.label} className="flex min-w-0 items-baseline justify-between gap-2">
-                      <dt className="text-xs text-muted">{c.label}</dt>
-                      <dd className="text-sm font-medium tabular">{c.value}</dd>
+                      <dt className="min-w-0 text-xs text-muted">{c.label}</dt>
+                      <dd className="shrink-0 text-sm font-medium whitespace-nowrap tabular">{c.value}</dd>
                     </div>
                   ))}
                 </dl>
@@ -74,7 +75,7 @@ export function TeamStatsSection({ bare }: { bare?: boolean } = {}) {
             );
           })}
         </ul>
-        <div className="relative hidden overflow-x-auto sm:block">
+        <div className="relative hidden overflow-x-auto focus-visible:outline-2 focus-visible:outline-accent sm:block" tabIndex={0} role="region" aria-label="Trabalho de cada pessoa (desliza para o lado)">
           <table className="w-full min-w-[44rem] text-sm">
             <caption className="sr-only">Trabalho de cada pessoa da equipa</caption>
             <thead>

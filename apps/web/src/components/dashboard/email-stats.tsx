@@ -71,7 +71,7 @@ export function EmailStatsSection() {
                   );
                 })}
               </ul>
-              <div className="relative hidden overflow-x-auto sm:block">
+              <div className="relative hidden overflow-x-auto focus-visible:outline-2 focus-visible:outline-accent sm:block" tabIndex={0} role="region" aria-label="Emails por modelo (desliza para o lado)">
               <table className="w-full text-sm" aria-label="Emails por modelo">
                 <thead>
                   <tr className="text-left text-xs text-muted">

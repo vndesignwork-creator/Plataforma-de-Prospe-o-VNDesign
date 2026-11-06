@@ -749,7 +749,8 @@ function LeadRow({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+      {/* No telemóvel espalhados pela linha toda (sem espaço vazio à direita); no computador juntos. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm max-[379px]:grid max-[379px]:grid-cols-2 sm:justify-start sm:gap-x-4">
         <button
           type="button"
           aria-expanded={noteOpen}

@@ -179,7 +179,8 @@ test('estatísticas: aberto, clicado e respondido por modelo', async ({ page }) 
 
   await page.goto('/estatisticas');
   await expect(page.getByText('Emails: o que resulta')).toBeVisible();
-  await expect(page.getByText(template)).toBeVisible();
+  // Telemóvel: cartões; computador: tabela (os dois estão na página, um escondido).
+  await expect(page.getByText(template).filter({ visible: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Quando abrem os teus emails' })).toBeVisible();
 });
 
