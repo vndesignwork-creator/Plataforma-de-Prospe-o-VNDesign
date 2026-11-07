@@ -23,7 +23,7 @@ import {
 import { ChevronRight, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { CollapseButton } from '@/components/ui/collapse';
 import { DictateButton } from '@/components/ui/dictate-button';
 import { EmailCheckHint } from '@/components/email/email-check-hint';
@@ -50,7 +50,7 @@ type FormInput = LeadCreateInput;
 const TEXT_FIELDS = [
   'company_name', 'website', 'city', 'address', 'problems', 'email', 'phone', 'contact_name',
   'first_contact_on', 'last_follow_up_on', 'next_action_text', 'next_action_on', 'notes',
-  'approach_angle', 'source_url', 'suggested_on', 'email_subject', 'email_body',
+  'approach_angle', 'source_url', 'suggested_on', 'email_subject', 'email_body', 'project_title',
 ] as const;
 
 /** Valores iniciais do formulário (null → '' nos campos de texto). */
@@ -63,6 +63,7 @@ function toFormValues(lead?: Lead, initial?: Partial<Lead>): FormInput {
     status: lead?.status ?? 'identificado',
     channel: lead?.channel ?? initial?.channel ?? null,
     services: lead?.services ?? [],
+    no_company: lead?.no_company ?? false,
   };
   for (const f of TEXT_FIELDS) values[f] = (lead?.[f] as string | null | undefined) ?? (initial?.[f] as string | null | undefined) ?? '';
   return values as FormInput;
@@ -152,6 +153,13 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
   // Verificação de duplicados enquanto se escreve (nome, website, email).
   const [name, website, email] = useWatch({ control, name: ['company_name', 'website', 'email'] });
   const notes = useWatch({ control, name: 'notes' }) as string | null | undefined;
+  // Sem empresa: o nome do lead é o da pessoa de contacto (acompanha-a enquanto se escreve).
+  const [noCompany, contactName] = useWatch({ control, name: ['no_company', 'contact_name'] }) as [boolean | undefined, string | null | undefined];
+  useEffect(() => {
+    if (noCompany) setValue('company_name', (contactName ?? '').trim() as never, { shouldValidate: !!contactName?.trim() });
+  }, [noCompany, contactName, setValue]);
+  // Cliente (ou projeto de um cliente): tem nome de projeto, à parte da empresa.
+  const isClient = lead?.status === 'cliente' || !!lead?.client_of || !!lead?.project_title;
   // Notas recolhidas: fechadas quando estão vazias (abrem sozinhas se tiverem erro).
   const [notesCollapsed, setNotesCollapsed] = useState(() => !(lead?.notes ?? initial?.notes)?.trim());
   const probe = useDebouncedValue({ name: name?.trim() ?? '', website: website?.trim() ?? '', email: email?.trim() ?? '' }, 500);
@@ -271,16 +279,38 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
       <Section title="Empresa" description="Só dados empresariais públicos (RGPD).">
         {/* O Field liga o rótulo ao Input (tem de ser o filho direto): o Ditar fica ao lado. */}
         <div className="flex flex-wrap items-end gap-2 md:col-span-2">
-          <Field label="Empresa" error={e('company_name')} required className="min-w-0 flex-1">
-            <Input autoComplete="off" autoFocus={!isEdit} {...register('company_name')} />
+          <Field
+            label="Empresa"
+            error={noCompany && !contactName?.trim() ? 'Sem empresa: escreve a pessoa de contacto (em “Contacto”), que passa a ser o nome do lead.' : e('company_name')}
+            hint={noCompany ? 'Sem empresa: o nome do lead é o da pessoa de contacto.' : undefined}
+            required={!noCompany}
+            className="min-w-0 flex-1"
+          >
+            <Input autoComplete="off" autoFocus={!isEdit} readOnly={!!noCompany} className={noCompany ? 'text-muted' : undefined} {...register('company_name')} />
           </Field>
-          <DictateButton
-            size="sm"
-            value={name ?? ''}
-            onChange={(v) => setValue('company_name', v as never, { shouldDirty: true, shouldValidate: true })}
-            className="mb-1 pointer-coarse:mb-1.5"
-          />
+          {!noCompany ? (
+            <DictateButton
+              size="sm"
+              value={name ?? ''}
+              onChange={(v) => setValue('company_name', v as never, { shouldDirty: true, shouldValidate: true })}
+              className="mb-1 pointer-coarse:mb-1.5"
+            />
+          ) : null}
+          <label className="flex w-full items-center gap-2 text-sm">
+            <input type="checkbox" className="h-4 w-4" {...register('no_company')} />
+            É uma pessoa, não uma firma (usar o nome da pessoa de contacto)
+          </label>
         </div>
+        {isClient ? (
+          <Field
+            label="Nome do projeto"
+            error={e('project_title')}
+            hint="Ex.: Loja online, Identidade 2026. Aparece no topo da ficha e na página Projetos, à frente da empresa."
+            className="md:col-span-2"
+          >
+            <Input maxLength={120} {...register('project_title')} />
+          </Field>
+        ) : null}
         {dupCheck.data && (dupCheck.data.duplicates.length || dupCheck.data.do_not_contact.length) ? (
           <div id="lead-duplicados" className="scroll-mt-24 md:col-span-2">
             <DuplicatePanel

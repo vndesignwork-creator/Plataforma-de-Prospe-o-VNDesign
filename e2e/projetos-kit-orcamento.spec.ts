@@ -230,3 +230,27 @@ test('projetos do cliente: arquivar, repor e apagar um projeto sem tocar no clie
   expect((await page.request.get(`/api/v1/leads/${main.id}`)).status()).toBe(200);
   await page.request.delete(`/api/v1/leads/${main.id}`);
 });
+
+test('empresa à parte do nome do projeto; sem empresa usa a pessoa de contacto (e os projetos acompanham)', async ({ page }) => {
+  const main = await createLead(page.request, { company_name: `Plano Antigo ${run}`, contact_name: `Pessoa ${run}`, status: 'cliente' });
+  const child = (await (await page.request.post(`/api/v1/leads/${main.id}/client-projects`, { data: { title: `Loja ${run}` } })).json()).data as { id: string };
+  // No primeiro projeto: o nome antigo passa a ser o nome do projeto e escreve-se a empresa.
+  await page.goto(`/leads/${main.id}/editar`);
+  await page.getByLabel('Nome do projeto').fill(`Plano Antigo ${run}`);
+  await page.getByRole('textbox', { name: 'Empresa', exact: true }).fill(`Empresa Certa ${run}`);
+  await page.getByRole('button', { name: 'Gravar alterações' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(`Plano Antigo ${run}`);
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(`Empresa Certa ${run}`);
+  // O projeto novo acompanha a empresa do principal.
+  const synced = (await (await page.request.get(`/api/v1/leads/${child.id}`)).json()).data as { company_name: string };
+  expect(synced.company_name).toBe(`Empresa Certa ${run}`);
+  // Sem empresa: o nome passa a ser o da pessoa de contacto.
+  const patched = await page.request.patch(`/api/v1/leads/${main.id}`, { data: { no_company: true } });
+  expect((await patched.json()).data.company_name).toBe(`Pessoa ${run}`);
+  expect(((await (await page.request.get(`/api/v1/leads/${child.id}`)).json()).data as { company_name: string }).company_name).toBe(`Pessoa ${run}`);
+  await page.goto(`/leads/${child.id}`);
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(`Loja ${run}`);
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(`Pessoa ${run}`);
+  await page.request.delete(`/api/v1/leads/${child.id}`);
+  await page.request.delete(`/api/v1/leads/${main.id}`);
+});

@@ -41,6 +41,7 @@ const PAGES = [
   '/definicoes/email',
   '/definicoes/funcionalidades',
   '/definicoes/testemunhos',
+  '/definicoes/apagados',
 ];
 
 for (const theme of ['dark', 'light'] as const) {

@@ -151,6 +151,7 @@ const STATUS: Record<SettingsSection['slug'], () => ReactNode> = {
   campos: CustomFieldsStatus,
   'listas-tarefas': TaskTemplatesStatus,
   regras: RulesStatus,
+  apagados: () => null,
   funcionalidades: FeaturesStatus,
   ia: AiStatus,
   api: ApiStatus,

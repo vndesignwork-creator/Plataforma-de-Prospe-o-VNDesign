@@ -56,7 +56,9 @@ export function ClientProjectsCard({ lead }: { lead: Lead }) {
     try {
       await bulk.mutateAsync({ action: 'delete', ids: [p.id] });
       void qc.invalidateQueries({ queryKey: ['client-projects'] });
-      toast.success(`Projeto “${projectName(p)}” apagado (fica 30 dias na Reciclagem).`);
+      toast.success(`Projeto “${projectName(p)}” apagado (fica 30 dias na Reciclagem).`, {
+        action: { label: 'Ver apagados', onClick: () => router.push('/definicoes/apagados') },
+      });
       setRemoving(null);
       if (p.id === lead.id && mainProject) router.push(leadPath(mainProject));
     } catch (error) {
@@ -157,7 +159,7 @@ export function ClientProjectsCard({ lead }: { lead: Lead }) {
         open={!!removing}
         onOpenChange={(o) => (!o ? setRemoving(null) : undefined)}
         title={removing ? `Apagar o projeto “${projectName(removing)}”?` : 'Apagar o projeto?'}
-        description="Vai para a Reciclagem durante 30 dias (com as tarefas, os pagamentos e as horas dele). O cliente e os outros projetos ficam como estão."
+        description="Vai para a Reciclagem (Definições → Apagados) durante 30 dias, com as tarefas, os pagamentos e as horas dele; lá podes repô-lo. O cliente e os outros projetos ficam como estão."
         footer={
           <>
             <Button variant="ghost" onClick={() => setRemoving(null)}>

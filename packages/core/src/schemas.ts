@@ -152,6 +152,8 @@ const leadFields = {
   services: ServiceKeyListSchema,
   /** Nome do projeto (ex.: "Loja online"), sobretudo quando o cliente tem vários. */
   project_title: nullableText(120),
+  /** Sem empresa: o lead é uma pessoa e o nome dele passa a ser o da pessoa de contacto. */
+  no_company: z.boolean(),
   /** Responsável pelo lead (membro da equipa; null = sem responsável). */
   assigned_to: z.uuid({ error: 'Responsável inválido.' }).nullable(),
   /** Etiquetas livres ("feira de março", "urgente"…). */
@@ -245,6 +247,7 @@ export const LeadSchema = z
     /** Projeto novo de um cliente que volta: o registo principal do cliente. */
     client_of: z.uuid().nullable().optional(),
     project_title: z.string().nullable().optional(),
+    no_company: z.boolean().optional().meta({ description: 'Sem empresa: o nome é o da pessoa de contacto' }),
     /** Responsável pelo lead (equipa de prospeção). */
     assigned_to: z.uuid().nullable().optional(),
     tags: z.array(z.string()).optional().meta({ description: 'Etiquetas livres' }),

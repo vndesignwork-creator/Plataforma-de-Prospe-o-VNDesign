@@ -826,6 +826,8 @@ export function LeadDetail({ id }: { id: string }) {
           <Card>
             <CardHeader title="Empresa e contacto" />
             <dl className="grid px-4 py-2 md:grid-cols-2 md:gap-x-6">
+              {/* A empresa à vista (no projeto novo de um cliente o título mostra primeiro o nome do projeto). */}
+              <Row label="Empresa">{lead.no_company ? <span className="text-muted">Sem empresa (pessoa)</span> : lead.company_name}</Row>
               {lead.website ? (
                 <Row label="Website">
                   <ExternalUrl url={lead.website} />

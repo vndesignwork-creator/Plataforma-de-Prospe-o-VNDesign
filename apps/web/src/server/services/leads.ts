@@ -37,7 +37,7 @@ import { ApiError, fromPostgrest, unwrap } from '../http';
 import { getSettings, updateSettings } from './workspace';
 
 export const LEAD_SELECT = [
-  'id', 'number', 'company_name', 'sector_id', 'sector:sectors(id, name, slug, emoji, icon)',
+  'id', 'number', 'company_name', 'no_company', 'sector_id', 'sector:sectors(id, name, slug, emoji, icon)',
   'website', 'city', 'address', 'latitude', 'longitude', 'geocode_status', 'problems', 'pagespeed', 'mobile',
   'email', 'phone', 'contact_name', 'status', 'channel', 'first_contact_on', 'last_follow_up_on',
   'next_action_text', 'next_action_on', 'estimated_value', 'notes', 'approach_angle', 'source_url',

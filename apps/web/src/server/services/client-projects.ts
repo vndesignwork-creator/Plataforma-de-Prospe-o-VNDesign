@@ -76,6 +76,7 @@ export async function createClientProject(ctx: ApiContext, leadId: string, input
       client_of: main.id,
       project_title: input.title,
       company_name: main.company_name,
+      no_company: main.no_company ?? false,
       sector_id: main.sector_id,
       website: main.website,
       city: main.city,
