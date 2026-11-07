@@ -299,7 +299,8 @@ export function PomodoroBox({ lead, compact, className }: { lead: Lead; compact?
               ))}
             </Select>
           ) : null}
-          <div className="flex flex-wrap justify-center gap-2">
+          {/* Os dois com a mesma largura (lado a lado, ou um por linha num espaço estreito). */}
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-2 [&>*]:w-full">
             <Button size="sm" onClick={() => start('work')} loading={pending}>
               <Play className="h-3.5 w-3.5" aria-hidden /> Começar {settings.work_minutes} min
             </Button>

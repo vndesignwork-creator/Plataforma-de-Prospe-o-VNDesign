@@ -326,21 +326,24 @@ function NextStepBar({ lead }: { lead: Lead }) {
 function MissingFields({ lead, items }: { lead: Lead; items: { label: string; important?: boolean; hint?: string }[] }) {
   if (!items.length || lead.anonymized_at) return null;
   return (
-    <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3">
-      <span className="text-xs text-muted">Falta:</span>
-      {items.map((i) => (
-        <Link
-          key={i.label}
-          href={leadPath(lead, '/editar')}
-          title={i.hint}
-          className={cn(
-            'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs hover:border-accent hover:text-fg pointer-coarse:py-1.5',
-            i.important ? 'border-warning/50 bg-warning-soft text-warning' : 'border-border text-muted',
-          )}
-        >
-          <Plus className="h-3 w-3" aria-hidden /> {i.label}
-        </Link>
-      ))}
+    // Na mesma grelha das linhas do cartão: "Falta" na coluna dos rótulos, os atalhos na dos valores.
+    <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] gap-3 px-4 pb-3 text-sm sm:grid-cols-[10rem_minmax(0,1fr)] md:grid-cols-[8.5rem_minmax(0,1fr)]">
+      <span className="pt-0.5 text-muted">Falta</span>
+      <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+        {items.map((i) => (
+          <Link
+            key={i.label}
+            href={leadPath(lead, '/editar')}
+            title={i.hint}
+            className={cn(
+              'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs hover:border-accent hover:text-fg pointer-coarse:py-1.5',
+              i.important ? 'border-warning/50 bg-warning-soft text-warning' : 'border-border text-muted',
+            )}
+          >
+            <Plus className="h-3 w-3" aria-hidden /> {i.label}
+          </Link>
+        ))}
+      </span>
     </div>
   );
 }
@@ -380,7 +383,7 @@ function SitePresence({ lead }: { lead: Lead }) {
         <h2 id="site-presenca" className="text-xs font-medium tracking-wide text-muted uppercase">
           Site e presença online
         </h2>
-        <div role="tablist" aria-label="Site e presença online" onKeyDown={rovingKeyDown} className="inline-flex h-9 max-w-full items-center overflow-x-auto rounded-lg border border-border-input bg-surface-2 p-0.5 [scrollbar-width:none]">
+        <div role="tablist" aria-label="Site e presença online" onKeyDown={rovingKeyDown} className="flex h-9 w-full items-center overflow-x-auto rounded-lg border border-border-input bg-surface-2 p-0.5 [scrollbar-width:none]">
           {SITE_TABS.map((t) => (
             <button
               key={t.id}
@@ -389,7 +392,7 @@ function SitePresence({ lead }: { lead: Lead }) {
               aria-selected={tab === t.id}
               tabIndex={rovingTabIndex(tab === t.id, 0)}
               onClick={() => choose(t.id)}
-              className={cn('inline-flex h-full shrink-0 items-center rounded-md px-3 text-sm whitespace-nowrap', tab === t.id ? 'bg-surface font-medium shadow-sm' : 'text-muted hover:text-fg')}
+              className={cn('inline-flex h-full flex-1 shrink-0 items-center justify-center rounded-md px-3 text-sm whitespace-nowrap', tab === t.id ? 'bg-surface font-medium shadow-sm' : 'text-muted hover:text-fg')}
             >
               {t.label}
             </button>
@@ -768,9 +771,9 @@ export function LeadDetail({ id }: { id: string }) {
             <dl className="grid px-4 py-2 md:grid-cols-2 md:gap-x-6">
               <Row label="Serviços" className="md:col-span-2">
                 {lead.services?.length ? (
-                  <ServiceChips services={lead.services} />
+                  <ServiceChips services={lead.services} className="justify-end" />
                 ) : !lead.anonymized_at ? (
-                  <Link href={leadPath(lead, '/editar')} className="text-accent-text hover:underline">
+                  <Link href={leadPath(lead, '/editar')} className="block text-right text-accent-text hover:underline">
                     Escolher serviços de interesse
                   </Link>
                 ) : (
@@ -778,7 +781,7 @@ export function LeadDetail({ id }: { id: string }) {
                 )}
               </Row>
               <Row label="Etiquetas" className="md:col-span-2">
-                {!lead.anonymized_at ? <TagEditor lead={lead} /> : lead.tags?.length ? <TagChips tags={lead.tags} /> : dash}
+                {!lead.anonymized_at ? <TagEditor lead={lead} className="justify-end" /> : lead.tags?.length ? <TagChips tags={lead.tags} className="justify-end" /> : dash}
               </Row>
               <CustomFieldsRows lead={lead} canEdit={!lead.anonymized_at} />
               {lead.status === 'sem_interesse' ? (

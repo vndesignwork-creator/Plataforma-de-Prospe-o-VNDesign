@@ -7,14 +7,14 @@
  * equipa (o separador fica lembrado). Cada parte pode desligar-se em
  * Definições → Funcionalidades.
  */
-import { describeProjectStart, formatCurrency, formatDate, formatDuration, summarizePayments, todayIso, type Features, type Lead } from '@vndesign/core';
-import { Clock, ListChecks, MoreHorizontal, RefreshCcw, Wallet, Zap } from 'lucide-react';
+import { describeProjectStart, formatCurrency, formatDate, formatDuration, todayIso, type Features, type Lead } from '@vndesign/core';
+import { Clock, ListChecks, MoreHorizontal, RefreshCcw, Zap } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { DateInput } from '@/components/ui/date-input';
 import { errorMessage } from '@/lib/api-client';
-import { useLeadTasks, usePayments, useProjectInfo, useProjectTime, useRevisions, useSettings, useStartProject, useUpdateProjectInfo } from '@/lib/queries';
+import { useLeadTasks, useProjectInfo, useProjectTime, useRevisions, useSettings, useStartProject, useUpdateProjectInfo } from '@/lib/queries';
 import { buttonClasses } from '@/components/ui/button';
 import { DropdownContent, DropdownItem, DropdownRoot, DropdownTrigger } from '@/components/ui/dropdown';
 import { cn } from '@/lib/utils';
@@ -50,40 +50,14 @@ function Jump({ href, children }: { href: string; children: React.ReactNode }) {
 
 /** Resumo do projeto em caixinhas (o mesmo da página Projetos). */
 function ProjectSummary({ lead, features, revisionsIncluded }: { lead: Lead; features: Features; revisionsIncluded: number }) {
-  const [today] = useState(() => todayIso());
-  const { data: payments } = usePayments(lead.id, features.payments);
   const { data: tasks } = useLeadTasks(lead.id);
   const { data: revisions } = useRevisions(lead.id, features.revisions);
   const { data: time } = useProjectTime(lead.id, features.time_tracking);
-  const pay = summarizePayments(payments ?? [], today);
   const done = (tasks ?? []).filter((t) => t.done_at).length;
   const total = (tasks ?? []).length;
   const used = revisions?.length ?? 0;
   return (
-    <div className="grid grid-cols-2 gap-2 @2xl:grid-cols-[repeat(auto-fit,minmax(9rem,1fr))]" role="group" aria-label="Resumo do projeto">
-      {features.payments ? (
-        <SummaryStat
-          icon={Wallet}
-          title="Pagamentos"
-          tone={pay.overdue ? 'danger' : undefined}
-          value={
-            pay.total ? (
-              <>
-                {euros(pay.paid)} de {euros(pay.total)}
-                {pay.overdue ? <span className="block text-xs font-medium">{euros(pay.overdue)} em atraso</span> : null}
-              </>
-            ) : (
-              <span className="font-normal text-muted">Sem plano</span>
-            )
-          }
-        >
-          {pay.total ? (
-            <ProgressBar value={pay.paid} total={pay.total} tone="success" label={`Recebido de ${lead.company_name}: ${euros(pay.paid)} de ${euros(pay.total)}`} />
-          ) : (
-            <Jump href="#pagamentos">Criar plano</Jump>
-          )}
-        </SummaryStat>
-      ) : null}
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(6.5rem,1fr))] gap-2" role="group" aria-label="Resumo do projeto">
       <SummaryStat icon={ListChecks} title="Tarefas" value={total ? `${done} de ${total}` : <span className="font-normal text-muted">Sem tarefas</span>}>
         {total ? <ProgressBar value={done} total={total} label={`Tarefas de ${lead.company_name}: ${done} de ${total}`} /> : <Jump href="#tarefas">Criar tarefas</Jump>}
       </SummaryStat>
@@ -245,8 +219,8 @@ export function ProjectCard({ lead }: { lead: Lead }) {
               <label htmlFor={`due-${lead.id}`} className="text-sm font-medium">
                 Prazo de entrega
               </label>
-              <DateInput id={`due-${lead.id}`} value={info.due_on} onChange={(v) => void setDue(v)} className="w-40" />
               {!lead.project_completed_at ? <DueBadge dueOn={info.due_on} today={today} /> : null}
+              <DateInput id={`due-${lead.id}`} value={info.due_on} onChange={(v) => void setDue(v)} className="ml-auto w-40" />
             </div>
             {features ? <ProjectSummary lead={lead} features={features} revisionsIncluded={info.revisions_included} /> : null}
           </div>

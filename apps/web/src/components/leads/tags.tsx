@@ -59,7 +59,7 @@ export function TagChips({ tags, className, link = true }: { tags: readonly stri
 }
 
 /** Editor da ficha: tirar (×) e acrescentar (Enter ou vírgula), com as já usadas como sugestão. Grava logo. */
-export function TagEditor({ lead }: { lead: Lead }) {
+export function TagEditor({ lead, className }: { lead: Lead; className?: string }) {
   const update = useUpdateLead(lead.id);
   const qc = useQueryClient();
   const { data: all } = useLeadTags();
@@ -101,7 +101,7 @@ export function TagEditor({ lead }: { lead: Lead }) {
   const suggestions = (all ?? []).map((t) => t.tag).filter((t) => !tags.some((x) => x.toLowerCase() === t.toLowerCase()));
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
       {tags.map((tag) => (
         <span key={tag} className="inline-flex max-w-full items-center gap-1 rounded-full bg-surface-3 py-0.5 pr-1 pl-2 text-xs font-medium">
           <Link href={`/leads?etiqueta=${encodeURIComponent(tag)}`} className="truncate hover:underline">

@@ -286,7 +286,7 @@ export function ProjectsView() {
 
       {/* O que mostra (Em curso | Concluídos) e como (Lista | Fases | Calendário). */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border">
-        <div role="group" aria-label="Que projetos mostrar" className="-mb-px flex gap-1">
+        <div role="group" aria-label="Que projetos mostrar" className="-mb-px flex gap-1 max-sm:ml-auto">
           {(
             [
               { value: 'active', label: 'Em curso', count: activeCount },

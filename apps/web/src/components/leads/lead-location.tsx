@@ -36,7 +36,7 @@ export function LeadLocation({ lead }: { lead: Lead }) {
   }
 
   return (
-    <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+    <span className="flex flex-col items-start gap-1">
       <span className={located ? '' : 'text-muted'}>
         {lead.geocode_status ? GEOCODE_STATUS_LABELS[lead.geocode_status] : hasAddress ? 'Ainda não localizado' : 'Sem morada'}
       </span>

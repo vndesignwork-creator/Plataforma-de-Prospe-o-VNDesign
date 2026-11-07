@@ -670,7 +670,7 @@ function LeadRow({
         </div>
       ) : (
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-          <div role="group" aria-label="Contactar" className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap [&>*]:justify-center">
+          <div role="group" aria-label="Contactar" className="flex flex-wrap justify-end gap-2 sm:justify-start max-sm:[&>*]:min-w-[7rem] [&>*]:justify-center">
             {lead.phone ? (
               <a href={telUrl(lead.phone)} onClick={() => setChannel('phone')} className={buttonClasses('soft', 'sm')}>
                 <Phone className="h-3.5 w-3.5" aria-hidden /> Ligar
@@ -680,7 +680,7 @@ function LeadRow({
               settings?.features.whatsapp_templates ? (
                 // (display: contents — fica no lugar da grelha; o clique marca o canal)
                 <span className="contents" onClickCapture={() => setChannel('whatsapp')}>
-                  <WhatsAppMenu lead={lead} className={buttonClasses('outline', 'sm')} />
+                  <WhatsAppMenu lead={lead} className={cn(buttonClasses('outline', 'sm'), 'max-sm:min-w-[7rem]')} />
                 </span>
               ) : (
                 <a href={wa} target="_blank" rel="noreferrer" onClick={() => setChannel('whatsapp')} className={buttonClasses('outline', 'sm')}>
@@ -700,7 +700,7 @@ function LeadRow({
             ) : null}
             {!lead.phone || !lead.email || lead.email_bounced_at ? (
               // Telemóvel: na sua própria linha (numa coluna estreita partia o texto e encolhia o ícone).
-              <Button size="sm" variant="ghost" aria-expanded={finder} onClick={() => setFinder(!finder)} className="col-span-full whitespace-nowrap sm:col-auto">
+              <Button size="sm" variant="ghost" aria-expanded={finder} onClick={() => setFinder(!finder)} className="whitespace-nowrap max-sm:w-full">
                 <Search className="h-3.5 w-3.5 shrink-0" aria-hidden />{' '}
                 {hasContact(lead) ? `Procurar ${lead.phone ? 'email' : 'telefone'}` : 'Procurar contacto'}
               </Button>
@@ -750,7 +750,7 @@ function LeadRow({
       )}
 
       {/* No telemóvel espalhados pela linha toda (sem espaço vazio à direita); no computador juntos. */}
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm max-[379px]:grid max-[379px]:grid-cols-2 sm:justify-start sm:gap-x-4">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-sm whitespace-nowrap max-[379px]:grid max-[379px]:grid-cols-2 sm:justify-start sm:gap-x-4">
         <button
           type="button"
           aria-expanded={noteOpen}

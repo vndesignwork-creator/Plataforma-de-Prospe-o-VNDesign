@@ -250,7 +250,8 @@ export function RenewalsSection({ lead }: { lead: Lead }) {
         summary={active.length ? `${formatCurrency(monthly)}/mês` : null}
         action={
           adding ? null : (
-            <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
+            // Mesma largura dos botões das outras partes (Despesa, Renovação).
+            <Button size="sm" variant="outline" className="min-w-[8.5rem]" onClick={() => setAdding(true)}>
               <Plus className="h-3.5 w-3.5" aria-hidden /> Renovação
             </Button>
           )

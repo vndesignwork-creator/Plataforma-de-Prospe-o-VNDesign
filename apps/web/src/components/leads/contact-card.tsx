@@ -370,14 +370,17 @@ export function ContactCard({ lead }: { lead: Lead }) {
               );
             })}
           </Select>
-          <Button size="sm" variant={aiOpen ? 'secondary' : 'outline'} onClick={() => setAiOpen(!aiOpen)} aria-expanded={aiOpen}>
-            <Sparkles className="h-3.5 w-3.5" aria-hidden /> Escrever com IA
-          </Button>
-          {edited ? (
-            <Button size="sm" variant="ghost" onClick={() => setDraft(null)} title="Voltar ao texto original">
-              <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Repor
+          {/* À direita (no telemóvel, quando passam para baixo, também). */}
+          <span className="ml-auto flex flex-wrap justify-end gap-2">
+            {edited ? (
+              <Button size="sm" variant="ghost" onClick={() => setDraft(null)} title="Voltar ao texto original">
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Repor
+              </Button>
+            ) : null}
+            <Button size="sm" variant={aiOpen ? 'secondary' : 'outline'} onClick={() => setAiOpen(!aiOpen)} aria-expanded={aiOpen}>
+              <Sparkles className="h-3.5 w-3.5" aria-hidden /> Escrever com IA
             </Button>
-          ) : null}
+          </span>
         </div>
 
         {aiOpen ? (

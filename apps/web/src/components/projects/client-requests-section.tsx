@@ -126,11 +126,11 @@ export function ClientRequestsSection({ lead }: { lead: Lead }) {
             }}
           >
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Fotografias da equipa" maxLength={200} aria-label="O que falta o cliente enviar" autoFocus className="h-9" />
-            <Button type="submit" size="sm" loading={save.isPending} disabled={!title.trim()}>
-              Juntar
-            </Button>
             <Button size="sm" variant="ghost" onClick={() => setAdding(false)}>
               Fechar
+            </Button>
+            <Button type="submit" size="sm" loading={save.isPending} disabled={!title.trim()}>
+              Juntar
             </Button>
           </form>
           {presets.length ? (

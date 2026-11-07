@@ -53,7 +53,8 @@ export function ExpensesSection({ lead }: { lead: Lead }) {
         summary={total ? `${euros(total)} em despesas` : null}
         action={
           adding ? null : (
-            <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
+            // Mesma largura dos botões das outras partes (Despesa, Renovação).
+            <Button size="sm" variant="outline" className="min-w-[8.5rem]" onClick={() => setAdding(true)}>
               <Plus className="h-3.5 w-3.5" aria-hidden /> Despesa
             </Button>
           )
@@ -110,12 +111,12 @@ export function ExpensesSection({ lead }: { lead: Lead }) {
             {errors.amount ? <p className="mt-1 text-xs text-danger">{errors.amount[0]}</p> : null}
           </div>
           <DateInput aria-label="Data da despesa" value={form.spent_on} onChange={(v) => setForm({ ...form, spent_on: v })} />
-          <div className="flex gap-2">
-            <Button type="submit" size="sm" className="h-10" loading={action.isPending}>
-              Acrescentar
-            </Button>
+          <div className="flex justify-end gap-2">
             <Button size="sm" variant="ghost" className="h-10" onClick={() => setAdding(false)}>
               Fechar
+            </Button>
+            <Button type="submit" size="sm" className="h-10" loading={action.isPending}>
+              Acrescentar
             </Button>
           </div>
         </form>

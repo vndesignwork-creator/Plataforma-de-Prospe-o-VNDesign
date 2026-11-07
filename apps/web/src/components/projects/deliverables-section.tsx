@@ -155,12 +155,12 @@ export function DeliverablesSection({ lead }: { lead: Lead }) {
             />
             {errors.url ? <p className="mt-1 text-xs text-danger">{errors.url[0]}</p> : null}
           </div>
-          <div className="flex gap-2">
-            <Button type="submit" size="sm" loading={save.isPending} className="h-10">
-              Acrescentar
-            </Button>
+          <div className="flex justify-end gap-2">
             <Button size="sm" variant="ghost" className="h-10" onClick={() => setAdding(false)}>
               Fechar
+            </Button>
+            <Button type="submit" size="sm" loading={save.isPending} className="h-10">
+              Acrescentar
             </Button>
           </div>
         </form>
