@@ -145,6 +145,13 @@ const leadFields = {
   notes: nullableText(10_000),
   approach_angle: nullableText(4000),
   source_url: nullableUrl,
+  /** Redes sociais (Facebook, Instagram, LinkedIn…): não contam como site. Aceita também texto, um link por linha. */
+  social_links: z
+    .preprocess(
+      (v) => (typeof v === 'string' ? v.split(/[\n,]+/) : v),
+      z.array(z.string().trim().max(1000)).transform((list) => [...new Set(list.filter(Boolean).map((u) => ensureUrlProtocol(u)))]),
+    )
+    .pipe(z.array(z.url({ protocol: /^https?$/, error: 'Link de rede social inválido.' })).max(10, { error: 'No máximo 10 redes sociais.' })),
   suggested_on: nullableDate,
   email_subject: nullableText(300),
   email_body: nullableText(20_000),
@@ -227,6 +234,7 @@ export const LeadSchema = z
     notes: z.string().nullable(),
     approach_angle: z.string().nullable(),
     source_url: z.string().nullable(),
+    social_links: z.array(z.string()).optional(),
     suggested_on: z.string().nullable(),
     email_subject: z.string().nullable(),
     email_body: z.string().nullable(),

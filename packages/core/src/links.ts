@@ -43,6 +43,7 @@ export interface LeadLinks {
   website?: string | null;
   source_url?: string | null;
   notes?: string | null;
+  social_links?: string[];
 }
 
 /**
@@ -53,10 +54,15 @@ export interface LeadLinks {
 export function fixDirectoryWebsite(lead: LeadLinks): Partial<LeadLinks> | null {
   const website = lead.website?.trim();
   if (!website || !isSocialOrDirectoryUrl(website)) return null;
+  // Rede social: vai para o campo "Redes sociais".
+  if (isSocialUrl(website)) {
+    const list = lead.social_links ?? [];
+    return { website: null, social_links: list.some((u) => websiteKey(u) === websiteKey(website)) ? list : [...list, website] };
+  }
   const source = lead.source_url?.trim();
   if (!source) return { website: null, source_url: website };
   if (websiteKey(source) === websiteKey(website) || source === website) return { website: null };
-  const line = `${isSocialUrl(website) ? 'Rede social' : 'Link de diretório'}: ${website}`;
+  const line = `Link de diretório: ${website}`;
   const notes = lead.notes?.includes(website) ? lead.notes : [lead.notes?.trim(), line].filter(Boolean).join('\n');
   return { website: null, notes };
 }

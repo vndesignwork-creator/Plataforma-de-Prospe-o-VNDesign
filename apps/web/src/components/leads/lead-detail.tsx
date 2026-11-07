@@ -126,6 +126,16 @@ function Row({ label, children, className }: { label: string; children: ReactNod
 
 const dash = <span className="text-muted">—</span>;
 
+/** "Facebook", "Instagram"… (o nome da rede a partir do link). */
+function socialLabel(url: string): string {
+  const host = url.replace(/^https?:\/\//i, '').replace(/^(www|m|mobile)\./i, '').split(/[/?#]/)[0]!.toLowerCase();
+  const names: Record<string, string> = {
+    'facebook.com': 'Facebook', 'fb.com': 'Facebook', 'instagram.com': 'Instagram', 'linkedin.com': 'LinkedIn', 'tiktok.com': 'TikTok',
+    'twitter.com': 'X (Twitter)', 'x.com': 'X (Twitter)', 'youtube.com': 'YouTube', 'linktr.ee': 'Linktree',
+  };
+  return names[host] ?? host;
+}
+
 function ExternalUrl({ url }: { url: string | null }) {
   if (!url) return dash;
   return (
@@ -824,6 +834,19 @@ export function LeadDetail({ id }: { id: string }) {
                 <Row label="Website">
                   <ExternalUrl url={lead.website} />
                   {isSocialUrl(lead.website) ? <span className="ml-2 text-xs text-muted">(rede social — sem site próprio)</span> : null}
+                </Row>
+              ) : null}
+              {lead.social_links?.length ? (
+                <Row label="Redes sociais">
+                  <span className="flex flex-wrap gap-x-3 gap-y-1">
+                    {lead.social_links.map((url) => (
+                      <a key={url} href={url} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 text-accent-text hover:underline">
+                        {socialLabel(url)}
+                        <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                        <span className="sr-only">(abre num novo separador)</span>
+                      </a>
+                    ))}
+                  </span>
                 </Row>
               ) : null}
               {lead.city ? <Row label="Cidade">{lead.city}</Row> : null}

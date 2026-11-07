@@ -64,6 +64,8 @@ function toFormValues(lead?: Lead, initial?: Partial<Lead>): FormInput {
     channel: lead?.channel ?? initial?.channel ?? null,
     services: lead?.services ?? [],
     no_company: lead?.no_company ?? false,
+    // Um link por linha (o esquema transforma em lista).
+    social_links: (lead?.social_links ?? initial?.social_links ?? []).join('\n'),
   };
   for (const f of TEXT_FIELDS) values[f] = (lead?.[f] as string | null | undefined) ?? (initial?.[f] as string | null | undefined) ?? '';
   return values as FormInput;
@@ -328,11 +330,14 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
             isDirectoryUrl(website)
               ? 'Isto é um diretório (TripAdvisor, Sluurpy, Google Maps…), não o site da empresa: ao gravar passa para “Fonte”.'
               : isSocialUrl(website)
-                ? 'Isto é uma rede social, não o site da empresa: ao gravar passa para “Fonte”. Se a empresa tiver site, escreve-o aqui.'
+                ? 'Isto é uma rede social, não o site da empresa: ao gravar passa para “Redes sociais”. Se a empresa tiver site, escreve-o aqui.'
                 : 'O site próprio (ex.: vndesign.pt). Sem site? Deixa vazio.'
           }
         >
           <Input type="url" inputMode="url" autoComplete="off" {...register('website')} />
+        </Field>
+        <Field label="Redes sociais" error={e('social_links')} hint="Facebook, Instagram, LinkedIn… um link por linha. Não contam como site.">
+          <Textarea rows={2} autoComplete="off" {...register('social_links')} />
         </Field>
         <Field label="Cidade" error={e('city')}>
           <Input autoComplete="off" {...register('city')} />

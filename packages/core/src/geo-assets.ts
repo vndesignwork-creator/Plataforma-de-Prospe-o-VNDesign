@@ -71,6 +71,7 @@ export function businessFromLead(lead: {
   company_name: string;
   website: string | null;
   source_url?: string | null;
+  social_links?: string[] | null;
   phone: string | null;
   email: string | null;
   address: string | null;
@@ -81,7 +82,7 @@ export function businessFromLead(lead: {
 }, serviceLabels: string[] = []): GeoBusiness {
   const postal = lead.address?.match(/\b\d{4}\s?-\s?\d{3}\b/)?.[0]?.replace(/\s/g, '') ?? null;
   const street = lead.address ? lead.address.replace(/,?\s*\b\d{4}\s?-\s?\d{3}\b.*$/, '').trim() || null : null;
-  const social = [lead.website, lead.source_url].filter((u): u is string => !!u && isSocialUrl(u));
+  const social = [...new Set([...(lead.social_links ?? []), lead.website, lead.source_url].filter((u): u is string => !!u && isSocialUrl(u)))];
   const own = lead.website && !isSocialUrl(lead.website) ? lead.website : null;
   return GeoBusinessSchema.parse({
     type: guessBusinessType(lead.sector?.name),

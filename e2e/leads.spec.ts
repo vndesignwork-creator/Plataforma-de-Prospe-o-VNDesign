@@ -119,3 +119,26 @@ test('diretório no Website (Sluurpy, TripAdvisor…) passa para Fonte', async (
   await page.getByLabel('Website').fill('https://pt.tripadvisor.pt/Restaurant_Review-x');
   await expect(page.getByText('Isto é um diretório (TripAdvisor, Sluurpy, Google Maps…), não o site da empresa')).toBeVisible();
 });
+
+test('redes sociais: um Facebook no Website vai para "Redes sociais" e aparece na ficha', async ({ page }) => {
+  const stamp = Date.now();
+  const fb = `https://www.facebook.com/redes${stamp}`;
+  const created = await page.request.post('/api/v1/leads?force=true', {
+    data: { company_name: `Redes Sociais ${stamp}`, website: fb },
+  });
+  expect(created.status()).toBe(201);
+  const lead = (await created.json()).data;
+  expect(lead).toMatchObject({ website: null, social_links: [fb] });
+
+  // No formulário: um link por linha (e sem duplicados).
+  await page.goto(`/leads/${lead.id}/editar`);
+  await expect(page.getByLabel('Redes sociais')).toHaveValue(fb);
+  await page.getByLabel('Redes sociais').fill(`${fb}\ninstagram.com/redes${stamp}\n${fb}`);
+  await page.getByRole('button', { name: 'Gravar alterações' }).click();
+  await expect(page).toHaveURL(/\/leads\/[^/]+$/);
+  const saved = (await (await page.request.get(`/api/v1/leads/${lead.id}`)).json()).data;
+  expect(saved.social_links).toEqual([fb, `https://instagram.com/redes${stamp}`]);
+  await expect(page.getByRole('link', { name: /^Facebook/ }).first()).toHaveAttribute('href', fb);
+  await expect(page.getByRole('link', { name: /^Instagram/ }).first()).toBeVisible();
+  await page.request.delete(`/api/v1/leads/${lead.id}`);
+});

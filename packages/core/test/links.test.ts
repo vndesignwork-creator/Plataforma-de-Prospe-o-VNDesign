@@ -30,10 +30,10 @@ describe('links', () => {
       notes: 'Nota\nLink de diretório: https://sluurpy.com/a',
     });
     // Redes sociais também não são o site da empresa.
-    expect(fixDirectoryWebsite({ website: 'https://m.facebook.com/x', source_url: null })).toEqual({ website: null, source_url: 'https://m.facebook.com/x' });
-    expect(fixDirectoryWebsite({ website: 'https://instagram.com/x', source_url: 'https://facebook.com/y', notes: null })).toEqual({
+    expect(fixDirectoryWebsite({ website: 'https://m.facebook.com/x', source_url: null })).toEqual({ website: null, social_links: ['https://m.facebook.com/x'] });
+    expect(fixDirectoryWebsite({ website: 'https://instagram.com/x', social_links: ['https://instagram.com/x/'] })).toEqual({
       website: null,
-      notes: 'Rede social: https://instagram.com/x',
+      social_links: ['https://instagram.com/x/'],
     });
   });
 });

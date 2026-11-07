@@ -385,8 +385,9 @@ export async function addLeadGenerationCandidates(
       company_name: c.company_name,
       city: c.city,
       address: c.address,
-      // Sem site próprio, a página de Facebook/Instagram fica no Website (como no formulário).
-      website: c.website ?? c.social_url,
+      website: c.website,
+      // A página de Facebook/Instagram fica em "Redes sociais" (não conta como site).
+      social_links: c.social_url ? [c.social_url] : [],
       phone: c.phone,
       email: c.email,
       sector_id: c.sector_id,

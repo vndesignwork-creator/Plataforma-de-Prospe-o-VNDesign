@@ -49,7 +49,9 @@ test('pesquisar com IA, rever a lista e adicionar os leads escolhidos', async ({
 
   const leads = (await (await page.request.get('/api/v1/leads', { params: { q: `Café Central ${run}` } })).json()).data;
   expect(leads).toHaveLength(1);
-  expect(leads[0].website).toBe(`https://www.facebook.com/cafecentral${run}`);
+  // A página de Facebook não é site: fica em "Redes sociais".
+  expect(leads[0].website).toBeNull();
+  expect(leads[0].social_links).toEqual([`https://www.facebook.com/cafecentral${run}`]);
   expect(leads[0].phone).toBe('214 000 001');
   expect(leads[0].services).toEqual(['site_institucional']);
   expect(leads[0].notes).toContain('Encontrado pelo gerador de leads');

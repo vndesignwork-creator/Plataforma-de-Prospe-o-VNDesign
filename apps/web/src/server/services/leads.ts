@@ -37,7 +37,7 @@ import { ApiError, fromPostgrest, unwrap } from '../http';
 import { getSettings, updateSettings } from './workspace';
 
 export const LEAD_SELECT = [
-  'id', 'number', 'company_name', 'no_company', 'sector_id', 'sector:sectors(id, name, slug, emoji, icon)',
+  'id', 'number', 'company_name', 'no_company', 'social_links', 'sector_id', 'sector:sectors(id, name, slug, emoji, icon)',
   'website', 'city', 'address', 'latitude', 'longitude', 'geocode_status', 'problems', 'pagespeed', 'mobile',
   'email', 'phone', 'contact_name', 'status', 'channel', 'first_contact_on', 'last_follow_up_on',
   'next_action_text', 'next_action_on', 'estimated_value', 'notes', 'approach_angle', 'source_url',
@@ -289,6 +289,7 @@ export async function updateLead(ctx: ApiContext, id: string, patch: LeadUpdate)
         website: patch.website,
         source_url: patch.source_url !== undefined ? patch.source_url : current.source_url,
         notes: patch.notes !== undefined ? patch.notes : current.notes,
+        social_links: patch.social_links !== undefined ? patch.social_links : (current.social_links ?? []),
       }),
     };
   }
