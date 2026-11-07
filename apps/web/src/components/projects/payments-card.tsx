@@ -10,6 +10,7 @@ import { Plus, Trash2, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { DateInput } from '@/components/ui/date-input';
 import { Dialog } from '@/components/ui/dialog';
@@ -197,6 +198,8 @@ export function PaymentsCard({ lead }: { lead: Lead }) {
   const { data: payments, isLoading } = usePayments(lead.id, !EARLY_STATUSES.includes(lead.status));
   const [adding, setAdding] = useState(false);
   const [planning, setPlanning] = useState(false);
+  // A lista pode ficar recolhida (fica o total e a barra); a escolha fica lembrada neste browser.
+  const [collapsed, setCollapsed] = useCollapsed('pagamentos');
   const today = todayIso();
   // Só faz sentido a partir da proposta (ou se já houver pagamentos).
   const relevant = ['proposta_enviada', 'cliente'].includes(lead.status) || !!payments?.length;
@@ -214,9 +217,12 @@ export function PaymentsCard({ lead }: { lead: Lead }) {
         }
         actions={
           payments?.length ? (
-            <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
-              <Plus className="h-3.5 w-3.5" aria-hidden /> Pagamento
-            </Button>
+            <span className="flex items-center gap-1">
+              <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
+                <Plus className="h-3.5 w-3.5" aria-hidden /> Pagamento
+              </Button>
+              <CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label={`Pagamentos (${payments.length})`} />
+            </span>
           ) : isLoading ? null : (
             <Button size="sm" variant="outline" onClick={() => setPlanning(true)}>
               <Wallet className="h-3.5 w-3.5" aria-hidden /> Criar plano
@@ -237,11 +243,17 @@ export function PaymentsCard({ lead }: { lead: Lead }) {
               </span>
             </div>
           ) : null}
+          {collapsed ? (
+            <button type="button" onClick={() => setCollapsed(false)} className="block w-full px-4 py-2.5 text-right text-sm text-accent-text hover:underline">
+              Ver os {payments.length} pagamento{payments.length === 1 ? '' : 's'}
+            </button>
+          ) : (
           <ul className="divide-y divide-border" aria-label="Pagamentos do cliente">
             {payments.map((p) => (
               <PaymentRow key={p.id} lead={lead} payment={p} today={today} />
             ))}
           </ul>
+          )}
         </>
       ) : (
         <p className="px-4 py-3 text-sm text-muted">Ainda sem pagamentos. Cria o plano e marca cada pagamento quando o receberes.</p>
