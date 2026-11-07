@@ -48,7 +48,12 @@ test('follow-up feito e adiado a partir da ficha e do dashboard', async ({ page 
   const lead = (await res.json()).data;
 
   await page.goto('/dashboard');
-  const row = page.getByRole('listitem').filter({ hasText: name });
+  // O "Para hoje" mostra 5; com mais follow-ups para hoje (outros testes), abre-se a lista toda.
+  const group = page.getByRole('region', { name: 'Para hoje', exact: true });
+  await expect(group).toBeVisible();
+  const showAll = group.getByRole('button', { name: /^Mostrar todos/ });
+  if (await showAll.isVisible()) await showAll.click();
+  const row = group.getByRole('listitem').filter({ hasText: name });
   await expect(row).toBeVisible();
   await row.getByRole('button', { name: /^Adiar \d+ dias/ }).click();
   await expect(page.getByText(new RegExp(`#${lead.number} adiado para \\d{2}/\\d{2}/\\d{4}`))).toBeVisible();

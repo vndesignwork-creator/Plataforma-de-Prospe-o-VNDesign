@@ -2,8 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # main e o ramo que a Hostinger publica (leads.vndesign.pt): cada atualização é testada.
+    branches: [main, claude/dazzling-lamport-61uewp]
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
