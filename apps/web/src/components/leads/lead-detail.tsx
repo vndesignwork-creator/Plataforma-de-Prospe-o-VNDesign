@@ -596,14 +596,6 @@ export function LeadDetail({ id }: { id: string }) {
                   <span className="ml-2 inline-flex align-middle">
                     <LeadScoreDetails lead={lead} />
                   </span>
-                  {lead.client_of ? (
-                    <>
-                      {' · '}
-                      <Link href={`/leads/${lead.client_of}`} className="text-accent-text underline underline-offset-2">
-                        projeto novo deste cliente (ver o primeiro projeto)
-                      </Link>
-                    </>
-                  ) : null}
                 </>
               }
             />

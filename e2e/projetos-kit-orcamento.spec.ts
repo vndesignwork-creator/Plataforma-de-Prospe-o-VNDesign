@@ -37,7 +37,8 @@ test('vários projetos por cliente: projeto novo com os contactos, lista e liga�
 
   // A ficha nova é do projeto: mesmo cliente, contactos copiados e ligação ao principal.
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Loja online');
-  await expect(page.getByRole('link', { name: /projeto novo deste cliente/ })).toBeVisible();
+  // A ligação ao primeiro projeto fica no cartão "Projetos deste cliente".
+  await expect(page.getByRole('list', { name: 'Projetos do cliente' }).getByRole('link', { name: /Primeiro projeto/ })).toBeVisible();
   const family = (await (await page.request.get(`/api/v1/leads/${lead.id}/client-projects`)).json()).data as { main_id: string; projects: { id: string; number: number }[] };
   expect(family.main_id).toBe(lead.id);
   const projectId = family.projects.find((p) => p.id !== lead.id)!.id;
