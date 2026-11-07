@@ -109,3 +109,14 @@ export async function createClientProject(ctx: ApiContext, leadId: string, input
   await startProject(ctx, lead.id).catch(() => undefined);
   return getLead(ctx, lead.id);
 }
+
+/**
+ * Apaga o primeiro projeto de um cliente (vai para a reciclagem). O projeto que fica
+ * passa a ser o principal e herda o que é do cliente: linha do tempo, análises,
+ * reuniões, kit da marca, acessos, notas e etiquetas. Devolve o id do principal novo.
+ */
+export async function deleteFirstClientProject(ctx: ApiContext, mainId: string, keepId: string): Promise<{ main_id: string }> {
+  const { data, error } = await ctx.supabase.rpc('delete_first_client_project', { p_main_id: mainId, p_keep_id: keepId });
+  if (error) throw fromPostgrest(error, 'Projeto não encontrado');
+  return { main_id: data as string };
+}

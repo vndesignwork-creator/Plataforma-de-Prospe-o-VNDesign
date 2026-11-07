@@ -46,3 +46,8 @@ export type ClientProjectCreate = z.output<typeof ClientProjectCreateSchema>;
 export function projectLabel(lead: { company_name: string; project_title?: string | null }): string {
   return lead.project_title ? `${lead.company_name} · ${lead.project_title}` : lead.company_name;
 }
+
+/** Apagar o primeiro projeto: o projeto que fica passa a ser o principal do cliente. */
+export const DeleteFirstProjectSchema = z
+  .object({ keep_id: z.uuid({ error: 'Escolhe o projeto que fica.' }) })
+  .meta({ id: 'DeleteFirstProject' });

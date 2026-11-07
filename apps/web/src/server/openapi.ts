@@ -148,6 +148,7 @@ import {
   BrandKitSchema,
   ClientProjectsSchema,
   ClientProjectCreateSchema,
+  DeleteFirstProjectSchema,
   CollabTimeActionSchema,
   CollabProjectSchema,
   CollabProjectSummarySchema,
@@ -1911,6 +1912,15 @@ export function getOpenApiDocument() {
           requestParams: { path: leadId },
           requestBody: body(ClientProjectCreateSchema),
           responses: { '201': ok(data(LeadSchema), 'Criado'), ...withNotFound },
+        }),
+      },
+      '/leads/{id}/client-projects/delete-first': {
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Apagar o primeiro projeto (vai para a reciclagem): o projeto indicado passa a ser o principal e herda a linha do tempo, o kit da marca, os acessos, as notas e as etiquetas',
+          requestParams: { path: leadId },
+          requestBody: body(DeleteFirstProjectSchema),
+          responses: { '200': ok(data(z.object({ main_id: z.uuid() }))), ...withNotFound },
         }),
       },
       '/leads/{id}/brand-kit': {

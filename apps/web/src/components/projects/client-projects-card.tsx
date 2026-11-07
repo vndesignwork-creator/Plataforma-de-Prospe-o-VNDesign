@@ -19,9 +19,9 @@ import { Badge, Card, CardHeader } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { DropdownContent, DropdownItem, DropdownRoot, DropdownSeparator, DropdownTrigger } from '@/components/ui/dropdown';
 import { Field } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
-import { ApiClientError, errorMessage } from '@/lib/api-client';
-import { useBulkLeadAction, useClientProjects, useCreateClientProject } from '@/lib/queries';
+import { Input, Select } from '@/components/ui/input';
+import { ApiClientError, api, errorMessage } from '@/lib/api-client';
+import { useBulkLeadAction, useClientProjects, useCreateClientProject, useInvalidateLead } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
 export function ClientProjectsCard({ lead }: { lead: Lead }) {
@@ -33,12 +33,18 @@ export function ClientProjectsCard({ lead }: { lead: Lead }) {
   const [collapsed, setCollapsed] = useCollapsed('projetos-cliente');
   const bulk = useBulkLeadAction();
   const qc = useQueryClient();
+  const invalidateLead = useInvalidateLead();
   const router = useRouter();
   const [removing, setRemoving] = useState<ClientProject | null>(null);
+  // Ao apagar o primeiro projeto: qual fica como principal do cliente.
+  const [keepId, setKeepId] = useState<string>('');
   // Só aparece a clientes (ou a quem já tem mais de um projeto).
   if (lead.status !== 'cliente' && projects.length < 2) return null;
   const projectName = (p: ClientProject) => p.project_title ?? (p.main ? 'Primeiro projeto' : `Projeto #${p.number}`);
   const mainProject = projects.find((p) => p.main);
+  /** Os outros projetos (para escolher o que fica), o aberto primeiro. */
+  const others = (p: ClientProject) =>
+    projects.filter((x) => x.id !== p.id && !x.archived_at).sort((a, b) => Number(b.id === lead.id) - Number(a.id === lead.id));
 
   /** Arquivar ou repor um projeto (só esse registo: o cliente e os outros projetos ficam). */
   async function setArchived(p: ClientProject, archived: boolean) {
@@ -54,6 +60,20 @@ export function ClientProjectsCard({ lead }: { lead: Lead }) {
   /** Apagar um projeto: vai para a Reciclagem (30 dias); se era o aberto, volta ao primeiro projeto. */
   async function remove(p: ClientProject) {
     try {
+      if (p.main) {
+        // O primeiro projeto: o escolhido passa a ser o principal e fica com o que é do cliente.
+        const keep = keepId || others(p)[0]?.id;
+        if (!keep) return;
+        await api(`/leads/${p.id}/client-projects/delete-first`, { method: 'POST', body: { keep_id: keep } });
+        invalidateLead();
+        void qc.invalidateQueries({ queryKey: ['client-projects'] });
+        toast.success(`Projeto “${projectName(p)}” apagado; o cliente passou para “${projectName(projects.find((x) => x.id === keep)!)}”.`, {
+          action: { label: 'Ver apagados', onClick: () => router.push('/definicoes/apagados') },
+        });
+        setRemoving(null);
+        if (p.id === lead.id) router.push(leadPath(projects.find((x) => x.id === keep)!));
+        return;
+      }
       await bulk.mutateAsync({ action: 'delete', ids: [p.id] });
       void qc.invalidateQueries({ queryKey: ['client-projects'] });
       toast.success(`Projeto “${projectName(p)}” apagado (fica 30 dias na Reciclagem).`, {
@@ -124,8 +144,8 @@ export function ClientProjectsCard({ lead }: { lead: Lead }) {
                     <Badge tone="accent">{PROJECT_STAGE_LABELS[p.stage]}</Badge>
                   ) : null}
                 </Link>
-                {/* O primeiro projeto é o próprio cliente: arquivá-lo ou apagá-lo faz-se no topo da ficha. */}
-                {!p.main && !lead.anonymized_at ? (
+                {/* O primeiro projeto só se apaga se houver outro (que passa a ser o principal). */}
+                {!lead.anonymized_at && (!p.main || others(p).length) ? (
                   <DropdownRoot>
                     <DropdownTrigger asChild>
                       <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" aria-label={`Mais ações: ${projectName(p)}`}>
@@ -133,7 +153,7 @@ export function ClientProjectsCard({ lead }: { lead: Lead }) {
                       </Button>
                     </DropdownTrigger>
                     <DropdownContent align="end">
-                      {p.archived_at ? (
+                      {p.main ? null : p.archived_at ? (
                         <DropdownItem onSelect={() => void setArchived(p, false)}>
                           <ArchiveRestore className="h-4 w-4 text-muted" aria-hidden /> Repor projeto
                         </DropdownItem>
@@ -142,8 +162,14 @@ export function ClientProjectsCard({ lead }: { lead: Lead }) {
                           <Archive className="h-4 w-4 text-muted" aria-hidden /> Arquivar projeto
                         </DropdownItem>
                       )}
-                      <DropdownSeparator />
-                      <DropdownItem onSelect={() => setRemoving(p)} className="text-danger">
+                      {p.main ? null : <DropdownSeparator />}
+                      <DropdownItem
+                        onSelect={() => {
+                          setKeepId(p.main ? (others(p)[0]?.id ?? '') : '');
+                          setRemoving(p);
+                        }}
+                        className="text-danger"
+                      >
                         <Trash2 className="h-4 w-4" aria-hidden /> Apagar projeto…
                       </DropdownItem>
                     </DropdownContent>
@@ -159,7 +185,11 @@ export function ClientProjectsCard({ lead }: { lead: Lead }) {
         open={!!removing}
         onOpenChange={(o) => (!o ? setRemoving(null) : undefined)}
         title={removing ? `Apagar o projeto “${projectName(removing)}”?` : 'Apagar o projeto?'}
-        description="Vai para a Reciclagem (Definições → Apagados) durante 30 dias, com as tarefas, os pagamentos e as horas dele; lá podes repô-lo. O cliente e os outros projetos ficam como estão."
+        description={
+          removing?.main
+            ? 'É o primeiro projeto: o projeto que escolheres passa a ser o principal do cliente e fica com a linha do tempo, o kit da marca, os acessos, as notas e as etiquetas. As tarefas, os pagamentos, as horas e as propostas deste vão para a Reciclagem (Definições → Apagados) durante 30 dias.'
+            : 'Vai para a Reciclagem (Definições → Apagados) durante 30 dias, com as tarefas, os pagamentos e as horas dele; lá podes repô-lo. O cliente e os outros projetos ficam como estão.'
+        }
         footer={
           <>
             <Button variant="ghost" onClick={() => setRemoving(null)}>
@@ -170,7 +200,19 @@ export function ClientProjectsCard({ lead }: { lead: Lead }) {
             </Button>
           </>
         }
-      />
+      >
+        {removing?.main && others(removing).length > 1 ? (
+          <Field label="Fica como principal">
+            <Select value={keepId} onChange={(e) => setKeepId(e.target.value)}>
+              {others(removing).map((x) => (
+                <option key={x.id} value={x.id}>
+                  {projectName(x)} (#{x.number})
+                </option>
+              ))}
+            </Select>
+          </Field>
+        ) : null}
+      </Dialog>
     </Card>
   );
 }
