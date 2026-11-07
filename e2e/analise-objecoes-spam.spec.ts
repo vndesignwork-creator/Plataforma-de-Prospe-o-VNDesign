@@ -236,7 +236,8 @@ test('Plugin de WordPress: descarregar já ligado e o formulário (noutro site) 
     await pub.getByLabel('Endereço do site').fill('isto não é um site');
     await pub.getByLabel('Email para receber a análise').fill(`wp@padaria-wp-${run}.pt`);
     await pub.getByRole('checkbox').check();
-    await pub.getByRole('button', { name: 'Analisar o meu site' }).click();
+    // Ao sair do campo, o plugin vê se o site abre; se não abrir, o botão passa a "Enviar na mesma".
+    await pub.getByRole('button', { name: /^(Analisar o meu site|Enviar na mesma)$/ }).click();
     await expect(pub.getByText(/Endereço inválido/)).toBeVisible();
     // Certo: mensagem de sucesso e o lead quente.
     await pub.getByLabel('Endereço do site').fill(url);

@@ -18,7 +18,12 @@ test('perfil: nome a mostrar e foto no menu; o menu leva à conta', async ({ pag
     await expect(page.getByText('Nome guardado.')).toBeVisible();
 
     // O menu mostra o nome (e as iniciais, sem foto) e leva à conta.
-    const account = page.getByRole('navigation', { name: 'Principal' }).first().locator('xpath=..').getByRole('link', { name: `A minha conta: ${nick}` });
+    const account = page
+      .getByRole('navigation', { name: 'Principal' })
+      .first()
+      .locator('xpath=..')
+      .locator('a[href="/definicoes/conta"]')
+      .filter({ hasText: nick });
     await expect(account).toBeVisible();
     // A equipa (Responsável) também usa a alcunha.
     const names = (await (await page.request.get('/api/v1/team/names')).json()).data as { name: string }[];
@@ -45,7 +50,7 @@ test('perfil: nome a mostrar e foto no menu; o menu leva à conta', async ({ pag
     await expect(account.locator('img')).toHaveCount(0);
 
     await page.goto('/dashboard');
-    await page.getByRole('link', { name: `A minha conta: ${nick}` }).first().click();
+    await page.locator('a[href="/definicoes/conta"]').filter({ hasText: nick }).first().click();
     await expect(page).toHaveURL(/\/definicoes\/conta$/);
   } finally {
     await page.request.patch('/api/v1/me/profile', { data: { display_name: null } });

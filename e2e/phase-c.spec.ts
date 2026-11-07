@@ -22,7 +22,10 @@ test('modelo com variáveis → ficha do lead → marcar como enviado agenda o f
   // Na ficha do lead, o modelo aparece preenchido
   await page.goto('/leads');
   await page.getByLabel('Pesquisar leads').fill(leadName);
+  // A pesquisa passa para o endereço (?q=) logo a seguir: clicar antes cancelava a navegação.
+  await expect(page).toHaveURL(/[?&]q=/);
   await page.getByRole('link', { name: leadName }).click();
+  await expect(page).toHaveURL(/\/leads\/\d+-/);
   await page.getByLabel('Partir de', { exact: true }).selectOption({ label: templateName });
   await expect(page.getByLabel('Assunto', { exact: true })).toHaveValue(`Uma ideia para a ${leadName}`);
   await expect(page.locator('#script-body')).toContainText('Olá Rita,');

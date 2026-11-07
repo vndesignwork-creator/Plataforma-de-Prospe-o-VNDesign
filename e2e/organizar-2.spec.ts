@@ -71,6 +71,8 @@ test('sem próximo passo: aviso no Hoje, filtro na lista e Marcar follow-up com 
   await expect(bar).toBeVisible();
   await bar.getByRole('button', { name: 'Marcar follow-up' }).click();
   await page.getByRole('menuitem', { name: /^Amanhã/ }).click();
+  // Com o rato por cima, o aviso (com "Anular") não desaparece enquanto se confirma a data.
+  await page.locator('[data-sonner-toast]').filter({ hasText: /passaram? para/ }).hover();
   await expect.poll(async () => (await getLead(page.request, lead.id)).next_action_on).toBe(iso(1));
   await undo(page, /passaram? para/);
   await expect(page.getByText('Datas repostas.')).toBeVisible();

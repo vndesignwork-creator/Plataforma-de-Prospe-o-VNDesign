@@ -109,6 +109,8 @@ test('token de integração: criar, importar leads (dry run, idempotência) e re
   // O lead aparece na lista, com a atividade "via API".
   await page.goto('/leads');
   await page.getByLabel('Pesquisar leads').fill(company);
+  // Esperar que a pesquisa passe para o endereço (senão o clique é cancelado).
+  await expect(page).toHaveURL(/[?&]q=/);
   await page.getByRole('link', { name: company }).click();
   await expect(page.getByLabel('Atividade do lead').getByText(/via API/).first()).toBeVisible();
 

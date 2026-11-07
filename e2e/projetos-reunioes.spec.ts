@@ -139,7 +139,7 @@ test('pagamentos e Projetos: plano 50/50, receber o sinal, concluir o projeto', 
   await page.goto('/projetos');
   const active = page.getByRole('list', { name: 'Projetos em curso' });
   const row = active.getByRole('listitem').filter({ hasText: `Clínica Projeto ${run}` });
-  await expect(row.getByText(/750\s€ de 1500\s€/)).toBeVisible();
+  // Os pagamentos já não aparecem na linha do projeto (ficam no cartão da ficha).
   await expect(row.getByText('Ainda não há tarefas.')).toBeVisible();
   await row.getByRole('button', { name: 'Concluir projeto' }).click();
   const wrapUp = page.getByRole('dialog', { name: 'Concluir o projeto' });

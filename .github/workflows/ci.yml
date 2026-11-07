@@ -65,6 +65,9 @@ jobs:
             echo "MAILPIT_URL=http://127.0.0.1:54324"
             echo "AUDIT_ALLOW_PRIVATE=1"
             echo "AUDIT_SKIP_PAGESPEED=1"
+            # Em produção (next start) os servidores internos são recusados; no CI o SMTP (Mailpit) e a IA de teste são locais.
+            echo "SMTP_ALLOW_PRIVATE_HOST=1"
+            echo "AI_ALLOW_PRIVATE_BASE_URL=1"
             echo "VAPID_PUBLIC_KEY=$(node -p "require('./vapid.json').publicKey")"
             echo "VAPID_PRIVATE_KEY=$(node -p "require('./vapid.json').privateKey")"
             echo "VAPID_SUBJECT=mailto:ci@vndesign.pt"
