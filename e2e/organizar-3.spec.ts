@@ -95,7 +95,9 @@ test('tempo na fase: na ficha, no Kanban e filtro "Na fase há"', async ({ page 
 
   await page.goto('/kanban');
   await page.getByLabel('Filtrar leads no Kanban').fill(lead.company_name);
-  await expect(page.getByLabel('Leads em Contactado').getByText('hoje nesta fase')).toBeVisible();
+  // O cartão deste lead (o filtro aplica-se logo a seguir; até lá, a coluna tem os outros).
+  const card = page.getByLabel('Leads em Contactado').getByRole('listitem').filter({ hasText: lead.company_name });
+  await expect(card.getByText('hoje nesta fase')).toBeVisible();
 
   // Acabado de mudar: não está parado.
   const q = `q=${encodeURIComponent(lead.company_name)}`;
