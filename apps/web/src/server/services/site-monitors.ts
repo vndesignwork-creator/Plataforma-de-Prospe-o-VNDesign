@@ -30,7 +30,7 @@ import {
   isSocialOrDirectoryUrl,
 } from '@vndesign/core';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { safeGet } from '../audit/safe-request';
+import { BROWSER_USER_AGENT, safeGet } from '../audit/safe-request';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest, unwrap } from '../http';
 import { createSupabaseAdminClient } from '../supabase-admin';
@@ -174,9 +174,9 @@ export interface SiteCheck {
 }
 
 /** Abre o site (como um browser no telemóvel): no ar = respondeu com 2xx/3xx… ou 401/403 (está lá, só pede acesso). */
-export async function checkSite(url: string): Promise<SiteCheck> {
+async function checkOnce(url: string, userAgent?: string): Promise<SiteCheck> {
   try {
-    const res = await safeGet(url, { timeoutMs: 15_000, maxBytes: 300_000 });
+    const res = await safeGet(url, { timeoutMs: 15_000, maxBytes: 300_000, userAgent });
     const ok = res.status > 0 && (res.status < 400 || res.status === 401 || res.status === 403);
     return {
       ok,
@@ -189,6 +189,38 @@ export async function checkSite(url: string): Promise<SiteCheck> {
   } catch (error) {
     return { ok: false, status_code: null, response_ms: null, error: error instanceof Error ? error.message.slice(0, 300) : 'Não foi possível abrir o site.', ssl_expires_at: null, ssl_error: null };
   }
+}
+
+/** Com "www." ou sem ele (o outro endereço do mesmo site). */
+function otherWwwVariant(url: string): string | null {
+  try {
+    const u = new URL(url);
+    u.hostname = u.hostname.startsWith('www.') ? u.hostname.slice(4) : `www.${u.hostname}`;
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Abre o site (como um browser no telemóvel). Antes de o dar como em baixo, tenta de
+ * novo como um browser normal (há alojamentos que respondem com 502/429 a robôs) e,
+ * se ainda falhar, o mesmo site com/sem "www.". Só fica em baixo se tudo falhar.
+ */
+export async function checkSite(url: string): Promise<SiteCheck> {
+  const first = await checkOnce(url);
+  if (first.ok) return first;
+  // Um 404 é o site a responder (a página é que não existe): não vale a pena insistir.
+  if (first.status_code !== null && first.status_code < 500 && first.status_code !== 429) return first;
+  await new Promise((r) => setTimeout(r, 1500));
+  const asBrowser = await checkOnce(url, BROWSER_USER_AGENT);
+  if (asBrowser.ok) return asBrowser;
+  const variant = otherWwwVariant(url);
+  if (variant) {
+    const other = await checkOnce(variant, BROWSER_USER_AGENT);
+    if (other.ok) return other;
+  }
+  return first;
 }
 
 let bootstrapCache: { at: number; body: unknown } | null = null;

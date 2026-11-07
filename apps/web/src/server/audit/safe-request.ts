@@ -13,6 +13,9 @@ import zlib from 'node:zlib';
 
 const USER_AGENT =
   'Mozilla/5.0 (Linux; Android 14; SM-A536B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36 VNDesignAuditor/1.0';
+/** O mesmo browser, sem a marca do robô: há alojamentos que respondem com erro (502, 403…) a robôs desconhecidos. */
+export const BROWSER_USER_AGENT =
+  'Mozilla/5.0 (Linux; Android 14; SM-A536B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36';
 
 const allowPrivate = () => process.env.AUDIT_ALLOW_PRIVATE === '1';
 
@@ -161,7 +164,7 @@ function mapNetworkError(error: NodeJS.ErrnoException): AuditRequestError {
   }
 }
 
-function requestOnce(url: URL, timeoutMs: number, maxBytes: number): Promise<SafeResponse & { location?: string }> {
+function requestOnce(url: URL, timeoutMs: number, maxBytes: number, userAgent = USER_AGENT): Promise<SafeResponse & { location?: string }> {
   assertAllowedUrl(url);
   const started = Date.now();
   const client = url.protocol === 'https:' ? https : http;
@@ -174,7 +177,7 @@ function requestOnce(url: URL, timeoutMs: number, maxBytes: number): Promise<Saf
         lookup: safeLookup as unknown as net.LookupFunction,
         rejectUnauthorized: false, // a validade do certificado é avaliada à parte
         headers: {
-          'User-Agent': USER_AGENT,
+          'User-Agent': userAgent,
           Accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.5',
           'Accept-Language': 'pt-PT,pt;q=0.9',
           'Accept-Encoding': 'gzip, deflate, br',
@@ -240,12 +243,15 @@ export async function safeGet(
     maxBytes = 2_000_000,
     maxRedirects = 5,
     stopAt,
+    userAgent,
   }: {
     timeoutMs?: number;
     maxBytes?: number;
     maxRedirects?: number;
     /** Parar antes de seguir este redirecionamento (devolve-o em `url`, sem o abrir). */
     stopAt?: (next: URL) => boolean;
+    /** Outro User-Agent (por omissão, o do auditor). */
+    userAgent?: string;
   } = {},
 ): Promise<SafeResponse> {
   let url: URL;
@@ -258,7 +264,7 @@ export async function safeGet(
   for (let hop = 0; hop <= maxRedirects; hop++) {
     const remaining = deadline - Date.now();
     if (remaining <= 0) throw new AuditRequestError('timeout', 'O site não respondeu a tempo.');
-    const res = await requestOnce(url, remaining, maxBytes);
+    const res = await requestOnce(url, remaining, maxBytes, userAgent);
     if (!res.location) return res;
     try {
       url = new URL(res.location, url);
