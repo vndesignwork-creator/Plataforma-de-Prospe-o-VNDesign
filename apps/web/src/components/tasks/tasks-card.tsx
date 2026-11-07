@@ -37,6 +37,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
+import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { Card, Skeleton } from '@/components/ui/card';
 import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownSeparator, DropdownTrigger } from '@/components/ui/dropdown';
 import { DateInput, DateTimeInput } from '@/components/ui/date-input';
@@ -621,6 +622,8 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
   const [showDone, setShowDone] = useState(false);
   // Na coluna lateral: as 5 próximas por fazer (todas com "Ver todas" ou vindo de um link para as tarefas).
   const [showAll, setShowAll] = useState(false);
+  // A lista da ficha pode ficar recolhida (fica o título e o progresso); a escolha fica lembrada neste browser.
+  const [collapsed, setCollapsed] = useCollapsed('tarefas-ficha');
 
   // Ao abrir a ficha por um link para as tarefas (ex.: "Criar tarefas" no Kanban), descer até aqui
   // quando a lista já tem altura (o browser tentou antes de o cartão existir).
@@ -629,8 +632,11 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
       // Vindo de um link para as tarefas: todas à vista (a que se procura pode não estar nas 5 primeiras).
       // eslint-disable-next-line react-hooks/set-state-in-effect -- só no browser (o endereço)
       setShowAll(true);
+      // Recolhida? Abre (veio de propósito ver as tarefas).
+      if (collapsed) setCollapsed(false);
       document.getElementById('tarefas')?.scrollIntoView();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só quando a lista acaba de carregar
   }, [isLoading]);
 
   const { pending, done } = splitTasks(tasks ?? []);
@@ -987,14 +993,17 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
       <div className="border-b border-border px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-base font-semibold">Tarefas</h2>
-          {templates ? <TemplateMenu templates={templates} suggested={suggested} onApply={(t) => void applyTemplate(t)} /> : null}
+          <span className="flex items-center gap-1">
+            {templates && !collapsed ? <TemplateMenu templates={templates} suggested={suggested} onApply={(t) => void applyTemplate(t)} /> : null}
+            <CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label={`Tarefas (${total})`} />
+          </span>
         </div>
         <p className="mt-0.5 text-sm text-muted">
           {total ? <TaskProgress progress={{ total, done: done.length }} long /> : 'Os próximos passos deste lead ou do projeto.'}
         </p>
       </div>
 
-      {content}
+      {collapsed ? null : content}
     </Card>
   );
 }

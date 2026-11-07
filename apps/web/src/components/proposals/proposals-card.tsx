@@ -5,6 +5,7 @@ import { Calculator, FileText, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { Button, buttonClasses } from '@/components/ui/button';
+import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { useProposals, useSettings } from '@/lib/queries';
 import { QuoteCalculatorDialog } from './quote-calculator';
@@ -20,29 +21,38 @@ export function ProposalsCard({ lead }: { lead: Lead }) {
   const { data, isLoading } = useProposals(lead.id);
   const { data: settings } = useSettings();
   const [calculating, setCalculating] = useState(false);
+  // A lista pode ficar recolhida; a escolha fica lembrada neste browser.
+  const [collapsed, setCollapsed] = useCollapsed('propostas');
   if (lead.anonymized_at && !data?.length) return null;
+  const hidden = collapsed && !!data?.length;
 
   return (
     <Card>
       <CardHeader
         title="Propostas"
-        description="Proposta em PDF com os teus pacotes, pronta a enviar."
+        description={hidden ? `${data!.length} proposta${data!.length === 1 ? '' : 's'}` : 'Proposta em PDF com os teus pacotes, pronta a enviar.'}
+        className={hidden ? 'border-b-0' : undefined}
         actions={
-          !lead.anonymized_at ? (
+          !lead.anonymized_at || data?.length ? (
             <>
-              {settings?.features.quote_calculator ? (
+              {settings?.features.quote_calculator && !lead.anonymized_at ? (
                 <Button size="sm" variant="ghost" onClick={() => setCalculating(true)}>
                   <Calculator className="h-3.5 w-3.5" aria-hidden /> Calcular
                 </Button>
               ) : null}
-              <Link href={leadPath(lead, '/propostas/nova')} className={buttonClasses('outline', 'sm')}>
-                <Plus className="h-3.5 w-3.5" aria-hidden /> Nova proposta
-              </Link>
+              {!lead.anonymized_at ? (
+                <Link href={leadPath(lead, '/propostas/nova')} className={buttonClasses('outline', 'sm')}>
+                  <Plus className="h-3.5 w-3.5" aria-hidden /> Nova proposta
+                </Link>
+              ) : null}
+              {data?.length ? (
+                <CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label={`Propostas (${data.length})`} />
+              ) : null}
             </>
           ) : null
         }
       />
-      {isLoading ? (
+      {hidden ? null : isLoading ? (
         <div className="p-4">
           <Skeleton className="h-12" />
         </div>

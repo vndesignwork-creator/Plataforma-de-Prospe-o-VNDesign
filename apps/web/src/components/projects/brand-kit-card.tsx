@@ -9,6 +9,7 @@ import type { BrandKit, Lead, LeadAccess } from '@vndesign/core';
 import { Copy, Download, Eye, EyeOff, KeyRound, Link2, Palette, Pencil, Plus, Trash2, Type, Upload, Users } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
@@ -32,20 +33,26 @@ const kb = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).t
 export function BrandKitCard({ lead }: { lead: Lead }) {
   const { data: kit, isLoading } = useBrandKit(lead.id);
   const [editing, setEditing] = useState(false);
+  // Pode ficar recolhido (só o título); a escolha fica lembrada neste browser.
+  const [collapsed, setCollapsed] = useCollapsed('kit-marca');
   return (
     <Card id="kit-marca" className="scroll-mt-20">
       <CardHeader
         title="Kit da marca"
         description="Logótipos, cores, tipos de letra e acessos do cliente (iguais em todos os projetos dele)."
         actions={
-          !editing && !lead.anonymized_at ? (
-            <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
-              <Pencil className="h-3.5 w-3.5" aria-hidden /> Editar
-            </Button>
-          ) : null
+          <span className="flex items-center gap-1">
+            {!editing && !collapsed && !lead.anonymized_at ? (
+              <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+                <Pencil className="h-3.5 w-3.5" aria-hidden /> Editar
+              </Button>
+            ) : null}
+            <CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label="Kit da marca" />
+          </span>
         }
+        className={collapsed ? 'border-b-0' : undefined}
       />
-      {isLoading || !kit ? (
+      {collapsed ? null : isLoading || !kit ? (
         <div className="p-4">
           <Skeleton className="h-16" />
         </div>
@@ -54,8 +61,12 @@ export function BrandKitCard({ lead }: { lead: Lead }) {
       ) : (
         <KitView lead={lead} kit={kit} />
       )}
-      <FilesSection lead={lead} kit={kit} />
-      <AccessesSection lead={lead} />
+      {collapsed ? null : (
+        <>
+          <FilesSection lead={lead} kit={kit} />
+          <AccessesSection lead={lead} />
+        </>
+      )}
     </Card>
   );
 }
@@ -307,6 +318,8 @@ function AccessesSection({ lead }: { lead: Lead }) {
   const action = useAccessAction(lead.id);
   const [editing, setEditing] = useState<LeadAccess | 'new' | null>(null);
   const [shown, setShown] = useState<Record<string, string | null>>({});
+  // A lista pode ficar recolhida (com o número de acessos); a escolha fica lembrada neste browser.
+  const [collapsed, setCollapsed] = useCollapsed('acessos');
 
   async function reveal(a: LeadAccess, then?: 'copy') {
     try {
@@ -327,13 +340,22 @@ function AccessesSection({ lead }: { lead: Lead }) {
         <h3 className="inline-flex items-center gap-1.5 text-sm font-semibold">
           <KeyRound className="h-4 w-4 text-muted" aria-hidden /> Acessos
         </h3>
-        {!lead.anonymized_at ? (
-          <Button size="sm" variant="ghost" onClick={() => setEditing('new')}>
-            <Plus className="h-3.5 w-3.5" aria-hidden /> Acesso
-          </Button>
-        ) : null}
+        <span className="flex items-center gap-1">
+          {!lead.anonymized_at ? (
+            <Button size="sm" variant="ghost" onClick={() => setEditing('new')}>
+              <Plus className="h-3.5 w-3.5" aria-hidden /> Acesso
+            </Button>
+          ) : null}
+          {accesses?.length ? (
+            <CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label={`Acessos (${accesses.length})`} />
+          ) : null}
+        </span>
       </div>
-      {accesses?.length ? (
+      {accesses?.length && collapsed ? (
+        <p className="mt-1 text-sm text-muted">
+          {accesses.length} acesso{accesses.length === 1 ? '' : 's'} guardado{accesses.length === 1 ? '' : 's'}.
+        </p>
+      ) : accesses?.length ? (
         <ul className="mt-2 flex flex-col divide-y divide-border text-sm" aria-label="Acessos do cliente">
           {accesses.map((a) => (
             <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">

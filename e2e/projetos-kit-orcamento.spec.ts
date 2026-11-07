@@ -163,8 +163,11 @@ test('calculadora de orçamento: extras, €/hora, valor estimado e proposta', a
   await page.goto(`/leads/${lead.id}`);
   await page.getByRole('button', { name: 'Calcular' }).click();
   const dialog = page.getByRole('dialog', { name: 'Calcular orçamento' });
-  // Só os extras, para o total ser previsível.
-  for (const box of await dialog.getByRole('group', { name: 'Pacotes' }).getByRole('checkbox').all()) await box.uncheck();
+  // Só os extras, para o total ser previsível (depois de os pacotes carregarem e o sugerido ficar marcado).
+  const packs = dialog.getByRole('group', { name: 'Pacotes' }).getByRole('checkbox');
+  await expect(packs.first()).toBeVisible();
+  for (const box of await packs.all()) await box.uncheck();
+  await expect(packs.and(page.locator(':checked'))).toHaveCount(0);
   await dialog.getByLabel('Quantidade: Página extra').fill('2');
   await dialog.getByRole('checkbox', { name: 'Urgência' }).check();
   await dialog.getByLabel('Quantidade: Manutenção mensal').fill('1');

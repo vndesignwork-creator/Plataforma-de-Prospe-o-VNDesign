@@ -8,6 +8,7 @@ import { MEETING_DURATIONS, type Lead, type LeadMeeting } from '@vndesign/core';
 import { CalendarPlus, CalendarX, Download, MapPin } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { DateTimeInput } from '@/components/ui/date-input';
@@ -221,22 +222,31 @@ export function MeetingsCard({ lead }: { lead: Lead }) {
   const [open, setOpen] = useState(() => consumeLeadAction('reuniao'));
   // Hora fixa ao abrir a ficha (a lista volta a ser pedida quando muda).
   const [now] = useState(() => Date.now());
+  // A lista pode ficar recolhida; a escolha fica lembrada neste browser.
+  const [collapsed, setCollapsed] = useCollapsed('reunioes');
   if (lead.anonymized_at) return null;
   // Próximas primeiro (por ordem), depois as passadas (só as 3 últimas).
   const upcoming = (meetings ?? []).filter((m) => !m.canceled_at && new Date(m.starts_at).getTime() >= now).reverse();
   const others = (meetings ?? []).filter((m) => !upcoming.includes(m)).slice(0, 3);
 
+  const count = upcoming.length + others.length;
   return (
     <Card>
       <CardHeader
         title="Reuniões"
+        // Recolhido: diz quantas estão marcadas (a lista fica escondida).
+        description={collapsed && upcoming.length ? `${upcoming.length} marcada${upcoming.length === 1 ? '' : 's'}` : undefined}
         actions={
-          <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-            <CalendarPlus className="h-3.5 w-3.5" aria-hidden /> Marcar reunião
-          </Button>
+          <span className="flex items-center gap-1">
+            <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+              <CalendarPlus className="h-3.5 w-3.5" aria-hidden /> Marcar reunião
+            </Button>
+            {count ? <CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label={`Reuniões (${count})`} /> : null}
+          </span>
         }
+        className={collapsed && count ? 'border-b-0' : undefined}
       />
-      {isLoading ? (
+      {collapsed && count ? null : isLoading ? (
         <div className="p-4">
           <Skeleton className="h-10" />
         </div>

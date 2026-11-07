@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { SendEmailButton } from '@/components/email/send-email-dialog';
 import { Button, buttonClasses } from '@/components/ui/button';
+import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
@@ -288,20 +289,32 @@ export function ContractsCard({ lead }: { lead: Lead }) {
   // Antes da reunião/proposta não há contratos: nem se pergunta ao servidor (o cartão não aparece).
   const { data: contracts, isLoading } = useContracts(lead.id, !EARLY_STATUSES.includes(lead.status));
   const [creating, setCreating] = useState(false);
+  // A lista pode ficar recolhida; a escolha fica lembrada neste browser.
+  const [collapsed, setCollapsed] = useCollapsed('contratos');
   const relevant = ['proposta_enviada', 'cliente'].includes(lead.status) || !!contracts?.length;
   if (lead.anonymized_at || (!isLoading && !relevant)) return null;
   return (
     <Card id="contratos" className="scroll-mt-20">
       <CardHeader
         title="Contratos"
-        description="Gerado a partir da proposta e aceite online pelo cliente."
-        actions={
-          <Button size="sm" variant="outline" onClick={() => setCreating(true)}>
-            <Plus className="h-3.5 w-3.5" aria-hidden /> Gerar contrato
-          </Button>
+        description={
+          collapsed && contracts?.length
+            ? `${contracts.length} contrato${contracts.length === 1 ? '' : 's'}`
+            : 'Gerado a partir da proposta e aceite online pelo cliente.'
         }
+        actions={
+          <span className="flex items-center gap-1">
+            <Button size="sm" variant="outline" onClick={() => setCreating(true)}>
+              <Plus className="h-3.5 w-3.5" aria-hidden /> Gerar contrato
+            </Button>
+            {contracts?.length ? (
+              <CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label={`Contratos (${contracts.length})`} />
+            ) : null}
+          </span>
+        }
+        className={collapsed && contracts?.length ? 'border-b-0' : undefined}
       />
-      {isLoading ? (
+      {collapsed && contracts?.length ? null : isLoading ? (
         <div className="p-4">
           <Skeleton className="h-12" />
         </div>
