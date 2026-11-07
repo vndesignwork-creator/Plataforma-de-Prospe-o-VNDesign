@@ -314,7 +314,7 @@ export function ProjectsView() {
             );
           })}
         </div>
-        <div role="group" aria-label="Vista" className="mb-2 ml-auto inline-flex h-10 items-center rounded-lg border border-border-input bg-surface-2 p-0.5">
+        <div role="group" aria-label="Vista" className="mb-2 ml-auto inline-flex h-10 items-center rounded-lg border border-border-input bg-surface-2 p-0.5 max-sm:w-full">
           {VIEWS.map(({ value: v, label: l, icon: Icon }) => (
             <button
               key={v}
@@ -322,7 +322,7 @@ export function ProjectsView() {
               aria-pressed={view === v}
               onClick={() => changeView(v)}
               className={cn(
-                'inline-flex h-full items-center gap-1.5 rounded-md px-3 text-sm',
+                'inline-flex h-full items-center justify-center gap-1.5 rounded-md px-3 text-sm max-sm:flex-1',
                 view === v ? 'bg-surface font-medium shadow-sm' : 'text-muted hover:text-fg',
               )}
             >
