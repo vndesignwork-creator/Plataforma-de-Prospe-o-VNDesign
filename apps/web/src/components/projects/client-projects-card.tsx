@@ -5,8 +5,9 @@
  * volta). Cada projeto tem a sua ficha, com tarefas, pagamentos, horas e
  * contrato próprios; "Novo projeto" cria-o já preparado.
  */
-import { PROJECT_STAGE_LABELS, formatCurrency, formatDate, leadPath, type Lead } from '@vndesign/core';
-import { CheckCircle2, FolderPlus, Layers } from 'lucide-react';
+import { PROJECT_STAGE_LABELS, formatCurrency, formatDate, leadPath, type ClientProject, type Lead } from '@vndesign/core';
+import { Archive, ArchiveRestore, CheckCircle2, FolderPlus, Layers, MoreHorizontal, Trash2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -16,10 +17,11 @@ import { Button } from '@/components/ui/button';
 import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { Badge, Card, CardHeader } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
+import { DropdownContent, DropdownItem, DropdownRoot, DropdownSeparator, DropdownTrigger } from '@/components/ui/dropdown';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { ApiClientError, errorMessage } from '@/lib/api-client';
-import { useClientProjects, useCreateClientProject } from '@/lib/queries';
+import { useBulkLeadAction, useClientProjects, useCreateClientProject } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
 export function ClientProjectsCard({ lead }: { lead: Lead }) {
@@ -29,8 +31,38 @@ export function ClientProjectsCard({ lead }: { lead: Lead }) {
   const projects = data?.projects ?? [];
   // A lista pode ficar recolhida; a escolha fica lembrada neste browser.
   const [collapsed, setCollapsed] = useCollapsed('projetos-cliente');
+  const bulk = useBulkLeadAction();
+  const qc = useQueryClient();
+  const router = useRouter();
+  const [removing, setRemoving] = useState<ClientProject | null>(null);
   // Só aparece a clientes (ou a quem já tem mais de um projeto).
   if (lead.status !== 'cliente' && projects.length < 2) return null;
+  const projectName = (p: ClientProject) => p.project_title ?? (p.main ? 'Primeiro projeto' : `Projeto #${p.number}`);
+  const mainProject = projects.find((p) => p.main);
+
+  /** Arquivar ou repor um projeto (só esse registo: o cliente e os outros projetos ficam). */
+  async function setArchived(p: ClientProject, archived: boolean) {
+    try {
+      await bulk.mutateAsync({ action: archived ? 'archive' : 'restore', ids: [p.id] });
+      void qc.invalidateQueries({ queryKey: ['client-projects'] });
+      toast.success(archived ? `Projeto “${projectName(p)}” arquivado.` : `Projeto “${projectName(p)}” reposto.`);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
+
+  /** Apagar um projeto: vai para a Reciclagem (30 dias); se era o aberto, volta ao primeiro projeto. */
+  async function remove(p: ClientProject) {
+    try {
+      await bulk.mutateAsync({ action: 'delete', ids: [p.id] });
+      void qc.invalidateQueries({ queryKey: ['client-projects'] });
+      toast.success(`Projeto “${projectName(p)}” apagado (fica 30 dias na Reciclagem).`);
+      setRemoving(null);
+      if (p.id === lead.id && mainProject) router.push(leadPath(mainProject));
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
   return (
     <Card id="projetos-cliente" className="scroll-mt-20">
       <CardHeader
@@ -55,15 +87,19 @@ export function ClientProjectsCard({ lead }: { lead: Lead }) {
           {projects.map((p) => {
             const current = p.id === lead.id;
             return (
-              <li key={p.id}>
+              <li
+                key={p.id}
+                className={cn(
+                  'flex items-center gap-1 rounded-md border-l-2',
+                  // O projeto aberto: barra e fundo na cor da marca (o mesmo destaque do título da ficha).
+                  current ? 'border-accent bg-accent-soft' : 'border-transparent',
+                  p.archived_at && !current && 'opacity-70',
+                )}
+              >
                 <Link
                   href={leadPath(p)}
                   aria-current={current ? 'page' : undefined}
-                  className={cn(
-                    'flex items-center gap-3 rounded-md border-l-2 px-2 py-2 text-sm hover:bg-surface-2',
-                    // O projeto aberto: barra e fundo na cor da marca (o mesmo destaque do título da ficha).
-                    current ? 'border-accent bg-accent-soft' : 'border-transparent',
-                  )}
+                  className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-2 text-sm hover:bg-surface-2"
                 >
                   <Layers className={cn('h-4 w-4 shrink-0', current ? 'text-accent-text' : 'text-muted')} aria-hidden />
                   <span className="min-w-0 flex-1">
@@ -76,7 +112,9 @@ export function ClientProjectsCard({ lead }: { lead: Lead }) {
                       {p.estimated_value ? ` · ${formatCurrency(p.estimated_value, { decimals: false })}` : ''}
                     </span>
                   </span>
-                  {p.completed_at ? (
+                  {p.archived_at ? (
+                    <Badge>Arquivado</Badge>
+                  ) : p.completed_at ? (
                     <Badge tone="success" className="inline-flex items-center gap-1">
                       <CheckCircle2 className="h-3 w-3" aria-hidden /> Concluído
                     </Badge>
@@ -84,12 +122,53 @@ export function ClientProjectsCard({ lead }: { lead: Lead }) {
                     <Badge tone="accent">{PROJECT_STAGE_LABELS[p.stage]}</Badge>
                   ) : null}
                 </Link>
+                {/* O primeiro projeto é o próprio cliente: arquivá-lo ou apagá-lo faz-se no topo da ficha. */}
+                {!p.main && !lead.anonymized_at ? (
+                  <DropdownRoot>
+                    <DropdownTrigger asChild>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" aria-label={`Mais ações: ${projectName(p)}`}>
+                        <MoreHorizontal className="h-4 w-4" aria-hidden />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownContent align="end">
+                      {p.archived_at ? (
+                        <DropdownItem onSelect={() => void setArchived(p, false)}>
+                          <ArchiveRestore className="h-4 w-4 text-muted" aria-hidden /> Repor projeto
+                        </DropdownItem>
+                      ) : (
+                        <DropdownItem onSelect={() => void setArchived(p, true)}>
+                          <Archive className="h-4 w-4 text-muted" aria-hidden /> Arquivar projeto
+                        </DropdownItem>
+                      )}
+                      <DropdownSeparator />
+                      <DropdownItem onSelect={() => setRemoving(p)} className="text-danger">
+                        <Trash2 className="h-4 w-4" aria-hidden /> Apagar projeto…
+                      </DropdownItem>
+                    </DropdownContent>
+                  </DropdownRoot>
+                ) : null}
               </li>
             );
           })}
         </ul>
       ) : null}
       {open ? <NewProjectDialog lead={lead} onClose={() => setOpen(false)} /> : null}
+      <Dialog
+        open={!!removing}
+        onOpenChange={(o) => (!o ? setRemoving(null) : undefined)}
+        title={removing ? `Apagar o projeto “${projectName(removing)}”?` : 'Apagar o projeto?'}
+        description="Vai para a Reciclagem durante 30 dias (com as tarefas, os pagamentos e as horas dele). O cliente e os outros projetos ficam como estão."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setRemoving(null)}>
+              Voltar
+            </Button>
+            <Button variant="danger" loading={bulk.isPending} onClick={() => removing && void remove(removing)}>
+              <Trash2 className="h-4 w-4" aria-hidden /> Apagar projeto
+            </Button>
+          </>
+        }
+      />
     </Card>
   );
 }

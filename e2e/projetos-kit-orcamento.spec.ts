@@ -207,3 +207,26 @@ test('calculadora de orçamento: extras, €/hora, valor estimado e proposta', a
   await expect(page.getByLabel('€ por hora')).toHaveValue('40');
   await expect(page.getByLabel('Nome do extra 1')).toHaveValue('Página extra');
 });
+
+test('projetos do cliente: arquivar, repor e apagar um projeto sem tocar no cliente', async ({ page }) => {
+  const main = await createLead(page.request, { company_name: `Cliente Arquivo ${run}`, status: 'cliente' });
+  const created = await page.request.post(`/api/v1/leads/${main.id}/client-projects`, { data: { title: `Extra ${run}` } });
+  expect(created.status(), await created.text()).toBe(201);
+  await page.goto(`/leads/${main.id}`);
+  const list = page.getByRole('list', { name: 'Projetos do cliente' });
+  // O primeiro projeto (o próprio cliente) não tem o menu.
+  await expect(list.getByRole('button', { name: /^Mais ações: Primeiro projeto/ })).toHaveCount(0);
+  await list.getByRole('button', { name: `Mais ações: Extra ${run}` }).click();
+  await page.getByRole('menuitem', { name: 'Arquivar projeto' }).click();
+  await expect(list.getByRole('listitem').filter({ hasText: `Extra ${run}` }).getByText('Arquivado')).toBeVisible();
+  await list.getByRole('button', { name: `Mais ações: Extra ${run}` }).click();
+  await page.getByRole('menuitem', { name: 'Repor projeto' }).click();
+  await expect(list.getByRole('listitem').filter({ hasText: `Extra ${run}` }).getByText('Arquivado')).toHaveCount(0);
+  await list.getByRole('button', { name: `Mais ações: Extra ${run}` }).click();
+  await page.getByRole('menuitem', { name: 'Apagar projeto…' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Apagar projeto' }).click();
+  await expect(list.getByText(`Extra ${run}`)).toHaveCount(0);
+  // O cliente continua lá.
+  expect((await page.request.get(`/api/v1/leads/${main.id}`)).status()).toBe(200);
+  await page.request.delete(`/api/v1/leads/${main.id}`);
+});

@@ -22,6 +22,7 @@ export const ClientProjectSchema = z
     stage: z.enum(PROJECT_STAGES).nullable(),
     due_on: z.string().nullable(),
     completed_at: z.string().nullable(),
+    archived_at: z.string().nullable().meta({ description: 'Projeto arquivado (o cliente e os outros projetos ficam)' }),
     created_at: z.string(),
   })
   .meta({ id: 'ClientProject' });

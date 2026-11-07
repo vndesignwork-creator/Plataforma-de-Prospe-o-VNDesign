@@ -26,7 +26,7 @@ export async function listClientProjects(ctx: ApiContext, leadId: string): Promi
   const mainId = await mainClientId(ctx, leadId);
   const { data, error } = await ctx.supabase
     .from('leads')
-    .select('id, number, company_name, project_title, client_of, status, services, estimated_value, project_completed_at, created_at')
+    .select('id, number, company_name, project_title, client_of, status, services, estimated_value, project_completed_at, archived_at, created_at')
     .eq('workspace_id', ctx.workspaceId)
     .or(`id.eq.${mainId},client_of.eq.${mainId}`)
     .order('created_at', { ascending: true });
@@ -37,6 +37,7 @@ export async function listClientProjects(ctx: ApiContext, leadId: string): Promi
     services: string[] | null;
     estimated_value: number | string | null;
     project_completed_at: string | null;
+    archived_at: string | null;
   })[];
   const ids = rows.map((r) => r.id);
   const { data: projects, error: pError } = await ctx.supabase.from('lead_projects').select('lead_id, stage, due_on').eq('workspace_id', ctx.workspaceId).in('lead_id', ids);
@@ -54,6 +55,7 @@ export async function listClientProjects(ctx: ApiContext, leadId: string): Promi
     stage: info.get(r.id)?.stage ?? null,
     due_on: info.get(r.id)?.due_on ?? null,
     completed_at: r.project_completed_at,
+    archived_at: r.archived_at,
     created_at: r.created_at,
   }));
   return { main_id: mainId, projects: list };
