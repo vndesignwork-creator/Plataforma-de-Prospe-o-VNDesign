@@ -622,8 +622,8 @@ export function LeadDetail({ id }: { id: string }) {
         title={
           lead.project_title ? (
             <>
-              {/* O nome do projeto aberto em destaque (a cor da marca), não apagado. */}
-              {lead.company_name} <span className="text-accent-text">· {lead.project_title}</span>
+              {/* Projeto novo de um cliente: o nome do projeto em primeiro plano; o cliente discreto ao lado. */}
+              {lead.project_title} <span className="align-middle text-base font-medium text-muted sm:text-lg">· {lead.company_name}</span>
             </>
           ) : (
             lead.company_name

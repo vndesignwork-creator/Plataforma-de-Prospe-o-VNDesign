@@ -118,7 +118,14 @@ export function ProjectRow({
             />
             <Link href={leadPath(lead)} className="min-w-0 font-semibold hover:text-accent-text hover:underline">
               <span className="mr-1.5 text-muted tabular">#{lead.number}</span>
-              {lead.company_name} {lead.project_title ? <span className="font-normal text-muted">· {lead.project_title}</span> : null}
+              {/* Projeto novo de um cliente: o nome do projeto em primeiro plano; o cliente discreto ao lado. */}
+              {lead.project_title ? (
+                <>
+                  {lead.project_title} <span className="text-sm font-normal text-muted">· {lead.company_name}</span>
+                </>
+              ) : (
+                lead.company_name
+              )}
             </Link>
           </div>
           {/* Os serviços à esquerda; a fase (e o prazo) encostados à direita. */}
