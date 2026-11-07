@@ -1,8 +1,8 @@
 /**
  * Links que não são o site da empresa: diretórios/agregadores (TripAdvisor,
- * Sluurpy, Google Maps…) e redes sociais. Um diretório no campo "Website" é um
- * erro de dados — o link pertence ao campo "Fonte".
- * A mesma lista existe em SQL (vnd_is_directory_url) para corrigir dados antigos.
+ * Sluurpy, Google Maps…) e redes sociais. Um diretório ou uma rede social no campo
+ * "Website" é um erro de dados — o link pertence ao campo "Fonte".
+ * As mesmas listas existem em SQL (vnd_is_directory_url, vnd_is_social_url) para corrigir dados antigos.
  */
 import { ensureUrlProtocol, websiteKey } from './normalize';
 
@@ -46,16 +46,17 @@ export interface LeadLinks {
 }
 
 /**
- * Se o "Website" for um diretório, passa-o para "Fonte" (ou, se a Fonte já tiver
- * outro link, para as notas) e limpa o Website. Devolve só os campos alterados.
+ * Se o "Website" for um diretório ou uma rede social (não é o site da empresa),
+ * passa-o para "Fonte" (ou, se a Fonte já tiver outro link, para as notas) e limpa
+ * o Website. Devolve só os campos alterados.
  */
 export function fixDirectoryWebsite(lead: LeadLinks): Partial<LeadLinks> | null {
   const website = lead.website?.trim();
-  if (!website || !isDirectoryUrl(website)) return null;
+  if (!website || !isSocialOrDirectoryUrl(website)) return null;
   const source = lead.source_url?.trim();
   if (!source) return { website: null, source_url: website };
   if (websiteKey(source) === websiteKey(website) || source === website) return { website: null };
-  const line = `Link de diretório: ${website}`;
+  const line = `${isSocialUrl(website) ? 'Rede social' : 'Link de diretório'}: ${website}`;
   const notes = lead.notes?.includes(website) ? lead.notes : [lead.notes?.trim(), line].filter(Boolean).join('\n');
   return { website: null, notes };
 }

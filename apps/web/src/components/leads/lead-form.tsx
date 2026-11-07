@@ -328,7 +328,7 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
             isDirectoryUrl(website)
               ? 'Isto é um diretório (TripAdvisor, Sluurpy, Google Maps…), não o site da empresa: ao gravar passa para “Fonte”.'
               : isSocialUrl(website)
-                ? 'Rede social: fica como página da empresa (sem site próprio).'
+                ? 'Isto é uma rede social, não o site da empresa: ao gravar passa para “Fonte”. Se a empresa tiver site, escreve-o aqui.'
                 : 'O site próprio (ex.: vndesign.pt). Sem site? Deixa vazio.'
           }
         >

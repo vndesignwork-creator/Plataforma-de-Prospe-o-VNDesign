@@ -7,7 +7,7 @@ import { runRulesForLead } from './automation';
 import {
   addDays,
   fixDirectoryWebsite,
-  isDirectoryUrl,
+  isSocialOrDirectoryUrl,
   STALLED_STATUSES,
   normalizeTags,
   normalizeText,
@@ -281,7 +281,7 @@ export async function updateLead(ctx: ApiContext, id: string, patch: LeadUpdate)
   } else if (patch.assigned_to !== undefined) await assertTeamMember(ctx, patch.assigned_to);
   if (Object.keys(patch).length === 0) return getLead(ctx, id);
   if (patch.custom) patch = { ...patch, custom: await cleanCustom(ctx, patch.custom) };
-  if (isDirectoryUrl(patch.website)) {
+  if (isSocialOrDirectoryUrl(patch.website)) {
     const current = await getLead(ctx, id);
     patch = {
       ...patch,

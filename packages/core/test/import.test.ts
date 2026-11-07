@@ -175,8 +175,11 @@ describe('mapImportRow — diretórios no Website', () => {
     expect(r.ok && r.value.lead).toMatchObject({ source_url: url });
     expect(r.ok && r.value.lead.website).toBeUndefined();
   });
-  it('mantém sites próprios e redes sociais', () => {
+  it('uma rede social no Website não conta como site (vai para a Fonte ou para as notas)', () => {
     const r = mapImportRow(['Z', 'https://www.facebook.com/z', 'https://maps.google.com/?cid=1'], [...mapping], []);
-    expect(r.ok && r.value.lead.website).toBe('https://www.facebook.com/z');
+    expect(r.ok && r.value.lead.website).toBeFalsy();
+    expect(r.ok && r.value.lead.notes).toContain('Rede social: https://www.facebook.com/z');
+    const own = mapImportRow(['Y', 'https://clinicasorrir.pt', ''], [...mapping], []);
+    expect(own.ok && own.value.lead.website).toBe('https://clinicasorrir.pt');
   });
 });

@@ -27,6 +27,7 @@ import {
   type SiteMonitor,
   type SiteMonitorListItem,
   type SiteMonitorUpdate,
+  isSocialOrDirectoryUrl,
 } from '@vndesign/core';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { safeGet } from '../audit/safe-request';
@@ -100,6 +101,8 @@ export async function createSiteMonitor(ctx: ApiContext, leadId: string, input: 
   const lead = await getLead(ctx, leadId);
   const url = input.url ?? (lead.website ? (/^https?:\/\//i.test(lead.website) ? lead.website : `https://${lead.website}`) : null);
   if (!url) throw new ApiError(422, 'Sem endereço', 'Este cliente não tem site na ficha. Escreve o endereço a vigiar.');
+  // Uma página do Facebook ou do Instagram não é um site: responde com erros e não tem domínio próprio.
+  if (isSocialOrDirectoryUrl(url)) throw new ApiError(422, 'Não é um site', 'Esse endereço é de uma rede social ou de um diretório, não do site do cliente. Escreve o endereço do site.');
   const result = await ctx.supabase
     .from('site_monitors')
     .insert({ workspace_id: ctx.workspaceId, lead_id: leadId, url })
@@ -319,7 +322,9 @@ export async function syncProspectWatch(options: { dryRun?: boolean } = {}): Pro
       .gt('score', 0)
       .order('score', { ascending: false })
       .limit(PROSPECT_WATCH_COUNT);
-    const wanted = ((hot ?? []) as { id: string; website: string }[]).filter((l) => /^(https?:\/\/)?[^\s/]+\.[^\s]+/i.test(l.website.trim()));
+    const wanted = ((hot ?? []) as { id: string; website: string }[]).filter(
+      (l) => /^(https?:\/\/)?[^\s/]+\.[^\s]+/i.test(l.website.trim()) && !isSocialOrDirectoryUrl(l.website),
+    );
     const { data: existing } = await admin.from('site_monitors').select('id, lead_id, created_by, lead:leads!inner(status)').eq('workspace_id', w.id);
     type Ex = { id: string; lead_id: string; created_by: string | null; lead: { status: string } };
     const rows = (existing ?? []) as unknown as Ex[];
