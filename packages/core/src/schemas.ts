@@ -401,6 +401,7 @@ export const DuplicateCheckSchema = z
     company_name: z.string().trim().max(300).optional().default(''),
     website: z.string().trim().max(1000).nullish(),
     email: z.string().trim().max(254).nullish(),
+    social_links: z.array(z.string().trim().max(1000)).max(20).nullish(),
     exclude_id: z.uuid().nullish(),
   })
   .meta({ id: 'DuplicateCheck' });
@@ -414,7 +415,7 @@ export const DuplicateMatchSchema = z
     status: LeadStatusSchema,
     website: z.string().nullable(),
     email: z.string().nullable(),
-    reasons: z.array(z.enum(['website', 'email', 'name', 'email_domain', 'similar_name'])),
+    reasons: z.array(z.enum(['website', 'email', 'name', 'email_domain', 'social', 'similar_name'])),
     strength: z.enum(['strong', 'possible']),
     score: z.number(),
   })

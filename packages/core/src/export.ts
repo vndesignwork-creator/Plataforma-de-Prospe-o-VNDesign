@@ -65,6 +65,8 @@ export function exportColumns(services?: readonly ServiceInfo[], fields: readonl
     { header: 'Notas', kind: 'text', width: 40, value: (l) => l.notes },
     { header: 'Ângulo de abordagem', kind: 'text', width: 40, value: (l) => l.approach_angle },
     { header: 'Fonte', kind: 'url', width: 30, value: (l) => l.source_url },
+    // Um link por linha; volta a ser lida pela importação (coluna "Redes sociais").
+    { header: 'Redes sociais', kind: 'text', width: 30, value: (l) => (l.social_links?.length ? l.social_links.join('\n') : null) },
     { header: 'Sugerido em', kind: 'date', width: 12, value: (l) => l.suggested_on },
     { header: 'Assunto do email', kind: 'text', width: 34, value: (l) => l.email_subject },
     { header: 'Email de prospeção', kind: 'text', width: 60, value: (l) => (l.email_body ? toPlainText(l.email_body) : l.email_body) },

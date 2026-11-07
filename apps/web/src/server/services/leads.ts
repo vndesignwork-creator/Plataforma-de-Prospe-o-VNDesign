@@ -192,7 +192,7 @@ export async function getLead(ctx: ApiContext, id: string): Promise<Lead> {
 
 export async function checkDuplicates(
   ctx: ApiContext,
-  input: { company_name?: string | null; website?: string | null; email?: string | null; exclude_id?: string | null },
+  input: { company_name?: string | null; website?: string | null; email?: string | null; social_links?: string[] | null; exclude_id?: string | null },
 ): Promise<DuplicateCheckResult> {
   const args = {
     p_workspace_id: ctx.workspaceId,
@@ -201,7 +201,11 @@ export async function checkDuplicates(
     p_email: input.email ?? null,
   };
   const [dups, dnc] = await Promise.all([
-    ctx.supabase.rpc('find_lead_duplicates', { ...args, p_exclude_id: input.exclude_id ?? null }),
+    ctx.supabase.rpc('find_lead_duplicates', {
+      ...args,
+      p_exclude_id: input.exclude_id ?? null,
+      p_social_links: input.social_links?.length ? input.social_links : null,
+    }),
     ctx.supabase.rpc('check_do_not_contact', args),
   ]);
   if (dups.error) throw fromPostgrest(dups.error);
@@ -356,12 +360,27 @@ export async function mergeLeads(
   input: { duplicate_ids: string[]; values: LeadUpdate },
 ): Promise<Lead> {
   await getLead(ctx, primaryId);
+  // As redes sociais dos duplicados (e do rascunho) juntam-se às do principal, sem repetir.
+  const { data: dupLinks } = input.duplicate_ids.length
+    ? await ctx.supabase.from('leads').select('social_links').eq('workspace_id', ctx.workspaceId).in('id', input.duplicate_ids)
+    : { data: [] };
+  const extraLinks = [
+    ...(input.values.social_links ?? []),
+    ...((dupLinks ?? []) as { social_links: string[] | null }[]).flatMap((l) => l.social_links ?? []),
+  ];
   const { error } = await ctx.supabase.rpc('merge_leads', {
     p_primary_id: primaryId,
     p_duplicate_ids: input.duplicate_ids,
     p_values: input.values,
   });
   if (error) throw fromPostgrest(error, NOT_FOUND);
+  if (extraLinks.length) {
+    const { error: socialError } = await ctx.supabase.rpc('import_lead_social_links', {
+      p_workspace_id: ctx.workspaceId,
+      p_items: [{ lead_id: primaryId, social_links: extraLinks }],
+    });
+    if (socialError) throw fromPostgrest(socialError);
+  }
   return getLead(ctx, primaryId);
 }
 

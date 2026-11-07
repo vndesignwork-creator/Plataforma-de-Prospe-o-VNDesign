@@ -5,6 +5,7 @@ import {
   DUPLICATE_REASON_LABELS,
   IMPORT_FIELD_LABELS,
   IMPORT_FIELDS,
+  MULTI_COLUMN_FIELDS,
   formatDateTime,
   type ImportAction,
   type ImportAnalysis,
@@ -318,7 +319,7 @@ export function ImportWizard() {
               <tbody>
                 {analysis.headers.map((header, col) => {
                   const target = mapping[col] ?? 'ignore';
-                  const duplicated = target !== 'ignore' && (used.get(target) ?? 0) > 1;
+                  const duplicated = target !== 'ignore' && !MULTI_COLUMN_FIELDS.has(target) && (used.get(target) ?? 0) > 1;
                   return (
                     <tr key={col} className="border-t border-border align-top">
                       <th scope="row" className="px-4 py-2 text-left font-medium">

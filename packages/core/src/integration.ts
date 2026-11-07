@@ -141,6 +141,13 @@ const JSON_ALIASES: Record<string, ImportField> = {
   pagespeed_mobile: 'pagespeed',
   source_link: 'source_url',
   fonte: 'source_url',
+  redes_sociais: 'social_links',
+  social: 'social_links',
+  facebook: 'social_links',
+  instagram: 'social_links',
+  linkedin: 'social_links',
+  tiktok: 'social_links',
+  youtube: 'social_links',
 };
 
 function toCell(value: unknown): string {
@@ -170,11 +177,18 @@ export function mapIntegrationLead(
       if (field !== 'number') unknown.push(rawKey);
       continue;
     }
+    const at = IMPORT_FIELDS.indexOf(field);
+    // Redes sociais: uma lista de links, ou várias chaves ("facebook", "instagram"…) que se juntam.
+    if (field === 'social_links' && Array.isArray(value)) {
+      const links = value.filter((v): v is string => typeof v === 'string');
+      row[at] = [row[at], ...links].filter(Boolean).join('\n');
+      continue;
+    }
     if (typeof value === 'object' && value !== null) {
       unknown.push(rawKey);
       continue;
     }
-    row[IMPORT_FIELDS.indexOf(field)] = toCell(value);
+    row[at] = field === 'social_links' ? [row[at], toCell(value)].filter(Boolean).join('\n') : toCell(value);
   }
   const result = mapImportRow(row, IMPORT_FIELDS, sectors, services);
   if (unknown.length) {

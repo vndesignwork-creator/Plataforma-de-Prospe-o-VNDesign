@@ -5,6 +5,7 @@
  * e, quando não os reconhece, adivinha pelo conteúdo (email, telefone, mensagem).
  */
 import { z } from 'zod';
+import { isSocialUrl } from './links';
 
 export const SiteFormSettingsSchema = z.object({
   /** Código secreto do endereço público (null = desligado). */
@@ -28,6 +29,8 @@ export interface SiteFormSubmission {
   company: string | null;
   message: string | null;
   website: string | null;
+  /** Links das redes sociais (Facebook, Instagram…), um por linha. */
+  social: string | null;
   service: string | null;
 }
 
@@ -38,6 +41,7 @@ const ALIASES: Record<keyof SiteFormSubmission, RegExp> = {
   company: /^(empresa|company|organizacao|organização|negocio|negócio|business|your-company)$/i,
   message: /^(mensagem|message|your-message|msg|comentario|comentário|pedido|descricao|descrição|detalhes)$/i,
   website: /^(site|website|url|your-website|pagina|página)$/i,
+  social: /^(redes?[-_ ]?sociais|rede[-_ ]?social|social|social[-_]?media|facebook|instagram|linkedin|tiktok|your-facebook|your-instagram)$/i,
   service: /^(servico|serviço|service|assunto|subject|your-subject|interesse)$/i,
 };
 
@@ -49,7 +53,7 @@ const INTERNAL = /^(_|form[-_]?id$|post[-_]?id$|referrer|action$|nonce|g-recaptc
 
 /** Lê os campos de um formulário (nomes conhecidos primeiro; o resto pelo conteúdo). */
 export function parseSiteFormFields(fields: Record<string, string>): SiteFormSubmission {
-  const out: SiteFormSubmission = { name: null, email: null, phone: null, company: null, message: null, website: null, service: null };
+  const out: SiteFormSubmission = { name: null, email: null, phone: null, company: null, message: null, website: null, social: null, service: null };
   const unknown: string[] = [];
   for (const [rawKey, rawValue] of Object.entries(fields)) {
     const value = String(rawValue ?? '').trim();
@@ -57,13 +61,15 @@ export function parseSiteFormFields(fields: Record<string, string>): SiteFormSub
     const key = rawKey.replace(/^fields\[(.+)\]$/, '$1').replace(/^form[-_]field[-_]/i, '').trim();
     if (!value || INTERNAL.test(key)) continue;
     const hit = (Object.keys(ALIASES) as (keyof SiteFormSubmission)[]).find((k) => ALIASES[k].test(key));
-    if (hit && !out[hit]) out[hit] = value;
+    if (hit === 'social') out.social = [out.social, value].filter(Boolean).join('\n');
+    else if (hit && !out[hit]) out[hit] = value;
     else unknown.push(value);
   }
   // Campos com nomes desconhecidos (ex.: ids do Bricks): pelo conteúdo.
   for (const value of unknown) {
     if (!out.email && EMAIL.test(value)) out.email = value;
     else if (!out.phone && PHONE.test(value) && (value.match(/\d/g)?.length ?? 0) >= 9) out.phone = value;
+    else if (/^(https?:\/\/|www\.)\S+$/i.test(value) && isSocialUrl(value)) out.social = [out.social, value].filter(Boolean).join('\n');
     else if (!out.website && /^(https?:\/\/|www\.)\S+$/i.test(value)) out.website = value;
     else if (!out.message && (value.length > 40 || /\s.*\s.*\s/.test(value))) out.message = value;
     else if (!out.name && value.length <= 80) out.name = value;
@@ -75,6 +81,7 @@ export function parseSiteFormFields(fields: Record<string, string>): SiteFormSub
     company: clip(out.company, 160),
     message: clip(out.message, 3000),
     website: clip(out.website, 300),
+    social: clip(out.social, 1000),
     service: clip(out.service, 120),
   };
 }

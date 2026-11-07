@@ -149,7 +149,7 @@ type DncRow = { row_index: number; entry_id: string; company_name: string; reaso
 
 export async function lookupConflicts(
   ctx: ApiContext,
-  probes: { company_name?: string | null; website?: string | null; email?: string | null }[],
+  probes: { company_name?: string | null; website?: string | null; email?: string | null; social_links?: string[] | null }[],
 ) {
   const [dups, dnc] = await Promise.all([
     ctx.supabase.rpc('find_import_duplicates', { p_workspace_id: ctx.workspaceId, p_rows: probes }),
@@ -192,7 +192,9 @@ export async function previewImport(
   const mapped = input.rows.map((row) => (isEmptyRow(row) ? null : mapImportRow(row, input.mapping, sectors, services)));
   const leads = mapped.map((m) => (m?.ok ? m.value.lead : null));
   const inFile = findBatchDuplicates(leads);
-  const probes = leads.map((l) => (l ? { company_name: l.company_name, website: l.website ?? null, email: l.email ?? null } : {}));
+  const probes = leads.map((l) =>
+    l ? { company_name: l.company_name, website: l.website ?? null, email: l.email ?? null, social_links: l.social_links?.length ? l.social_links : null } : {},
+  );
   const [{ dups, dnc }, mailWarnings] = await Promise.all([lookupConflicts(ctx, probes), emailWarnings(leads.map((l) => l?.email ?? null))]);
 
   const rows: ImportPreviewRow[] = mapped.map((m, index) => {
@@ -314,6 +316,18 @@ export async function commitImport(ctx: ApiContext, input: CommitImportInput): P
   const blockedRows = new Set(toWrite.filter((_, i) => blockedIdx.has(i)).map((i) => i.index));
 
   // Serviços de interesse (coluna "Serviços"): a função de importação não os conhece.
+  // Redes sociais: juntam-se às que o lead já tem (a função de importação também não as conhece).
+  const withSocial = allowed
+    .map((item) => ({ lead_id: written.get(item.index)?.lead_id, social_links: item.lead.social_links ?? [] }))
+    .filter((x) => x.lead_id && x.social_links.length);
+  if (withSocial.length) {
+    const { error: socialError } = await ctx.supabase.rpc('import_lead_social_links', {
+      p_workspace_id: ctx.workspaceId,
+      p_items: withSocial,
+    });
+    if (socialError) throw fromPostgrest(socialError);
+  }
+
   const withServices = allowed
     .map((item) => ({ lead_id: written.get(item.index)?.lead_id, services: item.lead.services ?? [] }))
     .filter((x) => x.lead_id && x.services.length);

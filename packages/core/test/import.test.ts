@@ -183,3 +183,33 @@ describe('mapImportRow — diretórios no Website', () => {
     expect(own.ok && own.value.lead.website).toBe('https://clinicasorrir.pt');
   });
 });
+
+describe('redes sociais na importação', () => {
+  it('colunas "Facebook" e "Instagram" vão as duas para Redes sociais', () => {
+    const headers = ['Empresa', 'Website', 'Facebook', 'Instagram'];
+    const mapping = suggestMapping(headers);
+    expect(mapping).toEqual(['company_name', 'website', 'social_links', 'social_links']);
+    const r = mapImportRow(['Café Sol', 'cafesol.pt', 'facebook.com/cafesol', 'https://instagram.com/cafesol'], mapping, []);
+    expect(r.ok && r.value.lead.website).toBe('https://cafesol.pt');
+    expect(r.ok && r.value.lead.social_links).toEqual(['https://facebook.com/cafesol', 'https://instagram.com/cafesol']);
+  });
+  it('uma rede social no Website: o aviso diz que passou para Redes sociais', () => {
+    const r = mapImportRow(['Z', 'https://www.facebook.com/z'], ['company_name', 'website'], []);
+    expect(r.ok && r.value.warnings.join(' ')).toContain('passou para Redes sociais');
+  });
+  it('duplicados no ficheiro: a mesma página de Facebook', () => {
+    expect(
+      findBatchDuplicates([
+        { company_name: 'Café Sol', social_links: ['https://www.facebook.com/cafesol'] },
+        { company_name: 'Sol Café Lda', social_links: ['facebook.com/cafesol/'] },
+        { company_name: 'Outro', social_links: ['https://facebook.com/outro'] },
+      ]),
+    ).toEqual([null, 0, null]);
+  });
+  it('a exportação traz a coluna "Redes sociais" (a importação reconhece-a)', () => {
+    expect(suggestField('Redes sociais')).toBe('social_links');
+    const csv = leadsToCsv([{ ...({} as Lead), company_name: 'X', status: 'identificado', mobile: 'desconhecido', social_links: ['https://facebook.com/x'] } as Lead]);
+    expect(csv).toContain('Redes sociais');
+    expect(csv).toContain('https://facebook.com/x');
+  });
+});

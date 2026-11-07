@@ -63,12 +63,17 @@ export async function submitSiteForm(token: string, fields: Record<string, strin
 
   let leadId: string;
   let created = true;
+  // Redes sociais escritas no formulário: só os links válidos (um link mal escrito não perde o pedido).
+  const social = (f.social ?? '')
+    .split(/[\s,;]+/)
+    .filter((u) => u && LeadCreateSchema.shape.social_links.safeParse(u).success);
   const input = LeadCreateSchema.parse({
     company_name: company,
     contact_name: f.name,
     email: f.email,
     phone: f.phone,
     website: f.website,
+    social_links: social.length ? social : undefined,
     channel: 'site',
     status: 'respondeu',
     next_action_text: 'Responder ao pedido do site',

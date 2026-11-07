@@ -90,3 +90,13 @@ describe('isPushServiceUrl', () => {
     }
   });
 });
+
+describe('mapIntegrationLead — redes sociais', () => {
+  it('aceita "social_links" (lista) e "facebook"/"instagram" (juntam-se)', () => {
+    const a = mapIntegrationLead({ company_name: 'A', social_links: ['https://facebook.com/a', 'instagram.com/a'] }, SECTORS);
+    expect(a.ok && a.value.lead.social_links).toEqual(['https://facebook.com/a', 'https://instagram.com/a']);
+    const b = mapIntegrationLead({ company_name: 'B', facebook: 'https://facebook.com/b', instagram: 'https://instagram.com/b' }, SECTORS);
+    expect(b.ok && b.value.lead.social_links).toEqual(['https://facebook.com/b', 'https://instagram.com/b']);
+    expect(b.ok && b.value.warnings).toEqual([]);
+  });
+});

@@ -208,6 +208,7 @@ export const DUPLICATE_REASON_LABELS: Record<string, string> = {
   email: 'mesmo email',
   name: 'mesmo nome',
   email_domain: 'domínio do email coincide',
+  social: 'mesma rede social',
   similar_name: 'nome semelhante',
 };
 

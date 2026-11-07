@@ -250,7 +250,7 @@ export function useDoNotContact() {
 }
 
 export function checkDuplicates(
-  body: { company_name?: string; website?: string | null; email?: string | null; exclude_id?: string | null },
+  body: { company_name?: string; website?: string | null; email?: string | null; social_links?: string[] | null; exclude_id?: string | null },
   signal?: AbortSignal,
 ) {
   return api<{ data: DuplicateCheckResult }>('/leads/check-duplicates', { method: 'POST', body, signal }).then((r) => r.data);

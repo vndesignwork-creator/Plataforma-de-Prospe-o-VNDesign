@@ -31,6 +31,7 @@ export const IMPORT_FIELDS = [
   'company_name',
   'sector',
   'website',
+  'social_links',
   'city',
   'address',
   'problems',
@@ -62,6 +63,7 @@ export const IMPORT_FIELD_LABELS: Record<ImportField, string> = {
   company_name: 'Empresa',
   sector: 'Setor',
   website: 'Website',
+  social_links: 'Redes sociais',
   city: 'Cidade',
   address: 'Morada',
   problems: 'Problemas',
@@ -92,6 +94,10 @@ const HEADER_ALIASES: Record<ImportField, string[]> = {
   company_name: ['empresa', 'nome', 'nome-da-empresa', 'company', 'company-name', 'negocio', 'cliente'],
   sector: ['setor', 'sector', 'setores', 'sectores', 'categoria', 'area'],
   website: ['website', 'site', 'url', 'web', 'pagina', 'site-web'],
+  social_links: [
+    'redes-sociais', 'rede-social', 'redes', 'social', 'social-media', 'facebook', 'instagram', 'linkedin',
+    'tiktok', 'youtube', 'twitter', 'x-twitter', 'pagina-de-facebook', 'pagina-do-facebook', 'link-facebook', 'link-instagram',
+  ],
   city: ['cidade', 'localidade', 'concelho', 'city', 'localizacao', 'local'],
   address: ['morada', 'endereco', 'address', 'morada-comercial'],
   problems: ['problemas', 'problema', 'problems', 'diagnostico'],
@@ -129,12 +135,15 @@ export function suggestField(header: string | null | undefined): ImportField | n
   return key ? (ALIAS_INDEX.get(key) ?? null) : null;
 }
 
-/** Mapeamento sugerido (cada campo só é usado uma vez — fica a primeira coluna). */
+/** Campos que podem vir de várias colunas (ex.: "Facebook" e "Instagram" → Redes sociais). */
+export const MULTI_COLUMN_FIELDS: ReadonlySet<ImportField> = new Set(['social_links']);
+
+/** Mapeamento sugerido (cada campo só é usado uma vez — fica a primeira coluna — menos as redes sociais). */
 export function suggestMapping(headers: readonly string[]): ImportTarget[] {
   const used = new Set<ImportField>();
   return headers.map((h) => {
     const field = suggestField(h);
-    if (!field || used.has(field)) return 'ignore';
+    if (!field || (used.has(field) && !MULTI_COLUMN_FIELDS.has(field))) return 'ignore';
     used.add(field);
     return field;
   });
@@ -244,6 +253,13 @@ export function mapImportRow(
     if (v) lead[f] = v;
   }
 
+  // Redes sociais: todas as colunas escolhidas, um ou mais links em cada (separados por linha, vírgula ou espaço).
+  const social = mapping
+    .map((m, i) => (m === 'social_links' ? parseText(row[i]) : null))
+    .flatMap((v) => (v ? v.split(/[\s,;]+/) : []))
+    .filter((u) => /\.[a-z]{2,}/i.test(u));
+  if (social.length) lead.social_links = social.slice(0, 10);
+
   const email = get('email');
   if (email) {
     const normalized = normalizeEmail(email);
@@ -304,10 +320,15 @@ export function mapImportRow(
     else warnings.push(`Serviços "${servicesCell}" não reconhecidos — ignorados.`);
   }
 
-  // Um diretório (TripAdvisor, Sluurpy, Google Maps…) não é o site da empresa: vai para "Fonte".
+  // Um diretório (TripAdvisor, Sluurpy, Google Maps…) não é o site da empresa: vai para "Fonte";
+  // uma rede social vai para "Redes sociais".
   const fixed = fixDirectoryWebsite(lead as LeadLinks);
   if (fixed) {
-    warnings.push(`Website "${String(lead.website)}" é um diretório, não o site da empresa — passou para Fonte.`);
+    warnings.push(
+      'social_links' in fixed
+        ? `Website "${String(lead.website)}" é uma rede social, não o site da empresa — passou para Redes sociais.`
+        : `Website "${String(lead.website)}" é um diretório, não o site da empresa — passou para Fonte.`,
+    );
     for (const [k, v] of Object.entries(fixed)) {
       if (v === null) delete lead[k];
       else lead[k] = v;
@@ -322,7 +343,9 @@ export function mapImportRow(
       return { ok: false, errors: parsed.error.issues.map((i) => i.message), warnings };
     }
     for (const f of fields) {
-      warnings.push(`${f === 'website' ? 'Website' : f === 'source_url' ? 'Fonte' : f}: "${String(lead[f])}" inválido — ignorado.`);
+      warnings.push(
+        `${f === 'website' ? 'Website' : f === 'source_url' ? 'Fonte' : f === 'social_links' ? 'Redes sociais' : f}: "${String(lead[f])}" inválido — ignorado.`,
+      );
       delete lead[f];
     }
     parsed = LeadCreateSchema.safeParse(lead);
@@ -337,7 +360,7 @@ export function mapImportRow(
  * (mesmas regras "fortes" do SQL), ou null.
  */
 export function findBatchDuplicates(
-  rows: readonly ({ company_name?: string | null; website?: string | null; email?: string | null } | null)[],
+  rows: readonly ({ company_name?: string | null; website?: string | null; email?: string | null; social_links?: readonly string[] | null } | null)[],
 ): (number | null)[] {
   const seen = new Map<string, number>();
   return rows.map((row, i) => {
@@ -352,6 +375,8 @@ export function findBatchDuplicates(
       email && `e:${email}`,
       // domínio do email ↔ website (geral@ecs.com.pt ↔ www.ecs.com.pt)
       domain && `w:${domain}`,
+      // a mesma página de rede social (a chave é a mesma do website: "facebook.com/cafe")
+      ...(row.social_links ?? []).map((u) => websiteKey(u)).filter(Boolean).map((k) => `w:${k}`),
     ].filter(Boolean) as string[];
     const previous = keys.map((k) => seen.get(k)).find((v) => v !== undefined);
     for (const k of keys) if (!seen.has(k)) seen.set(k, i);

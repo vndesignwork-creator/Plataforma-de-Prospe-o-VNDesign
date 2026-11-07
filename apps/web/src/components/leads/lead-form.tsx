@@ -154,6 +154,7 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
 
   // Verificação de duplicados enquanto se escreve (nome, website, email).
   const [name, website, email] = useWatch({ control, name: ['company_name', 'website', 'email'] });
+  const socialText = useWatch({ control, name: 'social_links' }) as unknown;
   const notes = useWatch({ control, name: 'notes' }) as string | null | undefined;
   // Sem empresa: o nome do lead é o da pessoa de contacto (acompanha-a enquanto se escreve).
   const [noCompany, contactName] = useWatch({ control, name: ['no_company', 'contact_name'] }) as [boolean | undefined, string | null | undefined];
@@ -164,13 +165,20 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
   const isClient = lead?.status === 'cliente' || !!lead?.client_of || !!lead?.project_title;
   // Notas recolhidas: fechadas quando estão vazias (abrem sozinhas se tiverem erro).
   const [notesCollapsed, setNotesCollapsed] = useState(() => !(lead?.notes ?? initial?.notes)?.trim());
-  const probe = useDebouncedValue({ name: name?.trim() ?? '', website: website?.trim() ?? '', email: email?.trim() ?? '' }, 500);
-  const shouldCheck = probe.name.length >= 3 || probe.website.length >= 4 || probe.email.includes('@');
+  const social = (Array.isArray(socialText) ? socialText.join('\n') : String(socialText ?? '')).trim();
+  const probe = useDebouncedValue({ name: name?.trim() ?? '', website: website?.trim() ?? '', email: email?.trim() ?? '', social }, 500);
+  const shouldCheck = probe.name.length >= 3 || probe.website.length >= 4 || probe.email.includes('@') || probe.social.length >= 8;
   const dupCheck = useQuery({
     queryKey: ['duplicate-check', probe, lead?.id ?? null],
     queryFn: ({ signal }) =>
       checkDuplicates(
-        { company_name: probe.name, website: probe.website || null, email: probe.email || null, exclude_id: lead?.id ?? null },
+        {
+          company_name: probe.name,
+          website: probe.website || null,
+          email: probe.email || null,
+          social_links: probe.social ? probe.social.split(/[\n,]+/).map((u) => u.trim()).filter(Boolean).slice(0, 20) : null,
+          exclude_id: lead?.id ?? null,
+        },
         signal,
       ),
     enabled: shouldCheck,

@@ -142,3 +142,30 @@ test('redes sociais: um Facebook no Website vai para "Redes sociais" e aparece n
   await expect(page.getByRole('link', { name: /^Instagram/ }).first()).toBeVisible();
   await page.request.delete(`/api/v1/leads/${lead.id}`);
 });
+
+test('redes sociais: a mesma página de Facebook é duplicado e a pesquisa encontra o link', async ({ page }) => {
+  const stamp = Date.now();
+  const fb = `https://www.facebook.com/dupsocial${stamp}`;
+  const a = await page.request.post('/api/v1/leads', { data: { company_name: `Café Social ${stamp}`, social_links: [fb] } });
+  expect(a.status()).toBe(201);
+  const first = (await a.json()).data;
+  // Outro nome, o mesmo Facebook (escrito de outra forma): duplicado.
+  const b = await page.request.post('/api/v1/leads', { data: { company_name: `Pastelaria Nova ${stamp}`, social_links: [`facebook.com/dupsocial${stamp}/`] } });
+  expect(b.status()).toBe(409);
+  const check = await page.request.post('/api/v1/leads/check-duplicates', {
+    data: { company_name: `Outra ${stamp}`, website: `https://m.facebook.com/dupsocial${stamp}` },
+  });
+  const dups = (await check.json()).data.duplicates as { lead_id: string; reasons: string[] }[];
+  expect(dups.find((d) => d.lead_id === first.id)?.reasons).toContain('social');
+
+  // No formulário: o aviso aparece ao escrever o link nas Redes sociais.
+  await page.goto('/leads/novo');
+  await page.getByLabel('Empresa', { exact: false }).first().fill(`Nome Diferente ${stamp}`);
+  await page.getByLabel('Redes sociais').fill(fb);
+  await expect(page.getByText('mesma rede social').first()).toBeVisible();
+
+  // A pesquisa encontra o lead pelo link.
+  const found = (await (await page.request.get('/api/v1/leads', { params: { q: `dupsocial${stamp}` } })).json()).data as { id: string }[];
+  expect(found.map((l) => l.id)).toContain(first.id);
+  await page.request.delete(`/api/v1/leads/${first.id}`);
+});

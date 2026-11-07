@@ -55,7 +55,9 @@ export async function importLeadsFromApi(
   const inBatch = findBatchDuplicates(leads);
   const { dups, dnc } = await lookupConflicts(
     ctx,
-    leads.map((l) => (l ? { company_name: l.company_name, website: l.website ?? null, email: l.email ?? null } : {})),
+    leads.map((l) =>
+      l ? { company_name: l.company_name, website: l.website ?? null, email: l.email ?? null, social_links: l.social_links?.length ? l.social_links : null } : {},
+    ),
   );
 
   const results: IntegrationImportItem[] = [];

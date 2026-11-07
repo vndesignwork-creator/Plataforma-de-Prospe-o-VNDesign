@@ -4,13 +4,20 @@ import { ProspectingSequenceSchema, WorkspaceSettingsSchema, parseSiteFormFields
 describe('formulário do site', () => {
   it('nomes de campo conhecidos (pt, en, Contact Form 7, Bricks)', () => {
     expect(parseSiteFormFields({ nome: 'Rui', email: 'RUI@Exemplo.pt', telefone: '912 345 678', mensagem: 'Quero um site', 'your-subject': 'Site' })).toEqual({
-      name: 'Rui', email: 'rui@exemplo.pt', phone: '912 345 678', company: null, message: 'Quero um site', website: null, service: 'Site',
+      name: 'Rui', email: 'rui@exemplo.pt', phone: '912 345 678', company: null, message: 'Quero um site', website: null, social: null, service: 'Site',
     });
     expect(parseSiteFormFields({ 'form-field-name': 'Ana', 'fields[email]': 'ana@x.pt' })).toMatchObject({ name: 'Ana', email: 'ana@x.pt' });
   });
   it('campos com nomes desconhecidos (ids do Bricks): pelo conteúdo; ignora internos', () => {
     const f = parseSiteFormFields({ abc123: 'Maria Silva', def456: 'maria@loja.pt', ghi789: '+351 913 000 111', jkl: 'Precisava de uma loja online para a minha pastelaria', _next: 'https://x.pt', 'g-recaptcha-response': 'zzz' });
     expect(f).toMatchObject({ name: 'Maria Silva', email: 'maria@loja.pt', phone: '+351 913 000 111', message: 'Precisava de uma loja online para a minha pastelaria' });
+  });
+  it('redes sociais: campo "facebook"/"instagram", ou um link de rede social num campo desconhecido', () => {
+    expect(parseSiteFormFields({ nome: 'Rui', email: 'r@x.pt', facebook: 'https://facebook.com/rui', instagram: 'instagram.com/rui' }).social).toBe(
+      'https://facebook.com/rui\ninstagram.com/rui',
+    );
+    const f = parseSiteFormFields({ nome: 'Ana', email: 'a@x.pt', abc: 'https://www.instagram.com/ana', def: 'https://ana.pt' });
+    expect(f).toMatchObject({ social: 'https://www.instagram.com/ana', website: 'https://ana.pt' });
   });
   it('email inválido fica de fora; HTML pronto aponta para o endereço', () => {
     expect(parseSiteFormFields({ email: 'não é email' }).email).toBeNull();
