@@ -78,14 +78,8 @@ test('lista: prazo, fase, ações rápidas, plano de pagamentos, temporizador, f
   await expect(row.getByRole('list', { name: 'Tarefas por fazer' })).toHaveCount(0);
   await row.getByRole('button', { name: 'Mostrar tarefas' }).click();
 
-  // Sem pagamentos: criar o plano sem sair da página.
-  await row.getByRole('button', { name: 'Criar plano' }).click();
-  const planDialog = page.getByRole('dialog', { name: 'Plano de pagamentos' });
-  await expect(planDialog.getByLabel('Total (€)')).toHaveValue('800');
-  await planDialog.getByRole('button', { name: 'Criar plano' }).click();
-  const summary = row.getByRole('group', { name: `Resumo de ${name}` });
-  await expect(summary.getByText(/0\s€ de 800\s€/)).toBeVisible();
-  await expect(summary.getByRole('progressbar', { name: /Recebido de .*: 0\s€ de 800\s€/ })).toBeVisible();
+  // Os pagamentos já não estão no resumo do projeto (ficam no cartão Pagamentos da ficha).
+  await expect(row.getByRole('group', { name: `Resumo de ${name}` }).getByText('Pagamentos')).toHaveCount(0);
   // O cronómetro e o Pomodoro ficam juntos no bloco "Tempo".
   await expect(row.getByRole('group', { name: 'Tempo' }).getByRole('button', { name: 'Começar a contar o tempo' })).toBeVisible();
 

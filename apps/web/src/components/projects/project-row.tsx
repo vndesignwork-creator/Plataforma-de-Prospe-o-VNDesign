@@ -8,7 +8,7 @@
 import { formatCurrency, formatDate, formatDuration, hourlyRate, leadPath, type Features, type Lead, type Project } from '@vndesign/core';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ArrowRight, CalendarClock, CalendarPlus, ChevronDown, Clock, FolderOpen, GripVertical, ListChecks, Plus, Receipt, RefreshCcw, Wallet } from 'lucide-react';
+import { ArrowRight, CalendarClock, CalendarPlus, ChevronDown, Clock, FolderOpen, GripVertical, ListChecks, Receipt, RefreshCcw } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { MeetingDialog, meetingLabel } from '@/components/meetings/meetings-card';
@@ -20,7 +20,6 @@ import { Badge } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { TimeMoney } from './hourly-rate';
-import { PlanForm } from './payments-card';
 import { DueBadge, ProgressBar, StageMenu, SummaryStat } from './project-bits';
 import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { PomodoroBox } from './pomodoro';
@@ -28,43 +27,6 @@ import { ProjectToggle } from './project-toggle';
 import { TimeSection, TimerButton } from './time-section';
 
 const euros = (v: number) => formatCurrency(v, { decimals: false });
-
-function PaymentsStat({ project }: { project: Project }) {
-  const { lead, payments } = project;
-  const [plan, setPlan] = useState(false);
-  return (
-    <SummaryStat
-      icon={Wallet}
-      title="Pagamentos"
-      tone={payments.overdue ? 'danger' : undefined}
-      value={
-        payments.total ? (
-          <>
-            {euros(payments.paid)} de {euros(payments.total)}
-            {payments.overdue ? <span className="block text-xs font-medium">{euros(payments.overdue)} em atraso</span> : null}
-          </>
-        ) : (
-          <span className="font-normal text-muted">Sem plano</span>
-        )
-      }
-    >
-      {payments.total ? (
-        <ProgressBar value={payments.paid} total={payments.total} tone="success" label={`Recebido de ${lead.company_name}: ${euros(payments.paid)} de ${euros(payments.total)}`} />
-      ) : (
-        <button type="button" onClick={() => setPlan(true)} className="inline-flex items-center gap-1 self-start text-xs font-medium text-accent-text hover:underline">
-          <Plus className="h-3.5 w-3.5" aria-hidden /> Criar plano
-        </button>
-      )}
-      {plan ? (
-        <Dialog open onOpenChange={(o) => (!o ? setPlan(false) : undefined)} title="Plano de pagamentos" description={lead.company_name} className="max-w-xl">
-          <div className="-m-4">
-            <PlanForm lead={lead} onDone={() => setPlan(false)} />
-          </div>
-        </Dialog>
-      ) : null}
-    </SummaryStat>
-  );
-}
 
 /**
  * Todas as tarefas do projeto (a mesma lista da ficha): marcar como feitas,
@@ -201,8 +163,7 @@ export function ProjectRow({
       {collapsed ? null : (
         <>
           {/* Resumo: pagamentos, tarefas, revisões e horas (2 por linha no telemóvel). */}
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))]" role="group" aria-label={`Resumo de ${lead.company_name}`}>
-            {features.payments ? <PaymentsStat project={project} /> : null}
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(6.5rem,1fr))] gap-2 md:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))]" role="group" aria-label={`Resumo de ${lead.company_name}`}>
             <SummaryStat icon={ListChecks} title="Tarefas" value={tasks.total ? `${tasks.done} de ${tasks.total}` : <span className="font-normal text-muted">Sem tarefas</span>}>
               {tasks.total ? <ProgressBar value={tasks.done} total={tasks.total} label={`Tarefas de ${lead.company_name}: ${tasks.done} de ${tasks.total}`} /> : null}
             </SummaryStat>
