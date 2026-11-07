@@ -61,6 +61,7 @@ import { TagChips, useTagFilterOptions } from './tags';
 import { ChannelIcon, SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 import { ServiceIcons, useServiceFilterOptions } from '@/components/services/services';
 import { TaskProgress } from '@/components/tasks/task-progress';
+import { LeadTitle } from '@/components/leads/lead-title';
 
 const PAGE_SIZE = 50;
 
@@ -121,7 +122,7 @@ function buildColumns(today: string): Col[] {
             href={leadPath(row.original)}
             className="font-semibold text-fg hover:text-accent-text hover:underline"
           >
-            {row.original.company_name} {row.original.project_title ? <span className="font-normal text-muted">· {row.original.project_title}</span> : null}
+            <LeadTitle lead={row.original} />
           </Link>
           {row.original.archived_at ? <ArchivedBadge /> : null}
           <TagChips tags={row.original.tags} className="mt-1" />

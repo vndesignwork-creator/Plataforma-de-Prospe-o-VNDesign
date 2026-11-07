@@ -20,6 +20,7 @@ import { useInvalidateTasks, useLeads, useMe, useTeamNames } from '@/lib/queries
 import { localInputToIso } from '@/lib/local-datetime';
 import { cn } from '@/lib/utils';
 import { DuePicker } from './tasks-card';
+import { LeadTitle } from '@/components/leads/lead-title';
 
 type Picked = Pick<Lead, 'id' | 'number' | 'company_name' | 'project_title' | 'status'>;
 
@@ -99,8 +100,7 @@ function LeadLabel({ lead }: { lead: Picked }) {
     <span className="flex min-w-0 items-center gap-2">
       <Icon className="h-4 w-4 shrink-0 text-muted" aria-hidden />
       <span className="truncate">
-        <span className="text-muted tabular">#{lead.number}</span> {lead.company_name}
-        {lead.project_title ? <span className="text-muted"> · {lead.project_title}</span> : null}
+        <span className="text-muted tabular">#{lead.number}</span> <LeadTitle lead={lead} />
       </span>
       {project ? <span className="shrink-0 rounded bg-success/15 px-1.5 text-xs text-success">Projeto</span> : null}
     </span>

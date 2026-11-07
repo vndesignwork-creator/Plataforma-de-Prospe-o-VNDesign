@@ -73,8 +73,7 @@ function TaskOriginLine({ task }: { task: TaskListItem }) {
       </span>
       {task.lead ? (
         <Link href={`${leadPath(task.lead)}#tarefas`} className="min-w-0 hover:text-fg hover:underline">
-          #{task.lead.number} {task.lead.company_name}
-          {task.lead.project_title ? ` · ${task.lead.project_title}` : ''}
+          #{task.lead.number} {task.lead.project_title ? `${task.lead.project_title} · ${task.lead.company_name}` : task.lead.company_name}
         </Link>
       ) : null}
     </span>

@@ -53,6 +53,7 @@ import { cn } from '@/lib/utils';
 import { ChannelIcon, SectorIconView } from '@/components/icons/lead-icons';
 import { ServiceIcons, useServiceFilterOptions } from '@/components/services/services';
 import { TaskProgress } from '@/components/tasks/task-progress';
+import { LeadTitle } from '@/components/leads/lead-title';
 
 type Columns = Record<LeadStatus, Lead[]>;
 
@@ -109,7 +110,7 @@ function LeadCard({
             className="block font-semibold leading-snug hover:text-accent-text hover:underline"
             draggable={false}
           >
-            <span className="text-muted tabular">#{lead.number}</span> {lead.company_name} {lead.project_title ? <span className="font-normal text-muted">· {lead.project_title}</span> : null}
+            <span className="text-muted tabular">#{lead.number}</span> <LeadTitle lead={lead} />
           </Link>
           <TagChips tags={lead.tags} link={false} className="mt-1" />
           <p className="mt-1 flex flex-wrap gap-x-2 text-xs text-muted">

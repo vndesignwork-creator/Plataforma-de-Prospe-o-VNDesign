@@ -92,6 +92,7 @@ import {
   type MoveTarget,
   type TaskPatch,
 } from "./tasks-card";
+import { LeadTitle } from '@/components/leads/lead-title';
 
 /** Onde vive a tarefa: um lead/projeto, uma lista ou as soltas sem lista. */
 type Container =
@@ -295,13 +296,7 @@ function CardTitle({
           aria-hidden
         />
         <span className="min-w-0 break-words">
-          #{card.lead.number} {card.lead.company_name}
-          {card.lead.project_title ? (
-            <span className="font-normal text-muted">
-              {" "}
-              · {card.lead.project_title}
-            </span>
-          ) : null}
+          #{card.lead.number} <LeadTitle lead={card.lead} />
         </span>
       </Link>
     );

@@ -49,6 +49,7 @@ import { cn, telUrl } from '@/lib/utils';
 import { DueBadge, StageLabel } from '@/components/projects/project-bits';
 import { meetingLabel } from '@/components/meetings/meetings-card';
 import { StatusIcon } from '@/components/icons/lead-icons';
+import { LeadTitle } from '@/components/leads/lead-title';
 
 const euros = (v: number) => formatCurrency(v, { decimals: false });
 
@@ -256,7 +257,7 @@ function ProjectsCard({ className }: { className?: string }) {
               <Link href={`${leadPath(lead)}#projeto`} className="flex flex-col gap-1 rounded-md px-2 py-1.5 text-sm hover:bg-surface-2">
                 <span className="flex min-w-0 items-center gap-2">
                   <BriefcaseBusiness className="h-3.5 w-3.5 shrink-0 text-muted" aria-hidden />
-                  <span className="min-w-0 flex-1 truncate font-medium">{lead.company_name} {lead.project_title ? <span className="font-normal text-muted">· {lead.project_title}</span> : null}</span>
+                  <span className="min-w-0 flex-1 truncate font-medium"><LeadTitle lead={lead} /></span>
                   <DueBadge dueOn={info.due_on} today={today} className="shrink-0" />
                 </span>
                 {/* O próximo passo (a próxima tarefa) em vez de uma barra a 0 % que parecia um erro. */}
