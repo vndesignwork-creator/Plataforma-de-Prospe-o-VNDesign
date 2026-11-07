@@ -161,6 +161,9 @@ function AuditResult({ audit, lead, latest = false }: { audit: SiteAudit; lead: 
   const m = audit.metrics as Record<string, unknown>;
   const ownSite = !audit.issues.some((i) => i.code === 'no_own_site');
   const reachable = audit.final_url !== null;
+  // Sem a página lida (ex.: o site respondeu com erro ao nosso servidor), título e descrição ficam por verificar.
+  const htmlRead = audit.has_viewport !== null;
+  const blockedUs = typeof m.blocked_our_server === 'number' ? m.blocked_our_server : null;
 
   async function onApply() {
     const chosen = (Object.keys(fields) as (keyof typeof fields)[]).filter((k) => fields[k]);
@@ -183,6 +186,13 @@ function AuditResult({ audit, lead, latest = false }: { audit: SiteAudit; lead: 
         {audit.http_status ? ` · HTTP ${audit.http_status}` : null}
         {audit.response_ms !== null ? ` · resposta em ${seconds(audit.response_ms)}` : null}
       </p>
+
+      {blockedUs ? (
+        <p role="note" className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm">
+          O site está no ar: o Google abriu-o normalmente. Só o servidor da plataforma recebe o erro {blockedUs} (o alojamento do site
+          bloqueia-o), por isso o título, a descrição e o resto da página não foram lidos.
+        </p>
+      ) : null}
 
       {ownSite && reachable ? (
         <ul className="grid gap-2 sm:grid-cols-2">
@@ -219,11 +229,11 @@ function AuditResult({ audit, lead, latest = false }: { audit: SiteAudit; lead: 
               </span>
             )}
           </Check>
-          <Check ok={audit.title ? true : false}>
-            {audit.title ? <>Título: “{audit.title}”</> : 'Sem título'}
+          <Check ok={audit.title ? true : htmlRead ? false : null}>
+            {audit.title ? <>Título: “{audit.title}”</> : htmlRead ? 'Sem título' : 'Título: não verificado'}
           </Check>
-          <Check ok={audit.meta_description ? true : false}>
-            {audit.meta_description ? 'Tem meta descrição' : 'Sem meta descrição'}
+          <Check ok={audit.meta_description ? true : htmlRead ? false : null}>
+            {audit.meta_description ? 'Tem meta descrição' : htmlRead ? 'Sem meta descrição' : 'Meta descrição: não verificada'}
           </Check>
           <Check ok={null}>
             Plataforma: {audit.cms ?? 'não identificada'}

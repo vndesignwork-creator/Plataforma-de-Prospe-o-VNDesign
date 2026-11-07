@@ -30,6 +30,7 @@ import {
   isSocialOrDirectoryUrl,
 } from '@vndesign/core';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { isPageSpeedEnabled, runPageSpeed } from '../audit/pagespeed';
 import { BROWSER_USER_AGENT, safeGet } from '../audit/safe-request';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest, unwrap } from '../http';
@@ -220,7 +221,24 @@ export async function checkSite(url: string): Promise<SiteCheck> {
     const other = await checkOnce(variant, BROWSER_USER_AGENT);
     if (other.ok) return other;
   }
+  // Respondeu com erro só a nós? Segunda opinião: se o Google abre o site, ele está no ar
+  // (há alojamentos que bloqueiam o servidor da plataforma com 502/503 em poucos milissegundos).
+  if (first.status_code !== null && (await googleOpensSite(url))) {
+    return { ...first, ok: true, error: null };
+  }
   return first;
+}
+
+const googleCache = new Map<string, { at: number; opens: boolean }>();
+/** O Google (PageSpeed) consegue abrir o site? Guardado 6 h se sim, 30 min se não (poupa pedidos). */
+export async function googleOpensSite(url: string): Promise<boolean> {
+  if (!isPageSpeedEnabled()) return false;
+  const cached = googleCache.get(url);
+  if (cached && Date.now() - cached.at < (cached.opens ? 6 * 3_600_000 : 30 * 60_000)) return cached.opens;
+  const outcome = await runPageSpeed(url, 50_000);
+  const opens = outcome.ok;
+  googleCache.set(url, { at: Date.now(), opens });
+  return opens;
 }
 
 let bootstrapCache: { at: number; body: unknown } | null = null;
@@ -278,6 +296,17 @@ async function checkAndSave(
   const { data, error } = await client.from('site_monitors').update(update).eq('id', m.id).select(SELECT).single();
   if (error) throw fromPostgrest(error);
   const saved = data as unknown as SiteMonitor;
+  // O site voltou (ou afinal estava no ar): a tarefa automática "Contactar…: o site está em baixo" deixa de fazer sentido.
+  if (check.ok && m.down_since) {
+    await client
+      .from('lead_tasks')
+      .delete()
+      .eq('lead_id', m.lead_id)
+      .is('created_by', null)
+      .is('done_at', null)
+      .like('title', 'Contactar %: o site está em baixo (oportunidade)')
+      .then(undefined, () => undefined);
+  }
   if (options.alerts && options.workspaceId) {
     const alert = options.prospect
       ? alertOpportunity(client, options.workspaceId, { ...saved, alerted: m.alerted ?? {} }, today)

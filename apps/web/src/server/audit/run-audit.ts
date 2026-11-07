@@ -15,7 +15,7 @@ import {
   type SiteAudit,
 } from '@vndesign/core';
 import { PAGESPEED_SSL_BLOCKED, isPageSpeedEnabled, runPageSpeed, type PageSpeedOutcome, type PageSpeedShot } from './pagespeed';
-import { AuditRequestError, safeGet, type SafeResponse } from './safe-request';
+import { AuditRequestError, BROWSER_USER_AGENT, safeGet, type SafeResponse } from './safe-request';
 
 export type AuditRecord = Omit<SiteAudit, 'id' | 'lead_id' | 'created_at' | 'screenshots'>;
 /** A análise e, se o PageSpeed correu, a imagem do site no telemóvel (vem na mesma resposta). */
@@ -46,14 +46,22 @@ const EMPTY: Omit<AuditRecord, 'url' | 'status'> = {
 
 /** Abre o site; se o https:// falhar, tenta o http:// (sites sem certificado). */
 async function fetchSite(url: string): Promise<SafeResponse> {
+  let page: SafeResponse;
   try {
-    return await safeGet(url);
+    page = await safeGet(url);
   } catch (error) {
     if (url.startsWith('https://') && error instanceof AuditRequestError && error.code !== 'blocked' && error.code !== 'dns') {
       return await safeGet(`http://${url.slice('https://'.length)}`);
     }
     throw error;
   }
+  // Há alojamentos que respondem com 502/503/429 a robôs: tenta de novo como um browser normal.
+  if (page.status >= 500 || page.status === 429) {
+    await new Promise((r) => setTimeout(r, 1500));
+    const again = await safeGet(url, { userAgent: BROWSER_USER_AGENT }).catch(() => null);
+    if (again && again.status < page.status) return again;
+  }
+  return page;
 }
 
 /** Robôs das IAs bloqueados no robots.txt (sem robots.txt = nada bloqueado; null = não deu para ler). */
@@ -103,6 +111,10 @@ export async function collectAudit(rawUrl: string): Promise<AuditCollected> {
   const pagespeed: PageSpeedOutcome | null =
     speed && !speed.ok && page?.certificate?.valid === false ? { ok: false, error: PAGESPEED_SSL_BLOCKED } : speed;
 
+  // Erro só para o nosso servidor: o Google abriu o site normalmente (tem pontuação),
+  // logo está no ar para os visitantes. Não se conta como erro nem se lê o HTML de erro.
+  const blockedUs = !!page && (page.status >= 500 || page.status === 429) && !!pagespeed?.ok;
+
   const isHtml = page ? /html|xml/i.test(String(page.headers['content-type'] ?? 'text/html')) : false;
   const html = page && isHtml && page.status < 400 ? analyzeHtml(page.body, now) : null;
   const https = page ? page.url.startsWith('https://') : null;
@@ -112,7 +124,7 @@ export async function collectAudit(rawUrl: string): Promise<AuditCollected> {
   const facts: AuditFacts = {
     own_site: true,
     reachable: page !== null,
-    http_status: page?.status ?? null,
+    http_status: blockedUs ? null : (page?.status ?? null),
     response_ms: page?.response_ms ?? null,
     https,
     ssl_valid: page?.certificate?.valid ?? null,
@@ -143,6 +155,7 @@ export async function collectAudit(rawUrl: string): Promise<AuditCollected> {
       ...(pagespeed && !pagespeed.ok ? { pagespeed_error: pagespeed.error } : {}),
       ...(pagespeed === null && page ? { pagespeed_skipped: true } : {}),
       ...(geo ? { geo } : {}),
+      ...(blockedUs ? { blocked_our_server: page!.status } : {}),
     },
     title: html?.title ?? null,
     meta_description: html?.meta_description ?? null,
