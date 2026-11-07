@@ -224,11 +224,15 @@ export function PaymentsCard({ lead }: { lead: Lead }) {
               <CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label={`Pagamentos (${payments.length})`} />
             </span>
           ) : isLoading ? null : (
-            <Button size="sm" variant="outline" onClick={() => setPlanning(true)}>
-              <Wallet className="h-3.5 w-3.5" aria-hidden /> Criar plano
-            </Button>
+            <span className="flex items-center gap-1">
+              <Button size="sm" variant="outline" onClick={() => setPlanning(true)}>
+                <Wallet className="h-3.5 w-3.5" aria-hidden /> Criar plano
+              </Button>
+              <CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label="Pagamentos" />
+            </span>
           )
         }
+        className={collapsed && !isLoading && !payments?.length ? 'border-b-0' : undefined}
       />
       {isLoading ? (
         <div className="p-4">
@@ -255,7 +259,7 @@ export function PaymentsCard({ lead }: { lead: Lead }) {
           </ul>
           )}
         </>
-      ) : (
+      ) : collapsed ? null : (
         <p className="px-4 py-3 text-sm text-muted">Ainda sem pagamentos. Cria o plano e marca cada pagamento quando o receberes.</p>
       )}
       {planning ? (

@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { ServicePicker } from '@/components/services/services';
 import { Button } from '@/components/ui/button';
+import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { Badge, Card, CardHeader } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
@@ -26,6 +27,8 @@ export function ClientProjectsCard({ lead }: { lead: Lead }) {
   const { data } = useClientProjects(lead.id, lead.status === 'cliente' || !!lead.client_of || !!lead.project_completed_at);
   const [open, setOpen] = useState(false);
   const projects = data?.projects ?? [];
+  // A lista pode ficar recolhida; a escolha fica lembrada neste browser.
+  const [collapsed, setCollapsed] = useCollapsed('projetos-cliente');
   // Só aparece a clientes (ou a quem já tem mais de um projeto).
   if (lead.status !== 'cliente' && projects.length < 2) return null;
   return (
@@ -34,14 +37,20 @@ export function ClientProjectsCard({ lead }: { lead: Lead }) {
         title="Projetos deste cliente"
         description={projects.length > 1 ? `${projects.length} projetos` : 'Quando o cliente voltar, cria aqui o projeto novo.'}
         actions={
-          !lead.anonymized_at ? (
-            <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-              <FolderPlus className="h-3.5 w-3.5" aria-hidden /> Novo projeto
-            </Button>
-          ) : null
+          <span className="flex items-center gap-1">
+            {!lead.anonymized_at ? (
+              <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+                <FolderPlus className="h-3.5 w-3.5" aria-hidden /> Novo projeto
+              </Button>
+            ) : null}
+            {projects.length ? (
+              <CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label={`Projetos deste cliente (${projects.length})`} />
+            ) : null}
+          </span>
         }
+        className={collapsed && projects.length ? 'border-b-0' : undefined}
       />
-      {projects.length ? (
+      {projects.length && !collapsed ? (
         <ul className="flex flex-col p-2" aria-label="Projetos do cliente">
           {projects.map((p) => {
             const current = p.id === lead.id;
