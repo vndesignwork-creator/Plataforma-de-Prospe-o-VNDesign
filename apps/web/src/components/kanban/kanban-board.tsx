@@ -773,8 +773,12 @@ export function KanbanBoard() {
           <div
             ref={scrollerRef}
             onScroll={onBoardScroll}
+            // Sem cartões, o quadro que desliza na horizontal não tem nada em que o teclado possa parar: ele próprio recebe o foco (setas para deslizar).
+            tabIndex={0}
+            role="region"
+            aria-label="Colunas do Kanban"
             className={cn(
-              'relative -mx-4 flex scroll-mt-28 items-start gap-3 overflow-x-auto overscroll-x-contain px-4 pb-3 scroll-px-4 scroll-thin sm:-mx-6 sm:scroll-px-6 sm:px-6 md:h-[calc(100dvh-18.5rem)] md:min-h-96 md:items-stretch lg:mx-0 lg:h-auto lg:min-h-0 lg:flex-1 lg:!shrink lg:scroll-mt-16 lg:scroll-px-0 lg:px-0',
+              'relative -mx-4 flex scroll-mt-28 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent items-start gap-3 overflow-x-auto overscroll-x-contain px-4 pb-3 scroll-px-4 scroll-thin sm:-mx-6 sm:scroll-px-6 sm:px-6 md:h-[calc(100dvh-18.5rem)] md:min-h-96 md:items-stretch lg:mx-0 lg:h-auto lg:min-h-0 lg:flex-1 lg:!shrink lg:scroll-mt-16 lg:scroll-px-0 lg:px-0',
               activeId ? 'snap-none' : 'snap-x snap-mandatory md:snap-none',
             )}
           >

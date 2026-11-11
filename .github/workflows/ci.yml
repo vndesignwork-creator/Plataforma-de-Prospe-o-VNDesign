@@ -66,6 +66,9 @@ jobs:
             echo "AUDIT_ALLOW_PRIVATE=1"
             echo "AUDIT_SKIP_PAGESPEED=1"
             # Em produção (next start) os servidores internos são recusados; no CI o SMTP (Mailpit) e a IA de teste são locais.
+            # Aberturas de email sem a espera de 10 s e servidor falso do PageSpeed (imagens do site): e2e/stubs.ts.
+            echo "EMAIL_TRACKING_GRACE_MS=0"
+            echo "PAGESPEED_ENDPOINT=http://127.0.0.1:4622/pagespeed"
             echo "SMTP_ALLOW_PRIVATE_HOST=1"
             echo "AI_ALLOW_PRIVATE_BASE_URL=1"
             echo "VAPID_PUBLIC_KEY=$(node -p "require('./vapid.json').publicKey")"
