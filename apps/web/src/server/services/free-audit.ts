@@ -294,8 +294,10 @@ export async function checkFreeAuditSite(token: string, url: string, meta: { ip:
   const parsed = FreeAuditSubmitSchema.shape.website.safeParse(url);
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? 'Endereço inválido.' };
   try {
-    const res = await safeGet(parsed.data, { timeoutMs: 7000, maxBytes: 64_000 });
-    if (res.status >= 500) return { ok: false, message: 'Este site não está a responder bem. Confirme o endereço (pode enviar na mesma).' };
+    // Um site que responde (mesmo com 502/503) existe e está ligado: muitos alojamentos respondem com
+    // erro a servidores (como o da plataforma) e abrem normalmente para as pessoas. Avisar aí afastava
+    // visitantes com sites que funcionam; o aviso fica para quando o site não responde de todo.
+    await safeGet(parsed.data, { timeoutMs: 7000, maxBytes: 64_000 });
     return { ok: true, message: null };
   } catch (error) {
     const blocked = error instanceof AuditRequestError && error.code === 'blocked';

@@ -85,3 +85,33 @@ test('formulário do site: o campo "facebook" vai para as Redes sociais', async 
     await page.request.post('/api/v1/site-form', { data: { enabled: false } });
   }
 });
+
+test('limpeza de duplicados: dois leads com a mesma página de Facebook formam um grupo', async ({ page }) => {
+  const a = await createLead(page.request, { company_name: `Grupo Rede A ${run}`, social_links: [`https://www.facebook.com/gruporede${run}`] });
+  const b = await createLead(page.request, { company_name: `Outro Nome B ${run}`, social_links: [`facebook.com/gruporede${run}/`] });
+  const groups = (await (await page.request.get('/api/v1/leads/duplicates')).json()).data as { reasons: string[]; leads: { id: string }[] }[];
+  const group = groups.find((g) => g.leads.some((l) => l.id === a.id));
+  expect(group?.leads.map((l) => l.id).sort()).toEqual([a.id, b.id].sort());
+  expect(group?.reasons).toContain('social');
+  await page.goto('/leads/duplicados');
+  await expect(page.getByText('mesma rede social').first()).toBeVisible();
+  for (const l of [a, b]) await page.request.delete(`/api/v1/leads/${l.id}`);
+});
+
+test('formulário do site: quem já é lead (mesmo email) — as redes sociais juntam-se às que tinha', async ({ page }) => {
+  const email = `ja-lead-${run}@exemplo.pt`;
+  const lead = await createLead(page.request, { company_name: `Já Lead Rede ${run}`, email, social_links: [`https://facebook.com/jalead${run}`] });
+  const on = await page.request.post('/api/v1/site-form', { data: { enabled: true } });
+  const token = (await on.json()).data.token as string;
+  const anon = await playwrightRequest.newContext({ baseURL: BASE });
+  try {
+    const res = await anon.post(`/api/v1/public/forms/${token}`, { data: { fields: { nome: 'Ana', email, instagram: `https://instagram.com/jalead${run}`, mensagem: 'Outra vez.' } } });
+    expect((await res.json()).ok).toBe(true);
+    expect((await getLead(page.request, lead.id)).social_links).toEqual([`https://facebook.com/jalead${run}`, `https://instagram.com/jalead${run}`]);
+  } finally {
+    await anon.dispose();
+    await page.request.post('/api/v1/site-form', { data: { enabled: false } });
+    await page.request.delete(`/api/v1/leads/${lead.id}`);
+  }
+});
+

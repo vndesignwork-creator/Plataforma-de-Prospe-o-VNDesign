@@ -19,7 +19,7 @@ export function PromoImage({ alt }: { alt: string }) {
     return () => observer.disconnect();
   }, []);
   return (
-    <div ref={ref} className="relative aspect-[4/3] overflow-hidden rounded-2xl lg:aspect-auto lg:min-h-36 lg:flex-1 lg:basis-0">
+    <div ref={ref} data-reveal-item className="relative aspect-[4/3] overflow-hidden rounded-2xl lg:aspect-auto lg:min-h-36 lg:flex-1 lg:basis-0">
       {/* eslint-disable-next-line @next/next/no-img-element -- ilustração SVG estática */}
       <img
         src={wide ? '/analise/ilustracao-relatorio-larga.svg?v=1' : '/analise/ilustracao-relatorio.svg?v=3'}

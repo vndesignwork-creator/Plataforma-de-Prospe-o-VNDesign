@@ -221,7 +221,7 @@ export function FreeAuditForm({ token, brand, turnstileSiteKey, stretch = false 
     // Ao lado do texto de persuasão, a caixa estica até à altura dele (as duas colunas alinham).
     // Sem caixa à volta (sem fundo branco ou preto): o formulário fica sobre o fundo da página, como num site.
     <form onSubmit={submit} noValidate className={cn('flex flex-col gap-4', stretch && 'lg:flex-1 lg:justify-center')}>
-      <label className="flex flex-col gap-1.5 text-sm">
+      <label data-reveal-item className="flex flex-col gap-1.5 text-sm">
         <span className="font-medium">Endereço do site *</span>
         <Input
           className={FIELD}
@@ -236,24 +236,24 @@ export function FreeAuditForm({ token, brand, turnstileSiteKey, stretch = false 
         />
         {siteError ? <span className={cn('text-xs', err('website') ? 'text-danger' : 'text-warning')}>{siteError}</span> : null}
       </label>
-      <label className="flex flex-col gap-1.5 text-sm">
+      <label data-reveal-item className="flex flex-col gap-1.5 text-sm">
         <span className="font-medium">Email para receber a análise *</span>
         <Input className={FIELD} name="email" type="email" required placeholder="nome@exemplo.pt" autoComplete="email" aria-invalid={err('email') ? true : undefined} />
         {err('email') ? <span className="text-xs text-danger">{err('email')}</span> : null}
       </label>
       <div className="grid gap-4">
-        <label className="flex flex-col gap-1.5 text-sm">
+        <label data-reveal-item className="flex flex-col gap-1.5 text-sm">
           <span className="font-medium">O seu nome</span>
           <Input className={FIELD} name="name" autoComplete="name" />
         </label>
-        <label className="flex flex-col gap-1.5 text-sm">
+        <label data-reveal-item className="flex flex-col gap-1.5 text-sm">
           <span className="font-medium">Nome do negócio</span>
           <Input className={FIELD} name="company" autoComplete="organization" />
         </label>
       </div>
       {/* Campo escondido para robôs. */}
       <input type="text" name="_gotcha" tabIndex={-1} autoComplete="off" aria-hidden className="hidden" />
-      <label className="flex items-start gap-2.5 text-sm">
+      <label data-reveal-item className="flex items-start gap-2.5 text-sm">
         {/* Caixa com o aspeto da página (não a branca de origem do browser). */}
         <input
           type="checkbox"
@@ -271,10 +271,10 @@ export function FreeAuditForm({ token, brand, turnstileSiteKey, stretch = false 
           {error}
         </p>
       ) : null}
-      <Button type="submit" loading={busy} className="w-full">
+      <Button data-reveal-item type="submit" loading={busy} className="w-full">
         {siteWarning ? 'Enviar na mesma' : 'Analisar o meu site'}
       </Button>
-      <a href={`${api}/exemplo`} target="_blank" rel="noopener" className="inline-flex w-fit items-center gap-1.5 self-center text-sm text-muted underline-offset-2 hover:text-fg hover:underline">
+      <a data-reveal-item href={`${api}/exemplo`} target="_blank" rel="noopener" className="inline-flex w-fit items-center gap-1.5 self-center text-sm text-muted underline-offset-2 hover:text-fg hover:underline">
         <FileText className="h-4 w-4" aria-hidden /> Ver um exemplo do relatório (PDF)
       </a>
     </form>

@@ -259,3 +259,14 @@
 @utility break-words {
   overflow-wrap: anywhere;
 }
+
+/* Página pública "Analisar o meu site grátis": entrada como no site (fadeInUp, 1 s). */
+@keyframes reveal-fade-in-up {
+  from { opacity: 0; transform: translate3d(0, 100%, 0); }
+  to { opacity: 1; transform: translateZ(0); }
+}
+.reveal-pending [data-reveal-item]:not(.is-in) { opacity: 0; }
+.reveal-pending [data-reveal-item].is-in { animation: reveal-fade-in-up 1s ease both; animation-delay: var(--reveal-delay, 0s); }
+@media (prefers-reduced-motion: reduce) {
+  .reveal-pending [data-reveal-item] { opacity: 1 !important; animation: none !important; }
+}

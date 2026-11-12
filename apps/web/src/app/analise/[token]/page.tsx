@@ -7,6 +7,7 @@ import { freeAuditPage } from '@/server/services/free-audit';
 import { EmbedHeight } from './embed-height';
 import { FreeAuditForm } from './free-audit-form';
 import { PromoImage } from './promo-image';
+import { RevealOnScroll } from './reveal-on-scroll';
 
 /*
  * "Analisar o meu site grátis" (/analise/<código>, sem login): para pôr no site do dono
@@ -27,6 +28,13 @@ export const metadata: Metadata = { title: { absolute: 'Analisar o meu site grá
  */
 const PUBLIC_THEME_SCRIPT = `(function(){try{var q=new URLSearchParams(location.search).get('tema');var mq=window.matchMedia('(prefers-color-scheme: light)');var apply=function(){document.documentElement.dataset.theme=q==='claro'?'light':q==='escuro'?'dark':mq.matches?'light':'dark';};apply();if(q!=='claro'&&q!=='escuro'&&mq.addEventListener)mq.addEventListener('change',apply);}catch(e){}})();`;
 
+/**
+ * Animações como as do site (e do plugin): os elementos marcados com data-reveal-item ficam
+ * escondidos desde o início (sem "piscar") e sobem ao entrar no ecrã. Sem movimento reduzido e só
+ * com IntersectionObserver; se o JavaScript não chegar em 4 s, aparece tudo.
+ */
+const REVEAL_PENDING_SCRIPT = `(function(){try{if(!('IntersectionObserver' in window)||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;var h=document.documentElement;h.classList.add('reveal-pending');setTimeout(function(){if(!h.classList.contains('reveal-ready'))h.classList.remove('reveal-pending');},4000);}catch(e){}})();`;
+
 function Promo() {
   const p = FREE_AUDIT_PROMO;
   // O título grande da página é o do texto de persuasão (o formulário fica sem título próprio).
@@ -34,12 +42,12 @@ function Promo() {
     <section aria-label="Porquê analisar o site" className="flex h-full min-w-0 flex-col gap-4">
       {/* Imagem na horizontal: no computador estica ou encolhe até a coluna ficar da altura do formulário. */}
       <PromoImage alt={p.imageAlt} />
-      <p className="w-fit rounded-full bg-accent-soft px-3 py-1 text-xs font-bold tracking-wide text-accent-text uppercase">{p.eyebrow}</p>
-      <h1 className="font-display text-2xl leading-tight font-bold sm:text-3xl lg:text-2xl xl:text-3xl">{p.title}</h1>
-      <p className="text-muted">{p.text}</p>
+      <p data-reveal-item className="w-fit rounded-full bg-accent-soft px-3 py-1 text-xs font-bold tracking-wide text-accent-text uppercase">{p.eyebrow}</p>
+      <h1 data-reveal-item className="font-display text-2xl leading-tight font-bold sm:text-3xl lg:text-2xl xl:text-3xl">{p.title}</h1>
+      <p data-reveal-item className="text-muted">{p.text}</p>
       <ul className="flex flex-col gap-2">
         {p.points.map((point) => (
-          <li key={point} className="flex items-start gap-2.5">
+          <li key={point} data-reveal-item className="flex items-start gap-2.5">
             <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-accent-soft text-accent-text">
               <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />
             </span>
@@ -47,7 +55,7 @@ function Promo() {
           </li>
         ))}
       </ul>
-      <p className="border-t border-border pt-3 text-sm text-muted">{p.note}</p>
+      <p data-reveal-item className="border-t border-border pt-3 text-sm text-muted">{p.note}</p>
     </section>
   );
 }
@@ -96,7 +104,8 @@ export default async function FreeAuditPage({ params, searchParams }: Props) {
       )}
     >
       {/* Antes de pintar: o claro/escuro do computador do visitante (não o da plataforma), ou ?tema=claro|escuro. */}
-      <script dangerouslySetInnerHTML={{ __html: PUBLIC_THEME_SCRIPT }} />
+      <script dangerouslySetInnerHTML={{ __html: PUBLIC_THEME_SCRIPT + REVEAL_PENDING_SCRIPT }} />
+      <RevealOnScroll />
       {logo}
       {layout.promo ? (
         // No telemóvel: o texto por cima do formulário. No computador: o texto do lado escolhido.

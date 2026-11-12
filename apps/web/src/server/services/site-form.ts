@@ -97,6 +97,12 @@ export async function submitSiteForm(token: string, fields: Record<string, strin
       leadId = (existing as { id: string }).id;
       created = false;
       await updateLead(ctx, leadId, { next_action_on: todayIso(), next_action_text: 'Responder ao pedido do site' });
+      // As redes sociais escritas agora juntam-se às que o lead já tem (sem repetir).
+      if (social.length) {
+        await ctx.supabase
+          .rpc('import_lead_social_links', { p_workspace_id: ctx.workspaceId, p_items: [{ lead_id: leadId, social_links: social }] })
+          .then(undefined, () => undefined);
+      }
     } else {
       // Um pedido que chega é sempre um lead novo (parecidos não bloqueiam; a lista "não contactar" sim).
       leadId = (await createLead(ctx, input, { force: true })).id;

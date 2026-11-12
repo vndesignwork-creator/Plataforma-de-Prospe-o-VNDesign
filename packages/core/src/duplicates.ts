@@ -1,5 +1,5 @@
 /**
- * Limpeza de duplicados: grupos de leads com o mesmo email, site ou nome, e qual
+ * Limpeza de duplicados: grupos de leads com o mesmo email, site, nome ou rede social, e qual
  * fica como principal (o mais avançado no pipeline; em empate, o mais antigo).
  */
 import { z } from 'zod';
@@ -8,7 +8,7 @@ import type { LeadStatus } from './enums';
 // Os textos dos motivos estão em DUPLICATE_REASON_LABELS (enums.ts).
 import { LeadSchema } from './schemas';
 
-export const DUPLICATE_REASONS = ['email', 'website', 'name'] as const;
+export const DUPLICATE_REASONS = ['email', 'website', 'name', 'social'] as const;
 export type DuplicateReason = (typeof DUPLICATE_REASONS)[number];
 
 export const DuplicateGroupSchema = z
