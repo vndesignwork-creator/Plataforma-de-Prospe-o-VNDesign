@@ -615,30 +615,35 @@ function LeadRow({
         // Os botões e o "Registar" no mesmo grupo e alinhados: o "Registar" fica na linha dos
         // outros quando cabe (encostado à direita) e só passa para baixo quando não cabe.
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div role="group" aria-label="Contactar" className="flex w-full flex-wrap items-center gap-2">
-            {/* Telemóvel, com outros botões: o email numa linha, encostado à direita; por baixo "Ligar"/WhatsApp à esquerda e "Registar" à direita. */}
-            <span className={cn('inline-flex', (lead.phone || wa || !lead.email || lead.email_bounced_at) && 'max-sm:basis-full max-sm:justify-end')}>
+          {/* Telemóvel: duas colunas da mesma largura — à esquerda "Ligar" e WhatsApp (um por baixo do
+              outro), à direita o email e "Registar"; todos os botões com a mesma largura. */}
+          <div
+            role="group"
+            aria-label="Contactar"
+            className="flex w-full flex-wrap items-center gap-2 max-sm:grid max-sm:grid-cols-2 max-sm:items-stretch max-sm:[&_a]:justify-center max-sm:[&_button]:justify-center"
+          >
+            <span className="inline-flex max-sm:col-start-2 max-sm:row-start-1 max-sm:[&_button]:w-full max-sm:[&>*]:w-full">
               <EmailAction lead={lead} onSent={onEmailed} />
             </span>
             {!lead.email || lead.email_bounced_at ? (
-              <Button size="sm" variant="soft" aria-expanded={finder} onClick={() => setFinder(!finder)}>
+              <Button size="sm" variant="soft" aria-expanded={finder} onClick={() => setFinder(!finder)} className="max-sm:col-start-2 max-sm:row-start-1">
                 <Search className="h-3.5 w-3.5" aria-hidden /> Procurar email
               </Button>
             ) : null}
             {lead.phone ? (
-              <a href={telUrl(lead.phone)} onClick={() => setChannel('phone')} className={buttonClasses('ghost', 'sm')}>
+              <a href={telUrl(lead.phone)} onClick={() => setChannel('phone')} className={cn(buttonClasses('ghost', 'sm'), 'max-sm:col-start-1 max-sm:row-start-1 max-sm:border max-sm:border-border')}>
                 <Phone className="h-3.5 w-3.5" aria-hidden /> Ligar
               </a>
             ) : null}
             {wa ? (
-              <a href={wa} target="_blank" rel="noreferrer" onClick={() => setChannel('whatsapp')} className={buttonClasses('ghost', 'sm')}>
+              <a href={wa} target="_blank" rel="noreferrer" onClick={() => setChannel('whatsapp')} className={cn(buttonClasses('ghost', 'sm'), 'max-sm:col-start-1 max-sm:row-start-2 max-sm:border max-sm:border-border')}>
                 <MessageCircle className="h-3.5 w-3.5" aria-hidden /> WhatsApp
               </a>
             ) : null}
           {/* Uma chamada ou uma resposta por outra via: regista-se aqui (o email enviado já fica registado sozinho). */}
           <DropdownRoot>
             <DropdownTrigger asChild>
-              <Button size="sm" variant="outline" disabled={busy} className="ml-auto">
+              <Button size="sm" variant="outline" disabled={busy} className="ml-auto max-sm:col-start-2 max-sm:row-start-2 max-sm:ml-0 max-sm:w-full">
                 <PenLine className="h-3.5 w-3.5" aria-hidden /> Registar <ChevronDown className="h-3.5 w-3.5" aria-hidden />
               </Button>
             </DropdownTrigger>
