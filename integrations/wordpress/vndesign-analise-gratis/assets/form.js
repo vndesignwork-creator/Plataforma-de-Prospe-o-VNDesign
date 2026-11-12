@@ -351,12 +351,20 @@
 		if (alpha < 0.5) return null;
 		return (0.2126 * m[1] + 0.7152 * m[2] + 0.0722 * m[3]) / 255;
 	}
+	/* Fundo sem cor sólida (imagem ou degradê): o texto do site diz se é claro (texto escuro) ou escuro. */
+	function fromTextColor(node) {
+		var t = luminance(window.getComputedStyle(node).color);
+		return t === null ? null : 1 - t;
+	}
 	function backgroundOf(el) {
 		for (var node = el.parentElement; node; node = node.parentElement) {
-			var l = luminance(window.getComputedStyle(node).backgroundColor);
+			var style = window.getComputedStyle(node);
+			var l = luminance(style.backgroundColor);
 			if (l !== null) return l;
+			if (style.backgroundImage && style.backgroundImage !== 'none') return fromTextColor(node);
 		}
-		return luminance(window.getComputedStyle(document.documentElement).backgroundColor);
+		var root = luminance(window.getComputedStyle(document.documentElement).backgroundColor);
+		return root !== null ? root : document.body ? fromTextColor(document.body) : null;
 	}
 	function followSite() {
 		var roots = document.querySelectorAll('.vnd-fa--site');
@@ -392,17 +400,46 @@
 		} else {
 			for (var j = 0; j < imgs.length; j++) pickIllustration(imgs[j]);
 		}
-		// O botão ☀ do site muda classes/atributos do <html> ou do <body>: volta a ver a cor.
-		if (window.MutationObserver && document.querySelector('.vnd-fa--site')) {
-			var mo = new MutationObserver(function () {
-				window.requestAnimationFrame(followSite);
-				// Se o site muda de cor com uma transição, vê outra vez no fim.
-				setTimeout(followSite, 450);
+		if (document.querySelector('.vnd-fa--site')) watchSiteTheme();
+	}
+
+	/* O botão ☀ do site muda classes/atributos do <html>, do <body> ou de uma secção (Bricks):
+	   volta a ver a cor — logo, e outra vez no fim de uma transição de cor (até ~1,5 s). */
+	var followTimers = [];
+	function followSoon() {
+		for (var t = 0; t < followTimers.length; t++) clearTimeout(followTimers[t]);
+		window.requestAnimationFrame(followSite);
+		followTimers = [150, 450, 900, 1600].map(function (ms) {
+			return setTimeout(followSite, ms);
+		});
+	}
+	function watchSiteTheme() {
+		if (window.MutationObserver) {
+			var mo = new MutationObserver(function (records) {
+				for (var r = 0; r < records.length; r++) {
+					var target = records[r].target;
+					// As mudanças dentro do próprio formulário (erros, botão) não contam.
+					if (target.closest && target.closest('.vnd-fa')) continue;
+					followSoon();
+					return;
+				}
 			});
-			var opts = { attributes: true, attributeFilter: ['class', 'style', 'data-theme', 'data-mode', 'data-color-scheme', 'data-bs-theme'] };
-			mo.observe(document.documentElement, opts);
-			if (document.body) mo.observe(document.body, opts);
+			mo.observe(document.documentElement, {
+				attributes: true,
+				subtree: true,
+				attributeFilter: ['class', 'style', 'data-theme', 'data-mode', 'data-color-scheme', 'data-bs-theme'],
+			});
 		}
+		// O fim de uma transição de cor no site e o claro/escuro do computador.
+		document.addEventListener('transitionend', function (event) {
+			if (/color|background/.test(event.propertyName || '') && !(event.target.closest && event.target.closest('.vnd-fa'))) followSite();
+		}, true);
+		if (window.matchMedia) {
+			var mq = window.matchMedia('(prefers-color-scheme: dark)');
+			if (mq.addEventListener) mq.addEventListener('change', followSoon);
+		}
+		// Temas que aplicam a cor guardada só depois de a página carregar.
+		window.addEventListener('load', followSoon);
 	}
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
 	else init();

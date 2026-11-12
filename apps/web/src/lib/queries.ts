@@ -1671,6 +1671,8 @@ export function useSiteMonitorActions(leadId: string) {
   const done = () => {
     void qc.invalidateQueries({ queryKey: ['site-monitor', leadId] });
     void qc.invalidateQueries({ queryKey: ['site-monitors'] });
+    // "Falso alarme" / site de volta: sai a tarefa automática "Contactar…: o site está em baixo".
+    void qc.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).includes('task') });
   };
   return {
     create: useMutation({
@@ -1678,7 +1680,7 @@ export function useSiteMonitorActions(leadId: string) {
       onSettled: done,
     }),
     update: useMutation({
-      mutationFn: ({ id, ...body }: { id: string; url?: string; active?: boolean; domain_expires_on?: string | null }) =>
+      mutationFn: ({ id, ...body }: { id: string; url?: string; active?: boolean; domain_expires_on?: string | null; false_alarm?: boolean }) =>
         api<{ data: SiteMonitor }>(`/site-monitors/${id}`, { method: 'PATCH', body }).then((r) => r.data),
       onSettled: done,
     }),

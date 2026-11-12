@@ -79,6 +79,43 @@ test('Objeções: resposta pronta na Prospeção (canal, outra versão) e pela A
   await page.request.delete(`/api/v1/leads/${lead.id}`);
 });
 
+test('Oportunidade: "Verificar agora" e "Falso alarme" (o site não volta a ser dado como em baixo)', async ({ page }) => {
+  const { server, url } = await localSite(() => 503);
+  try {
+    const lead = (await (await page.request.post('/api/v1/leads?force=true', { data: { company_name: `Falso Alarme ${run}`, phone: '912000333', website: url } })).json()).data as { id: string; number: number };
+    const monitor = (await (await page.request.post(`/api/v1/leads/${lead.id}/site-monitor`, { data: { url } })).json()).data as { id: string };
+    await page.request.post(`/api/v1/site-monitors/${monitor.id}/check`);
+    expect(((await (await page.request.post(`/api/v1/site-monitors/${monitor.id}/check`)).json()).data as { down_since: string | null }).down_since).not.toBeNull();
+
+    await page.goto(`/leads/${lead.id}`);
+    const banner = page.getByRole('status', { name: 'Oportunidade' });
+    await expect(banner).toContainText('O site está em baixo');
+    // Verificar agora: continua em baixo (o site local responde 503).
+    await banner.getByRole('button', { name: 'Verificar agora' }).click();
+    await expect(page.getByText(/Continua em baixo/)).toBeVisible();
+    // Falso alarme: o aviso sai e as falhas seguintes não o voltam a pôr.
+    await banner.getByRole('button', { name: 'Falso alarme' }).click();
+    await expect(page.getByText(/Aviso retirado\. Durante 7 dias/)).toBeVisible();
+    await expect(page.getByRole('status', { name: 'Oportunidade' })).toHaveCount(0);
+    for (let i = 0; i < 2; i++) await page.request.post(`/api/v1/site-monitors/${monitor.id}/check`);
+    const after = (await (await page.request.get(`/api/v1/leads/${lead.id}/site-monitor`)).json()).data as { down_since: string | null; down_muted_until: string | null };
+    expect(after.down_since).toBeNull();
+    expect(after.down_muted_until).not.toBeNull();
+    await page.reload();
+    await expect(page.getByRole('status', { name: 'Oportunidade' })).toHaveCount(0);
+
+    // "Voltar a avisar": as falhas voltam a contar.
+    expect((await page.request.patch(`/api/v1/site-monitors/${monitor.id}`, { data: { false_alarm: false } })).status()).toBe(200);
+    await page.request.post(`/api/v1/site-monitors/${monitor.id}/check`);
+    const again = (await (await page.request.post(`/api/v1/site-monitors/${monitor.id}/check`)).json()).data as { down_since: string | null; down_muted_until: string | null };
+    expect(again.down_muted_until).toBeNull();
+    expect(again.down_since).not.toBeNull();
+    await page.request.delete(`/api/v1/leads/${lead.id}`);
+  } finally {
+    server.close();
+  }
+});
+
 test('Oportunidade: site do lead em baixo aparece na ficha com a mensagem pronta e na Prospeção', async ({ page }) => {
   let up = true;
   const { server, url } = await localSite(() => (up ? 200 : 503));

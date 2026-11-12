@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { Card, CardHeader } from '@/components/ui/card';
 import { useSettings, useSiteMonitors } from '@/lib/queries';
 import { cn, displayHost } from '@/lib/utils';
+import { SiteQuickActions } from '@/components/leads/site-quick-actions';
 
 export function SitesCard({ className }: { className?: string }) {
   const { data: settings } = useSettings();
@@ -44,6 +45,9 @@ export function SitesCard({ className }: { className?: string }) {
                   </span>
                 ))}
               </span>
+            </span>
+            <span className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1">
+              <SiteQuickActions monitor={m} label={m.lead.company_name} />
             </span>
           </li>
         ))}

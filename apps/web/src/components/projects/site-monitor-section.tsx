@@ -6,7 +6,7 @@
  * domínio pela consulta pública, pode escrever-se à mão. Se houver a renovação do
  * domínio em "Renovações e avenças", mostra essa data (e o aviso fica com as renovações).
  */
-import { formatDate, formatDateTime, siteIssues, todayIso, type Lead, type SiteMonitor } from '@vndesign/core';
+import { downMuted, formatDate, formatDateTime, siteIssues, todayIso, type Lead, type SiteMonitor } from '@vndesign/core';
 import { Activity, CalendarClock, Globe, Lock, MoreHorizontal, Pause, Pencil, Play, RefreshCw, Trash2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api-client';
 import { useSiteMonitor, useSiteMonitorActions } from '@/lib/queries';
 import { cn, displayHost } from '@/lib/utils';
+import { SiteQuickActions } from '@/components/leads/site-quick-actions';
 import { SectionHeader } from './section-header';
 
 type Monitor = SiteMonitor & { domain_renewal_on: string | null };
@@ -125,6 +126,7 @@ function MonitorDetails({ lead, monitor }: { lead: Lead; monitor: Monitor }) {
           <Button size="sm" variant="outline" onClick={() => void checkNow()} loading={actions.check.isPending}>
             <RefreshCw className="h-3.5 w-3.5" aria-hidden /> Verificar agora
           </Button>
+          <SiteQuickActions monitor={monitor} check={false} />
           <DropdownRoot>
             <DropdownTrigger className={buttonClasses('ghost', 'icon', 'h-8 w-8')} aria-label="Mais ações do site">
               <MoreHorizontal className="h-4 w-4" aria-hidden />
@@ -167,6 +169,18 @@ function MonitorDetails({ lead, monitor }: { lead: Lead; monitor: Monitor }) {
                     : `Sim${monitor.response_ms ? ` · ${(monitor.response_ms / 1000).toFixed(1).replace('.', ',')} s` : ''}`}
             </span>
             {monitor.checked_at ? <span className="block text-xs text-muted">Visto {formatDateTime(monitor.checked_at)}</span> : null}
+            {downMuted(monitor) ? (
+              <span className="block text-xs text-muted">
+                Falso alarme: sem avisos de “em baixo” até {formatDate(monitor.down_muted_until!.slice(0, 10))} ·{' '}
+                <button
+                  type="button"
+                  className="underline hover:text-fg"
+                  onClick={() => actions.update.mutate({ id: monitor.id, false_alarm: false }, { onError: (e) => toast.error(errorMessage(e)) })}
+                >
+                  Voltar a avisar
+                </button>
+              </span>
+            ) : null}
           </span>
         </li>
         <li className="flex items-start gap-1.5">

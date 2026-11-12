@@ -263,7 +263,20 @@ test('Site do cliente: vigiar, no ar, 2 falhas = em baixo, data do domínio à m
     const sites = page.getByRole('heading', { name: 'Sites dos clientes' }).locator('xpath=ancestor::div[contains(@class,"rounded-xl")][1]');
     await expect(sites.getByText(`#${lead.number} Site ${run}`)).toBeVisible();
     // Só na linha deste lead (pode haver outros sites em baixo de outros testes).
-    await expect(sites.getByRole('listitem').filter({ hasText: `#${lead.number} Site ${run}` }).getByText(/Em baixo/)).toBeVisible();
+    const row = sites.getByRole('listitem').filter({ hasText: `#${lead.number} Site ${run}` });
+    await expect(row.getByText(/Em baixo/)).toBeVisible();
+    // "Falso alarme" na própria linha: o aviso de "em baixo" sai (o domínio a expirar continua).
+    await row.getByRole('button', { name: `Falso alarme — Site ${run}` }).click();
+    await expect(page.getByText(/Aviso retirado/)).toBeVisible();
+    await expect(row.getByText(/Em baixo/)).toHaveCount(0);
+    await expect(row.getByText('Domínio expira em 10 dias')).toBeVisible();
+    // No projeto: diz até quando, e "Voltar a avisar".
+    await page.goto(`/leads/${lead.id}`);
+    await page.getByRole('tab', { name: /Cliente/ }).click();
+    const siteRegion = page.getByRole('region', { name: 'Site do cliente' });
+    await expect(siteRegion.getByText(/Falso alarme: sem avisos de “em baixo” até/)).toBeVisible();
+    await siteRegion.getByRole('button', { name: 'Voltar a avisar' }).click();
+    await expect(siteRegion.getByText(/Falso alarme: sem avisos/)).toHaveCount(0);
 
     // Volta ao ar.
     up = true;

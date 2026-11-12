@@ -13,13 +13,19 @@ import { PromoImage } from './promo-image';
  * (link ou dentro de uma moldura com ?embed=1). O visitante recebe a análise por email.
  * Ao lado do formulário, o texto de persuasão com imagem (como no plugin de WordPress):
  * De origem fica à esquerda (no telemóvel, por cima do formulário); ?lado=direita põe-no à
- * direita e ?texto=0 esconde-o.
+ * direita e ?texto=0 esconde-o. Claro/escuro: o do computador do visitante, ou ?tema=claro|escuro.
  */
 export const dynamic = 'force-dynamic';
 
-type Props = { params: Promise<{ token: string }>; searchParams: Promise<{ embed?: string; texto?: string; lado?: string }> };
+type Props = { params: Promise<{ token: string }>; searchParams: Promise<{ embed?: string; texto?: string; lado?: string; tema?: string }> };
 
 export const metadata: Metadata = { title: { absolute: 'Analisar o meu site grátis' }, robots: { index: false, follow: false } };
+
+/**
+ * Tema da página pública: segue o claro/escuro do computador do visitante (e muda com ele);
+ * ?tema=claro ou ?tema=escuro fixa-o (ex.: dentro de uma moldura num site claro).
+ */
+const PUBLIC_THEME_SCRIPT = `(function(){try{var q=new URLSearchParams(location.search).get('tema');var mq=window.matchMedia('(prefers-color-scheme: light)');var apply=function(){document.documentElement.dataset.theme=q==='claro'?'light':q==='escuro'?'dark':mq.matches?'light':'dark';};apply();if(q!=='claro'&&q!=='escuro'&&mq.addEventListener)mq.addEventListener('change',apply);}catch(e){}})();`;
 
 function Promo() {
   const p = FREE_AUDIT_PROMO;
@@ -89,6 +95,8 @@ export default async function FreeAuditPage({ params, searchParams }: Props) {
         layout.promo ? (embed ? 'max-w-none' : 'max-w-6xl') : 'max-w-xl',
       )}
     >
+      {/* Antes de pintar: o claro/escuro do computador do visitante (não o da plataforma), ou ?tema=claro|escuro. */}
+      <script dangerouslySetInnerHTML={{ __html: PUBLIC_THEME_SCRIPT }} />
       {logo}
       {layout.promo ? (
         // No telemóvel: o texto por cima do formulário. No computador: o texto do lado escolhido.

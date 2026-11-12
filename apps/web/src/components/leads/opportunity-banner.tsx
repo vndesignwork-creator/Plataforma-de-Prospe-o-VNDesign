@@ -12,6 +12,7 @@ import { SendEmailButton } from '@/components/email/send-email-dialog';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { useSettings, useSiteMonitor } from '@/lib/queries';
 import { cn, displayHost, whatsappUrl } from '@/lib/utils';
+import { SiteQuickActions } from './site-quick-actions';
 
 export function OpportunityBanner({ lead, className }: { lead: Lead; className?: string }) {
   const { data: settings } = useSettings();
@@ -49,6 +50,8 @@ export function OpportunityBanner({ lead, className }: { lead: Lead; className?:
           </a>
         ) : null}
         {lead.email ? <SendEmailButton lead={lead} subject={message.subject} body={message.body} template="Oportunidade (site)" label="Email" size="sm" variant="outline" /> : null}
+        {/* Antes de contactar: confirmar que o problema ainda existe (ou dizer que é falso alarme). */}
+        <SiteQuickActions monitor={monitor} />
       </span>
     </div>
   );

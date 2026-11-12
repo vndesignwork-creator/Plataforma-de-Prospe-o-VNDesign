@@ -12,6 +12,13 @@ export const SSL_WARN_DAYS = 14;
 export const DOMAIN_WARN_DAYS = 30;
 /** Falhas seguidas para contar como em baixo. */
 export const DOWN_AFTER_FAILS = 2;
+/** "Falso alarme": durante quantos dias as falhas do site não o dão como em baixo. */
+export const FALSE_ALARM_DAYS = 7;
+
+/** O "em baixo" deste site está silenciado (falso alarme) neste momento? */
+export function downMuted(m: { down_muted_until?: string | null }, now: Date = new Date()): boolean {
+  return !!m.down_muted_until && new Date(m.down_muted_until).getTime() > now.getTime();
+}
 
 export const SiteMonitorSchema = z
   .object({
@@ -32,6 +39,7 @@ export const SiteMonitorSchema = z
     domain_expires_on: z.string().nullable(),
     domain_source: z.enum(['rdap', 'manual']).nullable(),
     domain_checked_at: z.string().nullable(),
+    down_muted_until: z.string().nullable().optional().meta({ description: 'Falso alarme: até esta data, as falhas não contam como "em baixo"' }),
     created_at: z.string(),
     updated_at: z.string(),
   })
@@ -59,6 +67,12 @@ export const SiteMonitorUpdateSchema = z
       .nullable()
       .optional()
       .meta({ description: 'Escrever à mão quando a consulta pública não dá a data (null = voltar a consultar)' }),
+    false_alarm: z
+      .boolean()
+      .optional()
+      .meta({
+        description: `true = "Falso alarme": o site está no ar; tira o "em baixo" e, durante ${FALSE_ALARM_DAYS} dias, as falhas não o voltam a dar como em baixo. false = voltar a avisar já.`,
+      }),
   })
   .meta({ id: 'SiteMonitorUpdate' });
 export type SiteMonitorUpdate = z.infer<typeof SiteMonitorUpdateSchema>;

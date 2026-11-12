@@ -9,6 +9,8 @@
 import {
   DOMAIN_WARN_DAYS,
   DOWN_AFTER_FAILS,
+  FALSE_ALARM_DAYS,
+  downMuted,
   PROSPECT_CHECK_MINUTES,
   PROSPECT_WATCH_COUNT,
   SSL_WARN_DAYS,
@@ -39,7 +41,7 @@ import { getLead } from './leads';
 import { saveAlert } from './push';
 
 const SELECT =
-  'id, lead_id, url, active, checked_at, next_check_at, is_up, status_code, response_ms, error, fail_count, down_since, ssl_expires_at, ssl_error, domain_expires_on, domain_source, domain_checked_at, created_at, updated_at';
+  'id, lead_id, url, active, checked_at, next_check_at, is_up, status_code, response_ms, error, fail_count, down_since, ssl_expires_at, ssl_error, domain_expires_on, domain_source, domain_checked_at, down_muted_until, created_at, updated_at';
 const NOT_FOUND = 'Vigilância do site não encontrada';
 const missingTable = (e: { code?: string } | null) => e?.code === '42P01' || e?.code === 'PGRST205';
 const notReady = () => new ApiError(503, 'Ainda não disponível', 'A base de dados ainda não foi atualizada (npx supabase db push).');
@@ -127,6 +129,21 @@ export async function updateSiteMonitor(ctx: ApiContext, id: string, patch: Site
     update.domain_source = patch.domain_expires_on ? 'manual' : null;
     update.domain_checked_at = null;
   }
+  if (patch.false_alarm !== undefined) {
+    // "Falso alarme": o site está no ar. Tira o "em baixo" e silencia as falhas durante uns dias.
+    Object.assign(
+      update,
+      patch.false_alarm
+        ? {
+            is_up: true,
+            fail_count: 0,
+            down_since: null,
+            error: null,
+            down_muted_until: new Date(Date.now() + FALSE_ALARM_DAYS * 86_400_000).toISOString(),
+          }
+        : { down_muted_until: null, next_check_at: new Date().toISOString() },
+    );
+  }
   if (patch.url) {
     // Outro endereço: começa do zero.
     Object.assign(update, {
@@ -140,12 +157,14 @@ export async function updateSiteMonitor(ctx: ApiContext, id: string, patch: Site
       ssl_expires_at: null,
       ssl_error: null,
       next_check_at: new Date().toISOString(),
+      down_muted_until: null,
       alerted: {},
       ...(patch.domain_expires_on === undefined ? { domain_expires_on: null, domain_source: null, domain_checked_at: null } : {}),
     });
   }
   const result = await ctx.supabase.from('site_monitors').update(update).eq('workspace_id', ctx.workspaceId).eq('id', id).select(SELECT).maybeSingle();
   const monitor = unwrap(result, NOT_FOUND) as unknown as SiteMonitor;
+  if (patch.false_alarm) await removeDownTask(ctx.supabase, monitor.lead_id);
   return patch.url ? checkAndSave(ctx.supabase, monitor, { alerts: false }) : monitor;
 }
 
@@ -262,6 +281,18 @@ export async function lookupDomainExpiry(domain: string): Promise<string | null>
   }
 }
 
+/** Tira a tarefa automática "Contactar…: o site está em baixo (oportunidade)" ainda por fazer. */
+async function removeDownTask(client: SupabaseClient, leadId: string): Promise<void> {
+  await client
+    .from('lead_tasks')
+    .delete()
+    .eq('lead_id', leadId)
+    .is('created_by', null)
+    .is('done_at', null)
+    .like('title', 'Contactar %: o site está em baixo (oportunidade)')
+    .then(undefined, () => undefined);
+}
+
 /** Verifica um site, guarda o resultado e (no cron) avisa dos problemas novos. */
 async function checkAndSave(
   client: SupabaseClient,
@@ -272,17 +303,19 @@ async function checkAndSave(
   const today = todayIso(now);
   const check = await checkSite(m.url);
   const failCount = check.ok ? 0 : m.fail_count + 1;
-  const down = !check.ok && failCount >= DOWN_AFTER_FAILS;
+  // Falso alarme marcado há pouco: as falhas ficam registadas, mas o site não passa a "em baixo".
+  const muted = downMuted(m, now);
+  const down = !check.ok && failCount >= DOWN_AFTER_FAILS && !muted;
   const update: Record<string, unknown> = {
     checked_at: now.toISOString(),
     // Leads (não clientes): de 6 em 6 horas chega.
     next_check_at: nextCheckAt(now, !check.ok, options.prospect ? PROSPECT_CHECK_MINUTES : 60),
-    is_up: check.ok ? true : down ? false : m.is_up,
+    is_up: check.ok ? true : down ? false : muted ? true : m.is_up,
     status_code: check.status_code,
     response_ms: check.response_ms,
     error: check.error,
     fail_count: failCount,
-    down_since: check.ok ? null : down ? (m.down_since ?? m.checked_at ?? now.toISOString()) : m.down_since,
+    down_since: check.ok || muted ? null : down ? (m.down_since ?? m.checked_at ?? now.toISOString()) : m.down_since,
     // O certificado só se lê quando o site responde (senão fica o último conhecido).
     ...(check.status_code !== null ? { ssl_expires_at: check.ssl_expires_at, ssl_error: check.ssl_error } : {}),
   };
@@ -297,16 +330,7 @@ async function checkAndSave(
   if (error) throw fromPostgrest(error);
   const saved = data as unknown as SiteMonitor;
   // O site voltou (ou afinal estava no ar): a tarefa automática "Contactar…: o site está em baixo" deixa de fazer sentido.
-  if (check.ok && m.down_since) {
-    await client
-      .from('lead_tasks')
-      .delete()
-      .eq('lead_id', m.lead_id)
-      .is('created_by', null)
-      .is('done_at', null)
-      .like('title', 'Contactar %: o site está em baixo (oportunidade)')
-      .then(undefined, () => undefined);
-  }
+  if (check.ok && m.down_since) await removeDownTask(client, m.lead_id);
   if (options.alerts && options.workspaceId) {
     const alert = options.prospect
       ? alertOpportunity(client, options.workspaceId, { ...saved, alerted: m.alerted ?? {} }, today)
