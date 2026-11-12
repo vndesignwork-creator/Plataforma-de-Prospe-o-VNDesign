@@ -212,7 +212,8 @@ function SearchBody({
   const leadItem = (l: LeadRef, group: Group, hint?: string): Item => ({
     key: `${group === 'Recentes' ? 'r' : 'l'}:${l.id}`,
     group,
-    label: `#${l.number} ${l.company_name}${l.project_title ? ` · ${l.project_title}` : ''}`,
+    // Como nas listas: o nome do projeto primeiro, a empresa depois.
+    label: `#${l.number} ${l.project_title ? `${l.project_title} · ${l.company_name}` : l.company_name}`,
     hint: hint ?? LEAD_STATUS_META[l.status]?.label,
     href: l.status === 'cliente' ? leadPath(l, '#projeto') : leadPath(l),
     icon: l.status === 'cliente' ? BriefcaseBusiness : User,

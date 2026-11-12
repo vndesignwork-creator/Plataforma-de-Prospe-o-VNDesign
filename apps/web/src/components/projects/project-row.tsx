@@ -81,7 +81,7 @@ export function ProjectRow({
   const [collapsed, setCollapsed] = useCollapsed(projectCollapseKey(lead.id));
 
   const timeColumn = !completed && features.time_tracking;
-  const name = `#${lead.number} ${lead.company_name}${lead.project_title ? ` · ${lead.project_title}` : ''}`;
+  const name = `#${lead.number} ${lead.project_title ? `${lead.project_title} · ${lead.company_name}` : lead.company_name}`;
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: lead.id, disabled: !sortable });
 
   return (
@@ -113,7 +113,7 @@ export function ProjectRow({
             <CollapseButton
               collapsed={collapsed}
               onToggle={() => setCollapsed(!collapsed)}
-              label={`${lead.company_name}${lead.project_title ? ` · ${lead.project_title}` : ''}`}
+              label={lead.project_title ? `${lead.project_title} · ${lead.company_name}` : lead.company_name}
               className={cn('-my-1 shrink-0', !sortable && '-ml-2')}
             />
             <Link href={leadPath(lead)} className="min-w-0 font-semibold hover:text-accent-text hover:underline">

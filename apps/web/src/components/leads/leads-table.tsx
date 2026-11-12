@@ -1164,7 +1164,8 @@ function LeadsTableView() {
                   <Link href={leadPath(lead)} className="flex min-w-0 flex-col gap-1.5 after:absolute after:inset-0 after:content-['']">
                     <span className="font-semibold">
                       <span className="mr-1.5 text-muted tabular">#{lead.number}</span>
-                      {lead.company_name} {lead.project_title ? <span className="font-normal text-muted">· {lead.project_title}</span> : null}
+                      {/* Como no computador: o nome do projeto em destaque e a empresa discreta. */}
+                      <LeadTitle lead={lead} />
                       {lead.archived_at ? <ArchivedBadge /> : null}
                       <TagChips tags={lead.tags} link={false} className="mt-1 font-normal" />
                     </span>
