@@ -412,22 +412,47 @@
 		var roots = document.querySelectorAll('.vnd-fa--animate:not(.vnd-fa--anim-ready)');
 		if (!roots.length || !window.IntersectionObserver) return;
 		if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		// Como no site: cada vez que um elemento entra no ecrã (a descer ou a subir) volta a animar;
+		// quando sai por completo, fica outra vez escondido à espera da próxima entrada.
+		function outOfView(el) {
+			var b = el.getBoundingClientRect();
+			return b.bottom <= 0 || b.top >= (window.innerHeight || document.documentElement.clientHeight);
+		}
+		function hide(el) {
+			el.classList.remove('is-in');
+			el.style.removeProperty('--vnd-fa-in-delay');
+		}
 		var io = new IntersectionObserver(function (entries) {
 			// Os que aparecem juntos entram um a seguir ao outro (pela ordem da página).
 			var shown = [];
 			for (var i = 0; i < entries.length; i++) {
-				if (entries[i].isIntersecting) shown.push(entries[i].target);
+				var e = entries[i], el = e.target;
+				if (e.isIntersecting && e.intersectionRatio >= 0.1) {
+					if (!el.classList.contains('is-in')) shown.push(el);
+				} else if (!e.isIntersecting && el.classList.contains('is-in') && !el.vndFaAnimating) {
+					hide(el);
+				}
 			}
 			for (var j = 0; j < shown.length; j++) {
 				shown[j].style.setProperty('--vnd-fa-in-delay', Math.min(j * 0.08, 0.6) + 's');
+				shown[j].vndFaAnimating = true;
 				shown[j].classList.add('is-in');
-				io.unobserve(shown[j]);
 			}
-		}, { threshold: 0.1, rootMargin: '0px 0px -5% 0px' });
+		}, { threshold: [0, 0.1], rootMargin: '0px 0px -5% 0px' });
+		// Durante a animação o elemento começa mais abaixo (pode estar "fora" por instantes):
+		// só no fim se decide se saiu mesmo do ecrã.
+		function onAnimEnd(ev) {
+			var el = ev.currentTarget;
+			if (ev.target !== el) return;
+			el.vndFaAnimating = false;
+			if (outOfView(el)) hide(el);
+		}
 		for (var r = 0; r < roots.length; r++) {
 			var items = roots[r].querySelectorAll(REVEAL);
 			for (var k = 0; k < items.length; k++) {
 				items[k].setAttribute('data-vnd-fa-in', '');
+				items[k].addEventListener('animationend', onAnimEnd);
+				items[k].addEventListener('animationcancel', onAnimEnd);
 				io.observe(items[k]);
 			}
 			roots[r].classList.add('vnd-fa--anim-ready');
