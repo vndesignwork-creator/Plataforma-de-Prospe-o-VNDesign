@@ -40,7 +40,7 @@ import { getSettings, updateSettings } from './workspace';
 export const LEAD_SELECT = [
   'id', 'number', 'company_name', 'no_company', 'social_links', 'sector_id', 'sector:sectors(id, name, slug, emoji, icon)',
   'website', 'city', 'address', 'latitude', 'longitude', 'geocode_status', 'problems', 'pagespeed', 'mobile',
-  'email', 'phone', 'contact_name', 'status', 'channel', 'first_contact_on', 'last_follow_up_on',
+  'email', 'phone', 'contact_name', 'status', 'channel', 'origin', 'first_contact_on', 'last_follow_up_on',
   'next_action_text', 'next_action_on', 'estimated_value', 'notes', 'approach_angle', 'source_url',
   'suggested_on', 'email_subject', 'email_body', 'services', 'kanban_position', 'status_changed_at',
   'anonymized_at', 'archived_at', 'score', 'score_reasons', 'follow_up_count', 'project_completed_at', 'client_of', 'project_title', 'assigned_to', 'tags', 'pinned_note', 'custom', 'lost_reason', 'retry_on', 'email_bounced_at', 'created_by', 'created_at', 'updated_at',
@@ -66,7 +66,7 @@ type LeadQueryBuilder = ReturnType<typeof baseLeadQuery>;
 export type LeadFilters = Partial<
   Pick<
     LeadListQuery,
-    'q' | 'sector' | 'status' | 'channel' | 'city' | 'suggested_from' | 'suggested_to' | 'due' | 'include_anonymized' | 'archived' | 'service' | 'tag' | 'cf' | 'lost' | 'stale'
+    'q' | 'sector' | 'status' | 'channel' | 'origin' | 'city' | 'suggested_from' | 'suggested_to' | 'due' | 'include_anonymized' | 'archived' | 'service' | 'tag' | 'cf' | 'lost' | 'stale'
   >
 > & {
   /** Responsável já resolvido ("me" → o id de quem pede). */
@@ -97,6 +97,14 @@ function applyLeadFilters(q: LeadQueryBuilder, query: LeadFilters): LeadQueryBui
     const parts = [
       ...(channels.length ? [`channel.in.(${channels.join(',')})`] : []),
       ...(query.channel.includes('none') ? ['channel.is.null'] : []),
+    ];
+    q = q.or(parts.join(','));
+  }
+  if (query.origin?.length) {
+    const origins = query.origin.filter((o) => o !== 'none');
+    const parts = [
+      ...(origins.length ? [`origin.in.(${origins.join(',')})`] : []),
+      ...(query.origin.includes('none') ? ['origin.is.null'] : []),
     ];
     q = q.or(parts.join(','));
   }

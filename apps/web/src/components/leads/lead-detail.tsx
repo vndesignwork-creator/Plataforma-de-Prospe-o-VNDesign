@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  LEAD_ORIGIN_META,
   LEAD_STATUS_META,
   LOST_REASON_LABELS,
   LEAD_STATUSES,
@@ -577,6 +578,8 @@ export function LeadDetail({ id }: { id: string }) {
     ...(lead.next_action_text || lead.next_action_on ? [] : [{ key: 'next', label: 'Próxima ação', filled: false, value: dash }]),
     ...(staff ? [{ key: 'value', label: 'Valor estimado', filled: !!lead.estimated_value, value: formatCurrency(lead.estimated_value) }] : []),
     { key: 'channel', label: 'Canal', filled: !!lead.channel, value: <ChannelLabel channel={lead.channel} /> },
+    // Como chegou (registado sozinho): só aparece quando se sabe.
+    ...(lead.origin ? [{ key: 'origin', label: 'Origem', filled: true, value: <span title={LEAD_ORIGIN_META[lead.origin].hint}>{LEAD_ORIGIN_META[lead.origin].label}</span> }] : []),
     { key: 'first', label: '1.º contacto', filled: !!lead.first_contact_on, value: formatDate(lead.first_contact_on) },
     { key: 'last', label: 'Último follow-up', filled: !!lead.last_follow_up_on, value: formatDate(lead.last_follow_up_on) },
     { key: 'suggested', label: 'Sugerido em', filled: !!lead.suggested_on, value: formatDate(lead.suggested_on) },

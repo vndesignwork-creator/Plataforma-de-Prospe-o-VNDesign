@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDowntime, formatUptime, monthUtcRange, siteUptime, type SiteCheckPoint } from '../src/site-monitor';
+import { formatDowntime, formatUptime, monthUtcRange, siteSlowdown, siteUptime, slowdownText, type SiteCheckPoint } from '../src/site-monitor';
 
 const p = (at: string, down = false, ok = !down, ms: number | null = 500): SiteCheckPoint => ({ checked_at: at, ok, down, response_ms: ms });
 
@@ -51,5 +51,24 @@ describe('formatação', () => {
   it('mês', () => {
     expect(monthUtcRange('2026-10')).toEqual({ from: new Date('2026-10-01T00:00:00Z'), to: new Date('2026-11-01T00:00:00Z') });
     expect(monthUtcRange('2026-13')).toBeNull();
+  });
+});
+
+describe('siteSlowdown', () => {
+  const many = (ms: number, n = 30) => Array.from({ length: n }, () => ms);
+  it('rápido: não avisa; poucas verificações: não decide', () => {
+    expect(siteSlowdown(many(800), many(700)).slow).toBe(false);
+    expect(siteSlowdown(many(5000, 10), []).slow).toBe(false);
+  });
+  it('lento e pior do que antes', () => {
+    const r = siteSlowdown(many(4100), many(1200));
+    expect(r).toMatchObject({ slow: true, worse: true, recent_ms: 4100, before_ms: 1200 });
+    expect(slowdownText(r)).toBe('o site passou de 1,2 s para 4,1 s a responder (última semana)');
+  });
+  it('sempre lento: avisa, sem "piorou"; um pico isolado não conta', () => {
+    const r = siteSlowdown(many(3500), many(3400));
+    expect(r).toMatchObject({ slow: true, worse: false });
+    expect(slowdownText(r)).toBe('o site demora 3,5 s a responder (última semana)');
+    expect(siteSlowdown([...many(900, 29), 20_000], []).slow).toBe(false);
   });
 });

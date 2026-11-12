@@ -106,6 +106,8 @@ const estimatedValue = z
 
 export const LeadStatusSchema = z.enum(LEAD_STATUSES).meta({ id: 'LeadStatus' });
 export const LeadChannelSchema = z.enum(LEAD_CHANNELS).meta({ id: 'LeadChannel' });
+/** Como o lead chegou (registado sozinho; não se escolhe à mão). */
+export const LeadOriginSchema = z.enum(LEAD_ORIGINS).meta({ id: 'LeadOrigin' });
 export const MobileStatusSchema = z
   .enum(MOBILE_STATUSES)
   .meta({ id: 'MobileStatus', description: '"desconhecido" corresponde ao "--" da folha' });
@@ -226,6 +228,8 @@ export const LeadSchema = z
     contact_name: z.string().nullable(),
     status: LeadStatusSchema,
     channel: LeadChannelSchema.nullable(),
+    /** Como chegou (formulário do site, análise grátis, prospeção…); null = antes do registo. */
+    origin: LeadOriginSchema.nullable().optional(),
     first_contact_on: z.string().nullable(),
     last_follow_up_on: z.string().nullable(),
     next_action_text: z.string().nullable(),
@@ -313,6 +317,9 @@ export const LeadListQuerySchema = z
     sector: csvList(z.union([z.uuid(), z.literal('none')])).optional().meta({ description: 'IDs de setor separados por vírgula ("none" = sem setor)' }),
     status: csvList(LeadStatusSchema).optional(),
     channel: csvList(z.union([LeadChannelSchema, z.literal('none')])).optional(),
+    origin: csvList(z.union([LeadOriginSchema, z.literal('none')]))
+      .optional()
+      .meta({ description: 'Origens separadas por vírgula (site_form, free_audit, prospecting…; "none" = sem registo)' }),
     service: csvList(z.union([ServiceKeySchema, z.literal('none')]))
       .optional()
       .meta({ description: 'Serviços de interesse separados por vírgula ("none" = sem serviço); basta um coincidir' }),
@@ -857,8 +864,6 @@ export type BoardColumn = z.infer<typeof BoardColumnSchema>;
 // -----------------------------------------------------------------------------
 // Dashboard
 // -----------------------------------------------------------------------------
-export const LeadOriginSchema = z.enum(LEAD_ORIGINS).meta({ id: 'LeadOrigin' });
-
 /** Estatísticas "De onde vêm os leads": por origem, desde sempre (null = antes de haver o registo). */
 export const OriginStatsSchema = z
   .array(

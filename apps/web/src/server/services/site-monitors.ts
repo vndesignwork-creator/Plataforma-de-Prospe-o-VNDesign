@@ -31,6 +31,9 @@ import {
   type SiteMonitorUpdate,
   isSocialOrDirectoryUrl,
   siteUptime,
+  siteSlowdown,
+  slowdownText,
+  SLOW_ALERT_DAYS,
   type SiteCheckPoint,
   type SiteMonitorHistory,
 } from '@vndesign/core';
@@ -525,7 +528,37 @@ async function alertProblems(client: SupabaseClient, workspaceId: string, m: Row
       await task(`Renovar o domínio ${domain} (${left < 0 ? 'expirou' : 'expira'} a ${formatDate(m.domain_expires_on)})`, left < 0 ? ctx.today : m.domain_expires_on);
     }
   }
+  // Lento (uma vez por dia vê o histórico; avisa no máximo de 30 em 30 dias): oportunidade de otimização.
+  if (!m.down_since && alerted.slow_checked !== ctx.today) {
+    alerted.slow_checked = ctx.today;
+    const r = await clientSlowdown(client, m.id);
+    if (r?.slow && (!alerted.slow || daysBetween(alerted.slow, ctx.today) >= SLOW_ALERT_DAYS)) {
+      alerted.slow = ctx.today;
+      const what = slowdownText(r);
+      await alert(`slow-${ctx.today}`, `🐢 Site lento: ${name}`, `${host} — ${what}. Boa altura para propor uma otimização.`);
+      await task(`Propor otimização a ${name}: ${what}`, ctx.today);
+    }
+  }
   if (JSON.stringify(alerted) !== JSON.stringify(m.alerted ?? {})) await client.from('site_monitors').update({ alerted }).eq('id', m.id);
+}
+
+/** Tempos de resposta da última semana e das 3 semanas antes (do histórico do site). */
+async function clientSlowdown(client: SupabaseClient, monitorId: string): Promise<ReturnType<typeof siteSlowdown> | null> {
+  const weekAgo = Date.now() - 7 * 86_400_000;
+  const { data, error } = await client
+    .from('site_monitor_checks')
+    .select('checked_at, response_ms')
+    .eq('monitor_id', monitorId)
+    .eq('ok', true)
+    .not('response_ms', 'is', null)
+    .gte('checked_at', new Date(Date.now() - 28 * 86_400_000).toISOString())
+    .limit(2000);
+  if (error) return null;
+  const rows = (data ?? []) as { checked_at: string; response_ms: number }[];
+  return siteSlowdown(
+    rows.filter((r) => Date.parse(r.checked_at) >= weekAgo).map((r) => r.response_ms),
+    rows.filter((r) => Date.parse(r.checked_at) < weekAgo).map((r) => r.response_ms),
+  );
 }
 
 const owners = new Map<string, string | null>();

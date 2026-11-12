@@ -16,7 +16,7 @@ const VIEWS = [
 ] as const;
 
 /** Filtros partilhados (os mesmos nomes no endereço da Lista e do Kanban). */
-const SHARED = ['q', 'sector', 'status', 'channel', 'servico', 'etiqueta', 'resp', 'city', 'cf', 'due', 'parado', 'de', 'ate'];
+const SHARED = ['q', 'sector', 'status', 'channel', 'origem', 'servico', 'etiqueta', 'resp', 'city', 'cf', 'due', 'parado', 'de', 'ate'];
 
 export function ViewSwitch({ current }: { current: (typeof VIEWS)[number]['id'] }) {
   const params = useSearchParams();

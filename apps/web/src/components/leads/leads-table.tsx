@@ -10,6 +10,8 @@ import {
 import {
   LEAD_CHANNEL_META,
   LEAD_CHANNELS,
+  LEAD_ORIGIN_META,
+  LEAD_ORIGINS,
   LEAD_STATUS_META,
   LEAD_STATUSES,
   LOST_REASONS,
@@ -186,6 +188,11 @@ function buildColumns(today: string): Col[] {
     { id: 'status', meta: { label: 'Estado', sort: 'status' }, cell: ({ row }) => <StatusBadge status={row.original.status} /> },
     { id: 'channel', meta: { label: 'Canal', sort: 'channel' }, cell: ({ row }) => <ChannelLabel channel={row.original.channel} /> },
     {
+      id: 'origin',
+      meta: { label: 'Origem' },
+      cell: ({ row }) => (row.original.origin ? LEAD_ORIGIN_META[row.original.origin].label : <span className="text-muted">—</span>),
+    },
+    {
       id: 'first_contact_on',
       meta: { label: '1.º contacto', sort: 'first_contact_on', className: 'tabular' },
       cell: ({ row }) => formatDate(row.original.first_contact_on) || muted,
@@ -240,7 +247,7 @@ function buildColumns(today: string): Col[] {
 }
 
 /** Colunas escondidas por omissão (as restantes da folha ficam a um clique). */
-const DEFAULT_HIDDEN = ['website', 'problems', 'email', 'phone', 'contact_name', 'first_contact_on', 'last_follow_up_on', 'notes', 'approach_angle', 'source_url', 'email_subject'];
+const DEFAULT_HIDDEN = ['origin', 'website', 'problems', 'email', 'phone', 'contact_name', 'first_contact_on', 'last_follow_up_on', 'notes', 'approach_angle', 'source_url', 'email_subject'];
 
 const DUE_OPTIONS = [
   { value: '', label: 'Todas as próximas ações' },
@@ -276,6 +283,7 @@ export function leadFiltersFromParams(params: { get(name: string): string | null
     sector: getList('sector'),
     status: getList('status'),
     channel: getList('channel'),
+    origin: getList('origem'),
     service: getList('servico'),
     tag: getList('etiqueta'),
     cf: getList('cf'),
@@ -469,12 +477,12 @@ function LeadsTableView() {
   });
 
   const activeFilters =
-    query.sector.length + query.status.length + query.channel.length + query.service.length + query.tag.length + query.cf.length + query.lost.length +
+    query.sector.length + query.status.length + query.channel.length + query.origin.length + query.service.length + query.tag.length + query.cf.length + query.lost.length +
     [query.q, query.city, query.due, query.stale, query.suggested_from, query.suggested_to, query.archived, query.assigned].filter(Boolean).length;
   const [showFilters, setShowFilters] = useState(false);
   // Mais filtros: aberto quando um deles está ativo (ex.: ao abrir uma vista guardada).
   const advancedActive =
-    query.sector.length + query.channel.length + query.cf.length + query.lost.length +
+    query.sector.length + query.channel.length + query.origin.length + query.cf.length + query.lost.length +
     [query.city, query.due, query.stale, query.suggested_from, query.suggested_to, query.archived].filter(Boolean).length;
   const [showMore, setShowMore] = useState<boolean | null>(null);
   const moreOpen = showMore ?? advancedActive > 0;
@@ -523,6 +531,12 @@ function LeadsTableView() {
       name: 'Canal',
       value: v === 'none' ? 'Sem canal' : (LEAD_CHANNEL_META[v as keyof typeof LEAD_CHANNEL_META]?.label ?? v),
       remove: () => setParams({ channel: without(query.channel, v) }),
+    })),
+    ...query.origin.map((v) => ({
+      key: `orig-${v}`,
+      name: 'Origem',
+      value: v === 'none' ? 'Sem registo' : (LEAD_ORIGIN_META[v as keyof typeof LEAD_ORIGIN_META]?.label ?? v),
+      remove: () => setParams({ origem: without(query.origin, v) }),
     })),
     ...(query.city
       ? [
@@ -808,6 +822,13 @@ function LeadsTableView() {
                 ...LEAD_CHANNELS.map((c) => ({ value: c, label: LEAD_CHANNEL_META[c].label, icon: <ChannelIcon channel={c} className="text-muted" /> })),
                 { value: 'none', label: 'Sem canal' },
               ]}
+              className="w-full"
+            />
+            <MultiSelectFilter
+              label="Origem"
+              value={query.origin}
+              onChange={(v) => setParams({ origem: v })}
+              options={[...LEAD_ORIGINS.map((o) => ({ value: o, label: LEAD_ORIGIN_META[o].label })), { value: 'none', label: 'Sem registo (antigos)' }]}
               className="w-full"
             />
             <Input

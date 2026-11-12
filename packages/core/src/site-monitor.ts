@@ -395,3 +395,37 @@ export function monthUtcRange(month: string): { from: Date; to: Date } | null {
   if (mo < 1 || mo > 12) return null;
   return { from: new Date(Date.UTC(y, mo - 1, 1)), to: new Date(Date.UTC(y, mo, 1)) };
 }
+
+/* ---------- Site do cliente lento (oportunidade de otimização) ---------- */
+
+/** A partir daqui (mediana da última semana) o site de um cliente conta como lento. */
+export const CLIENT_SLOW_MS = 3000;
+/** Um aviso de lentidão por site, no máximo, a cada 30 dias. */
+export const SLOW_ALERT_DAYS = 30;
+
+const median = (list: number[]) => {
+  const sorted = [...list].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid]! : Math.round((sorted[mid - 1]! + sorted[mid]!) / 2);
+};
+
+/**
+ * O site ficou lento? Usa a mediana (um pico isolado não conta) dos tempos de resposta da
+ * última semana (`recent`, pelo menos 24 verificações) e, para comparar, das 3 semanas antes
+ * (`before`). Lento: mediana da semana ≥ 3 s. `worse`: piorou para mais de 1,5× o que era.
+ */
+export function siteSlowdown(recent: number[], before: number[]): { slow: boolean; recent_ms: number | null; before_ms: number | null; worse: boolean } {
+  const recentMs = recent.length >= 24 ? median(recent) : null;
+  const beforeMs = before.length >= 24 ? median(before) : null;
+  const slow = recentMs !== null && recentMs >= CLIENT_SLOW_MS;
+  return { slow, recent_ms: recentMs, before_ms: beforeMs, worse: slow && beforeMs !== null && recentMs! >= beforeMs * 1.5 };
+}
+
+/** "o site passou de 1,2 s para 4,1 s" / "o site demora 4,1 s a responder". */
+export function slowdownText(r: { recent_ms: number | null; before_ms: number | null; worse: boolean }): string {
+  const s = (ms: number) => `${(ms / 1000).toFixed(1).replace('.', ',')} s`;
+  if (r.recent_ms === null) return '';
+  return r.worse && r.before_ms !== null
+    ? `o site passou de ${s(r.before_ms)} para ${s(r.recent_ms)} a responder (última semana)`
+    : `o site demora ${s(r.recent_ms)} a responder (última semana)`;
+}
