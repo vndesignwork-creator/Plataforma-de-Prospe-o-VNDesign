@@ -26,6 +26,8 @@ export function DeliverableResponse({
   const [comment, setComment] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  // Já respondeu nesta visita: sem os botões outra vez (mesmo antes de a página atualizar).
+  const [answered, setAnswered] = useState(false);
 
   async function send(action: 'approve' | 'changes') {
     setBusy(true);
@@ -41,7 +43,11 @@ export function DeliverableResponse({
         throw new Error(problem?.errors?.comment?.[0] ?? problem?.detail ?? problem?.title ?? 'Não foi possível enviar. Tente outra vez.');
       }
       setMessage({ ok: true, text: action === 'approve' ? 'Obrigado! Entrega aprovada.' : 'Obrigado! O pedido de alterações foi enviado.' });
-      router.refresh();
+      setAnswered(true);
+      setMode('idle');
+      // Aprovada: a página atualiza o estado. Com alterações pedidas a entrega volta a "rascunho" e sai
+      // da lista ao atualizar (levava consigo esta confirmação): só aparece outra vez quando voltar a ser enviada.
+      if (action === 'approve') router.refresh();
     } catch (error) {
       setMessage({ ok: false, text: error instanceof Error ? error.message : 'Não foi possível enviar.' });
     } finally {
@@ -52,7 +58,7 @@ export function DeliverableResponse({
   if (!pending && !message) return null;
   return (
     <div className="mt-2 flex w-full flex-col gap-2">
-      {!pending ? null : mode === 'idle' ? (
+      {!pending || answered ? null : mode === 'idle' ? (
         <div className="flex flex-wrap gap-2">
           <Button size="sm" onClick={() => void send('approve')} loading={busy} aria-label={`Aprovar: ${title}`}>
             <Check className="h-3.5 w-3.5" aria-hidden /> Aprovar
