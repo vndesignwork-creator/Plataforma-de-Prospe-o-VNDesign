@@ -78,7 +78,7 @@ function vnd_fa_check_connection($page_url, $force = false) {
 	if (!$force && is_array($cached) && isset($cached['endpoint']) && $cached['endpoint'] === $endpoint) {
 		return $cached;
 	}
-	$res = wp_remote_get($endpoint, array('timeout' => 8, 'headers' => array('Accept' => 'application/json')));
+	$res = wp_remote_get($endpoint, array('timeout' => 8, 'headers' => array('Accept' => 'application/json', 'X-VND-Plugin-Version' => VND_FA_VERSION)));
 	if (is_wp_error($res)) {
 		$result = array('ok' => false, 'message' => 'Não foi possível falar com a plataforma (' . $res->get_error_message() . ').');
 	} else {
@@ -87,6 +87,11 @@ function vnd_fa_check_connection($page_url, $force = false) {
 		if ($code === 200 && is_array($body) && !empty($body['ok'])) {
 			$company = !empty($body['company']) ? ' (' . $body['company'] . ')' : '';
 			$result = array('ok' => true, 'message' => 'Ligado à plataforma' . $company . '. Os pedidos chegam como leads quentes.');
+			// Há uma versão nova do plugin na plataforma?
+			$latest = !empty($body['plugin_version']) && is_string($body['plugin_version']) && preg_match('~^\d{1,3}(\.\d{1,3}){1,2}$~', $body['plugin_version']) ? $body['plugin_version'] : '';
+			if ($latest !== '' && version_compare(VND_FA_VERSION, $latest, '<')) {
+				$result['message'] .= ' Há uma versão nova do plugin (' . $latest . '; tens a ' . VND_FA_VERSION . '): descarrega-a na plataforma (Definições → Formulário do site → Descarregar o plugin) e carrega-a em Plugins → Adicionar novo → Carregar plugin → Substituir o atual.';
+			}
 		} elseif ($code === 404) {
 			$result = array('ok' => false, 'message' => 'A plataforma não reconhece este endereço: a análise grátis está desligada ou o endereço mudou. Copia-o outra vez na plataforma.');
 		} else {

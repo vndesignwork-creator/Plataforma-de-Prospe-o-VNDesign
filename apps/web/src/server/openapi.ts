@@ -54,6 +54,7 @@ import {
   ObjectionRequestSchema,
   FreeAuditToggleSchema,
   FreeAuditConfigSchema,
+  FreeAuditPluginSitesSchema,
   FreeAuditSettingsSchema,
   FreeAuditStatusSchema,
   FreeAuditSubmitSchema,
@@ -1309,6 +1310,13 @@ export function getOpenApiDocument() {
           tags: ['Definições'],
           summary: 'Análise grátis: pedidos (mês e total), quantos responderam, quantos são clientes e de onde vieram',
           responses: { '200': { description: 'Números' }, ...common },
+        }),
+      },
+      '/free-audit/plugin-sites': {
+        get: op({
+          tags: ['Definições'],
+          summary: 'Análise grátis: sites com o plugin de WordPress, a versão de cada um e se está desatualizado',
+          responses: { '200': ok(data(FreeAuditPluginSitesSchema)), ...common },
         }),
       },
       '/public/free-audit/{token}/estado/{request}': {

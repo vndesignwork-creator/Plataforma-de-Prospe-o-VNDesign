@@ -162,7 +162,8 @@ function AuditResult({ audit, lead, latest = false }: { audit: SiteAudit; lead: 
   const ownSite = !audit.issues.some((i) => i.code === 'no_own_site');
   const reachable = audit.final_url !== null;
   // Sem a página lida (ex.: o site respondeu com erro ao nosso servidor), título e descrição ficam por verificar.
-  const htmlRead = audit.has_viewport !== null;
+  const seoGoogle = (m.seo_google ?? null) as { has_title?: boolean; has_meta_description?: boolean; has_viewport?: boolean } | null;
+  const htmlRead = audit.has_viewport !== null && !seoGoogle;
   const blockedUs = typeof m.blocked_our_server === 'number' ? m.blocked_our_server : null;
 
   async function onApply() {
@@ -190,7 +191,7 @@ function AuditResult({ audit, lead, latest = false }: { audit: SiteAudit; lead: 
       {blockedUs ? (
         <p role="note" className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm">
           O site está no ar: o Google abriu-o normalmente. Só o servidor da plataforma recebe o erro {blockedUs} (o alojamento do site
-          bloqueia-o), por isso o título, a descrição e o resto da página não foram lidos.
+          bloqueia-o). O título, a descrição e a adaptação a telemóvel são os que o Google viu; o resto da página não foi lido.
         </p>
       ) : null}
 
@@ -229,12 +230,30 @@ function AuditResult({ audit, lead, latest = false }: { audit: SiteAudit; lead: 
               </span>
             )}
           </Check>
-          <Check ok={audit.title ? true : htmlRead ? false : null}>
-            {audit.title ? <>Título: “{audit.title}”</> : htmlRead ? 'Sem título' : 'Título: não verificado'}
-          </Check>
-          <Check ok={audit.meta_description ? true : htmlRead ? false : null}>
-            {audit.meta_description ? 'Tem meta descrição' : htmlRead ? 'Sem meta descrição' : 'Meta descrição: não verificada'}
-          </Check>
+          {seoGoogle && !htmlRead ? (
+            <>
+              {/* O site não deixou a plataforma ler a página: o que o Google viu. */}
+              <Check ok={seoGoogle.has_title ?? null}>
+                {seoGoogle.has_title === undefined ? 'Título: não verificado' : seoGoogle.has_title ? 'Tem título (visto pelo Google)' : 'Sem título (visto pelo Google)'}
+              </Check>
+              <Check ok={seoGoogle.has_meta_description ?? null}>
+                {seoGoogle.has_meta_description === undefined
+                  ? 'Meta descrição: não verificada'
+                  : seoGoogle.has_meta_description
+                    ? 'Tem meta descrição (visto pelo Google)'
+                    : 'Sem meta descrição (visto pelo Google)'}
+              </Check>
+            </>
+          ) : (
+            <>
+              <Check ok={audit.title ? true : htmlRead ? false : null}>
+                {audit.title ? <>Título: “{audit.title}”</> : htmlRead ? 'Sem título' : 'Título: não verificado'}
+              </Check>
+              <Check ok={audit.meta_description ? true : htmlRead ? false : null}>
+                {audit.meta_description ? 'Tem meta descrição' : htmlRead ? 'Sem meta descrição' : 'Meta descrição: não verificada'}
+              </Check>
+            </>
+          )}
           <Check ok={null}>
             Plataforma: {audit.cms ?? 'não identificada'}
             {audit.copyright_year ? ` · © ${audit.copyright_year}` : ''}

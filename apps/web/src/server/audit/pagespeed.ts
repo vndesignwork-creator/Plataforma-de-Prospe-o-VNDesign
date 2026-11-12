@@ -38,6 +38,8 @@ export async function runPageSpeed(
   strategy: 'mobile' | 'desktop' = 'mobile',
 ): Promise<PageSpeedOutcome> {
   const params = new URLSearchParams({ url, strategy, category: 'performance', locale: 'pt-PT' });
+  // SEO também: título, meta descrição e viewport vistos pelo Google (quando o site bloqueia a plataforma).
+  params.append('category', 'seo');
   const key = process.env.PAGESPEED_API_KEY;
   if (key) params.set('key', key);
   try {

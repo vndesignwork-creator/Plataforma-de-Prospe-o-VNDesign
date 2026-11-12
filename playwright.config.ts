@@ -20,6 +20,9 @@ const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:3000';
  */
 export default defineConfig({
   testDir: './e2e',
+  // Apaga no fim o que a corrida criou (só no Supabase local; E2E_MANTER_DADOS=1 desliga).
+  globalSetup: './e2e/global-setup.ts',
+  globalTeardown: './e2e/global-teardown.ts',
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,

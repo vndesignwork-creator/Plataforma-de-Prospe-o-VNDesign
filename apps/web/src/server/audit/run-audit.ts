@@ -147,7 +147,7 @@ export async function collectAudit(rawUrl: string): Promise<AuditCollected> {
     ssl_issuer: page?.certificate?.issuer ?? null,
     ssl_expires_at: page?.certificate?.expires_at ?? null,
     ssl_error: page?.certificate?.error ?? null,
-    has_viewport: html?.has_viewport ?? null,
+    has_viewport: html?.has_viewport ?? (pagespeed?.ok ? (pagespeed.result.seo?.has_viewport ?? null) : null),
     zoom_blocked: html?.zoom_blocked ?? null,
     pagespeed_mobile: pagespeed?.ok ? pagespeed.result.score : null,
     metrics: {
@@ -156,6 +156,8 @@ export async function collectAudit(rawUrl: string): Promise<AuditCollected> {
       ...(pagespeed === null && page ? { pagespeed_skipped: true } : {}),
       ...(geo ? { geo } : {}),
       ...(blockedUs ? { blocked_our_server: page!.status } : {}),
+      // Sem o HTML lido pela plataforma: o que o Google viu (título, descrição, viewport).
+      ...(!html && pagespeed?.ok && pagespeed.result.seo ? { seo_google: pagespeed.result.seo } : {}),
     },
     title: html?.title ?? null,
     meta_description: html?.meta_description ?? null,

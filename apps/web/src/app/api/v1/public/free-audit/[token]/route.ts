@@ -1,5 +1,7 @@
+import { wordpressPluginCaller } from '@vndesign/core';
 import { NextResponse } from 'next/server';
-import { freeAuditPage, submitFreeAudit, type FreeAuditResult } from '@/server/services/free-audit';
+import { freeAuditPage, recordPluginCaller, submitFreeAudit, type FreeAuditResult } from '@/server/services/free-audit';
+import { WP_PLUGIN_VERSION } from '@/server/wp-plugin/plugin-files.generated';
 
 export const runtime = 'nodejs';
 
@@ -39,10 +41,18 @@ const page = (message: string) =>
   `<style>body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#f5f2ed;color:#0d0d0d}main{max-width:28rem;padding:2rem;text-align:center}a{color:#ef5c32}</style></head>` +
   `<body><main><p>${message.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</p><p><a href="javascript:history.back()">Voltar</a></p></main></body></html>`;
 
-export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
-  const info = await freeAuditPage((await params).token);
+export async function GET(req: Request, { params }: { params: Promise<{ token: string }> }) {
+  const token = (await params).token;
+  const info = await freeAuditPage(token);
   if (!info) return NextResponse.json({ ok: false, message: 'Esta página não existe ou foi desligada.' }, { status: 404, headers: CORS });
-  return NextResponse.json({ ok: true, company: info.company, turnstile_site_key: info.turnstile_site_key }, { headers: { ...CORS, 'Cache-Control': 'no-store' } });
+  // O plugin de WordPress (o WordPress diz o site no User-Agent): guarda o site e a versão do plugin.
+  const caller = wordpressPluginCaller(req.headers.get('user-agent'), req.headers.get('x-vnd-plugin-version'));
+  if (caller) await recordPluginCaller(token, caller);
+  return NextResponse.json(
+    // plugin_version: a versão atual (o plugin 1.9.0+ avisa nas suas definições quando há uma nova).
+    { ok: true, company: info.company, turnstile_site_key: info.turnstile_site_key, plugin_version: WP_PLUGIN_VERSION },
+    { headers: { ...CORS, 'Cache-Control': 'no-store' } },
+  );
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ token: string }> }) {

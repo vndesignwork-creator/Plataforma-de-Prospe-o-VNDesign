@@ -285,12 +285,19 @@ export function geoChecklist(geo: GeoFacts): { key: string; ok: boolean; label: 
 export interface PageSpeedResult {
   score: number | null;
   metrics: { lcp_ms?: number; fcp_ms?: number; tbt_ms?: number; cls?: number; si_ms?: number };
+  /** O que o Google viu na página (categoria SEO): útil quando o site não deixa a plataforma lê-la. */
+  seo?: PageSpeedSeo;
+}
+export interface PageSpeedSeo {
+  has_title?: boolean;
+  has_meta_description?: boolean;
+  has_viewport?: boolean;
 }
 
 /** Extrai a pontuação (0–100) e as métricas principais da resposta do PageSpeed. */
 export function parsePageSpeedResponse(json: unknown): PageSpeedResult {
   const lh = (json as { lighthouseResult?: Record<string, unknown> } | null)?.lighthouseResult as
-    | { categories?: { performance?: { score?: number | null } }; audits?: Record<string, { numericValue?: number }> }
+    | { categories?: { performance?: { score?: number | null } }; audits?: Record<string, { numericValue?: number; score?: number | null }> }
     | undefined;
   const raw = lh?.categories?.performance?.score;
   const audits = lh?.audits ?? {};
@@ -309,7 +316,19 @@ export function parsePageSpeedResponse(json: unknown): PageSpeedResult {
   if (tbt !== undefined) metrics.tbt_ms = Math.round(tbt);
   if (cls !== undefined) metrics.cls = Math.round(cls * 1000) / 1000;
   if (si !== undefined) metrics.si_ms = Math.round(si);
-  return { score: typeof raw === 'number' ? Math.round(raw * 100) : null, metrics };
+  // Auditorias de sim/não (score 1 = passou); sem resultado = não verificado.
+  const pass = (key: string) => {
+    const s = audits[key]?.score;
+    return typeof s === 'number' ? s === 1 : undefined;
+  };
+  const seo: PageSpeedSeo = {};
+  const title = pass('document-title');
+  const meta = pass('meta-description');
+  const viewport = pass('viewport');
+  if (title !== undefined) seo.has_title = title;
+  if (meta !== undefined) seo.has_meta_description = meta;
+  if (viewport !== undefined) seo.has_viewport = viewport;
+  return { score: typeof raw === 'number' ? Math.round(raw * 100) : null, metrics, ...(Object.keys(seo).length ? { seo } : {}) };
 }
 
 // -----------------------------------------------------------------------------
@@ -425,6 +444,16 @@ export function buildAuditFindings(
     add('slow_lcp', score !== null && score < 50 ? 'medium' : 'high', `Demora ${seconds(lcp)} a mostrar o conteúdo principal (LCP).`, `Carrega em ${seconds(lcp)}`);
   } else if (facts.response_ms && facts.response_ms > 3000) {
     add('slow_response', 'medium', `O servidor demora ${seconds(facts.response_ms)} a responder.`, 'Servidor lento');
+  }
+
+  // Sem a página lida pela plataforma (ex.: o site bloqueia-a), vale o que o Google viu.
+  const seo = !html ? facts.pagespeed?.seo : undefined;
+  if (seo) {
+    if (seo.has_viewport === false) add('no_viewport', 'high', 'Não está adaptado a telemóvel (falta a meta tag viewport).', 'Não é responsivo');
+    if (seo.has_title === false) add('no_title', 'medium', 'A página não tem título (mau para o Google).', 'Sem título');
+    if (seo.has_meta_description === false) {
+      add('no_meta_description', 'medium', 'Sem meta descrição — o Google escolhe um texto qualquer.', 'Sem meta descrição');
+    }
   }
 
   if (html) {

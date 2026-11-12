@@ -38,7 +38,7 @@ export const HELP_GUIDES: HelpGuide[] = [
       '"Leads quentes" são os que abriram emails ou clicaram em links nos últimos dias: bom momento para ligar.',
       'Os números de cima comparam o período escolhido com o anterior; carrega num número para ver os leads.',
       '"Metas do mês": recebido, propostas, clientes novos, emails, chamadas e WhatsApp. A barra mostra quanto já fizeste e o traço onde devias ir hoje (pelos dias úteis); por baixo, quanto falta por dia útil.',
-      '"Sites dos clientes" só aparece quando há um site em baixo ou um certificado ou domínio a expirar.',
+      '"Sites vigiados" (clientes e leads quentes) só aparece quando há um site em baixo ou um certificado ou domínio a expirar.',
     ],
     tips: ['Os cartões podem ser organizados (mostrar, esconder e ordenar) no menu do Dashboard.', 'Os gráficos e análises completas estão em Estatísticas.'],
   },

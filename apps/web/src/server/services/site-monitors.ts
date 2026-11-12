@@ -68,13 +68,13 @@ async function domainRenewals(client: SupabaseClient, workspaceId: string, leadI
 export async function listSiteMonitors(ctx: ApiContext): Promise<SiteMonitorListItem[]> {
   const { data, error } = await ctx.supabase
     .from('site_monitors')
-    .select(`${SELECT}, lead:leads!inner(id, number, company_name, archived_at, anonymized_at)`)
+    .select(`${SELECT}, lead:leads!inner(id, number, company_name, status, archived_at, anonymized_at)`)
     .eq('workspace_id', ctx.workspaceId)
     .is('lead.anonymized_at', null)
     .order('created_at');
   if (missingTable(error)) return [];
   if (error) throw fromPostgrest(error);
-  type R = SiteMonitor & { lead: { id: string; number: number; company_name: string } };
+  type R = SiteMonitor & { lead: { id: string; number: number; company_name: string; status: string } };
   const rows = (data ?? []) as unknown as R[];
   const renewals = await domainRenewals(
     ctx.supabase,
@@ -83,7 +83,7 @@ export async function listSiteMonitors(ctx: ApiContext): Promise<SiteMonitorList
   );
   return rows.map(({ lead, ...m }) => ({
     ...m,
-    lead: { id: lead.id, number: lead.number, company_name: lead.company_name },
+    lead: { id: lead.id, number: lead.number, company_name: lead.company_name, status: lead.status },
     domain_renewal_on: renewals.get(m.lead_id) ?? null,
   }));
 }

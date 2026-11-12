@@ -258,13 +258,14 @@ test('Site do cliente: vigiar, no ar, 2 falhas = em baixo, data do domínio à m
     expect(m.down_since).not.toBeNull();
     expect(m.is_up).toBe(false);
 
-    // Dashboard: o cartão "Sites dos clientes" mostra o problema.
+    // Dashboard: o cartão "Sites vigiados" mostra o problema (e diz que é um cliente).
     await page.goto('/');
-    const sites = page.getByRole('heading', { name: 'Sites dos clientes' }).locator('xpath=ancestor::div[contains(@class,"rounded-xl")][1]');
+    const sites = page.getByRole('heading', { name: 'Sites vigiados' }).locator('xpath=ancestor::div[contains(@class,"rounded-xl")][1]');
     await expect(sites.getByText(`#${lead.number} Site ${run}`)).toBeVisible();
     // Só na linha deste lead (pode haver outros sites em baixo de outros testes).
     const row = sites.getByRole('listitem').filter({ hasText: `#${lead.number} Site ${run}` });
     await expect(row.getByText(/Em baixo/)).toBeVisible();
+    await expect(row.getByText('Cliente', { exact: true })).toBeVisible();
     // "Falso alarme" na própria linha: o aviso de "em baixo" sai (o domínio a expirar continua).
     await row.getByRole('button', { name: `Falso alarme — Site ${run}` }).click();
     await expect(page.getByText(/Aviso retirado/)).toBeVisible();

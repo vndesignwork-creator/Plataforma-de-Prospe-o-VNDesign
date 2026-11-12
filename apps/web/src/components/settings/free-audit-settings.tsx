@@ -5,8 +5,8 @@
  * para pôr no teu site (plugin de WordPress/Bricks, link ou moldura). Quem a usa entra como lead quente, o site é
  * analisado e recebe o diagnóstico em PDF por email.
  */
-import { DEFAULT_FREE_AUDIT_LAYOUT, freeAuditPageUrl, freeAuditSnippets, type FreeAuditLayout } from '@vndesign/core';
-import { useQueryClient } from '@tanstack/react-query';
+import { DEFAULT_FREE_AUDIT_LAYOUT, formatDateTime, freeAuditPageUrl, freeAuditSnippets, type FreeAuditLayout, type FreeAuditPluginSites } from '@vndesign/core';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronRight, Copy, Download, ExternalLink, RefreshCcw, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -16,6 +16,7 @@ import { Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { FreeAuditExtras } from './free-audit-extras';
 import { api, errorMessage } from '@/lib/api-client';
 import { useMailAccount, usePreference, useRole, useSetPreference, useSettings } from '@/lib/queries';
+import { displayHost } from '@/lib/utils';
 
 const LAYOUT_PREFERENCE = 'free_audit.layout';
 
@@ -161,6 +162,7 @@ export function FreeAuditSettings() {
                   <Download className="h-3.5 w-3.5" aria-hidden /> Descarregar o plugin
                 </a>
               </div>
+              <PluginSites />
               <p className="text-muted">O formulário fica no teu site, com o aspeto do teu site: textos, cores, letras e campos mudam-se no WordPress ou no próprio Bricks. Traz também um texto de persuasão com imagem ao lado do formulário (liga e desliga, à direita ou à esquerda). Já vem ligado a esta página.</p>
               <ol className="ml-4 list-decimal space-y-0.5 text-muted">
                 <li>
@@ -207,3 +209,39 @@ export function FreeAuditSettings() {
     </Card>
   );
 }
+
+/** Os sites com o plugin instalado e a versão de cada um (com aviso quando há uma nova). */
+function PluginSites() {
+  const { data } = useQuery({
+    queryKey: ['free-audit-plugin-sites'],
+    queryFn: () => api<{ data: FreeAuditPluginSites }>('/free-audit/plugin-sites').then((r) => r.data),
+  });
+  if (!data?.sites.length) return null;
+  const outdated = data.sites.filter((s) => s.outdated);
+  return (
+    <div className="flex flex-col gap-1.5">
+      {outdated.length ? (
+        <p role="status" className="rounded-md border border-warning/50 bg-warning-soft px-3 py-2 text-sm">
+          <strong className="font-semibold">Há uma versão nova do plugin ({data.latest}).</strong>{' '}
+          {outdated.length === 1 ? 'O teu site ainda tem uma versão antiga' : `${outdated.length} sites ainda têm uma versão antiga`}: descarrega-a acima e, no
+          WordPress, em Plugins → Adicionar novo → Carregar plugin, escolhe o .zip e carrega em “Substituir o atual”.
+        </p>
+      ) : null}
+      <ul className="flex flex-col gap-1 text-sm" aria-label="Sites com o plugin">
+        {data.sites.map((s) => (
+          <li key={s.site} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <a href={s.site} target="_blank" rel="noreferrer noopener" className="font-medium break-all text-accent-text hover:underline">
+              {displayHost(s.site)}
+            </a>
+            <span className={s.outdated ? 'text-warning' : 'text-success'}>
+              {s.version ? `versão ${s.version}` : 'versão antiga (anterior à 1.9.0)'}
+              {s.outdated ? ' · desatualizado' : ' · atualizado'}
+            </span>
+            <span className="text-xs text-muted">visto {formatDateTime(s.seen_at)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+

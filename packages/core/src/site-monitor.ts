@@ -79,7 +79,7 @@ export type SiteMonitorUpdate = z.infer<typeof SiteMonitorUpdateSchema>;
 
 /** Site do cliente na lista (Projetos/Dashboard): com o lead. */
 export const SiteMonitorListItemSchema = SiteMonitorSchema.extend({
-  lead: z.object({ id: z.uuid(), number: z.int(), company_name: z.string() }),
+  lead: z.object({ id: z.uuid(), number: z.int(), company_name: z.string(), status: z.string().optional().meta({ description: 'Estado do lead (cliente ou lead quente)' }) }),
   domain_renewal_on: z.string().nullable().optional().meta({ description: 'Renovação do domínio registada (Renovações e avenças)' }),
 }).meta({ id: 'SiteMonitorListItem' });
 export type SiteMonitorListItem = z.infer<typeof SiteMonitorListItemSchema>;

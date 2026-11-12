@@ -180,7 +180,8 @@ function vnd_fa_remote_config($endpoint) {
 	if (is_array($cached)) {
 		return $cached + $empty;
 	}
-	$res = wp_remote_get($endpoint, array('timeout' => 4, 'headers' => array('Accept' => 'application/json')));
+	// A versão vai no pedido: a plataforma avisa (em Definições) quando há uma nova.
+	$res = wp_remote_get($endpoint, array('timeout' => 4, 'headers' => array('Accept' => 'application/json', 'X-VND-Plugin-Version' => VND_FA_VERSION)));
 	$body = is_wp_error($res) ? null : json_decode(wp_remote_retrieve_body($res), true);
 	$config = array(
 		'turnstile_site_key' => is_array($body) && !empty($body['turnstile_site_key']) && preg_match('~^[\w-]{1,100}$~', $body['turnstile_site_key']) ? $body['turnstile_site_key'] : null,

@@ -26,7 +26,10 @@ import {
   type FreeAuditSettings,
   type FreeAuditStatus,
   type SiteAudit,
+  isOlderVersion,
+  type FreeAuditPluginSites,
 } from '@vndesign/core';
+import { WP_PLUGIN_VERSION } from '../wp-plugin/plugin-files.generated';
 import { keyHint, openSecret, sealSecret, signValue, verifySigned } from '../ai/secret-box';
 import { AuditRequestError, safeGet } from '../audit/safe-request';
 import type { ApiContext } from '../context';
@@ -492,3 +495,35 @@ export async function runFreeAuditFollowUps(): Promise<{ sent: number; skipped: 
   }
   return { sent, skipped };
 }
+
+// -----------------------------------------------------------------------------
+// Plugin de WordPress: os sites onde está instalado (e a versão)
+// -----------------------------------------------------------------------------
+/** O plugin pediu a configuração: guarda o site e a versão (para avisar quando está desatualizado). */
+export async function recordPluginCaller(token: string, caller: { site: string; version: string | null }): Promise<void> {
+  const ws = await workspaceFor(token);
+  if (!ws) return;
+  await createSupabaseAdminClient()
+    .from('free_audit_plugin_sites')
+    .upsert({ workspace_id: ws.id, site: caller.site, version: caller.version, seen_at: new Date().toISOString() }, { onConflict: 'workspace_id,site' })
+    .then(undefined, () => undefined);
+}
+
+/** Os sites com o plugin (os vistos nos últimos 90 dias), com a versão atual para comparar. */
+export async function listPluginSites(ctx: ApiContext): Promise<FreeAuditPluginSites> {
+  const since = new Date(Date.now() - 90 * 86_400_000).toISOString();
+  const { data, error } = await ctx.supabase
+    .from('free_audit_plugin_sites')
+    .select('site, version, seen_at')
+    .eq('workspace_id', ctx.workspaceId)
+    .gte('seen_at', since)
+    .order('seen_at', { ascending: false });
+  // Sem a tabela (migração por aplicar): sem lista.
+  if (error && (error.code === '42P01' || error.code === 'PGRST205')) return { latest: WP_PLUGIN_VERSION, sites: [] };
+  if (error) throw fromPostgrest(error);
+  return {
+    latest: WP_PLUGIN_VERSION,
+    sites: ((data ?? []) as { site: string; version: string | null; seen_at: string }[]).map((r) => ({ ...r, outdated: isOlderVersion(r.version, WP_PLUGIN_VERSION) })),
+  };
+}
+

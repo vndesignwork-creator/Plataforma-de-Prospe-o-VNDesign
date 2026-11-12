@@ -260,3 +260,52 @@ export function freeAuditSnippets(url: string, layout: FreeAuditLayout = DEFAULT
       `<script>addEventListener("message",function(e){if(e.origin==="${origin}"&&e.data&&e.data.type==="vnd-fa-height"){var f=document.getElementById("vnd-analise-gratis");if(f)f.style.height=e.data.height+"px";}});</script>`,
   };
 }
+
+// -----------------------------------------------------------------------------
+// Plugin de WordPress: em que sites está instalado e se está desatualizado
+// -----------------------------------------------------------------------------
+export const FreeAuditPluginSiteSchema = z
+  .object({
+    site: z.string().meta({ description: 'Endereço do site WordPress (o que o WordPress diz no User-Agent)' }),
+    version: z.string().nullable().meta({ description: 'Versão do plugin (null = anterior à 1.9.0, que não a dizia)' }),
+    seen_at: z.string().meta({ description: 'Última vez que o plugin falou com a plataforma' }),
+    outdated: z.boolean(),
+  })
+  .meta({ id: 'FreeAuditPluginSite' });
+export type FreeAuditPluginSite = z.infer<typeof FreeAuditPluginSiteSchema>;
+
+export const FreeAuditPluginSitesSchema = z
+  .object({ latest: z.string().meta({ description: 'A versão atual do plugin (a que se descarrega)' }), sites: z.array(FreeAuditPluginSiteSchema) })
+  .meta({ id: 'FreeAuditPluginSites' });
+export type FreeAuditPluginSites = z.infer<typeof FreeAuditPluginSitesSchema>;
+
+/** "1.6.1" < "1.10.0"? (números, não texto). Sem versão = mais antiga. */
+export function isOlderVersion(version: string | null | undefined, than: string): boolean {
+  if (!version) return true;
+  const a = version.split('.').map((n) => Number.parseInt(n, 10) || 0);
+  const b = than.split('.').map((n) => Number.parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const d = (a[i] ?? 0) - (b[i] ?? 0);
+    if (d !== 0) return d < 0;
+  }
+  return false;
+}
+
+/**
+ * O site WordPress e a versão do plugin a partir do pedido do plugin: o WordPress manda o
+ * User-Agent "WordPress/6.8; https://site.pt" e o plugin (1.9.0+) o cabeçalho X-VND-Plugin-Version.
+ */
+export function wordpressPluginCaller(userAgent: string | null | undefined, versionHeader: string | null | undefined): { site: string; version: string | null } | null {
+  const m = /^WordPress\/[\d.]+;\s*(https?:\/\/[^\s;]+)/i.exec(userAgent ?? '');
+  if (!m) return null;
+  let site: string;
+  try {
+    const u = new URL(m[1]!);
+    site = `${u.protocol}//${u.host}${u.pathname.replace(/\/+$/, '')}`.toLowerCase();
+  } catch {
+    return null;
+  }
+  if (site.length > 300) return null;
+  const version = versionHeader && /^\d{1,3}(\.\d{1,3}){1,2}$/.test(versionHeader.trim()) ? versionHeader.trim() : null;
+  return { site, version };
+}
