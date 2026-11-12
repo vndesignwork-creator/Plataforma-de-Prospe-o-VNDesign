@@ -79,10 +79,11 @@
 	gap: 1.1rem;
 	margin: 0;
 }
+/* Sem fundo próprio (nem branco nem preto): o formulário fica sobre o fundo do site, como os
+   formulários do próprio site. "Caixa à volta" (opcional) só junta um contorno fino. */
 .vnd-fa--card .vnd-fa__form,
-.vnd-fa--card .vnd-fa__success {
+.vnd-fa__success {
 	padding: clamp(1rem, 4vw, 1.5rem);
-	background: var(--vnd-fa-bg);
 	border: 1px solid var(--vnd-fa-border);
 	border-radius: calc(var(--vnd-fa-radius) * 1.4);
 }
@@ -109,8 +110,9 @@
 	color: inherit;
 	font: inherit;
 	font-size: 16px; /* no telemóvel, menos de 16px faz zoom ao escrever */
-	background: var(--vnd-fa-field);
-	border: 1px solid var(--vnd-fa-border);
+	/* Campos transparentes com um contorno fino na cor do texto (como os do site). */
+	background: transparent;
+	border: 1px solid color-mix(in srgb, var(--vnd-fa-fg) 55%, transparent);
 	border-radius: var(--vnd-fa-radius);
 	box-shadow: none;
 	outline: none;
@@ -139,8 +141,8 @@
 	margin: 0.15rem 0 0;
 	padding: 0;
 	cursor: pointer;
-	background: var(--vnd-fa-field);
-	border: 1.5px solid var(--vnd-fa-border);
+	background: transparent;
+	border: 1.5px solid color-mix(in srgb, var(--vnd-fa-fg) 55%, transparent);
 	border-radius: 0.35rem;
 	transition: background-color 0.15s, border-color 0.15s;
 }

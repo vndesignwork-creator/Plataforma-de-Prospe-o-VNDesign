@@ -287,7 +287,7 @@ class VND_FA_Bricks_Element extends \Bricks\Element {
 		$this->controls['card'] = array(
 			'tab'         => 'content',
 			'group'       => 'vnd_look',
-			'label'       => 'Caixa à volta do formulário',
+			'label'       => 'Contorno à volta do formulário',
 			'type'        => 'select',
 			'options'     => $show,
 			'inline'      => true,

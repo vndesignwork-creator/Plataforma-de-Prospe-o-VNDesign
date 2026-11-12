@@ -60,7 +60,7 @@ function vnd_fa_defaults() {
 		'layout'              => 'stack',
 		// Aspeto
 		'theme'               => 'site',
-		'card'                => '1',
+		'card'                => '0',
 		'accent'              => '#ef5c32',
 		'button_text'         => '#0d0d0d',
 		'radius'              => '10',

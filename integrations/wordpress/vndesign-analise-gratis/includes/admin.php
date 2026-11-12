@@ -265,7 +265,7 @@ function vnd_fa_settings_page() {
 				$select('align', 'Posição');
 				$number('columns_gap', 'Espaço entre o formulário e o texto', 0, 200);
 				?>
-				<tr><th scope="row">Caixa</th><td><?php $check_box('card', 'Caixa à volta do formulário'); ?></td></tr>
+				<tr><th scope="row">Caixa</th><td><?php $check_box('card', 'Contorno à volta do formulário (sem fundo)'); ?></td></tr>
 			</table>
 			<p class="description">No Bricks dá para mudar mais (letras, fundos, contornos, espaços) no próprio elemento.</p>
 

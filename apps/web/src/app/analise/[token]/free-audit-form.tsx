@@ -74,6 +74,9 @@ function Result({ summary }: { summary: FreeAuditSummary }) {
   );
 }
 
+/** Campos transparentes com um contorno fino na cor do texto (como os formulários de um site). */
+const FIELD = 'h-11 rounded-xl border-fg/45 bg-transparent hover:border-fg/70';
+
 export function FreeAuditForm({ token, brand, turnstileSiteKey, stretch = false }: { token: string; brand: string; turnstileSiteKey: string | null; stretch?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
@@ -199,7 +202,7 @@ export function FreeAuditForm({ token, brand, turnstileSiteKey, stretch = false 
 
   if (done) {
     return (
-      <div role="status" className={cn('flex flex-col gap-4 rounded-xl border border-border bg-surface px-4 py-4 sm:px-5', stretch && 'lg:flex-1 lg:justify-center')}>
+      <div role="status" className={cn('flex flex-col gap-4 rounded-xl border border-border px-4 py-4 sm:px-5', stretch && 'lg:flex-1 lg:justify-center')}>
         <p className="flex items-start gap-2 font-medium text-success">
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden /> {done}
         </p>
@@ -216,10 +219,12 @@ export function FreeAuditForm({ token, brand, turnstileSiteKey, stretch = false 
   const siteError = err('website') ?? siteWarning;
   return (
     // Ao lado do texto de persuasão, a caixa estica até à altura dele (as duas colunas alinham).
-    <form onSubmit={submit} noValidate className={cn('flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 sm:p-5', stretch && 'lg:flex-1 lg:justify-center')}>
+    // Sem caixa à volta (sem fundo branco ou preto): o formulário fica sobre o fundo da página, como num site.
+    <form onSubmit={submit} noValidate className={cn('flex flex-col gap-4', stretch && 'lg:flex-1 lg:justify-center')}>
       <label className="flex flex-col gap-1.5 text-sm">
         <span className="font-medium">Endereço do site *</span>
         <Input
+          className={FIELD}
           name="website"
           required
           placeholder="www.o-meu-negocio.pt"
@@ -233,17 +238,17 @@ export function FreeAuditForm({ token, brand, turnstileSiteKey, stretch = false 
       </label>
       <label className="flex flex-col gap-1.5 text-sm">
         <span className="font-medium">Email para receber a análise *</span>
-        <Input name="email" type="email" required placeholder="nome@exemplo.pt" autoComplete="email" aria-invalid={err('email') ? true : undefined} />
+        <Input className={FIELD} name="email" type="email" required placeholder="nome@exemplo.pt" autoComplete="email" aria-invalid={err('email') ? true : undefined} />
         {err('email') ? <span className="text-xs text-danger">{err('email')}</span> : null}
       </label>
       <div className="grid gap-4">
         <label className="flex flex-col gap-1.5 text-sm">
           <span className="font-medium">O seu nome</span>
-          <Input name="name" autoComplete="name" />
+          <Input className={FIELD} name="name" autoComplete="name" />
         </label>
         <label className="flex flex-col gap-1.5 text-sm">
           <span className="font-medium">Nome do negócio</span>
-          <Input name="company" autoComplete="organization" />
+          <Input className={FIELD} name="company" autoComplete="organization" />
         </label>
       </div>
       {/* Campo escondido para robôs. */}
@@ -253,7 +258,7 @@ export function FreeAuditForm({ token, brand, turnstileSiteKey, stretch = false 
         <input
           type="checkbox"
           name="consent"
-          className="peer mt-0.5 grid h-[18px] w-[18px] shrink-0 cursor-pointer appearance-none place-content-center rounded-[5px] border border-border-strong bg-surface-2 transition-colors checked:border-accent checked:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent before:hidden before:h-2.5 before:w-1.5 before:translate-y-[-1px] before:rotate-45 before:border-r-2 before:border-b-2 before:border-accent-fg before:content-[''] checked:before:block"
+          className="peer mt-0.5 grid h-[18px] w-[18px] shrink-0 cursor-pointer appearance-none place-content-center rounded-[5px] border border-fg/45 bg-transparent transition-colors checked:border-accent checked:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent before:hidden before:h-2.5 before:w-1.5 before:translate-y-[-1px] before:rotate-45 before:border-r-2 before:border-b-2 before:border-accent-fg before:content-[''] checked:before:block"
         />
         <span>
           Aceito que {brand} me envie a análise e me contacte sobre ela. Pode pedir para apagar os seus dados a qualquer momento.
