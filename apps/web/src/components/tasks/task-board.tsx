@@ -702,7 +702,7 @@ function BoardCardView({
         aria-label={card.title}
         data-color={color ?? undefined}
       >
-        <div className="flex items-start gap-2 px-4 pt-3 pb-2 text-sm">
+        <div className="flex items-start gap-2 px-4 pt-3 pb-2 text-sm max-sm:flex-wrap max-sm:gap-y-1.5">
           {count > 1 && !archived ? (
             <button
               type="button"
@@ -729,7 +729,11 @@ function BoardCardView({
               <ChevronDown className={cn("h-4 w-4 transition-transform", collapsed && "-rotate-90")} aria-hidden />
             </button>
           ) : null}
-          <CardTitle card={card} onRename={renameList} />
+          {/* Telemóvel: o nome numa linha só sua, por baixo; em cima ficam a pega, a seta, os números e o menu. */}
+          <div className="flex min-w-0 flex-1 max-sm:order-last max-sm:basis-full">
+            <CardTitle card={card} onRename={renameList} />
+          </div>
+          <div className="ml-auto flex shrink-0 items-start gap-2">
           {archived ? (
             <span className="mt-0.5 shrink-0 rounded bg-surface-3 px-1.5 text-xs text-muted">Arquivado</span>
           ) : null}
@@ -925,6 +929,7 @@ function BoardCardView({
               ) : null}
             </DropdownContent>
           </DropdownRoot>
+          </div>
         </div>
         {/* Escrever e Enter: a tarefa entra em cima (aceita "sexta às 10h"). */}
         {archived || collapsed ? null : (
