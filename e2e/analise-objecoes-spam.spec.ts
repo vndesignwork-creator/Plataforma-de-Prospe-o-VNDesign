@@ -192,6 +192,11 @@ test('Analisar o meu site grátis: ligar, pedir pela página pública, lead quen
     const stats = (await (await page.request.get('/api/v1/free-audit/stats')).json()).data as { month: number; total: number; sources: { key: string }[] };
     expect(stats.month).toBeGreaterThanOrEqual(1);
     expect(stats.sources.length).toBeGreaterThanOrEqual(1);
+    // De onde vêm os leads: este conta como "Análise grátis" (Estatísticas).
+    const origins = (await (await page.request.get('/api/v1/dashboard/origins')).json()).data as { origin: string | null; leads: number }[];
+    expect(origins.find((o) => o.origin === 'free_audit')?.leads ?? 0).toBeGreaterThanOrEqual(1);
+    await page.goto('/estatisticas');
+    await expect(page.getByRole('table', { name: 'Leads por origem' }).getByRole('rowheader', { name: 'Análise grátis' })).toBeVisible();
     // O PDF de exemplo e "o site abre?".
     const example = await page.request.get(`/api/v1/public/free-audit/${settings.token}/exemplo`);
     expect(example.headers()['content-type']).toBe('application/pdf');
@@ -239,8 +244,17 @@ test('Plugin de WordPress: descarregar já ligado e o formulário (noutro site) 
   const config = inflateRawSync(zip.subarray(at + zip.readUInt16LE(head + 26) + zip.readUInt16LE(head + 28), at + zip.readUInt16LE(head + 26) + zip.readUInt16LE(head + 28) + zip.readUInt32LE(head + 18))).toString('utf8');
   expect(config).toContain(`/analise/${settings.token}'`);
 
-  // "Testar ligação" do plugin e código errado.
-  expect((await page.request.get(`/api/v1/public/free-audit/${settings.token}`)).status()).toBe(200);
+  // "Testar ligação" do plugin e código errado; diz a versão atual (para "Atualizar agora" no WordPress).
+  const check = await page.request.get(`/api/v1/public/free-audit/${settings.token}`);
+  expect(check.status()).toBe(200);
+  expect((await check.json()).plugin_version).toMatch(/^\d+\.\d+\.\d+$/);
+  // O .zip para o WordPress atualizar sozinho (sem login, pelo código da página).
+  const anon = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+  const update = await anon.request.get(`/api/v1/public/free-audit/${settings.token}/plugin`);
+  expect(update.status()).toBe(200);
+  expect(update.headers()['content-type']).toBe('application/zip');
+  expect((await anon.request.get('/api/v1/public/free-audit/nao-existe-este-codigo-123/plugin')).status()).toBe(404);
+  await anon.close();
   expect((await page.request.get('/api/v1/public/free-audit/nao-existe-este-codigo')).status()).toBe(404);
 
   test.skip(!hasPhp, 'Sem PHP: o formulário do plugin não é gerado.');
@@ -284,6 +298,16 @@ test('Plugin de WordPress: descarregar já ligado e o formulário (noutro site) 
     await visitor.close();
     const leads = (await (await page.request.get(`/api/v1/leads?q=${encodeURIComponent(`Padaria WP ${run}`)}`)).json()).data as { id: string; status: string; next_action_text: string }[];
     expect(leads[0]).toMatchObject({ status: 'respondeu', next_action_text: 'Ligar: pediu a análise grátis do site' });
+    // Vistas e pedidos por site: o plugin contou quem viu o formulário.
+    type FormStats = { sites: { site: string; views: number; requests: number }[] };
+    await expect
+      .poll(async () => ((await (await page.request.get('/api/v1/free-audit/form-stats')).json()).data as FormStats).sites.find((x) => x.site === '127.0.0.1') ?? null)
+      .toMatchObject({ views: expect.any(Number), requests: expect.any(Number) });
+    const site = ((await (await page.request.get('/api/v1/free-audit/form-stats')).json()).data as FormStats).sites.find((x) => x.site === '127.0.0.1')!;
+    expect(site.views).toBeGreaterThanOrEqual(1);
+    expect(site.requests).toBeGreaterThanOrEqual(1);
+    await page.goto('/definicoes/formulario');
+    await expect(page.getByRole('table', { name: /pessoas que viram o formulário/ }).getByRole('rowheader', { name: '127.0.0.1' })).toBeVisible();
     await page.request.delete(`/api/v1/leads/${leads[0]!.id}`);
   } finally {
     server.close();

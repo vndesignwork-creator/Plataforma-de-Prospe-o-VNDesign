@@ -4,6 +4,7 @@
  * Definições → Formulário do site → Análise grátis: os números (pedidos, respostas, clientes
  * e de onde vieram), o follow-up automático e a proteção Cloudflare Turnstile.
  */
+import { formatPercent, type FreeAuditFormStats } from '@vndesign/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
@@ -12,6 +13,52 @@ import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
 import { useSettings } from '@/lib/queries';
+
+/**
+ * Por site, nos últimos 30 dias: quantas pessoas viram o formulário, quantos pedidos chegaram e a
+ * percentagem — para perceber se uma mudança no texto, na imagem ou no lugar traz mais pedidos.
+ */
+function FormViews() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['free-audit-form-stats'],
+    queryFn: () => api<{ data: FreeAuditFormStats }>('/free-audit/form-stats').then((r) => r.data),
+  });
+  const platform = typeof window === 'undefined' ? '' : window.location.hostname.replace(/^www\./, '');
+  const label = (site: string) => (site === platform ? 'Página da plataforma (/analise)' : site === 'sem site' ? 'Sem site conhecido' : site);
+  return (
+    <section aria-label="Vistas e pedidos por site" className="flex flex-col gap-2">
+      <h3 className="font-medium">Vistas e pedidos (últimos 30 dias)</h3>
+      {isLoading ? null : data?.sites.length ? (
+        <table className="w-full text-sm">
+          <caption className="sr-only">Por site: pessoas que viram o formulário, pedidos e percentagem</caption>
+          <thead>
+            <tr className="text-left text-xs text-muted">
+              <th scope="col" className="pb-1 font-medium">Site</th>
+              <th scope="col" className="pb-1 text-right font-medium">Viram</th>
+              <th scope="col" className="pb-1 text-right font-medium">Pedidos</th>
+              <th scope="col" className="pb-1 text-right font-medium">%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.sites.map((s) => (
+              <tr key={s.site} className="border-t border-border">
+                <th scope="row" className="py-1.5 pr-2 text-left font-normal break-all">
+                  {label(s.site)}
+                </th>
+                <td className="py-1.5 text-right tabular-nums">{s.views || '—'}</td>
+                <td className="py-1.5 text-right tabular-nums">{s.requests}</td>
+                <td className="py-1.5 text-right tabular-nums">{s.rate === null ? '—' : formatPercent(s.rate)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="text-xs text-muted">Ainda sem vistas: cada pessoa que vê o formulário conta uma vez por dia (o plugin precisa da versão 1.10.0 ou mais recente).</p>
+      )}
+      <p className="text-xs text-muted">“Viram”: pessoas que chegaram a ver o formulário no ecrã (uma vez por dia cada).</p>
+    </section>
+  );
+}
 
 type Stats = { month: number; total: number; replied: number; clients: number; sources: { key: string; count: number }[] };
 
@@ -73,6 +120,8 @@ export function FreeAuditExtras({ canEdit }: { canEdit: boolean }) {
           </p>
         ) : null}
       </section>
+
+      <FormViews />
 
       <section aria-label="Follow-up automático" className="flex flex-col gap-1.5">
         <h3 className="font-medium">Follow-up automático</h3>

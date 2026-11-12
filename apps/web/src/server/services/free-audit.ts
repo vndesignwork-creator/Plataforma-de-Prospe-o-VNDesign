@@ -28,6 +28,8 @@ import {
   type SiteAudit,
   isOlderVersion,
   type FreeAuditPluginSites,
+  freeAuditViewSite,
+  type FreeAuditFormStats,
 } from '@vndesign/core';
 import { WP_PLUGIN_VERSION } from '../wp-plugin/plugin-files.generated';
 import { keyHint, openSecret, sealSecret, signValue, verifySigned } from '../ai/secret-box';
@@ -111,6 +113,11 @@ async function workspaceFor(token: string): Promise<{ id: string; settings: Free
 }
 
 /** Para a página pública e o plugin: quem oferece a análise e a chave pública do Turnstile. */
+/** O código da página existe e a análise grátis está ligada? (para descarregar o plugin sem login) */
+export async function freeAuditTokenActive(token: string): Promise<boolean> {
+  return (await workspaceFor(token)) !== null;
+}
+
 export async function freeAuditPage(token: string): Promise<{ company: string | null; turnstile_site_key: string | null } | null> {
   const ws = await workspaceFor(token);
   if (!ws) return null;
@@ -211,7 +218,7 @@ export async function submitFreeAudit(token: string, fields: Record<string, unkn
         next_action_text: NEXT_ACTION,
         next_action_on: todayIso(),
       });
-      leadId = (await createLead(ctx, lead, { force: true })).id;
+      leadId = (await createLead(ctx, lead, { force: true, origin: 'free_audit' })).id;
     }
   } catch (error) {
     const extra = (error instanceof ApiError ? error.extra : null) as { do_not_contact?: unknown[] } | null;
@@ -527,3 +534,55 @@ export async function listPluginSites(ctx: ApiContext): Promise<FreeAuditPluginS
   };
 }
 
+
+// Vistas: no máximo 30 por endereço e hora (cada pessoa conta uma vez por dia, no browser).
+const viewHits = new Map<string, number[]>();
+
+/** +1 pessoa viu o formulário (plugin ou página /analise) no site de `page`. */
+export async function countFreeAuditView(token: string, page: unknown, ip: string | null): Promise<boolean> {
+  const site = freeAuditViewSite(typeof page === 'string' ? page.slice(0, 500) : null);
+  if (!site) return false;
+  const key = `${ip ?? '?'}|${site}`;
+  const now = Date.now();
+  const recent = (viewHits.get(key) ?? []).filter((t) => now - t < 3_600_000);
+  recent.push(now);
+  viewHits.set(key, recent);
+  if (viewHits.size > 20_000) viewHits.clear();
+  if (recent.length > 30) return false;
+  const ws = await workspaceFor(token);
+  if (!ws) return false;
+  const { error } = await createSupabaseAdminClient().rpc('vnd_free_audit_count_view', { p_workspace_id: ws.id, p_site: site, p_day: todayIso() });
+  // Antes do "npx supabase db push" a função não existe: não conta, sem erro para o visitante.
+  if (error && !['PGRST202', '42883'].includes(error.code ?? '')) console.warn('[análise grátis] vista', error.message);
+  return !error;
+}
+
+/** Por site, nos últimos `days` dias: quantas pessoas viram o formulário e quantos pedidos chegaram. */
+export async function freeAuditFormStats(ctx: ApiContext, days = 30): Promise<FreeAuditFormStats> {
+  const since = new Date(Date.now() - days * 86_400_000);
+  const [views, requests] = await Promise.all([
+    ctx.supabase.from('free_audit_views').select('site, views').eq('workspace_id', ctx.workspaceId).gte('day', todayIso(since)).limit(5000),
+    ctx.supabase
+      .from('lead_activities')
+      .select('payload')
+      .eq('workspace_id', ctx.workspaceId)
+      .eq('type', 'note')
+      .eq('payload->>free_audit', 'true')
+      .gte('created_at', since.toISOString())
+      .limit(5000),
+  ]);
+  if (views.error && !['42P01', 'PGRST205'].includes(views.error.code ?? '')) throw fromPostgrest(views.error);
+  if (requests.error) throw fromPostgrest(requests.error);
+  const bySite = new Map<string, { views: number; requests: number }>();
+  const at = (site: string) => bySite.get(site) ?? (bySite.set(site, { views: 0, requests: 0 }), bySite.get(site)!);
+  for (const v of (views.data ?? []) as { site: string; views: number }[]) at(v.site).views += v.views;
+  for (const r of (requests.data ?? []) as { payload: { source?: { page?: string } | null } | null }[]) {
+    at(freeAuditViewSite(r.payload?.source?.page) ?? 'sem site').requests += 1;
+  }
+  return {
+    days,
+    sites: [...bySite.entries()]
+      .map(([site, n]) => ({ site, views: n.views, requests: n.requests, rate: n.views ? Math.min(1, n.requests / n.views) : null }))
+      .sort((a, b) => b.views - a.views || b.requests - a.requests),
+  };
+}

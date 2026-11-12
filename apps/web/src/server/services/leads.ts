@@ -29,6 +29,7 @@ import {
   type LeadCityCount,
   type LeadTagCount,
   type LeadUpdate,
+  type LeadOrigin,
 } from '@vndesign/core';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ApiContext } from '../context';
@@ -237,7 +238,7 @@ async function cleanCustom(ctx: ApiContext, values: CustomValues): Promise<Recor
 export async function createLead(
   ctx: ApiContext,
   input: LeadCreate,
-  options: { force?: boolean } = {},
+  options: { force?: boolean; origin?: LeadOrigin } = {},
 ): Promise<Lead> {
   // Um diretório (TripAdvisor, Sluurpy, Google Maps…) no Website passa para a Fonte.
   input = { ...input, ...fixDirectoryWebsite(input) };
@@ -268,11 +269,17 @@ export async function createLead(
   // O prospetor fica responsável pelos leads que cria (e não lhes põe valor).
   if (ctx.role === 'prospector') input = { ...input, assigned_to: ctx.user.id, estimated_value: null };
   else await assertTeamMember(ctx, input.assigned_to);
-  const result = await ctx.supabase
+  // A origem (Estatísticas "De onde vêm os leads"): quem chama diz qual; senão, à mão ou por um token (API).
+  const row = { ...input, workspace_id: ctx.workspaceId, created_by: ctx.user.id };
+  let result = await ctx.supabase
     .from('leads')
-    .insert({ ...input, workspace_id: ctx.workspaceId, created_by: ctx.user.id })
+    .insert({ ...row, origin: options.origin ?? (ctx.token ? 'api' : 'manual') })
     .select(LEAD_SELECT)
     .single();
+  // Base de dados ainda sem a coluna (antes do "npx supabase db push"): cria na mesma, sem a origem.
+  if (result.error && (result.error.code === 'PGRST204' || result.error.code === '42703') && /origin/.test(result.error.message)) {
+    result = await ctx.supabase.from('leads').insert(row).select(LEAD_SELECT).single();
+  }
   const created = unwrap(result) as unknown as Lead;
   // Regras automáticas (Definições → Regras automáticas): o lead novo já sai com elas aplicadas.
   return (await runRulesForLead(ctx, created.id)) ? getLead(ctx, created.id) : created;

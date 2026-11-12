@@ -284,6 +284,27 @@ test('Site do cliente: vigiar, no ar, 2 falhas = em baixo, data do domínio à m
     m = (await (await page.request.post(`/api/v1/site-monitors/${monitor.id}/check`)).json()).data;
     expect(m.down_since).toBeNull();
     expect(m.is_up).toBe(true);
+
+    // Histórico: a quebra fica registada (e já terminou); tempo no ar abaixo de 100%.
+    const history = (await (await page.request.get(`/api/v1/site-monitors/${monitor.id}/history?days=30`)).json()).data as {
+      uptime_pct: number;
+      incidents: { end: string | null }[];
+      checks: number;
+    };
+    expect(history.checks).toBeGreaterThanOrEqual(4);
+    expect(history.incidents).toHaveLength(1);
+    expect(history.incidents[0]!.end).not.toBeNull();
+    expect(history.uptime_pct).toBeLessThan(100);
+    await page.reload();
+    await page.getByRole('tab', { name: /Cliente/ }).click();
+    await expect(page.getByRole('region', { name: 'Site do cliente' }).getByTestId('site-uptime')).toContainText('1 quebra');
+    // Relatório do mês em PDF, para o cliente.
+    const month = new Date().toISOString().slice(0, 7);
+    const report = await page.request.get(`/api/v1/site-monitors/${monitor.id}/report?month=${month}`);
+    expect(report.status()).toBe(200);
+    expect(report.headers()['content-type']).toBe('application/pdf');
+    expect((await report.body()).subarray(0, 4).toString()).toBe('%PDF');
+    expect((await page.request.get(`/api/v1/site-monitors/${monitor.id}/report?month=2099-01`)).status()).toBe(400);
     expect((await page.request.delete(`/api/v1/site-monitors/${monitor.id}`)).status()).toBe(204);
     await page.request.delete(`/api/v1/leads/${lead.id}`);
   } finally {

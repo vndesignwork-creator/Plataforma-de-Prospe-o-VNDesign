@@ -30,6 +30,9 @@ import {
   type SiteMonitorListItem,
   type SiteMonitorUpdate,
   isSocialOrDirectoryUrl,
+  siteUptime,
+  type SiteCheckPoint,
+  type SiteMonitorHistory,
 } from '@vndesign/core';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isPageSpeedEnabled, runPageSpeed } from '../audit/pagespeed';
@@ -573,4 +576,33 @@ export async function runSiteMonitors(options: { dryRun?: boolean; now?: Date; l
     );
   }
   return { due: todo.length, checked };
+}
+
+/**
+ * Histórico de um site vigiado entre `from` e `to`: tempo no ar, quebras e tempo de resposta
+ * (para a secção do site e o relatório mensal do cliente).
+ */
+export async function siteMonitorHistory(ctx: ApiContext, id: string, from: Date, to: Date): Promise<SiteMonitorHistory & { lead_id: string }> {
+  const { data: m, error } = await ctx.supabase.from('site_monitors').select('id, lead_id, url').eq('workspace_id', ctx.workspaceId).eq('id', id).maybeSingle();
+  if (missingTable(error)) throw notReady();
+  if (error) throw fromPostgrest(error);
+  if (!m) throw new ApiError(404, NOT_FOUND);
+  // A verificação anterior ao período dá o estado à entrada (até 2 dias antes).
+  const before = new Date(from.getTime() - 2 * 86_400_000).toISOString();
+  const points: SiteCheckPoint[] = [];
+  for (let page = 0; page < 10; page++) {
+    const { data, error: e } = await ctx.supabase
+      .from('site_monitor_checks')
+      .select('checked_at, ok, down, response_ms')
+      .eq('monitor_id', id)
+      .gte('checked_at', before)
+      .lt('checked_at', to.toISOString())
+      .order('checked_at')
+      .range(page * 1000, page * 1000 + 999);
+    if (missingTable(e)) throw notReady();
+    if (e) throw fromPostgrest(e);
+    points.push(...((data ?? []) as SiteCheckPoint[]));
+    if ((data ?? []).length < 1000) break;
+  }
+  return { monitor_id: m.id as string, lead_id: m.lead_id as string, url: m.url as string, ...siteUptime(points, from, to) };
 }

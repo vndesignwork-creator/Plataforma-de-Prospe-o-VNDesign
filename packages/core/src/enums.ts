@@ -57,6 +57,20 @@ export const LEAD_CHANNEL_META: Record<LeadChannel, { label: string; emoji: stri
   outro: { label: 'Outro', emoji: '🌐' },
 };
 
+/** Como o lead chegou à plataforma (registado sozinho; null = antes de haver este registo). */
+export const LEAD_ORIGINS = ['manual', 'site_form', 'free_audit', 'prospecting', 'import', 'business_card', 'api'] as const;
+export type LeadOrigin = (typeof LEAD_ORIGINS)[number];
+
+export const LEAD_ORIGIN_META: Record<LeadOrigin, { label: string; hint: string }> = {
+  manual: { label: 'Criado à mão', hint: 'Adicionado na plataforma ou na app' },
+  site_form: { label: 'Formulário do site', hint: 'Pedido de contacto pelo formulário do site' },
+  free_audit: { label: 'Análise grátis', hint: 'Pediu a análise grátis do site' },
+  prospecting: { label: 'Prospeção', hint: 'Encontrado pelo gerador de leads (Google Maps)' },
+  import: { label: 'Importação', hint: 'Importado de uma folha (CSV ou Excel)' },
+  business_card: { label: 'Cartão de visita', hint: 'Pelo cartão de visita digital' },
+  api: { label: 'Integração (API)', hint: 'Criado por uma integração com token' },
+};
+
 export const MOBILE_STATUSES = ['sim', 'nao', 'parcial', 'desconhecido'] as const;
 export type MobileStatus = (typeof MOBILE_STATUSES)[number];
 

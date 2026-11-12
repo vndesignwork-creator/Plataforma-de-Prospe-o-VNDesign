@@ -402,7 +402,7 @@ export async function addLeadGenerationCandidates(
       continue;
     }
     try {
-      const lead = await createLead(ctx, parsed.data);
+      const lead = await createLead(ctx, parsed.data, { origin: 'prospecting' });
       candidates[index] = { ...c, added_lead_id: lead.id };
       result.created.push({ index, lead_id: lead.id, number: lead.number });
       if (c.website) toAudit.push(lead.id);

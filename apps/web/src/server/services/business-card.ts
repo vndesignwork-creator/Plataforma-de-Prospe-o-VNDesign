@@ -190,7 +190,7 @@ export async function submitCardContact(token: string, input: CardContact, ip: s
         next_action_text: next,
         next_action_on: todayIso(),
       });
-      leadId = (await createLead(ctx, lead, { force: true })).id;
+      leadId = (await createLead(ctx, lead, { force: true, origin: 'business_card' })).id;
     }
   } catch (error) {
     const extra = (error instanceof ApiError ? error.extra : null) as { do_not_contact?: unknown[] } | null;

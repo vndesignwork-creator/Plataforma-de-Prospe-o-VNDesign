@@ -223,8 +223,9 @@ function PluginSites() {
       {outdated.length ? (
         <p role="status" className="rounded-md border border-warning/50 bg-warning-soft px-3 py-2 text-sm">
           <strong className="font-semibold">Há uma versão nova do plugin ({data.latest}).</strong>{' '}
-          {outdated.length === 1 ? 'O teu site ainda tem uma versão antiga' : `${outdated.length} sites ainda têm uma versão antiga`}: descarrega-a acima e, no
-          WordPress, em Plugins → Adicionar novo → Carregar plugin, escolhe o .zip e carrega em “Substituir o atual”.
+          {outdated.length === 1 ? 'O teu site ainda tem uma versão antiga' : `${outdated.length} sites ainda têm uma versão antiga`}: no WordPress, em
+          Plugins, carrega em “Atualizar agora”. Nas versões anteriores à 1.10.0 esse botão não aparece: descarrega o plugin acima e, em
+          Plugins → Adicionar novo → Carregar plugin, escolhe o .zip e carrega em “Substituir o atual”.
         </p>
       ) : null}
       <ul className="flex flex-col gap-1 text-sm" aria-label="Sites com o plugin">

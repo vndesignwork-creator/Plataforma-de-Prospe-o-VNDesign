@@ -14,6 +14,7 @@ import { DEFAULT_PROSPECTING_SEQUENCE, ProspectingSequenceSchema } from './prosp
 import {
   ACTIVITY_TYPES,
   LEAD_CHANNELS,
+  LEAD_ORIGINS,
   LEAD_STATUSES,
   LOST_REASONS,
   MANUAL_ACTIVITY_TYPES,
@@ -856,6 +857,21 @@ export type BoardColumn = z.infer<typeof BoardColumnSchema>;
 // -----------------------------------------------------------------------------
 // Dashboard
 // -----------------------------------------------------------------------------
+export const LeadOriginSchema = z.enum(LEAD_ORIGINS).meta({ id: 'LeadOrigin' });
+
+/** Estatísticas "De onde vêm os leads": por origem, desde sempre (null = antes de haver o registo). */
+export const OriginStatsSchema = z
+  .array(
+    z.object({
+      origin: LeadOriginSchema.nullable(),
+      leads: z.int(),
+      clients: z.int(),
+      value_won: z.number(),
+    }),
+  )
+  .meta({ id: 'OriginStats' });
+export type OriginStats = z.infer<typeof OriginStatsSchema>;
+
 export const DashboardSchema = z
   .object({
     totals: z.object({

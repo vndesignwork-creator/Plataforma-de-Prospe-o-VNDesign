@@ -90,6 +90,31 @@ export function FreeAuditForm({ token, brand, turnstileSiteKey, stretch = false 
   const turnstileToken = useRef<string | null>(null);
   const turnstileId = useRef<string | null>(null);
   const api = `/api/v1/public/free-audit/${token}`;
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Quantas pessoas veem o formulário (uma vez por dia cada): Definições → Formulário do site.
+  useEffect(() => {
+    const el = formRef.current;
+    if (!el || !navigator.sendBeacon || !window.IntersectionObserver) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        io.disconnect();
+        const today = new Date().toISOString().slice(0, 10);
+        const key = `vnd_fa_view_${token.slice(-40)}`;
+        try {
+          if (window.localStorage.getItem(key) === today) return;
+          window.localStorage.setItem(key, today);
+        } catch {
+          // sem armazenamento: conta na mesma
+        }
+        navigator.sendBeacon(`${api}/vista`, new Blob([JSON.stringify({ page: sourceFields().page ?? window.location.href })], { type: 'text/plain' }));
+      },
+      { threshold: 0.3 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [api, token]);
 
   // Cloudflare Turnstile (só se o dono o ligou).
   useEffect(() => {
@@ -220,7 +245,7 @@ export function FreeAuditForm({ token, brand, turnstileSiteKey, stretch = false 
   return (
     // Ao lado do texto de persuasão, a caixa estica até à altura dele (as duas colunas alinham).
     // Sem caixa à volta (sem fundo branco ou preto): o formulário fica sobre o fundo da página, como num site.
-    <form onSubmit={submit} noValidate className={cn('flex flex-col gap-4', stretch && 'lg:flex-1 lg:justify-center')}>
+    <form ref={formRef} onSubmit={submit} noValidate className={cn('flex flex-col gap-4', stretch && 'lg:flex-1 lg:justify-center')}>
       <label data-reveal-item className="flex flex-col gap-1.5 text-sm">
         <span className="font-medium">Endereço do site *</span>
         <Input

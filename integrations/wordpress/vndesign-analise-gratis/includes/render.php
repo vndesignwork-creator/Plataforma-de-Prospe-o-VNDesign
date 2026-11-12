@@ -171,7 +171,7 @@ function vnd_fa_root_style($o) {
 
 /** O que a plataforma diz desta página (ex.: a chave pública do Turnstile), guardado 1 hora. */
 function vnd_fa_remote_config($endpoint) {
-	$empty = array('turnstile_site_key' => null, 'company' => null);
+	$empty = array('turnstile_site_key' => null, 'company' => null, 'plugin_version' => null);
 	if (!$endpoint || !function_exists('wp_remote_get')) {
 		return $empty;
 	}
@@ -186,6 +186,8 @@ function vnd_fa_remote_config($endpoint) {
 	$config = array(
 		'turnstile_site_key' => is_array($body) && !empty($body['turnstile_site_key']) && preg_match('~^[\w-]{1,100}$~', $body['turnstile_site_key']) ? $body['turnstile_site_key'] : null,
 		'company'            => is_array($body) && !empty($body['company']) ? (string) $body['company'] : null,
+		// A versão atual do plugin (para o WordPress mostrar "Atualizar agora").
+		'plugin_version'     => is_array($body) && !empty($body['plugin_version']) && is_string($body['plugin_version']) && preg_match('/^\d{1,3}(\.\d{1,3}){1,2}$/', $body['plugin_version']) ? $body['plugin_version'] : null,
 	);
 	// Sem resposta: tenta outra vez daqui a 10 minutos.
 	set_transient($key, $config, is_array($body) ? HOUR_IN_SECONDS : 10 * MINUTE_IN_SECONDS);

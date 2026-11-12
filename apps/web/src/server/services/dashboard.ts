@@ -8,6 +8,7 @@ import {
   type DashboardPeriodNumbers,
   type Lead,
   type Today,
+  type OriginStats,
 } from '@vndesign/core';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ApiContext } from '../context';
@@ -180,4 +181,18 @@ export async function getToday(ctx: ApiContext): Promise<Today> {
     meetings: byRef(meetings),
     opened: byRef(opened),
   };
+}
+
+/** "De onde vêm os leads": por origem (desde sempre), leads, clientes e valor ganho. */
+export async function getOriginStats(ctx: ApiContext): Promise<OriginStats> {
+  const { data, error } = await ctx.supabase.rpc('stats_by_origin', { p_workspace_id: ctx.workspaceId });
+  // Antes do "npx supabase db push": sem a função, fica vazio.
+  if (error && (error.code === 'PGRST202' || error.code === '42883')) return [];
+  if (error) throw fromPostgrest(error);
+  return ((data ?? []) as { origin: OriginStats[number]['origin']; leads: number; clients: number; value_won: number | string }[]).map((r) => ({
+    origin: r.origin,
+    leads: Number(r.leads),
+    clients: Number(r.clients),
+    value_won: Number(r.value_won),
+  }));
 }

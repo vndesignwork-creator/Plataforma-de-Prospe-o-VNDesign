@@ -309,3 +309,35 @@ export function wordpressPluginCaller(userAgent: string | null | undefined, vers
   const version = versionHeader && /^\d{1,3}(\.\d{1,3}){1,2}$/.test(versionHeader.trim()) ? versionHeader.trim() : null;
   return { site, version };
 }
+
+/* ---------- Vistas do formulário e pedidos, por site ---------- */
+
+/** O site de uma página ("https://www.Exemplo.pt/contactos" → "exemplo.pt"), ou null. */
+export function freeAuditViewSite(page: string | null | undefined): string | null {
+  if (!page) return null;
+  try {
+    const u = new URL(page);
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+    const host = u.hostname.toLowerCase().replace(/^www\./, '');
+    return /^[a-z0-9.-]{1,253}$/.test(host) && host.includes('.') || host === 'localhost' ? host : null;
+  } catch {
+    return null;
+  }
+}
+
+export const FreeAuditFormStatsSchema = z
+  .object({
+    days: z.int(),
+    sites: z.array(
+      z.object({
+        site: z.string(),
+        /** Pessoas que viram o formulário (uma vez por dia cada). */
+        views: z.int(),
+        requests: z.int(),
+        /** pedidos ÷ vistas (0–1), ou null sem vistas. */
+        rate: z.number().nullable(),
+      }),
+    ),
+  })
+  .meta({ id: 'FreeAuditFormStats' });
+export type FreeAuditFormStats = z.infer<typeof FreeAuditFormStatsSchema>;

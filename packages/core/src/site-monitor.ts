@@ -242,3 +242,156 @@ export function domainLookupDue(m: Pick<SiteMonitor, 'domain_checked_at' | 'doma
   const soon = m.domain_expires_on ? daysBetween(today, m.domain_expires_on) <= DOMAIN_WARN_DAYS : false;
   return last <= addDays(today, soon ? -1 : -7);
 }
+
+/* ---------- Histórico: tempo no ar, quebras e relatório mensal ---------- */
+
+/** Uma verificação guardada (site_monitor_checks). */
+export interface SiteCheckPoint {
+  checked_at: string;
+  ok: boolean;
+  /** Contava como "em baixo" (2 falhas seguidas, sem falso alarme). */
+  down: boolean;
+  response_ms: number | null;
+}
+
+export const SiteIncidentSchema = z.object({
+  start: z.string(),
+  /** null: ainda em baixo. */
+  end: z.string().nullable(),
+  minutes: z.number().int(),
+});
+export type SiteIncident = z.infer<typeof SiteIncidentSchema>;
+
+export const SiteUptimeSchema = z
+  .object({
+    from: z.string(),
+    to: z.string(),
+    /** 0–100, ou null sem verificações no período. */
+    uptime_pct: z.number().nullable(),
+    down_minutes: z.number().int(),
+    incidents: z.array(SiteIncidentSchema),
+    avg_response_ms: z.number().int().nullable(),
+    checks: z.number().int(),
+    /** Um valor por dia (AAAA-MM-DD, em UTC): percentagem no ar ou null sem dados. */
+    days: z.array(z.object({ day: z.string(), uptime_pct: z.number().nullable() })),
+  })
+  .meta({ id: 'SiteUptime' });
+export type SiteUptime = z.infer<typeof SiteUptimeSchema>;
+
+export const SiteMonitorHistorySchema = SiteUptimeSchema.extend({
+  monitor_id: z.string(),
+  url: z.string(),
+}).meta({ id: 'SiteMonitorHistory' });
+export type SiteMonitorHistory = z.infer<typeof SiteMonitorHistorySchema>;
+
+const round1 = (n: number) => Math.round(n * 10) / 10;
+/** 99,95% não pode aparecer como 100% (só 100% quando não houve nenhuma quebra). */
+function pct(up: number, total: number): number | null {
+  if (total <= 0) return null;
+  const v = (up / total) * 100;
+  if (up < total) return Math.min(round1(Math.floor(v * 100) / 100), 99.9);
+  return 100;
+}
+
+/**
+ * Tempo no ar entre `from` e `to` a partir das verificações: o estado de cada verificação vale
+ * até à seguinte. Antes da primeira verificação conhecida não conta (o site ainda não era vigiado).
+ * `points` pode incluir verificações anteriores a `from` (dão o estado à entrada do período).
+ */
+export function siteUptime(points: SiteCheckPoint[], from: Date, to: Date): SiteUptime {
+  const sorted = [...points].sort((a, b) => a.checked_at.localeCompare(b.checked_at));
+  const t0 = from.getTime();
+  const t1 = to.getTime();
+  // Só interessa a última antes do período e as do período.
+  let startIdx = 0;
+  for (let i = 0; i < sorted.length; i++) if (Date.parse(sorted[i]!.checked_at) <= t0) startIdx = i;
+  const pts = sorted.slice(startIdx).filter((p) => Date.parse(p.checked_at) < t1);
+
+  const dayKeys: string[] = [];
+  // Os dias até hoje (no mês corrente, os que ainda não chegaram não aparecem).
+  const lastDay = Math.min(t1, Date.now());
+  for (let d = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate())); d.getTime() < lastDay; d = new Date(d.getTime() + 86_400_000)) {
+    dayKeys.push(d.toISOString().slice(0, 10));
+  }
+  const dayTotal = new Map<string, number>();
+  const dayDown = new Map<string, number>();
+  const add = (map: Map<string, number>, a: number, b: number) => {
+    // Reparte o intervalo [a, b) pelos dias.
+    let s = a;
+    while (s < b) {
+      const dayStart = Date.UTC(new Date(s).getUTCFullYear(), new Date(s).getUTCMonth(), new Date(s).getUTCDate());
+      const e = Math.min(b, dayStart + 86_400_000);
+      const key = new Date(dayStart).toISOString().slice(0, 10);
+      map.set(key, (map.get(key) ?? 0) + (e - s));
+      s = e;
+    }
+  };
+
+  let total = 0;
+  let downMs = 0;
+  const incidents: SiteIncident[] = [];
+  let open: { start: number } | null = null;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i]!;
+    const at = Date.parse(p.checked_at);
+    const a = Math.max(at, t0);
+    const nextAt = i + 1 < pts.length ? Date.parse(pts[i + 1]!.checked_at) : Math.min(t1, Date.now());
+    const b = Math.min(Math.max(nextAt, a), t1);
+    if (b > a) {
+      total += b - a;
+      add(dayTotal, a, b);
+      if (p.down) {
+        downMs += b - a;
+        add(dayDown, a, b);
+      }
+    }
+    if (p.down && !open) open = { start: a };
+    if (!p.down && open) {
+      incidents.push({ start: new Date(open.start).toISOString(), end: new Date(Math.max(at, t0)).toISOString(), minutes: Math.round((Math.max(at, t0) - open.start) / 60_000) });
+      open = null;
+    }
+  }
+  if (open) {
+    const end = Math.min(t1, Date.now());
+    incidents.push({ start: new Date(open.start).toISOString(), end: null, minutes: Math.max(0, Math.round((end - open.start) / 60_000)) });
+  }
+  const inRange = pts.filter((p) => Date.parse(p.checked_at) >= t0);
+  const times = inRange.filter((p) => p.ok && p.response_ms !== null).map((p) => p.response_ms!);
+  return {
+    from: from.toISOString(),
+    to: to.toISOString(),
+    uptime_pct: pct(total - downMs, total),
+    down_minutes: Math.round(downMs / 60_000),
+    incidents,
+    avg_response_ms: times.length ? Math.round(times.reduce((s, n) => s + n, 0) / times.length) : null,
+    checks: inRange.length,
+    days: dayKeys.map((day) => ({ day, uptime_pct: pct((dayTotal.get(day) ?? 0) - (dayDown.get(day) ?? 0), dayTotal.get(day) ?? 0) })),
+  };
+}
+
+/** "99,9%" / "100%". */
+export function formatUptime(v: number | null): string {
+  if (v === null) return '—';
+  return `${v === 100 ? '100' : v.toFixed(1).replace('.', ',')}%`;
+}
+
+/** "1 h 25 min" / "25 min" / "2 dias 3 h". */
+export function formatDowntime(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h < 24) return m ? `${h} h ${m} min` : `${h} h`;
+  const d = Math.floor(h / 24);
+  const rh = h % 24;
+  return `${d} ${d === 1 ? 'dia' : 'dias'}${rh ? ` ${rh} h` : ''}`;
+}
+
+/** O mês AAAA-MM: do dia 1 às 00:00 (UTC) ao dia 1 do mês seguinte. */
+export function monthUtcRange(month: string): { from: Date; to: Date } | null {
+  const m = /^(\d{4})-(\d{2})$/.exec(month);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  if (mo < 1 || mo > 12) return null;
+  return { from: new Date(Date.UTC(y, mo - 1, 1)), to: new Date(Date.UTC(y, mo, 1)) };
+}

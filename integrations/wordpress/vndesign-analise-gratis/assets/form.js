@@ -402,6 +402,40 @@
 		}
 		if (document.querySelector('.vnd-fa--site')) watchSiteTheme();
 		animateIn();
+		countViews();
+	}
+
+	/* ---------- Quantas pessoas veem o formulário (uma vez por dia cada) ----------
+	   Na plataforma: Definições → Formulário do site → vistas, pedidos e a percentagem. */
+	function countViews() {
+		var forms = document.querySelectorAll('form[data-vnd-fa-form]');
+		if (!forms.length || !navigator.sendBeacon || !window.IntersectionObserver) return;
+		var today = new Date().toISOString().slice(0, 10);
+		function send(form) {
+			var action = form.getAttribute('action') || '';
+			if (!/^https?:\/\//.test(action)) return;
+			var key = 'vnd_fa_view_' + action.replace(/[^\w]/g, '').slice(-40);
+			try {
+				if (window.localStorage.getItem(key) === today) return;
+				window.localStorage.setItem(key, today);
+			} catch (e) {
+				/* sem armazenamento: conta na mesma */
+			}
+			try {
+				navigator.sendBeacon(action + '/vista', new Blob([JSON.stringify({ page: window.location.href.slice(0, 500) })], { type: 'text/plain' }));
+			} catch (e) {
+				/* não conta */
+			}
+		}
+		var io = new IntersectionObserver(function (entries) {
+			for (var i = 0; i < entries.length; i++) {
+				if (entries[i].isIntersecting) {
+					io.unobserve(entries[i].target);
+					send(entries[i].target);
+				}
+			}
+		}, { threshold: 0.3 });
+		for (var f = 0; f < forms.length; f++) io.observe(forms[f]);
 	}
 
 	/* ---------- Animações ao entrar no ecrã (como o site) ---------- */

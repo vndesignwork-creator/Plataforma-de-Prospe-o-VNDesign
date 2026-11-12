@@ -6,16 +6,30 @@
  * domínio pela consulta pública, pode escrever-se à mão. Se houver a renovação do
  * domínio em "Renovações e avenças", mostra essa data (e o aviso fica com as renovações).
  */
-import { downMuted, formatDate, formatDateTime, siteIssues, todayIso, type Lead, type SiteMonitor } from '@vndesign/core';
-import { Activity, CalendarClock, Globe, Lock, MoreHorizontal, Pause, Pencil, Play, RefreshCw, Trash2 } from 'lucide-react';
+import {
+  downMuted,
+  formatDate,
+  formatDateTime,
+  formatDowntime,
+  formatUptime,
+  monthLabel,
+  recentMonths,
+  siteIssues,
+  todayIso,
+  type Lead,
+  type SiteMonitor,
+  type SiteMonitorHistory,
+} from '@vndesign/core';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Activity, CalendarClock, FileText, Globe, Lock, MoreHorizontal, Pause, Pencil, Play, RefreshCw, Trash2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/card';
 import { DateInput } from '@/components/ui/date-input';
 import { DropdownContent, DropdownItem, DropdownRoot, DropdownTrigger } from '@/components/ui/dropdown';
-import { Input } from '@/components/ui/input';
-import { errorMessage } from '@/lib/api-client';
+import { Input, Select } from '@/components/ui/input';
+import { api, errorMessage } from '@/lib/api-client';
 import { useSiteMonitor, useSiteMonitorActions } from '@/lib/queries';
 import { cn, displayHost } from '@/lib/utils';
 import { SiteQuickActions } from '@/components/leads/site-quick-actions';
@@ -93,8 +107,77 @@ function UrlForm({ lead, monitor, onDone }: { lead: Lead; monitor?: Monitor; onD
   );
 }
 
+const dayTone = (v: number | null) => (v === null ? 'bg-border' : v >= 99.9 ? 'bg-success' : v >= 98 ? 'bg-warning' : 'bg-danger');
+
+/**
+ * Os últimos 30 dias (tempo no ar, quebras, tempo de resposta, uma barra por dia) e o
+ * relatório do mês em PDF para enviar ao cliente.
+ */
+function SiteHistory({ monitor }: { monitor: Monitor }) {
+  const today = todayIso();
+  const months = recentMonths(today, 12);
+  // Nos primeiros dias do mês, o relatório que interessa é o do mês que acabou.
+  const [month, setMonth] = useState(Number(today.slice(8, 10)) <= 7 ? months[1]! : months[0]!);
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['site-monitor-history', monitor.id],
+    queryFn: () => api<{ data: SiteMonitorHistory }>(`/site-monitors/${monitor.id}/history`, { query: { days: 30 } }).then((r) => r.data),
+    staleTime: 5 * 60_000,
+  });
+  return (
+    <div className="flex flex-col gap-2 rounded-lg bg-surface-2 px-3 py-2">
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <span className="text-xs font-medium text-muted">Últimos 30 dias</span>
+        {isLoading ? (
+          <Skeleton className="h-4 w-48" />
+        ) : error ? (
+          <span className="text-xs text-danger">{errorMessage(error)}</span>
+        ) : data && data.uptime_pct !== null ? (
+          <span data-testid="site-uptime">
+            <strong className="font-semibold">{formatUptime(data.uptime_pct)} no ar</strong>
+            {' · '}
+            {data.incidents.length === 0
+              ? 'sem quebras'
+              : `${data.incidents.length} ${data.incidents.length === 1 ? 'quebra' : 'quebras'} (${formatDowntime(data.down_minutes)})`}
+            {data.avg_response_ms !== null ? ` · abre em ${(data.avg_response_ms / 1000).toFixed(1).replace('.', ',')} s` : ''}
+          </span>
+        ) : (
+          <span className="text-xs text-muted">Ainda sem histórico (começa a contar a partir de agora).</span>
+        )}
+      </div>
+      {data && data.uptime_pct !== null ? (
+        <div
+          className="flex h-6 items-end gap-px"
+          role="img"
+          aria-label={`Dia a dia, últimos 30 dias: ${data.days.filter((d) => d.uptime_pct !== null && d.uptime_pct < 100).length} dias com quebras`}
+        >
+          {data.days.slice(-30).map((d) => (
+            <span
+              key={d.day}
+              title={`${formatDate(d.day)}: ${d.uptime_pct === null ? 'sem dados' : `${formatUptime(d.uptime_pct)} no ar`}`}
+              className={cn('flex-1 rounded-sm', dayTone(d.uptime_pct), d.uptime_pct === null ? 'h-1.5' : 'h-full')}
+            />
+          ))}
+        </div>
+      ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        <Select value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Mês do relatório do site" className="h-8 w-auto text-sm">
+          {months.map((m) => (
+            <option key={m} value={m}>
+              {monthLabel(m)}
+            </option>
+          ))}
+        </Select>
+        <a href={`/api/v1/site-monitors/${monitor.id}/report?month=${month}`} className={buttonClasses('outline', 'sm')} download>
+          <FileText className="h-3.5 w-3.5" aria-hidden /> Relatório para o cliente (PDF)
+        </a>
+      </div>
+    </div>
+  );
+}
+
 function MonitorDetails({ lead, monitor }: { lead: Lead; monitor: Monitor }) {
   const actions = useSiteMonitorActions(lead.id);
+  const queryClient = useQueryClient();
   const [editingDomain, setEditingDomain] = useState(false);
   const [editingUrl, setEditingUrl] = useState(false);
   const today = todayIso();
@@ -109,6 +192,7 @@ function MonitorDetails({ lead, monitor }: { lead: Lead; monitor: Monitor }) {
   async function checkNow() {
     try {
       const m = await actions.check.mutateAsync(monitor.id);
+      void queryClient.invalidateQueries({ queryKey: ['site-monitor-history', monitor.id] });
       toast.success(m.fail_count > 0 ? `Não respondeu: ${m.error ?? 'sem resposta'}` : `No ar${m.response_ms ? ` (respondeu em ${(m.response_ms / 1000).toFixed(1).replace('.', ',')} s)` : ''}.`);
     } catch (error) {
       toast.error(errorMessage(error));
@@ -215,6 +299,7 @@ function MonitorDetails({ lead, monitor }: { lead: Lead; monitor: Monitor }) {
         </li>
       </ul>
       {editingDomain ? <DomainForm monitor={monitor} onDone={() => setEditingDomain(false)} /> : null}
+      <SiteHistory monitor={monitor} />
     </div>
   );
 }

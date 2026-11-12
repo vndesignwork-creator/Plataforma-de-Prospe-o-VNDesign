@@ -105,7 +105,7 @@ export async function submitSiteForm(token: string, fields: Record<string, strin
       }
     } else {
       // Um pedido que chega é sempre um lead novo (parecidos não bloqueiam; a lista "não contactar" sim).
-      leadId = (await createLead(ctx, input, { force: true })).id;
+      leadId = (await createLead(ctx, input, { force: true, origin: 'site_form' })).id;
     }
   } catch (error) {
     const extra = (error instanceof ApiError ? error.extra : null) as { do_not_contact?: unknown[] } | null;

@@ -1,6 +1,7 @@
 'use client';
 
-import { LEAD_CHANNEL_META, LEAD_STATUS_META, formatCurrency, formatDate, formatPercent, serviceLabel, type ComparePeriod } from '@vndesign/core';
+import { LEAD_CHANNEL_META, LEAD_ORIGIN_META, LEAD_STATUS_META, formatCurrency, formatDate, formatPercent, serviceLabel, type ComparePeriod, type OriginStats } from '@vndesign/core';
+import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
@@ -12,7 +13,8 @@ import { ColumnChart } from '@/components/charts/column-chart';
 import { ChannelIcon, SectorIconView, StatusIcon } from '@/components/icons/lead-icons';
 import { ServiceIcon, useServiceCatalog } from '@/components/services/services';
 import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
-import { errorMessage } from '@/lib/api-client';
+import { api, errorMessage } from '@/lib/api-client';
+import { cn } from '@/lib/utils';
 import { useDashboard, useRole, useSectors, useSettings, useTeamNames } from '@/lib/queries';
 import { EmailStatsSection } from './email-stats';
 import { LostReasonsCard } from './lost-reasons';
@@ -25,6 +27,56 @@ import { AccountingSection } from './accounting-section';
 import { TeamStatsSection } from './team-stats';
 
 const euros = (v: number) => formatCurrency(v, { decimals: false });
+
+/** De onde vêm os leads (registado sozinho): quantos chegaram, quantos são clientes e quanto renderam. */
+function OriginsCard() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['dashboard', 'origins'],
+    queryFn: () => api<{ data: OriginStats }>('/dashboard/origins').then((r) => r.data),
+  });
+  const rows = (data ?? []).filter((r) => r.leads > 0).sort((a, b) => Number(!a.origin) - Number(!b.origin) || b.leads - a.leads);
+  return (
+    <Card>
+      <CardHeader title="De onde vêm" description="Como cada lead chegou, quantos se tornaram clientes e quanto renderam." />
+      <div className="p-4">
+        {isLoading ? (
+          <Skeleton className="h-24" />
+        ) : error ? (
+          <p className="text-sm text-danger">{errorMessage(error)}</p>
+        ) : rows.length ? (
+          <table className="w-full text-sm">
+            <caption className="sr-only">Leads por origem</caption>
+            <thead>
+              <tr className="text-left text-xs text-muted">
+                <th scope="col" className="pb-1 font-medium">Origem</th>
+                <th scope="col" className="pb-1 pl-3 text-right font-medium">Leads</th>
+                <th scope="col" className="pb-1 pl-3 text-right font-medium">Clientes</th>
+                <th scope="col" className="pb-1 pl-3 text-right font-medium">Ganho</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.origin ?? 'none'} className="border-t border-border">
+                  <th scope="row" className={cn('py-1.5 pr-2 text-left font-normal', !r.origin && 'text-muted')} title={r.origin ? LEAD_ORIGIN_META[r.origin].hint : 'Leads de antes de a origem ser registada'}>
+                    {r.origin ? LEAD_ORIGIN_META[r.origin].label : 'Sem registo (antigos)'}
+                  </th>
+                  <td className="py-1.5 pl-3 text-right tabular">{r.leads.toLocaleString('pt-PT')}</td>
+                  <td className="py-1.5 pl-3 text-right tabular whitespace-nowrap">
+                    {r.clients}
+                    <span className="ml-1 text-xs text-muted">({formatPercent(r.leads ? r.clients / r.leads : 0)})</span>
+                  </td>
+                  <td className="py-1.5 pl-3 text-right tabular whitespace-nowrap">{euros(r.value_won)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="text-sm text-muted">Ainda sem dados: a origem de cada lead novo fica registada sozinha.</p>
+        )}
+      </div>
+    </Card>
+  );
+}
 
 /** As secções da página (cada pessoa escolhe a ordem e as que vê: "stats.sections"). */
 const STATS_SECTIONS = ['resumo', 'funil', 'leads', 'emails', 'equipa', 'rentabilidade', 'recorrente', 'contabilidade', 'pomodoro'] as const;
@@ -326,6 +378,8 @@ function OwnerStats() {
             />
           </div>
         </Card>
+
+        <OriginsCard />
 
         <Card>
           <CardHeader title="Por canal" />

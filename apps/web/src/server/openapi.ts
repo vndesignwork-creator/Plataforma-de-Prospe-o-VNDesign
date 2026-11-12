@@ -46,6 +46,9 @@ import {
   TaskListCreateSchema,
   TaskListUpdateSchema,
   SiteMonitorSchema,
+  SiteMonitorHistorySchema,
+  OriginStatsSchema,
+  FreeAuditFormStatsSchema,
   SiteMonitorCreateSchema,
   SiteMonitorUpdateSchema,
   SiteMonitorListItemSchema,
@@ -550,6 +553,13 @@ export function getOpenApiDocument() {
           summary: 'Leads novos, contactados e clientes ganhos de um período (este mês ou 30 dias), com o período anterior',
           requestParams: { query: DashboardPeriodQuerySchema },
           responses: { '200': ok(data(DashboardPeriodSchema)), ...common },
+        }),
+      },
+      '/dashboard/origins': {
+        get: op({
+          tags: ['Dashboard'],
+          summary: 'De onde vêm os leads: por origem (formulário do site, análise grátis, prospeção…), leads, clientes e valor ganho',
+          responses: { '200': ok(data(OriginStatsSchema)), ...common },
         }),
       },
       '/dashboard/today': {
@@ -1344,6 +1354,32 @@ export function getOpenApiDocument() {
           security: [],
           requestParams: { path: z.object({ token: z.string() }) },
           responses: { '200': { description: 'PDF', content: { 'application/pdf': { schema: z.string().meta({ format: 'binary' }) } } }, '404': { description: 'Página desconhecida ou desligada' } },
+        }),
+      },
+      '/public/free-audit/{token}/vista': {
+        post: op({
+          tags: ['Público'],
+          summary: 'Sem login: alguém viu o formulário (plugin ou página /analise), uma vez por dia por pessoa',
+          security: [],
+          requestParams: { path: z.object({ token: z.string() }) },
+          requestBody: { content: { 'text/plain': { schema: z.object({ page: z.string() }) } } },
+          responses: { '204': { description: 'Registado (ou ignorado)' } },
+        }),
+      },
+      '/free-audit/form-stats': {
+        get: op({
+          tags: ['Definições'],
+          summary: 'Análise grátis: por site, nos últimos 30 dias, pessoas que viram o formulário, pedidos e a percentagem',
+          responses: { '200': ok(data(FreeAuditFormStatsSchema)), ...common },
+        }),
+      },
+      '/public/free-audit/{token}/plugin': {
+        get: op({
+          tags: ['Público'],
+          summary: 'Sem login: o plugin de WordPress (.zip) já ligado a esta página — para o WordPress atualizar o plugin sozinho',
+          security: [],
+          requestParams: { path: z.object({ token: z.string() }) },
+          responses: { '200': { description: 'Ficheiro .zip', content: { 'application/zip': { schema: z.string().meta({ format: 'binary' }) } } }, '404': { description: 'Página desconhecida ou desligada' } },
         }),
       },
       '/free-audit/wordpress-plugin': {
@@ -2334,6 +2370,22 @@ export function getOpenApiDocument() {
       },
       '/site-monitors/{id}/check': {
         post: op({ tags: ['Projetos'], summary: 'Verificar o site agora', requestParams: { path: idParam }, responses: { '200': ok(data(SiteMonitorSchema)), ...withNotFound } }),
+      },
+      '/site-monitors/{id}/history': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Histórico do site: tempo no ar, quebras e tempo de resposta dos últimos N dias',
+          requestParams: { path: idParam, query: z.object({ days: z.coerce.number().int().min(1).max(366).optional() }) },
+          responses: { '200': ok(data(SiteMonitorHistorySchema)), ...withNotFound },
+        }),
+      },
+      '/site-monitors/{id}/report': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Relatório do mês do site em PDF, para enviar ao cliente',
+          requestParams: { path: idParam, query: z.object({ month: z.string().optional() }) },
+          responses: { '200': { description: 'PDF', content: { 'application/pdf': { schema: z.string().meta({ format: 'binary' }) } } }, ...withNotFound },
+        }),
       },
       '/leads/{id}/objection': {
         post: op({
