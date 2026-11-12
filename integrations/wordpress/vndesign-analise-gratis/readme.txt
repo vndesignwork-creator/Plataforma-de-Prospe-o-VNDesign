@@ -4,7 +4,7 @@ Tags: formulário, leads, análise, bricks
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.7.0
+Stable tag: 1.8.0
 License: GPLv2 or later
 
 O formulário “Analisar o meu site grátis” ligado à plataforma VNDesign Leads.
@@ -30,6 +30,9 @@ Quem preenche o formulário entra na plataforma como lead quente (com “Ligar�
 4. No Bricks, junta o elemento “Análise grátis do site” à página. Noutros editores, usa o shortcode.
 
 == Changelog ==
+
+= 1.8.0 =
+* Animações como as do site: ao entrar no ecrã, cada elemento sobe e aparece (fadeInUp, 1 s), um a seguir ao outro. Desligam-se em Definições → Análise grátis → Animações (ou no Bricks), e respeitam o "reduzir movimento" do visitante.
 
 = 1.7.0 =
 * Formulário sem caixa à volta (sem fundo branco ou preto): fica sobre o fundo do site, com campos transparentes e um contorno fino na cor do texto.

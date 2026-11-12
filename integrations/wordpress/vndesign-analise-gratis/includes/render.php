@@ -105,6 +105,10 @@ function vnd_fa_root_classes($o) {
 	if (vnd_fa_on($o['card'])) {
 		$classes[] = 'vnd-fa--card';
 	}
+	// Entrada com movimento (como o site: "fadeInUp" ao aparecer no ecrã).
+	if (vnd_fa_on($o['animate'])) {
+		$classes[] = 'vnd-fa--animate';
+	}
 	if ($o['layout'] === 'two') {
 		$classes[] = 'vnd-fa--two';
 	}

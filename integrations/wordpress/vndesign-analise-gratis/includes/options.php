@@ -61,6 +61,7 @@ function vnd_fa_defaults() {
 		// Aspeto
 		'theme'               => 'site',
 		'card'                => '0',
+		'animate'             => '1',
 		'accent'              => '#ef5c32',
 		'button_text'         => '#0d0d0d',
 		'radius'              => '10',

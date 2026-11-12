@@ -373,3 +373,19 @@
 @media (prefers-reduced-motion: reduce) {
 	.vnd-fa * { transition: none !important; }
 }
+
+/* ---------- Animações ao entrar no ecrã (como o site: "fadeInUp" do Bricks) ----------
+   Cada elemento começa invisível e um pouco abaixo e sobe até ao lugar (1 s, ease).
+   O JS só esconde os elementos quando consegue animá-los (sem JS fica tudo à vista). */
+@keyframes vnd-fa-fade-in-up {
+	from { opacity: 0; transform: translate3d(0, 100%, 0); }
+	to { opacity: 1; transform: translateZ(0); }
+}
+.vnd-fa--animate.vnd-fa--anim-ready [data-vnd-fa-in] { opacity: 0; }
+.vnd-fa--animate.vnd-fa--anim-ready [data-vnd-fa-in].is-in {
+	animation: vnd-fa-fade-in-up 1s ease both;
+	animation-delay: var(--vnd-fa-in-delay, 0s);
+}
+@media (prefers-reduced-motion: reduce) {
+	.vnd-fa--animate.vnd-fa--anim-ready [data-vnd-fa-in] { opacity: 1; animation: none !important; }
+}

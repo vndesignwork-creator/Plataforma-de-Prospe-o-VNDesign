@@ -34,7 +34,7 @@ function vnd_fa_sanitize($input) {
 	$input = is_array($input) ? $input : array();
 	$defaults = vnd_fa_defaults();
 	$choices = vnd_fa_choices();
-	$checkboxes = array('show_title', 'show_intro', 'show_name', 'show_company', 'privacy_link', 'card', 'promo', 'promo_image_show', 'show_example', 'promo_hide_form_title');
+	$checkboxes = array('show_title', 'show_intro', 'show_name', 'show_company', 'privacy_link', 'card', 'animate', 'promo', 'promo_image_show', 'show_example', 'promo_hide_form_title');
 	$textareas = array('intro', 'consent', 'success', 'promo_text', 'promo_points', 'promo_note');
 	$out = array();
 	foreach ($defaults as $key => $default) {
@@ -266,6 +266,7 @@ function vnd_fa_settings_page() {
 				$number('columns_gap', 'Espaço entre o formulário e o texto', 0, 200);
 				?>
 				<tr><th scope="row">Caixa</th><td><?php $check_box('card', 'Contorno à volta do formulário (sem fundo)'); ?></td></tr>
+				<tr><th scope="row">Animações</th><td><?php $check_box('animate', 'Os elementos sobem e aparecem ao entrar no ecrã (como no site)'); ?></td></tr>
 			</table>
 			<p class="description">No Bricks dá para mudar mais (letras, fundos, contornos, espaços) no próprio elemento.</p>
 

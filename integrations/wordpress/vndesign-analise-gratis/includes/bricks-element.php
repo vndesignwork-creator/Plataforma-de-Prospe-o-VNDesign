@@ -293,6 +293,15 @@ class VND_FA_Bricks_Element extends \Bricks\Element {
 			'inline'      => true,
 			'placeholder' => $show[vnd_fa_on($d['card']) ? '1' : '0'],
 		);
+		$this->controls['animate'] = array(
+			'tab'         => 'content',
+			'group'       => 'vnd_look',
+			'label'       => 'Animações ao entrar no ecrã',
+			'type'        => 'select',
+			'options'     => $show,
+			'inline'      => true,
+			'placeholder' => $show[vnd_fa_on($d['animate']) ? '1' : '0'],
+		);
 		$this->controls['align'] = array(
 			'tab'         => 'content',
 			'group'       => 'vnd_look',

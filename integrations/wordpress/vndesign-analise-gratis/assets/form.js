@@ -401,6 +401,37 @@
 			for (var j = 0; j < imgs.length; j++) pickIllustration(imgs[j]);
 		}
 		if (document.querySelector('.vnd-fa--site')) watchSiteTheme();
+		animateIn();
+	}
+
+	/* ---------- Animações ao entrar no ecrã (como o site) ---------- */
+	var REVEAL = '.vnd-fa__media, .vnd-fa__eyebrow, .vnd-fa__promo-title, .vnd-fa__promo-text, .vnd-fa__points li, .vnd-fa__note, ' +
+		'.vnd-fa__title, .vnd-fa__intro, .vnd-fa__form > .vnd-fa__field, .vnd-fa__form > .vnd-fa__row, .vnd-fa__form > .vnd-fa__consent, ' +
+		'.vnd-fa__form > .vnd-fa__button, .vnd-fa__form > .vnd-fa__example';
+	function animateIn() {
+		var roots = document.querySelectorAll('.vnd-fa--animate:not(.vnd-fa--anim-ready)');
+		if (!roots.length || !window.IntersectionObserver) return;
+		if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		var io = new IntersectionObserver(function (entries) {
+			// Os que aparecem juntos entram um a seguir ao outro (pela ordem da página).
+			var shown = [];
+			for (var i = 0; i < entries.length; i++) {
+				if (entries[i].isIntersecting) shown.push(entries[i].target);
+			}
+			for (var j = 0; j < shown.length; j++) {
+				shown[j].style.setProperty('--vnd-fa-in-delay', Math.min(j * 0.08, 0.6) + 's');
+				shown[j].classList.add('is-in');
+				io.unobserve(shown[j]);
+			}
+		}, { threshold: 0.1, rootMargin: '0px 0px -5% 0px' });
+		for (var r = 0; r < roots.length; r++) {
+			var items = roots[r].querySelectorAll(REVEAL);
+			for (var k = 0; k < items.length; k++) {
+				items[k].setAttribute('data-vnd-fa-in', '');
+				io.observe(items[k]);
+			}
+			roots[r].classList.add('vnd-fa--anim-ready');
+		}
 	}
 
 	/* O botão ☀ do site muda classes/atributos do <html>, do <body> ou de uma secção (Bricks):
