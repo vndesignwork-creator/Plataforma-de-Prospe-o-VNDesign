@@ -39,6 +39,7 @@ export function ReconnectCard({ className }: { className?: string }) {
   const { data } = useQuery({
     queryKey: ['reconnect', months],
     queryFn: bundled(
+      `reconnect:${months}`,
       (b) => (months === 6 ? (b.reconnect as ReconnectClient[] | null) : null),
       () => api<{ data: ReconnectClient[] }>('/projects/reconnect', { query: { months } }).then((r) => r.data),
     ),

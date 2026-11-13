@@ -401,7 +401,7 @@ type DashboardBundle = {
   reconnect: unknown[] | null;
   preferences: Record<string, unknown>;
 };
-let dashboardBundle: { at: number; promise: Promise<DashboardBundle | null> } | null = null;
+let dashboardBundle: { at: number; promise: Promise<DashboardBundle | null>; used: Set<string> } | null = null;
 /** Só serve aos cartões que se abrem logo a seguir (depois cada um pede o seu, como sempre). */
 const BUNDLE_FRESH_MS = 5000;
 
@@ -411,23 +411,29 @@ export function startDashboardBundle() {
   if (dashboardBundle && Date.now() - dashboardBundle.at < BUNDLE_FRESH_MS) return;
   dashboardBundle = {
     at: Date.now(),
+    used: new Set(),
     promise: api<{ data: DashboardBundle }>('/dashboard/bundle')
       .then((r) => r.data)
       .catch(() => null),
   };
 }
 
-/** A parte do pedido único (se houver um acabado de começar), ou undefined. */
-async function fromBundle<T>(pick: (b: DashboardBundle) => T | null | undefined): Promise<T | undefined> {
-  if (!dashboardBundle || Date.now() - dashboardBundle.at > BUNDLE_FRESH_MS) return undefined;
-  const b = await dashboardBundle.promise;
+/**
+ * A parte do pedido único (se houver um acabado de começar), ou undefined. Cada cartão usa-a
+ * UMA vez (ao abrir): depois de uma mudança, o cartão pede outra vez os seus dados, frescos.
+ */
+async function fromBundle<T>(key: string, pick: (b: DashboardBundle) => T | null | undefined): Promise<T | undefined> {
+  const current = dashboardBundle;
+  if (!current || Date.now() - current.at > BUNDLE_FRESH_MS || current.used.has(key)) return undefined;
+  current.used.add(key);
+  const b = await current.promise;
   const v = b ? pick(b) : undefined;
   return v === null ? undefined : v;
 }
 
 /** Os cartões do Dashboard que vêm no pedido único (para o cartão "Clientes antigos"). */
-export function bundled<T>(pick: (b: DashboardBundle) => T | null | undefined, fallback: () => Promise<T>): () => Promise<T> {
-  return async () => (await fromBundle(pick)) ?? fallback();
+export function bundled<T>(key: string, pick: (b: DashboardBundle) => T | null | undefined, fallback: () => Promise<T>): () => Promise<T> {
+  return async () => (await fromBundle(key, pick)) ?? fallback();
 }
 
 export function usePreference<T>(key: string) {
@@ -435,7 +441,7 @@ export function usePreference<T>(key: string) {
     queryKey: qk.pref(key),
     queryFn: async () => {
       // As preferências do Dashboard vêm no pedido único (null = ainda não escolhida).
-      const fromDashboard = await fromBundle((b) => (key in b.preferences ? { value: (b.preferences[key] ?? null) as T | null } : null));
+      const fromDashboard = await fromBundle(`pref:${key}`, (b) => (key in b.preferences ? { value: (b.preferences[key] ?? null) as T | null } : null));
       if (fromDashboard) return fromDashboard.value;
       return api<{ data: { value: T | null } }>(`/preferences/${key}`).then((r) => r.data.value);
     },
@@ -467,7 +473,7 @@ export function useBoard(query: Record<string, string | string[] | undefined>) {
 }
 
 export function useDashboard(enabled = true) {
-  return useQuery({ queryKey: ['dashboard'], queryFn: bundled((b) => b.dashboard, () => api<{ data: Dashboard }>('/dashboard').then((r) => r.data)), enabled });
+  return useQuery({ queryKey: ['dashboard'], queryFn: bundled('dashboard', (b) => b.dashboard, () => api<{ data: Dashboard }>('/dashboard').then((r) => r.data)), enabled });
 }
 
 /** Dashboard: os números de um período com o anterior (para comparar). */
@@ -475,6 +481,7 @@ export function useDashboardPeriod(period: DashboardPeriod | null) {
   return useQuery({
     queryKey: ['dashboard-period', period],
     queryFn: bundled(
+      `period:${period}`,
       (b) => (period === 'month' ? b.period : null),
       () => api<{ data: DashboardPeriodNumbers }>('/dashboard/period', { query: { period: period ?? undefined } }).then((r) => r.data),
     ),
@@ -483,7 +490,7 @@ export function useDashboardPeriod(period: DashboardPeriod | null) {
 }
 
 export function useToday() {
-  return useQuery({ queryKey: ['today'], queryFn: bundled((b) => b.today, () => api<{ data: Today }>('/dashboard/today').then((r) => r.data)) });
+  return useQuery({ queryKey: ['today'], queryFn: bundled('today', (b) => b.today, () => api<{ data: Today }>('/dashboard/today').then((r) => r.data)) });
 }
 
 export function useImports() {
@@ -847,7 +854,7 @@ export function useRunLeadGenerationSchedule() {
 export function useReplies(days = 14) {
   return useQuery({
     queryKey: ['replies', days],
-    queryFn: bundled((b) => (days === 14 ? b.replies : null), () => api<{ data: Replies }>('/replies', { query: { days } }).then((r) => r.data)),
+    queryFn: bundled(`replies:${days}`, (b) => (days === 14 ? b.replies : null), () => api<{ data: Replies }>('/replies', { query: { days } }).then((r) => r.data)),
   });
 }
 
@@ -920,7 +927,7 @@ export function useDeletePayment(leadId: string) {
 export function useBilling(enabled = true) {
   return useQuery({
     queryKey: ['billing'],
-    queryFn: bundled((b) => b.billing, () => api<{ data: BillingSummary }>('/dashboard/billing').then((r) => r.data)),
+    queryFn: bundled('billing', (b) => b.billing, () => api<{ data: BillingSummary }>('/dashboard/billing').then((r) => r.data)),
     enabled,
   });
 }
@@ -931,7 +938,7 @@ export function useProjects(state: 'active' | 'completed', enabled = true) {
     queryKey: ['projects', state],
     queryFn: async () => {
       const projects =
-        (await fromBundle((b) => (state === 'active' ? b.projects : null))) ?? (await api<{ data: Project[] }>('/projects', { query: { state } })).data;
+        (await fromBundle(`projects:${state}`, (b) => (state === 'active' ? b.projects : null))) ?? (await api<{ data: Project[] }>('/projects', { query: { state } })).data;
       // As tarefas de cada projeto já vêm aqui: ficam na cache e a lista não as pede uma a uma.
       for (const p of projects) if (p.task_items) qc.setQueryData(['tasks', p.lead.id], p.task_items);
       return projects;
@@ -1701,7 +1708,7 @@ export function useRole(): MemberRole | null {
 export function useGoals(month?: string, enabled = true) {
   return useQuery({
     queryKey: ['goals', month ?? 'now'],
-    queryFn: bundled((b) => (month ? null : b.goals), () => api<{ data: GoalProgress }>('/goals', { query: month ? { month } : {} }).then((r) => r.data)),
+    queryFn: bundled(`goals:${month ?? 'now'}`, (b) => (month ? null : b.goals), () => api<{ data: GoalProgress }>('/goals', { query: month ? { month } : {} }).then((r) => r.data)),
     staleTime: 60_000,
     enabled,
   });
@@ -1721,7 +1728,7 @@ export function useSiteMonitor(leadId: string, enabled = true) {
 export function useSiteMonitors(enabled = true) {
   return useQuery({
     queryKey: ['site-monitors'],
-    queryFn: bundled((b) => b.site_monitors, () => api<{ data: SiteMonitorListItem[] }>('/site-monitors').then((r) => r.data)),
+    queryFn: bundled('site-monitors', (b) => b.site_monitors, () => api<{ data: SiteMonitorListItem[] }>('/site-monitors').then((r) => r.data)),
     staleTime: 5 * 60_000,
     enabled,
   });
