@@ -37,7 +37,7 @@ import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
 import { api, errorMessage } from '@/lib/api-client';
 import { DueChip, ReminderChip } from '@/components/tasks/task-chips';
 import { Linkified } from '@/lib/linkify';
-import { useBilling, useDashboard, useProjects, useReschedule, useRole, useSettings, useToday } from '@/lib/queries';
+import { startDashboardBundle, useBilling, useDashboard, useProjects, useReschedule, useRole, useSettings, useToday } from '@/lib/queries';
 import { MyTeamTiles } from './team-stats';
 import { DashboardHeader, SummaryStrip } from './dashboard-top';
 import { ReconnectCard } from './reconnect-card';
@@ -819,6 +819,8 @@ function ProspectorDashboard() {
 }
 
 function OwnerDashboard() {
+  // Um só pedido para os cartões todos (começa já, antes de os cartões se abrirem).
+  useState(() => startDashboardBundle());
   const { data, isLoading, error } = useDashboard();
   const { data: settings } = useSettings();
   const projectsOn = settings?.features.projects ?? false;

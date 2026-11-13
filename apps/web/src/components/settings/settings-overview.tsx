@@ -158,10 +158,12 @@ const STATUS: Record<SettingsSection['slug'], () => ReactNode> = {
   'listas-tarefas': TaskTemplatesStatus,
   regras: RulesStatus,
   apagados: () => null,
+  repor: () => null,
   funcionalidades: FeaturesStatus,
   ia: AiStatus,
   api: ApiStatus,
   estado: PlatformStatusBadge,
+  registo: () => null,
 };
 
 function StatusBadge({ status }: { status: Status }) {

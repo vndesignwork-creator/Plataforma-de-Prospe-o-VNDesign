@@ -53,7 +53,7 @@ function cellToText(value: ExcelJS.CellValue): string {
   return String(value);
 }
 
-function worksheetRows(ws: ExcelJS.Worksheet): string[][] {
+export function worksheetRows(ws: ExcelJS.Worksheet): string[][] {
   const rows: string[][] = [];
   const width = ws.actualColumnCount || ws.columnCount;
   ws.eachRow({ includeEmpty: true }, (row, rowNumber) => {

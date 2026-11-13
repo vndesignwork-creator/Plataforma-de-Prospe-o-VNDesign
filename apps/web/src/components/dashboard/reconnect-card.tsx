@@ -28,7 +28,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Select } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
-import { useLead, useSignature } from '@/lib/queries';
+import { bundled, useLead, useSignature } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
 const VISIBLE = 5;
@@ -38,7 +38,10 @@ export function ReconnectCard({ className }: { className?: string }) {
   const [all, setAll] = useState(false);
   const { data } = useQuery({
     queryKey: ['reconnect', months],
-    queryFn: () => api<{ data: ReconnectClient[] }>('/projects/reconnect', { query: { months } }).then((r) => r.data),
+    queryFn: bundled(
+      (b) => (months === 6 ? (b.reconnect as ReconnectClient[] | null) : null),
+      () => api<{ data: ReconnectClient[] }>('/projects/reconnect', { query: { months } }).then((r) => r.data),
+    ),
   });
   if (!data?.length) return null;
   const shown = all ? data : data.slice(0, VISIBLE);

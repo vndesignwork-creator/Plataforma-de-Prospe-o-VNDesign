@@ -42,6 +42,7 @@ import {
   UserPlus,
   MessagesSquare,
   type LucideIcon,
+  PhoneOff,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
@@ -243,7 +244,7 @@ function SearchBody({
     const general: Item[] = q
       ? [
           { key: 'g:novo-lead', group: 'Ações' as const, label: 'Novo lead', href: '/leads/novo', icon: UserPlus, keywords: 'criar adicionar lead empresa' },
-          ...(prospector ? [] : [{ key: 'g:duplicados', group: 'Ações' as const, label: 'Limpar duplicados', href: '/leads/duplicados', icon: CopyX, keywords: 'repetidos juntar duplicados' }]),
+          ...(prospector ? [] : [{ key: 'g:duplicados', group: 'Ações' as const, label: 'Limpar duplicados', href: '/leads/duplicados', icon: CopyX, keywords: 'repetidos juntar duplicados' }, { key: 'g:contactos', group: 'Ações' as const, label: 'Contactos a corrigir', href: '/leads/contactos', icon: PhoneOff, keywords: 'email inválido telefone errado voltou para trás bounce corrigir contactos' }]),
           ...(onShortcuts ? [{ key: 'g:atalhos', group: 'Ações' as const, label: 'Atalhos de teclado', run: 'shortcuts' as const, icon: Keyboard, keywords: 'teclado atalhos teclas' }] : []),
         ].filter((a) => matches(a.label, a.keywords))
       : [];

@@ -5,13 +5,14 @@
  *  - os problemas em segundo plano (um email que não saiu, uma caixa de email que não liga,
  *    um erro inesperado), juntos por tipo, com quantas vezes aconteceram.
  */
-import type { PlatformProblem, PlatformStatus } from '@vndesign/core';
+import type { AuditEvent, ClientErrorReport, PlatformProblem, PlatformStatus } from '@vndesign/core';
 import { CRON_DIGEST_LATE_MS, CRON_REMINDERS_LATE_MS, cronState, formatDateTime } from '@vndesign/core';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
 import { isMailConfigured, sendMail } from '../mailer';
 import { createSupabaseAdminClient } from '../supabase-admin';
 import { saveAlert } from './push';
+import { teamNames } from './team';
 
 const missing = (e: { code?: string } | null) => !!e && ['42P01', 'PGRST205', 'PGRST202', '42883'].includes(e.code ?? '');
 
@@ -171,4 +172,45 @@ export async function checkCronStaleness(now = Date.now()): Promise<number> {
 /** Para os testes: volta a deixar ver já. */
 export function resetStaleCheck() {
   lastStaleCheck = 0;
+}
+
+// No máximo 20 erros do ecrã por pessoa e hora (um ecrã em ciclo não enche o registo).
+const screenHits = new Map<string, number[]>();
+
+/** Uma página falhou no navegador: fica em Estado da plataforma (os iguais juntam-se). */
+export async function reportClientError(ctx: ApiContext, report: ClientErrorReport): Promise<void> {
+  const now = Date.now();
+  const recent = (screenHits.get(ctx.user.id) ?? []).filter((t) => now - t < 3_600_000);
+  recent.push(now);
+  screenHits.set(ctx.user.id, recent);
+  if (screenHits.size > 5000) screenHits.clear();
+  if (recent.length > 20) return;
+  // Sem os ids nem o número do lead no caminho: o mesmo erro em leads diferentes junta-se.
+  const page = report.page.split('?')[0]!.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, ':id').replace(/\/\d+(-[^/]*)?(?=\/|$)/g, '/:n');
+  await reportProblem(ctx.workspaceId, {
+    area: 'screen',
+    key: `${page} ${report.message.slice(0, 80)}`,
+    title: `Uma página falhou no ecrã (${page})`,
+    detail: `${report.message}${report.digest ? ` (código ${report.digest})` : ''}`,
+  });
+}
+
+/** O registo de alterações (os últimos 200; RLS: só o dono e os administradores). */
+export async function listAuditEvents(ctx: ApiContext): Promise<AuditEvent[]> {
+  const { data, error } = await ctx.supabase
+    .from('audit_events')
+    .select('id, at, action, summary, actor_user_id, actor_token_id')
+    .eq('workspace_id', ctx.workspaceId)
+    .order('at', { ascending: false })
+    .limit(200);
+  if (missing(error)) return [];
+  if (error) throw fromPostgrest(error);
+  const names = new Map((await teamNames(ctx)).map((m) => [m.user_id, m.name]));
+  return ((data ?? []) as { id: number; at: string; action: string; summary: string; actor_user_id: string | null; actor_token_id: string | null }[]).map((r) => ({
+    id: r.id,
+    at: r.at,
+    action: r.action,
+    summary: r.summary,
+    actor: r.actor_token_id ? 'Integração (API)' : r.actor_user_id ? (names.get(r.actor_user_id) ?? 'Antigo membro') : 'Antigo membro',
+  }));
 }

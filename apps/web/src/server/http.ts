@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import type { ApiTokenScope } from '@vndesign/core';
 import { z } from 'zod';
 import { prospectorAllowed, scrubForProspector } from './prospector-access';
+import { auditRuleFor, recordAudit } from './audit';
 import { getApiContext, type ApiContext } from './context';
 
 export class ApiError extends Error {
@@ -153,13 +154,20 @@ export function apiRoute<P extends RouteParams = RouteParams>(handler: Handler<P
       ctx = await getApiContext(req);
       assertTokenScope(ctx, options.token);
       const params = await segment.params;
-      if (ctx.role !== 'prospector') return await compressJson(req, await handler(req, ctx, params));
+      // Registo de alterações (Definições): só alguns pedidos, depois de correrem bem.
+      const audit = auditRuleFor(req);
+      const auditBody = audit?.body ? await req.clone().json().catch(() => null) : null;
+      const done = (res: Response) => {
+        if (audit && ctx && res.ok) void recordAudit(ctx, audit, req, auditBody);
+        return res;
+      };
+      if (ctx.role !== 'prospector') return done(await compressJson(req, await handler(req, ctx, params)));
       // Equipa de prospeção: só a parte comercial, e sem valores.
       const path = new URL(req.url).pathname.replace(/^\/api\/v1/, '');
       if (!prospectorAllowed(req.method, path)) {
         throw new ApiError(403, 'Sem acesso', 'Esta parte da plataforma não está disponível para a equipa de prospeção.');
       }
-      const res = await handler(req, ctx, params);
+      const res = done(await handler(req, ctx, params));
       if (!res.headers.get('content-type')?.includes('application/json')) return res;
       const body = scrubForProspector(await res.json());
       return await compressJson(req, NextResponse.json(body, { status: res.status, headers: res.headers }));

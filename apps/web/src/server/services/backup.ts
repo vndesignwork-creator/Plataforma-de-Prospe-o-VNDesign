@@ -10,7 +10,7 @@ import { ApiError } from '../http';
 import { isMailConfigured, sendMail, sendWithAccount } from '../mailer';
 import { createSupabaseAdminClient } from '../supabase-admin';
 import { systemContext } from '../system-context';
-import { leadsToXlsx } from './export';
+import { leadsToXlsx, type BackupTask } from './export';
 import { listAllLeads } from './leads';
 import { loadSmtpAccount } from './mail-account';
 import { loadServiceCatalog } from './service-catalog';
@@ -30,12 +30,13 @@ export async function sendBackup(ctx: ApiContext): Promise<{ sent_to: string; le
   if (!recipient) throw new ApiError(422, 'Falta o destinatário', 'Indica para que email vai a cópia em Definições → Funcionalidades.');
   const [leads, services] = await Promise.all([listAllLeads(ctx, { archived: 'include' }), loadServiceCatalog(ctx)]);
   const today = todayIso();
-  const attachment = { filename: `copia-leads-vndesign-${today}.xlsx`, content: await leadsToXlsx(leads, services), contentType: XLSX };
+  const tasks = await backupTasks(ctx, leads);
+  const attachment = { filename: `copia-leads-vndesign-${today}.xlsx`, content: await leadsToXlsx(leads, services, [], tasks), contentType: XLSX };
   const text = [
     'Olá!',
     '',
-    `Em anexo segue a cópia de segurança semanal dos teus leads (${leads.length}, incluindo os arquivados).`,
-    'Guarda-a numa pasta tua (ex.: Google Drive). Se alguma vez precisares, importa-a em Leads → Importar / Exportar.',
+    `Em anexo segue a cópia de segurança semanal dos teus leads (${leads.length}, incluindo os arquivados) e das suas tarefas (${tasks.length}).`,
+    'Guarda-a numa pasta tua (ex.: Google Drive). Se alguma vez precisares, carrega-a em Definições → Repor a partir de uma cópia: repõe só o que faltar.',
     '',
     'Para mudar o dia ou desligar: Definições → Funcionalidades.',
   ].join('\n');
@@ -101,4 +102,26 @@ export async function runWeeklyBackups(options: { dryRun?: boolean; now?: Date }
     }
   }
   return results;
+}
+
+/** As tarefas dos leads da cópia (folha "Tarefas"). */
+async function backupTasks(ctx: ApiContext, leads: readonly { id: string; number: number; company_name: string }[]): Promise<BackupTask[]> {
+  const byId = new Map(leads.map((l) => [l.id, l]));
+  const out: BackupTask[] = [];
+  for (let from = 0; from < 50_000; from += 1000) {
+    const { data, error } = await ctx.supabase
+      .from('lead_tasks')
+      .select('lead_id, title, due_on, done_at')
+      .eq('workspace_id', ctx.workspaceId)
+      .not('lead_id', 'is', null)
+      .order('created_at')
+      .range(from, from + 999);
+    if (error) break;
+    for (const t of (data ?? []) as { lead_id: string; title: string; due_on: string | null; done_at: string | null }[]) {
+      const lead = byId.get(t.lead_id);
+      if (lead) out.push({ number: lead.number, company_name: lead.company_name, title: t.title, due_on: t.due_on, done_at: t.done_at });
+    }
+    if ((data?.length ?? 0) < 1000) break;
+  }
+  return out;
 }

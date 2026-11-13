@@ -25,6 +25,26 @@ export function ErrorView({ error, reset }: { error: Error & { digest?: string }
     }
   });
 
+  // Um erro a sério (não uma publicação nova): fica em Definições → Estado da plataforma.
+  useEffect(() => {
+    if (updating) return;
+    try {
+      void fetch('/api/v1/platform/client-error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        keepalive: true,
+        body: JSON.stringify({
+          message: (error.message || error.name || 'Erro').slice(0, 500),
+          page: window.location.pathname.slice(0, 300),
+          ...(error.digest ? { digest: error.digest.slice(0, 100) } : {}),
+        }),
+      }).catch(() => undefined);
+    } catch {
+      // sem registo: o ecrã de erro aparece na mesma
+    }
+  }, [error, updating]);
+
   useEffect(() => {
     if (!autoReload) return;
     let stopped = false;

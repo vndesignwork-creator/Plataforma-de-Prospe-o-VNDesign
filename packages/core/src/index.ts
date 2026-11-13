@@ -77,3 +77,4 @@ export * from './deliverability';
 export * from './objections';
 export * from './free-audit';
 export * from './platform';
+export * from './contact-issues';

@@ -49,6 +49,11 @@ import {
   SiteMonitorHistorySchema,
   OriginStatsSchema,
   PlatformStatusSchema,
+  ClientErrorReportSchema,
+  AuditEventSchema,
+  ContactIssuesSchema,
+  BackupRestorePreviewSchema,
+  BackupRestoreResultSchema,
   FreeAuditFormStatsSchema,
   SiteMonitorCreateSchema,
   SiteMonitorUpdateSchema,
@@ -440,6 +445,13 @@ export function getOpenApiDocument() {
           responses: { '200': ok(data(DuplicateCheckResultSchema)), ...common },
         }),
       },
+      '/leads/contact-issues': {
+        get: op({
+          tags: ['Leads'],
+          summary: 'Contactos a corrigir: emails que voltaram para trás ou de domínios sem email, telefones mal escritos ou repetidos noutro lead',
+          responses: { '200': ok(data(ContactIssuesSchema)), ...common },
+        }),
+      },
       '/leads/cities': {
         get: op({
           tags: ['Leads'],
@@ -563,8 +575,37 @@ export function getOpenApiDocument() {
           responses: { '200': ok(data(PlatformStatusSchema)), ...common },
         }),
       },
+      '/backup/restore/preview': {
+        post: op({
+          tags: ['Definições'],
+          summary: 'Repor a partir de uma cópia: o que o Excel da cópia tem e falta agora (leads pelo número e tarefas). Não altera nada.',
+          requestBody: { content: { 'multipart/form-data': { schema: z.object({ file: z.string().meta({ format: 'binary' }) }) } } },
+          responses: { '200': ok(data(BackupRestorePreviewSchema)), ...common },
+        }),
+      },
+      '/backup/restore': {
+        post: op({
+          tags: ['Definições'],
+          summary: 'Repor a partir de uma cópia: repõe só o que falta (leads com o mesmo número e as suas tarefas); nada do que existe muda',
+          requestBody: { content: { 'multipart/form-data': { schema: z.object({ file: z.string().meta({ format: 'binary' }) }) } } },
+          responses: { '200': ok(data(BackupRestoreResultSchema)), ...common },
+        }),
+      },
+      '/platform/audit': {
+        get: op({ tags: ['Definições'], summary: 'Registo de alterações fora dos leads: definições, exportações, equipa, chaves da API… (dono e administradores)', responses: { '200': ok(data(z.array(AuditEventSchema))), ...common } }),
+      },
+      '/platform/client-error': {
+        post: op({ tags: ['Definições'], summary: 'Uma página falhou no navegador (fica no Estado da plataforma)', requestBody: body(ClientErrorReportSchema), responses: { '204': { description: 'Registado' }, ...common } }),
+      },
       '/platform/problems/{id}/resolve': {
         post: op({ tags: ['Definições'], summary: 'Marcar um problema como resolvido', requestParams: { path: idParam }, responses: { '204': { description: 'Resolvido' }, ...withNotFound } }),
+      },
+      '/dashboard/bundle': {
+        get: op({
+          tags: ['Dashboard'],
+          summary: 'Tudo o que o Dashboard mostra num só pedido (dashboard, hoje, mês, metas, respostas, projetos, faturação, sites, clientes antigos e preferências); as partes que falhem vêm a null',
+          responses: { '200': { description: '{ data: { dashboard, today, period, goals, replies, projects, billing, site_monitors, reconnect, preferences } }' }, ...common },
+        }),
       },
       '/dashboard/origins': {
         get: op({

@@ -2,6 +2,8 @@
 
 import {
   Activity,
+  ArchiveRestore,
+  History,
   CircleHelp,
   Ban,
   BellRing,
@@ -73,10 +75,12 @@ export const SETTINGS_SECTIONS = [
   { slug: 'listas-tarefas', label: 'Listas de tarefas', group: 'leads', icon: ListChecks, description: 'Modelos de tarefas para leads e projetos.' },
   { slug: 'regras', label: 'Regras automáticas', group: 'leads', icon: Workflow, description: 'Se o lead cumpre uma condição, a plataforma faz o resto.' },
   { slug: 'apagados', label: 'Apagados (reciclagem)', group: 'leads', icon: Trash2, description: 'Leads e projetos apagados: ficam 30 dias para repor.' },
+  { slug: 'repor', label: 'Repor a partir de uma cópia', group: 'leads', icon: ArchiveRestore, description: 'Repõe o que falta a partir da cópia de segurança semanal.' },
   { slug: 'funcionalidades', label: 'Funcionalidades', group: 'plataforma', icon: ToggleRight, description: 'Ligar ou desligar partes da plataforma.' },
   { slug: 'ia', label: 'Inteligência artificial', group: 'plataforma', icon: Sparkles, description: 'Fornecedores e chaves da IA.' },
   { slug: 'api', label: 'Acesso externo (API)', group: 'plataforma', icon: KeyRound, description: 'Chaves para outras apps usarem a plataforma.' },
   { slug: 'estado', label: 'Estado da plataforma', group: 'plataforma', icon: Activity, description: 'Tarefas automáticas e problemas em segundo plano.' },
+  { slug: 'registo', label: 'Registo de alterações', group: 'plataforma', icon: History, description: 'Quem mudou definições, exportou leads ou mexeu na equipa.' },
 ] as const satisfies readonly { slug: string; label: string; group: SettingsGroup; icon: LucideIcon; description: string }[];
 
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
@@ -94,11 +98,13 @@ export const SETTINGS_KEYWORDS: Partial<Record<SettingsSection['slug'], string>>
   'listas-tarefas': 'modelos tarefas checklist',
   setores: 'sectores oportunidades argumentos',
   etiquetas: 'tags marcas renomear juntar',
+  repor: 'cópia de segurança backup restaurar recuperar repor excel perdi apaguei',
   apagados: 'reciclagem lixo apagados repor recuperar projeto apagado',
   campos: 'campos personalizados extra nº de lojas faturação',
   'nao-contactar': 'rgpd bloquear lista negra opt-out',
   formulario: 'site bricks webhook contacto',
   api: 'token integração acesso externo',
+  registo: 'auditoria histórico quem mudou exportou apagou convidou chaves api segurança log',
   estado: 'cron tarefas automáticas erros problemas falhas lembretes parados saúde',
   conta: 'palavra-passe password 2fa sessões segurança apagar fotografia avatar dois passos',
 };

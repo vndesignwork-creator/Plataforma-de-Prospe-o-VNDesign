@@ -385,10 +385,60 @@ export function useLogActivity(id: string) {
   });
 }
 
+// -----------------------------------------------------------------------------
+// Dashboard num só pedido: ao abrir, o Dashboard pede /dashboard/bundle e cada cartão usa a
+// sua parte (em vez de 12 pedidos). Se a resposta não chegar, cada cartão pede a sua.
+// -----------------------------------------------------------------------------
+type DashboardBundle = {
+  dashboard: Dashboard | null;
+  today: Today | null;
+  period: DashboardPeriodNumbers | null;
+  goals: GoalProgress | null;
+  replies: Replies | null;
+  projects: Project[] | null;
+  billing: BillingSummary | null;
+  site_monitors: SiteMonitorListItem[] | null;
+  reconnect: unknown[] | null;
+  preferences: Record<string, unknown>;
+};
+let dashboardBundle: { at: number; promise: Promise<DashboardBundle | null> } | null = null;
+/** Só serve aos cartões que se abrem logo a seguir (depois cada um pede o seu, como sempre). */
+const BUNDLE_FRESH_MS = 5000;
+
+/** Começa o pedido único do Dashboard (chamado ao desenhar o Dashboard, antes dos cartões). */
+export function startDashboardBundle() {
+  if (typeof window === 'undefined') return;
+  if (dashboardBundle && Date.now() - dashboardBundle.at < BUNDLE_FRESH_MS) return;
+  dashboardBundle = {
+    at: Date.now(),
+    promise: api<{ data: DashboardBundle }>('/dashboard/bundle')
+      .then((r) => r.data)
+      .catch(() => null),
+  };
+}
+
+/** A parte do pedido único (se houver um acabado de começar), ou undefined. */
+async function fromBundle<T>(pick: (b: DashboardBundle) => T | null | undefined): Promise<T | undefined> {
+  if (!dashboardBundle || Date.now() - dashboardBundle.at > BUNDLE_FRESH_MS) return undefined;
+  const b = await dashboardBundle.promise;
+  const v = b ? pick(b) : undefined;
+  return v === null ? undefined : v;
+}
+
+/** Os cartões do Dashboard que vêm no pedido único (para o cartão "Clientes antigos"). */
+export function bundled<T>(pick: (b: DashboardBundle) => T | null | undefined, fallback: () => Promise<T>): () => Promise<T> {
+  return async () => (await fromBundle(pick)) ?? fallback();
+}
+
 export function usePreference<T>(key: string) {
   return useQuery({
     queryKey: qk.pref(key),
-    queryFn: () => api<{ data: { value: T | null } }>(`/preferences/${key}`).then((r) => r.data.value),
+    queryFn: async () => {
+      // As preferências do Dashboard vêm no pedido único (null = ainda não escolhida).
+      const fromDashboard = await fromBundle((b) => (key in b.preferences ? { value: (b.preferences[key] ?? null) as T | null } : null));
+      if (fromDashboard) return fromDashboard.value;
+      return api<{ data: { value: T | null } }>(`/preferences/${key}`).then((r) => r.data.value);
+    },
     staleTime: Infinity,
   });
 }
@@ -417,20 +467,23 @@ export function useBoard(query: Record<string, string | string[] | undefined>) {
 }
 
 export function useDashboard(enabled = true) {
-  return useQuery({ queryKey: ['dashboard'], queryFn: () => api<{ data: Dashboard }>('/dashboard').then((r) => r.data), enabled });
+  return useQuery({ queryKey: ['dashboard'], queryFn: bundled((b) => b.dashboard, () => api<{ data: Dashboard }>('/dashboard').then((r) => r.data)), enabled });
 }
 
 /** Dashboard: os números de um período com o anterior (para comparar). */
 export function useDashboardPeriod(period: DashboardPeriod | null) {
   return useQuery({
     queryKey: ['dashboard-period', period],
-    queryFn: () => api<{ data: DashboardPeriodNumbers }>('/dashboard/period', { query: { period: period ?? undefined } }).then((r) => r.data),
+    queryFn: bundled(
+      (b) => (period === 'month' ? b.period : null),
+      () => api<{ data: DashboardPeriodNumbers }>('/dashboard/period', { query: { period: period ?? undefined } }).then((r) => r.data),
+    ),
     enabled: period !== null,
   });
 }
 
 export function useToday() {
-  return useQuery({ queryKey: ['today'], queryFn: () => api<{ data: Today }>('/dashboard/today').then((r) => r.data) });
+  return useQuery({ queryKey: ['today'], queryFn: bundled((b) => b.today, () => api<{ data: Today }>('/dashboard/today').then((r) => r.data)) });
 }
 
 export function useImports() {
@@ -794,7 +847,7 @@ export function useRunLeadGenerationSchedule() {
 export function useReplies(days = 14) {
   return useQuery({
     queryKey: ['replies', days],
-    queryFn: () => api<{ data: Replies }>('/replies', { query: { days } }).then((r) => r.data),
+    queryFn: bundled((b) => (days === 14 ? b.replies : null), () => api<{ data: Replies }>('/replies', { query: { days } }).then((r) => r.data)),
   });
 }
 
@@ -867,7 +920,7 @@ export function useDeletePayment(leadId: string) {
 export function useBilling(enabled = true) {
   return useQuery({
     queryKey: ['billing'],
-    queryFn: () => api<{ data: BillingSummary }>('/dashboard/billing').then((r) => r.data),
+    queryFn: bundled((b) => b.billing, () => api<{ data: BillingSummary }>('/dashboard/billing').then((r) => r.data)),
     enabled,
   });
 }
@@ -877,7 +930,8 @@ export function useProjects(state: 'active' | 'completed', enabled = true) {
   return useQuery({
     queryKey: ['projects', state],
     queryFn: async () => {
-      const projects = (await api<{ data: Project[] }>('/projects', { query: { state } })).data;
+      const projects =
+        (await fromBundle((b) => (state === 'active' ? b.projects : null))) ?? (await api<{ data: Project[] }>('/projects', { query: { state } })).data;
       // As tarefas de cada projeto já vêm aqui: ficam na cache e a lista não as pede uma a uma.
       for (const p of projects) if (p.task_items) qc.setQueryData(['tasks', p.lead.id], p.task_items);
       return projects;
@@ -1647,7 +1701,7 @@ export function useRole(): MemberRole | null {
 export function useGoals(month?: string, enabled = true) {
   return useQuery({
     queryKey: ['goals', month ?? 'now'],
-    queryFn: () => api<{ data: GoalProgress }>('/goals', { query: month ? { month } : {} }).then((r) => r.data),
+    queryFn: bundled((b) => (month ? null : b.goals), () => api<{ data: GoalProgress }>('/goals', { query: month ? { month } : {} }).then((r) => r.data)),
     staleTime: 60_000,
     enabled,
   });
@@ -1667,7 +1721,7 @@ export function useSiteMonitor(leadId: string, enabled = true) {
 export function useSiteMonitors(enabled = true) {
   return useQuery({
     queryKey: ['site-monitors'],
-    queryFn: () => api<{ data: SiteMonitorListItem[] }>('/site-monitors').then((r) => r.data),
+    queryFn: bundled((b) => b.site_monitors, () => api<{ data: SiteMonitorListItem[] }>('/site-monitors').then((r) => r.data)),
     staleTime: 5 * 60_000,
     enabled,
   });

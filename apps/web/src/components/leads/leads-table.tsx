@@ -26,7 +26,7 @@ import {
   type LeadSortField,
   leadPath,
 } from '@vndesign/core';
-import { Archive, ArchiveRestore, ArrowDown, ArrowDownUp, ArrowUp, ArrowUpDown, Columns3, CopyX, Download, Search, SlidersHorizontal, Trash2, Upload, UserCheck, X } from 'lucide-react';
+import { Archive, ArchiveRestore, PhoneOff, ArrowDown, ArrowDownUp, ArrowUp, ArrowUpDown, Columns3, CopyX, Download, Search, SlidersHorizontal, Trash2, Upload, UserCheck, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
@@ -357,6 +357,10 @@ export function LeadsPageActions() {
         <DropdownItem onSelect={() => router.push('/leads/duplicados')}>
           <CopyX className="h-4 w-4 text-muted" aria-hidden />
           Limpar duplicados…
+        </DropdownItem>
+        <DropdownItem onSelect={() => router.push('/leads/contactos')}>
+          <PhoneOff className="h-4 w-4 text-muted" aria-hidden />
+          Contactos a corrigir…
         </DropdownItem>
         <DropdownItem onSelect={() => router.push('/leads/apagados')}>
           <Trash2 className="h-4 w-4 text-muted" aria-hidden />
