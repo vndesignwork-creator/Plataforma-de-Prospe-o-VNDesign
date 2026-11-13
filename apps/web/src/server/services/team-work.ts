@@ -15,6 +15,7 @@ import {
   type NotificationClearQuery,
   type NotificationList,
   type NotificationRead,
+  lisbonDayStart,
 } from '@vndesign/core';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest, unwrap } from '../http';
@@ -26,13 +27,21 @@ import { teamNames } from './team';
 
 const NOTIFICATION_SELECT = 'id, kind, lead_id, task_id, activity_id, actor_user_id, title, text, url, read_at, created_at, lead:leads(id, number, company_name, phone)';
 
+/**
+ * "Para hoje" (o resumo diário no sino) só vale no próprio dia: os de dias que já passaram não
+ * aparecem nem contam como por ler. O aviso semanal "A arrefecer" (🧊, também 'daily') fica.
+ */
+const currentOnly = (since: string) => `kind.neq.daily,title.like.🧊*,created_at.gte.${since}`;
+
 export async function listNotifications(ctx: ApiContext): Promise<NotificationList> {
+  const today = lisbonDayStart();
   const [list, unread] = await Promise.all([
     ctx.supabase
       .from('notifications')
       .select(NOTIFICATION_SELECT)
       .eq('workspace_id', ctx.workspaceId)
       .eq('user_id', ctx.user.id)
+      .or(currentOnly(today))
       .order('created_at', { ascending: false })
       .limit(30),
     ctx.supabase
@@ -40,6 +49,7 @@ export async function listNotifications(ctx: ApiContext): Promise<NotificationLi
       .select('id', { count: 'exact', head: true })
       .eq('workspace_id', ctx.workspaceId)
       .eq('user_id', ctx.user.id)
+      .or(currentOnly(today))
       .is('read_at', null),
   ]);
   if (list.error) throw fromPostgrest(list.error);

@@ -282,6 +282,8 @@ export async function saveDailyAlerts(options: { dryRun?: boolean } = {}): Promi
         .eq('kind', 'daily')
         .gte('created_at', since);
       if (count) continue;
+      // O "Para hoje" de ontem já não vale: sai antes de entrar o de hoje (o 🧊 "A arrefecer" fica).
+      await admin.from('notifications').delete().eq('workspace_id', workspaceId).eq('user_id', userId).eq('kind', 'daily').not('title', 'like', '🧊%');
       if (await saveAlert(workspaceId, userId, { kind: 'daily', title: payload.title, body: payload.body, url: payload.url ?? '/dashboard', tag: payload.tag ?? 'daily' })) saved++;
     }
   }

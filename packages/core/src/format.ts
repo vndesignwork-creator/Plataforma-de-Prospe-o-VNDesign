@@ -106,3 +106,11 @@ export function daysBetween(a: string, b: string): number {
   };
   return Math.round((toUtc(b) - toUtc(a)) / 86_400_000);
 }
+
+/** O início do dia de hoje em Lisboa (00:00, hora de Lisboa) em ISO/UTC. */
+export function lisbonDayStart(now: Date = new Date()): string {
+  const day = todayIso(now);
+  // Diferença entre a hora de Lisboa e a UTC nesse dia (0 no inverno, +1 no verão).
+  const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Lisbon', hour: '2-digit', hourCycle: 'h23' }).format(new Date(`${day}T12:00:00Z`)));
+  return new Date(Date.parse(`${day}T00:00:00Z`) - (hour - 12) * 3_600_000).toISOString();
+}

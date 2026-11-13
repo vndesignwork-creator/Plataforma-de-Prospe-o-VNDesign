@@ -141,3 +141,25 @@ test('sino no telemóvel: painel de baixo para cima com botões grandes', async 
   await expect(page).toHaveURL(/\/leads\/.+#tarefas$/, { timeout: 30_000 });
   await expect(sheet).toHaveCount(0);
 });
+
+test('"Para hoje" de um dia que já passou não aparece nem conta como por ler; "A arrefecer" fica', async ({ page }) => {
+  const supabase = localEnv('NEXT_PUBLIC_SUPABASE_URL');
+  const key = localEnv('SUPABASE_SECRET_KEY');
+  const headers = { apikey: key, Authorization: `Bearer ${key}`, 'content-type': 'application/json', Prefer: 'return=representation' };
+  const me = (await (await page.request.get('/api/v1/me')).json()).data as { user: { id: string }; workspace: { id: string } };
+  const yesterday = new Date(Date.now() - 30 * 3_600_000).toISOString();
+  const rows = [
+    { kind: 'daily', title: `3 follow-ups à tua espera ${run}`, text: 'Ontem', url: '/dashboard' },
+    { kind: 'daily', title: `🧊 2 leads a arrefecer ${run}`, text: 'Esta semana', url: '/leads' },
+  ].map((r) => ({ ...r, workspace_id: me.workspace.id, user_id: me.user.id, created_at: yesterday }));
+  const res = await page.request.post(`${supabase}/rest/v1/notifications`, { headers, data: rows });
+  expect(res.status(), await res.text()).toBe(201);
+  const created = (await res.json()) as { id: string }[];
+  try {
+    const titles = (await bell(page.request)).map((n) => n.title);
+    expect(titles).not.toContain(`3 follow-ups à tua espera ${run}`);
+    expect(titles).toContain(`🧊 2 leads a arrefecer ${run}`);
+  } finally {
+    for (const n of created) await page.request.delete(`${supabase}/rest/v1/notifications?id=eq.${n.id}`, { headers });
+  }
+});
