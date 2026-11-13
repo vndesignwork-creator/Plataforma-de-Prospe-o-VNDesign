@@ -45,7 +45,7 @@ test('Regras automáticas: "Juntar todas" cria as ideias desligadas', async ({ p
   const ideas = ['Proposta parada há 14 dias', 'Novo cliente: pedir avaliação', 'Veio do Google Maps: ligar'];
   const all = [
     'Sem site', 'Sem resposta há 21 dias', 'Respondeu: responder hoje', 'Sem email: procurar contacto', 'Sem telefone: procurar',
-    'Tem site: analisar antes de contactar', 'Contactado há 7 dias: follow-up', 'Reunião marcada: preparar', 'Proposta enviada: ligar em 3 dias',
+    'Tem site: analisar antes de contactar', 'Contactado há 7 dias: follow-up', 'Proposta enviada: ligar em 3 dias',
     'Proposta parada há 14 dias', 'Novo cliente: pedir avaliação', 'Em pausa há 90 dias: tentar outra vez', 'Veio do Instagram: mensagem', 'Veio do Google Maps: ligar',
   ];
   for (const r of (await rules()).filter((r) => all.includes(r.name))) await page.request.delete(`/api/v1/automation-rules/${r.id}`);

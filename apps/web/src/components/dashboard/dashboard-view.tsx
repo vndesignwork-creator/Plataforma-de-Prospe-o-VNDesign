@@ -13,7 +13,6 @@ import {
   type TodayOpenedEmail,
   type Lead,
   type LeadStatus,
-  type TodayMeeting,
   type TodayTask,
   leadPath,
   reschedulePlan,
@@ -21,7 +20,7 @@ import {
   DASHBOARD_CARDS_PREFERENCE,
   type DashboardCard,
 } from '@vndesign/core';
-import { AlertCircle, BarChart3, BellRing, BriefcaseBusiness, CalendarClock, CalendarDays, Columns3, Eye, ListChecks, Mail, MapPin, Phone, Users } from 'lucide-react';
+import { AlertCircle, BarChart3, BellRing, BriefcaseBusiness, CalendarClock, CalendarDays, Columns3, Eye, ListChecks, Mail, Phone } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -48,7 +47,6 @@ import { SitesCard } from './sites-card';
 import { PlatformHealthBanner } from '@/components/settings/platform-status';
 import { cn, telUrl } from '@/lib/utils';
 import { DueBadge, StageLabel } from '@/components/projects/project-bits';
-import { meetingLabel } from '@/components/meetings/meetings-card';
 import { StatusIcon } from '@/components/icons/lead-icons';
 import { LeadTitle } from '@/components/leads/lead-title';
 
@@ -155,41 +153,6 @@ function TodayGroup({
         })}
       </ul>
       <ShowAll total={leads.length} open={all} onToggle={() => setAll(!all)} what={title} />
-    </section>
-  );
-}
-
-const lisbonDay = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Lisbon' }).format(new Date(iso));
-
-function MeetingList({ title, meetings }: { title: string; meetings: TodayMeeting[] }) {
-  const [all, setAll] = useState(false);
-  if (!meetings.length) return null;
-  return (
-    <section aria-label={title}>
-      <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold">
-        <Users className="h-4 w-4" aria-hidden />
-        {title} <span className="font-normal text-muted">({meetings.length})</span>
-      </h3>
-      <ul className="divide-y divide-border">
-        {(all ? meetings : meetings.slice(0, SHOWN)).map((m) => (
-          <li key={m.id}>
-            <Link href={leadPath(m.lead)} className="block rounded-md px-2 py-2 hover:bg-surface-2">
-              <span className="block truncate text-sm font-medium">
-                <span className="text-muted tabular">#{m.lead.number}</span> {m.lead.company_name}
-              </span>
-              <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-                <span className="tabular">{meetingLabel(m.starts_at)}</span>
-                {m.location ? (
-                  <span className="inline-flex min-w-0 items-center gap-1 truncate">
-                    <MapPin className="h-3 w-3 shrink-0" aria-hidden /> {m.location}
-                  </span>
-                ) : null}
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-      <ShowAll total={meetings.length} open={all} onToggle={() => setAll(!all)} what={title} />
     </section>
   );
 }
@@ -516,7 +479,7 @@ function TodayCatchUp({ today, leads, tasks }: { today: string; leads: Lead[]; t
   );
 }
 
-/** Leads em conversa (contactado, respondeu, reunião, proposta) sem próximo passo marcado: estão a ser esquecidos. */
+/** Leads em conversa (contactado, respondeu, proposta) sem próximo passo marcado: estão a ser esquecidos. */
 function TodayStalled({ today, leads }: { today: string; leads: Lead[] }) {
   const move = useBulkDate(today);
   if (!leads.length) return null;
@@ -546,11 +509,8 @@ function TodayCard({ className }: { className?: string }) {
   const { data, isLoading } = useToday();
   // Tarefas em atraso e de hoje logo a seguir aos follow-ups de hoje; as da semana no fim.
   const urgentTasks = data?.tasks ? [...data.tasks.overdue, ...data.tasks.due_today] : [];
-  // Marcar reunião põe a próxima ação "Reunião às …" no mesmo dia: aparece só em "Reuniões" (sem repetir).
-  const meetingDays = new Set((data?.meetings ?? []).map((m) => `${m.lead.id}|${lisbonDay(m.starts_at)}`));
-  const notMeeting = (leads: Lead[]) => leads.filter((l) => !meetingDays.has(`${l.id}|${l.next_action_on}`));
-  const dueToday = data ? notMeeting(data.due_today) : [];
-  const upcoming = data ? notMeeting(data.upcoming) : [];
+  const dueToday = data?.due_today ?? [];
+  const upcoming = data?.upcoming ?? [];
   const weekTasks = data?.tasks?.upcoming ?? [];
   const empty =
     data &&
@@ -559,7 +519,6 @@ function TodayCard({ className }: { className?: string }) {
     !upcoming.length &&
     !urgentTasks.length &&
     !weekTasks.length &&
-    !data.meetings?.length &&
     !data.opened?.length &&
     !data.stalled?.length;
   return (
@@ -583,13 +542,11 @@ function TodayCard({ className }: { className?: string }) {
               <TodayCatchUp today={data.today} leads={[]} tasks={data.tasks?.overdue ?? []} />
             )}
             <TodayStalled today={data.today} leads={data.stalled ?? []} />
-            {/* Pela urgência: atrasados, hoje (reuniões, follow-ups, tarefas), quem abriu o email e só depois a semana. */}
-            <MeetingList title="Reuniões de hoje" meetings={(data.meetings ?? []).filter((m) => lisbonDay(m.starts_at) === data.today)} />
+            {/* Pela urgência: atrasados, hoje (follow-ups, tarefas), quem abriu o email e só depois a semana. */}
             <TodayGroup title="Para hoje" when="today" today={data.today} icon={<CalendarClock className="h-4 w-4" aria-hidden />} leads={dueToday} />
             <TodayTasks title="Tarefas para hoje" today={data.today} tasks={urgentTasks} />
             <TodayOpened items={data.opened ?? []} />
             <TodayGroup title="Próximos 7 dias" when="future" today={data.today} icon={<CalendarDays className="h-4 w-4" aria-hidden />} leads={upcoming} />
-            <MeetingList title="Reuniões nos próximos 7 dias" meetings={(data.meetings ?? []).filter((m) => lisbonDay(m.starts_at) !== data.today)} />
             <TodayTasks title="Tarefas nos próximos 7 dias" today={data.today} tasks={weekTasks} />
           </>
         ) : null}
@@ -718,7 +675,7 @@ function useRowsThatFit(list: RefObject<HTMLUListElement | null>, count: number,
 }
 
 /** As fases do funil, pela ordem; "Sem interesse" e "Em pausa" ficam à parte, por baixo. */
-const FUNNEL: LeadStatus[] = ['identificado', 'contactado', 'respondeu', 'reuniao', 'proposta_enviada', 'cliente'];
+const FUNNEL: LeadStatus[] = ['identificado', 'contactado', 'respondeu', 'proposta_enviada', 'cliente'];
 const pct = (part: number, whole: number) => `${Math.round((part / whole) * 100)} %`;
 
 /**

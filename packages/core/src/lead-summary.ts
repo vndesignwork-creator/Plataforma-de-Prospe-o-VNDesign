@@ -1,5 +1,5 @@
 /**
- * Resumo do lead com IA antes de ligar: lê a ficha (linha do tempo, notas,
+ * Resumo do lead com IA antes de ligar: lê a ficha (linha do tempo,
  * tarefas, propostas) e diz em poucas frases quem é, o que já se falou, o que
  * ficou combinado e qual é o próximo passo. Não grava nada.
  */
@@ -45,7 +45,6 @@ export function buildLeadSummaryPrompt(input: {
     city: string | null;
     website: string | null;
     services: string[];
-    notes: string | null;
     pinned_note: string | null;
     problems: string | null;
     next_action_text: string | null;
@@ -55,7 +54,6 @@ export function buildLeadSummaryPrompt(input: {
   activities: { date: string; type: string; text: string }[];
   tasks: { title: string; due_on: string | null; done: boolean }[];
   proposals: { status: string; total: number | null; date: string }[];
-  meetings: { starts_at: string; canceled: boolean }[];
 }): string {
   const l = input.lead;
   const parts = [
@@ -70,13 +68,11 @@ export function buildLeadSummaryPrompt(input: {
     line('Próxima ação marcada', l.next_action_text ? `${l.next_action_text}${l.next_action_on ? ` (${l.next_action_on})` : ''}` : null),
     line('Nota afixada', l.pinned_note),
     line('Problemas do site', l.problems?.slice(0, 800)),
-    l.notes ? `<notas>\n${l.notes.slice(0, 3000)}\n</notas>` : null,
     input.activities.length
       ? `<linha_do_tempo mais_recente_primeiro>\n${input.activities.map((a) => `${a.date} · ${a.type}${a.text ? ` · ${a.text}` : ''}`).join('\n')}\n</linha_do_tempo>`
       : null,
     input.tasks.length ? `<tarefas>\n${input.tasks.map((t) => `${t.done ? '[feita]' : '[por fazer]'} ${t.title}${t.due_on ? ` (até ${t.due_on})` : ''}`).join('\n')}\n</tarefas>` : null,
     input.proposals.length ? `Propostas: ${input.proposals.map((p) => `${p.date} ${p.status}${p.total !== null ? ` ${p.total} €` : ''}`).join('; ')}` : null,
-    input.meetings.length ? `Reuniões: ${input.meetings.map((m) => `${m.starts_at}${m.canceled ? ' (cancelada)' : ''}`).join('; ')}` : null,
   ];
   return parts.filter((p) => p !== null).join('\n');
 }

@@ -46,7 +46,7 @@ describe('cabeçalhos e mapeamento', () => {
     expect(mapping).toEqual([
       'number', 'company_name', 'sector', 'website', 'city', 'problems', 'pagespeed', 'mobile', 'email', 'phone',
       'contact_name', 'status', 'channel', 'first_contact_on', 'last_follow_up_on', 'next_action', 'estimated_value',
-      'notes', 'approach_angle', 'source_url', 'suggested_on', 'email_subject', 'email_body',
+      'ignore', 'approach_angle', 'source_url', 'suggested_on', 'email_subject', 'email_body',
     ]);
   });
 
@@ -148,8 +148,8 @@ describe('leadsToCsv', () => {
       number: 7, company_name: 'Café "Central"; Lda', sector: { id: 'x', name: 'Restauração', slug: 'restauracao', emoji: '🍽️' },
       website: null, city: 'Amadora', address: null, problems: '=HYPERLINK("x")', pagespeed: 40, mobile: 'parcial',
       email: null, phone: null, contact_name: null, status: 'contactado', channel: 'email', first_contact_on: '2026-10-08',
-      last_follow_up_on: null, next_action_text: null, next_action_on: null, estimated_value: 1250.5, notes: 'a\nb',
-      approach_angle: null, source_url: null, suggested_on: null, email_subject: null, email_body: null,
+      last_follow_up_on: null, next_action_text: null, next_action_on: null, estimated_value: 1250.5,
+      approach_angle: 'a\nb', source_url: null, suggested_on: null, email_subject: null, email_body: null,
     } as unknown as Lead;
     const csv = leadsToCsv([lead]);
     expect(csv.startsWith('﻿#;Empresa;Setor;')).toBe(true);

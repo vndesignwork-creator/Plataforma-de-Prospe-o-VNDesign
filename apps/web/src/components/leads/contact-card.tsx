@@ -88,7 +88,6 @@ function initialTemplate(templates: ContactTemplate[], lead: Lead, category: str
 /** Tipo de email com IA sugerido pelo estado do lead. */
 function defaultAiKind(lead: Lead): AiEmailKind {
   if (lead.status === 'contactado' || lead.status === 'proposta_enviada') return 'follow_up';
-  if (lead.status === 'reuniao') return 'envio_proposta';
   return 'primeiro_contacto';
 }
 
@@ -233,7 +232,7 @@ export function ContactCard({ lead }: { lead: Lead }) {
     return initialTemplate(templates, lead, category);
   }, [templates, current, lead, category]);
   // O teste "Aparece nas IAs?" só é pedido se o modelo escolhido usar {{visibilidade_ia}}.
-  const context = useTemplateContext(lead, null, { aiVisibility: usesAiVisibility(template?.subject, template?.body) });
+  const context = useTemplateContext(lead, { aiVisibility: usesAiVisibility(template?.subject, template?.body) });
 
   const base = useMemo(() => {
     if (current?.type === 'saved') return { subject: lead.email_subject ?? '', body: lead.email_body ?? '', missing: [] as string[] };

@@ -32,7 +32,6 @@ import { TodayOpenedEmailSchema } from './mail';
 import { DEFAULT_POMODORO_SETTINGS, PomodoroSettingsSchema } from './pomodoro';
 import { DEFAULT_TEAM_SETTINGS, MEMBER_ROLES, TeamSettingsSchema } from './team';
 import { DEFAULT_QUOTE_SETTINGS, QuoteSettingsSchema } from './quote';
-import { TodayMeetingSchema } from './projects';
 import { TodayTasksSchema } from './tasks';
 
 import './zod-setup';
@@ -146,7 +145,6 @@ const leadFields = {
   next_action_text: nullableText(300),
   next_action_on: nullableDate,
   estimated_value: estimatedValue,
-  notes: nullableText(10_000),
   approach_angle: nullableText(4000),
   source_url: nullableUrl,
   /** Redes sociais (Facebook, Instagram, LinkedIn…): não contam como site. Aceita também texto, um link por linha. */
@@ -237,7 +235,6 @@ export const LeadSchema = z
     next_action_on: z.string().nullable(),
     estimated_value: z.number().nullable(),
     services: z.array(z.string()).optional(),
-    notes: z.string().nullable(),
     approach_angle: z.string().nullable(),
     source_url: z.string().nullable(),
     social_links: z.array(z.string()).optional(),
@@ -314,9 +311,13 @@ export type LeadArchiveFilter = (typeof LEAD_ARCHIVE_FILTERS)[number];
 
 export const LeadListQuerySchema = z
   .object({
-    q: z.string().trim().max(200).optional().meta({ description: 'Pesquisa em nome, cidade, contacto, email, website, problemas e notas' }),
+    q: z.string().trim().max(200).optional().meta({ description: 'Pesquisa em nome, cidade, contacto, email, website e problemas' }),
     sector: csvList(z.union([z.uuid(), z.literal('none')])).optional().meta({ description: 'IDs de setor separados por vírgula ("none" = sem setor)' }),
-    status: csvList(LeadStatusSchema).optional(),
+    // Links e vistas guardadas de antes: a antiga fase "Reunião" é agora "Respondeu".
+    status: z.preprocess(
+      (v) => (typeof v === 'string' ? v.replace(/\breuniao\b/g, 'respondeu') : v),
+      csvList(LeadStatusSchema),
+    ).optional(),
     channel: csvList(z.union([LeadChannelSchema, z.literal('none')])).optional(),
     origin: csvList(z.union([LeadOriginSchema, z.literal('none')]))
       .optional()
@@ -594,7 +595,6 @@ export type FollowUpSequence = z.infer<typeof FollowUpSequenceSchema>;
 export const FeaturesSchema = z.object({
   diagnosis_report: z.boolean().default(true).meta({ description: 'Relatório de diagnóstico do site em PDF' }),
   payments: z.boolean().default(true).meta({ description: 'Pagamentos dos clientes e faturação' }),
-  meetings: z.boolean().default(true).meta({ description: 'Marcar reuniões (convite por email)' }),
   projects: z.boolean().default(true).meta({ description: 'Página Projetos (clientes com projeto em curso)' }),
   whatsapp_templates: z.boolean().default(true).meta({ description: 'Mensagens prontas no botão WhatsApp da ficha' }),
   revisions: z.boolean().default(true).meta({ description: 'Projetos: rondas de revisão' }),
@@ -626,7 +626,6 @@ export type Features = z.infer<typeof FeaturesSchema>;
 export const DEFAULT_FEATURES: Features = {
   diagnosis_report: true,
   payments: true,
-  meetings: true,
   projects: true,
   whatsapp_templates: true,
   revisions: true,
@@ -886,7 +885,7 @@ export const DashboardSchema = z
   .object({
     totals: z.object({
       total: z.int(),
-      active: z.int().meta({ description: 'Identificado + Contactado + Respondeu + Reunião + Proposta enviada' }),
+      active: z.int().meta({ description: 'Identificado + Contactado + Respondeu + Proposta enviada' }),
       won: z.int(),
       lost: z.int(),
       paused: z.int(),
@@ -953,7 +952,7 @@ export function dashboardPeriodRange(period: DashboardPeriod, today: string): { 
 }
 
 /** "Em conversa": os estados em que um lead tem de ter sempre um próximo passo marcado. */
-export const STALLED_STATUSES = ['contactado', 'respondeu', 'reuniao', 'proposta_enviada'] as const satisfies readonly LeadStatus[];
+export const STALLED_STATUSES = ['contactado', 'respondeu', 'proposta_enviada'] as const satisfies readonly LeadStatus[];
 
 export const TodaySchema = z
   .object({
@@ -964,7 +963,6 @@ export const TodaySchema = z
     tasks: TodayTasksSchema.optional().meta({ description: 'Tarefas com prazo (em atraso, hoje e próximos 7 dias)' }),
     stalled: z.array(LeadSchema).optional().meta({ description: 'Em conversa sem próximo passo (sem data na próxima ação)' }),
     hot: z.array(LeadSchema).optional().meta({ description: 'Leads com maior prioridade (os mais quentes), em pipeline' }),
-    meetings: z.array(TodayMeetingSchema).optional().meta({ description: 'Reuniões de hoje e dos próximos 7 dias' }),
     opened: z.array(TodayOpenedEmailSchema).optional().meta({ description: 'Leads que abriram um email nas últimas 48 horas' }),
   })
   .meta({ id: 'Today' });

@@ -9,7 +9,7 @@
  * Variáveis vazias sem alternativa desaparecem e a pontuação à volta é
  * arrumada ("Olá {{contacto}}," → "Olá,").
  */
-import { TIME_ZONE, addDays, formatDate } from './format';
+import { addDays, formatDate } from './format';
 import { isRichHtml, richInline, toPlainText } from './rich-text';
 import {
   DEFAULT_SERVICE_CATEGORIES,
@@ -33,8 +33,6 @@ export const TEMPLATE_VARIABLES = [
   { key: 'beneficio', label: 'Frase de valor do serviço (Definições → Serviços)' },
   { key: 'data', label: 'Data do 1.º contacto (ou hoje)' },
   { key: 'hoje', label: 'Data de hoje' },
-  { key: 'reuniao', label: 'Próxima reunião (ex.: amanhã, às 10:00)' },
-  { key: 'reuniao_local', label: 'Local ou link da próxima reunião' },
   { key: 'avaliacao', label: 'Link para avaliação no Google (Definições → Funcionalidades)' },
   { key: 'visibilidade_ia', label: 'Resultado de “Aparece nas IAs?” (frase para o cliente)' },
   { key: 'meu_nome', label: 'O teu nome' },
@@ -126,25 +124,6 @@ export function serviceTemplateValues(
   };
 }
 
-const meetingDayFmt = new Intl.DateTimeFormat('pt-PT', { timeZone: TIME_ZONE, weekday: 'long', day: '2-digit', month: '2-digit' });
-const meetingTimeFmt = new Intl.DateTimeFormat('pt-PT', { timeZone: TIME_ZONE, hour: '2-digit', minute: '2-digit' });
-const isoDayFmt = new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' });
-
-/**
- * Dia e hora de uma reunião, para mensagens: "hoje, às 10:00",
- * "amanhã, às 15:30" ou "terça-feira, 28/10, às 10:00" (hora de Lisboa).
- */
-export function meetingPhrase(startsAt: string | Date, now: Date = new Date()): string {
-  const date = typeof startsAt === 'string' ? new Date(startsAt) : startsAt;
-  if (Number.isNaN(date.getTime())) return '';
-  const day = isoDayFmt.format(date);
-  const today = isoDayFmt.format(now);
-  const time = meetingTimeFmt.format(date);
-  if (day === today) return `hoje, às ${time}`;
-  if (day === addDays(today, 1)) return `amanhã, às ${time}`;
-  return `${meetingDayFmt.format(date)}, às ${time}`;
-}
-
 export function buildTemplateContext(input: {
   lead?: LeadForTemplate | null;
   signature?: SignatureInfo | null;
@@ -154,8 +133,6 @@ export function buildTemplateContext(input: {
   /** Catálogo do workspace (Definições → Serviços); sem ele, os serviços de origem. */
   services?: readonly ServiceInfo[];
   categories?: readonly ServiceCategoryInfo[];
-  /** Próxima reunião marcada com o lead ({{reuniao}} e {{reuniao_local}}). */
-  meeting?: { starts_at: string; location?: string | null } | null;
   /** Link para avaliação no Google ({{avaliacao}}). */
   reviewUrl?: string | null;
   /** Frase do último teste "Aparece nas IAs?" ({{visibilidade_ia}}). */
@@ -180,8 +157,6 @@ export function buildTemplateContext(input: {
     beneficio: svc.beneficio,
     data: formatDate(lead?.first_contact_on ?? input.today),
     hoje: formatDate(input.today),
-    reuniao: input.meeting ? meetingPhrase(input.meeting.starts_at, input.now) || null : null,
-    reuniao_local: input.meeting?.location?.trim() || null,
     avaliacao: input.reviewUrl?.trim() || null,
     visibilidade_ia: input.aiVisibility?.trim() || null,
     meu_nome: sig?.full_name ?? null,

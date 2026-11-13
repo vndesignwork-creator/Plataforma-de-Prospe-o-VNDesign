@@ -49,7 +49,7 @@ type FormInput = LeadCreateInput;
 
 const TEXT_FIELDS = [
   'company_name', 'website', 'city', 'address', 'problems', 'email', 'phone', 'contact_name',
-  'first_contact_on', 'last_follow_up_on', 'next_action_text', 'next_action_on', 'notes',
+  'first_contact_on', 'last_follow_up_on', 'next_action_text', 'next_action_on',
   'approach_angle', 'source_url', 'suggested_on', 'email_subject', 'email_body', 'project_title',
 ] as const;
 
@@ -155,7 +155,6 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
   // Verificação de duplicados enquanto se escreve (nome, website, email).
   const [name, website, email] = useWatch({ control, name: ['company_name', 'website', 'email'] });
   const socialText = useWatch({ control, name: 'social_links' }) as unknown;
-  const notes = useWatch({ control, name: 'notes' }) as string | null | undefined;
   // Sem empresa: o nome do lead é o da pessoa de contacto (acompanha-a enquanto se escreve).
   const [noCompany, contactName] = useWatch({ control, name: ['no_company', 'contact_name'] }) as [boolean | undefined, string | null | undefined];
   useEffect(() => {
@@ -163,8 +162,6 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
   }, [noCompany, contactName, setValue]);
   // Cliente (ou projeto de um cliente): tem nome de projeto, à parte da empresa.
   const isClient = lead?.status === 'cliente' || !!lead?.client_of || !!lead?.project_title;
-  // Notas recolhidas: fechadas quando estão vazias (abrem sozinhas se tiverem erro).
-  const [notesCollapsed, setNotesCollapsed] = useState(() => !(lead?.notes ?? initial?.notes)?.trim());
   const social = (Array.isArray(socialText) ? socialText.join('\n') : String(socialText ?? '')).trim();
   const probe = useDebouncedValue({ name: name?.trim() ?? '', website: website?.trim() ?? '', email: email?.trim() ?? '', social }, 500);
   const shouldCheck = probe.name.length >= 3 || probe.website.length >= 4 || probe.email.includes('@') || probe.social.length >= 8;
@@ -252,10 +249,6 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
     ];
     for (const [field, value] of map) {
       if (value && !String(getValues(field) ?? '').trim()) setValue(field, value as never, { shouldDirty: true });
-    }
-    if (card.notes) {
-      const notes = String(getValues('notes') ?? '').trim();
-      setValue('notes', (notes ? `${notes}\n${card.notes}` : card.notes) as never, { shouldDirty: true });
     }
     if (card.address) setMoreOpen(true);
   }
@@ -426,17 +419,6 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
         <Field label="Data da próxima ação" error={e('next_action_on')}>
           <DateControl control={control} name="next_action_on" />
         </Field>
-      </Section>
-
-      <Section
-        title="Notas"
-        description={notesCollapsed && !e('notes') ? (notes?.trim() ? <span className="line-clamp-1">{notes.trim()}</span> : 'Sem notas.') : undefined}
-        collapse={{ collapsed: notesCollapsed && !e('notes'), onToggle: () => setNotesCollapsed((c) => !c) }}
-      >
-        <Field label="Notas" error={e('notes')} className="md:col-span-2">
-          <Textarea rows={4} {...register('notes')} />
-        </Field>
-        <DictateButton value={notes ?? ''} onChange={(v) => setValue('notes', v as never, { shouldDirty: true })} className="-mt-2 self-end md:col-span-2" />
       </Section>
 
       {/* Campos que raramente se preenchem ao criar: fechados por omissão (abrem sozinhos se tiverem erros). */}

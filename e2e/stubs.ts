@@ -201,12 +201,6 @@ export async function startStubs() {
     let raw = '';
     req.on('data', (c) => (raw += c));
     req.on('end', () => {
-      // Transcrição de áudio (OpenAI): devolve um texto fixo.
-      if ((req.url ?? '').startsWith('/v1/audio/transcriptions')) {
-        res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
-        res.end('Falámos da loja online. Querem avançar até ao Natal e o orçamento é até 2000 euros. Ficou combinado enviar a proposta.');
-        return;
-      }
       const body = raw ? JSON.parse(raw) : {};
       if (openAiCompatible(req, body, res)) return;
       // Anthropic: lista de modelos ("Testar" a chave do servidor).
@@ -259,7 +253,7 @@ export async function startStubs() {
       if (JSON.stringify(body.system ?? '').includes('texto ditado ou colado')) {
         const ditado = {
           empresa: 'Restaurante O Quintal', contacto: 'Ana Ribeiro', email: 'ana@oquintal.pt', telefone: '912 345 678',
-          site: null, cidade: 'Braga', morada: null, notas: 'Querem um site novo com reservas.',
+          site: null, cidade: 'Braga', morada: null,
         };
         sendJson(res, 200, {
           id: 'msg_stub_ditado', type: 'message', role: 'assistant', model: body.model ?? 'claude-opus-5-5',
@@ -272,31 +266,12 @@ export async function startStubs() {
       if (JSON.stringify(body.system ?? '').includes('cartão de visita')) {
         const hasImage = JSON.stringify(body.messages ?? '').includes('"type":"image"');
         const cartao = hasImage
-          ? { empresa: 'Padaria Estrela', contacto: 'Ana Ribeiro', email: 'ANA@PadariaEstrela.pt', telefone: '+351 912 345 678', site: 'padariaestrela.pt', cidade: 'Porto', morada: 'Rua das Flores, 10', notas: 'Gerente' }
-          : { empresa: null, contacto: null, email: null, telefone: null, site: null, cidade: null, morada: null, notas: null };
+          ? { empresa: 'Padaria Estrela', contacto: 'Ana Ribeiro', email: 'ANA@PadariaEstrela.pt', telefone: '+351 912 345 678', site: 'padariaestrela.pt', cidade: 'Porto', morada: 'Rua das Flores, 10' }
+          : { empresa: null, contacto: null, email: null, telefone: null, site: null, cidade: null, morada: null };
         sendJson(res, 200, {
           id: 'msg_stub_cartao', type: 'message', role: 'assistant', model: body.model ?? 'claude-opus-5-5',
           content: [{ type: 'text', text: JSON.stringify(cartao) }],
           stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 1_500, output_tokens: 120 },
-        });
-        return;
-      }
-      // Notas de reunião com IA: resumo, tarefas e próximo passo.
-      if (JSON.stringify(body.system ?? '').includes('apontamentos de uma reunião')) {
-        const notas = {
-          resumo: 'Querem uma loja online até ao Natal, com orçamento até 2000 €.',
-          tarefas: [
-            { titulo: 'Enviar proposta da loja online', prazo_dias: 3 },
-            { titulo: 'Pedir as fotografias dos produtos', prazo_dias: null },
-          ],
-          proximo_passo: { texto: 'Ligar para saber a decisão', dias: 7 },
-          // Conversa colada: a fase que a conversa mostra.
-          fase: JSON.stringify(body.messages ?? '').includes('Conversa colada') ? 'reuniao' : null,
-        };
-        sendJson(res, 200, {
-          id: 'msg_stub_notas', type: 'message', role: 'assistant', model: body.model ?? 'claude-opus-5-5',
-          content: [{ type: 'text', text: JSON.stringify(notas) }],
-          stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 800, output_tokens: 200 },
         });
         return;
       }

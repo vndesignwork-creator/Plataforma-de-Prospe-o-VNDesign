@@ -4,7 +4,7 @@
  * "Resumo IA" (antes de ligar): a IA lê a ficha e diz em poucas frases quem é,
  * o que já se falou, o que ficou combinado, o próximo passo e um cuidado a ter.
  * Não grava nada; o próximo passo pode passar a próxima ação e o cuidado pode
- * ficar como nota afixada. É o contrário das "Notas com IA" (essas escrevem).
+ * ficar como nota afixada.
  */
 import { addDays, todayIso, type Lead, type LeadSummary } from '@vndesign/core';
 import { BellRing, Pin, Sparkles } from 'lucide-react';

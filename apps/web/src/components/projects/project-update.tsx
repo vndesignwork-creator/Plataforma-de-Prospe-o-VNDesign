@@ -8,7 +8,6 @@
  */
 import { PROJECT_UPDATE_TEMPLATE, WELCOME_TEMPLATE, buildProjectUpdate, buildWelcomeEmail, formatSignature, todayIso, type Lead } from '@vndesign/core';
 import { ClipboardCopy } from 'lucide-react';
-import { useState } from 'react';
 import { toast } from 'sonner';
 import { SendEmailButton } from '@/components/email/send-email-dialog';
 import { Button } from '@/components/ui/button';
@@ -19,7 +18,6 @@ import {
   useLeadTasks,
   useLogActivity,
   useMailAccount,
-  useMeetings,
   usePayments,
   useProjectInfo,
   useSettings,
@@ -34,20 +32,14 @@ export function ProjectUpdateButton({ lead }: { lead: Lead }) {
   const features = settings?.features;
   const { data: tasks } = useLeadTasks(lead.id);
   const { data: deliverables } = useDeliverables(lead.id, !!features?.deliverables);
-  const { data: meetings } = useMeetings(lead.id, !!features?.meetings);
   const { data: payments } = usePayments(lead.id, !!features?.payments);
   const { data: info } = useProjectInfo(lead.id);
   const { data: activities } = useActivities(lead.id);
   const { data: signature } = useSignature();
-  // Hora fixa ao abrir (para escolher a próxima reunião).
-  const [now] = useState(() => Date.now());
   if (lead.anonymized_at) return null;
 
   // Desde o último ponto de situação enviado (os registos vêm do mais recente para o mais antigo).
   const last = (activities ?? []).find((a) => a.type === 'email_sent' && (a.payload as { template?: string }).template === PROJECT_UPDATE_TEMPLATE);
-  const meeting = (meetings ?? [])
-    .filter((m) => !m.canceled_at && new Date(m.starts_at).getTime() >= now)
-    .sort((a, b) => a.starts_at.localeCompare(b.starts_at))[0];
   const nextPayment = (payments ?? []).filter((p) => !p.paid_on).sort((a, b) => (a.due_on ?? '9999').localeCompare(b.due_on ?? '9999'))[0];
   const draft = buildProjectUpdate({
     company: lead.company_name,
@@ -56,7 +48,6 @@ export function ProjectUpdateButton({ lead }: { lead: Lead }) {
     since: last ? lisbonDay(last.created_at) : null,
     tasks: tasks ?? [],
     deliverables: features?.deliverables ? (deliverables ?? []) : [],
-    meeting: meeting ?? null,
     nextPayment: nextPayment ? { description: nextPayment.description, amount: nextPayment.amount, due_on: nextPayment.due_on } : null,
     shareUrl: features?.client_page && info?.share_token ? shareUrl(info.share_token) : null,
     signature: signature ? formatSignature(signature) || null : null,
@@ -77,7 +68,7 @@ export function ProjectUpdateButton({ lead }: { lead: Lead }) {
 
 /**
  * "Boas-vindas" (cartão Projeto, enquanto não foi enviado): o primeiro email ao
- * novo cliente com o link do briefing, a reunião de arranque, os primeiros
+ * novo cliente com o link do briefing, os primeiros
  * passos, a entrega prevista, o plano de pagamentos e a página do projeto.
  * Revê-se antes de enviar (ou copia-se, como o ponto de situação).
  */
@@ -85,13 +76,11 @@ export function WelcomeButton({ lead }: { lead: Lead }) {
   const { data: settings } = useSettings();
   const features = settings?.features;
   const { data: tasks } = useLeadTasks(lead.id);
-  const { data: meetings } = useMeetings(lead.id, !!features?.meetings);
   const { data: payments } = usePayments(lead.id, !!features?.payments);
   const { data: briefing } = useBriefing(lead.id, !!features?.briefing);
   const { data: info } = useProjectInfo(lead.id);
   const { data: activities, isPending } = useActivities(lead.id);
   const { data: signature } = useSignature();
-  const [now] = useState(() => Date.now());
   if (lead.anonymized_at || isPending) return null;
   // Já enviado (ou copiado): daqui em diante é o ponto de situação.
   const sent = (activities ?? []).some(
@@ -99,9 +88,6 @@ export function WelcomeButton({ lead }: { lead: Lead }) {
   );
   if (sent) return null;
 
-  const meeting = (meetings ?? [])
-    .filter((m) => !m.canceled_at && new Date(m.starts_at).getTime() >= now)
-    .sort((a, b) => a.starts_at.localeCompare(b.starts_at))[0];
   const draft = buildWelcomeEmail({
     company: lead.company_name,
     projectTitle: lead.project_title ?? null,
@@ -109,7 +95,6 @@ export function WelcomeButton({ lead }: { lead: Lead }) {
     dueOn: info?.due_on ?? null,
     tasks: [...(tasks ?? [])].sort((a, b) => (a.due_on ?? '9999').localeCompare(b.due_on ?? '9999')),
     payments: [...(payments ?? [])].sort((a, b) => (a.due_on ?? '9999').localeCompare(b.due_on ?? '9999')),
-    meeting: meeting ?? null,
     shareUrl: features?.client_page && info?.share_token ? shareUrl(info.share_token) : null,
     briefingUrl: features?.briefing && briefing && briefing.status === 'pendente' ? `${window.location.origin}/b/${briefing.token}` : null,
     signature: signature ? formatSignature(signature) || null : null,
@@ -120,7 +105,7 @@ export function WelcomeButton({ lead }: { lead: Lead }) {
       draft={draft}
       template={WELCOME_TEMPLATE}
       label="Boas-vindas"
-      title="Primeiro email ao novo cliente: briefing, reunião de arranque, primeiros passos, pagamentos e a página do projeto."
+      title="Primeiro email ao novo cliente: briefing, primeiros passos, pagamentos e a página do projeto."
     />
   );
 }

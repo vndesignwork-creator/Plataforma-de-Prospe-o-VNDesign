@@ -62,7 +62,6 @@ export function exportColumns(services?: readonly ServiceInfo[], fields: readonl
     { header: 'Próxima ação', kind: 'text', width: 26, value: (l) => l.next_action_text },
     { header: 'Data da próxima ação', kind: 'date', width: 14, value: (l) => l.next_action_on },
     { header: 'Valor estimado (€)', kind: 'currency', width: 14, value: (l) => l.estimated_value },
-    { header: 'Notas', kind: 'text', width: 40, value: (l) => l.notes },
     { header: 'Ângulo de abordagem', kind: 'text', width: 40, value: (l) => l.approach_angle },
     { header: 'Fonte', kind: 'url', width: 30, value: (l) => l.source_url },
     // Um link por linha; volta a ser lida pela importação (coluna "Redes sociais").

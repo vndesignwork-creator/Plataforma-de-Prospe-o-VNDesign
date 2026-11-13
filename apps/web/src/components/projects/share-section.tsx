@@ -2,7 +2,7 @@
 
 /**
  * Página de acompanhamento para o cliente: um link só de leitura com a fase,
- * as tarefas, a próxima entrega e reunião e o que falta pagar. Liga-se,
+ * as tarefas, a próxima entrega e o que falta pagar. Liga-se,
  * renova-se (o antigo deixa de funcionar) ou desliga-se.
  */
 import type { Lead } from '@vndesign/core';
@@ -88,7 +88,7 @@ export function ShareSection({ lead }: { lead: Lead }) {
         </div>
       ) : (
         <p className="mt-2 text-sm text-muted">
-          Um link só de leitura (sem login) com o progresso, a próxima entrega e reunião e o que falta pagar. Não mostra notas nem valores
+          Um link só de leitura (sem login) com o progresso, a próxima entrega e o que falta pagar. Não mostra notas nem valores
           internos.
         </p>
       )}

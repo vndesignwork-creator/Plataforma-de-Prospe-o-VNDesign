@@ -41,7 +41,7 @@ export const LEAD_SELECT = [
   'id', 'number', 'company_name', 'no_company', 'social_links', 'sector_id', 'sector:sectors(id, name, slug, emoji, icon)',
   'website', 'city', 'address', 'latitude', 'longitude', 'geocode_status', 'problems', 'pagespeed', 'mobile',
   'email', 'phone', 'contact_name', 'status', 'channel', 'origin', 'first_contact_on', 'last_follow_up_on',
-  'next_action_text', 'next_action_on', 'estimated_value', 'notes', 'approach_angle', 'source_url',
+  'next_action_text', 'next_action_on', 'estimated_value', 'approach_angle', 'source_url',
   'suggested_on', 'email_subject', 'email_body', 'services', 'kanban_position', 'status_changed_at',
   'anonymized_at', 'archived_at', 'score', 'score_reasons', 'follow_up_count', 'project_completed_at', 'client_of', 'project_title', 'assigned_to', 'tags', 'pinned_note', 'custom', 'lost_reason', 'retry_on', 'email_bounced_at', 'created_by', 'created_at', 'updated_at',
 ].join(', ');
@@ -307,7 +307,6 @@ export async function updateLead(ctx: ApiContext, id: string, patch: LeadUpdate)
       ...fixDirectoryWebsite({
         website: patch.website,
         source_url: patch.source_url !== undefined ? patch.source_url : current.source_url,
-        notes: patch.notes !== undefined ? patch.notes : current.notes,
         social_links: patch.social_links !== undefined ? patch.social_links : (current.social_links ?? []),
       }),
     };

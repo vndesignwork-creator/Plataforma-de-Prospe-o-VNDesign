@@ -30,7 +30,6 @@ const empty: Omit<CardScanResult, 'model'> = {
   website: null,
   city: null,
   address: null,
-  notes: null,
 };
 
 /** `bare`: só os botões (sem a caixa e a explicação). */
@@ -68,7 +67,7 @@ export function LeadQuickFill({ onResult, bare }: { onResult: (data: CardScanRes
         </Button>
       ) : null}
       {bare ? null : (
-        <span className="text-muted">Descreve o lead por palavras tuas: a IA preenche a empresa, o contacto, o telefone, o email e as notas.</span>
+        <span className="text-muted">Descreve o lead por palavras tuas: a IA preenche a empresa, o contacto, o telefone e o email.</span>
       )}
       {open ? (
         <TextFillDialog

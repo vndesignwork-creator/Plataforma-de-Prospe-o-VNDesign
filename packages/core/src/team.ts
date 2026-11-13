@@ -99,7 +99,6 @@ export const TeamStatsSchema = z
         contacts: z.int().meta({ description: 'Contactos registados (prospeção, emails, chamadas, mensagens)' }),
         contacts_today: z.int(),
         replied: z.int().meta({ description: 'Leads que passaram a Respondeu' }),
-        meetings: z.int().meta({ description: 'Leads que passaram a Reunião' }),
         won: z.int().meta({ description: 'Leads que passaram a Cliente' }),
         generated: z.int().meta({ description: 'Leads criados (à mão ou pelo gerador)' }),
         assigned_open: z.int().meta({ description: 'Leads atribuídos ainda em aberto' }),
@@ -130,7 +129,7 @@ export type TeamActivity = z.infer<typeof TeamActivitySchema>;
 export const TEAM_ACTIVITY_GROUPS = {
   contactos: {
     label: 'Contactos',
-    types: ['email_sent', 'email_mailto', 'email_copied', 'call_logged', 'template_used', 'follow_up_done', 'follow_up_scheduled', 'meeting_scheduled', 'meeting_canceled'],
+    types: ['email_sent', 'email_mailto', 'email_copied', 'call_logged', 'template_used', 'follow_up_done', 'follow_up_scheduled'],
   },
   leads: { label: 'Estado e leads', types: ['created', 'status_changed', 'imported', 'merged', 'archived', 'unarchived', 'anonymized'] },
   edicoes: { label: 'Edições', types: ['updated'] },

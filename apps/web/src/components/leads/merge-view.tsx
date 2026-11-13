@@ -28,13 +28,13 @@ export const MERGE_DRAFT_KEY = 'vnd-merge-draft';
 const FIELDS = [
   'company_name', 'sector_id', 'website', 'city', 'address', 'problems', 'pagespeed', 'mobile',
   'email', 'phone', 'contact_name', 'status', 'channel', 'first_contact_on', 'last_follow_up_on',
-  'next_action_text', 'next_action_on', 'estimated_value', 'notes', 'approach_angle', 'source_url',
+  'next_action_text', 'next_action_on', 'estimated_value', 'approach_angle', 'source_url',
   'suggested_on', 'email_subject', 'email_body',
 ] as const;
 type MergeField = (typeof FIELDS)[number];
 
 /** Campos de texto longo onde faz sentido manter os dois valores. */
-const CONCATENABLE: MergeField[] = ['problems', 'notes', 'approach_angle'];
+const CONCATENABLE: MergeField[] = ['problems', 'approach_angle'];
 
 type Values = Partial<Record<MergeField, unknown>>;
 type Choice = 'primary' | 'other' | 'both';

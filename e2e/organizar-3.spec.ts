@@ -186,25 +186,6 @@ test('duplicar uma tarefa (logo a seguir à original, com Anular)', async ({ pag
   await expect.poll(async () => (await titles()).map((t) => t.title)).toEqual(['Publicar site', 'Pedir fotos']);
 });
 
-test('notas: recolher (fica o início à vista) e Notas com IA no cartão', async ({ page }) => {
-  const lead = await createLead(page.request, { company_name: `Notas ${run}`, notes: 'Atende depois das 15h. Falar com a Marta.' });
-  await page.goto(`/leads/${lead.id}`);
-  const notes = page.locator('div').filter({ has: page.getByRole('button', { name: 'Editar notas' }) }).last();
-  await expect(notes.getByRole('button', { name: 'Notas com IA' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Notas com IA' })).toHaveCount(1);
-
-  await page.getByRole('button', { name: 'Recolher: Notas' }).click();
-  await expect(page.getByRole('button', { name: 'Expandir: Notas' })).toBeVisible();
-  // O texto completo sai; o início fica como descrição.
-  await expect(page.getByText('Atende depois das 15h. Falar com a Marta.')).toHaveCount(1);
-  // Editar abre mesmo recolhido.
-  await page.getByRole('button', { name: 'Editar notas' }).click();
-  await expect(page.getByLabel('Notas do lead')).toHaveValue('Atende depois das 15h. Falar com a Marta.');
-  await page.getByRole('button', { name: 'Cancelar' }).click();
-  await page.getByRole('button', { name: 'Expandir: Notas' }).click();
-  await expect(page.getByRole('button', { name: 'Recolher: Notas' })).toBeVisible();
-});
-
 test('o site deixa usar o microfone (ditado) mas não a câmara nem outros sites', async ({ request }) => {
   const policy = (await request.get('/login')).headers()['permissions-policy'];
   expect(policy).toContain('microphone=(self)');

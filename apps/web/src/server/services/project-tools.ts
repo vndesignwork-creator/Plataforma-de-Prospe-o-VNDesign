@@ -8,7 +8,6 @@ import {
   DEFAULT_PROJECT_INFO,
   PROJECT_STAGE_LABELS,
   WorkspaceSettingsSchema,
-  addDays,
   entrySeconds,
   hourlyRate,
   summarizePayments,
@@ -515,12 +514,12 @@ const leadRef = (l: LeadRef) => ({ id: l.id, number: l.number, company_name: l.c
 const LEAD_EMBED = 'lead:leads!inner(id, number, company_name, status, archived_at, anonymized_at, project_completed_at)';
 
 /**
- * Prazos de entrega (projetos em curso), reuniões, pagamentos previstos e tarefas
+ * Prazos de entrega (projetos em curso), pagamentos previstos e tarefas
  * com prazo; com `followups`, também as próximas ações dos leads.
  */
 export async function projectCalendar(ctx: ApiContext, from: string, to: string, options: { followups?: boolean } = {}): Promise<CalendarEvent[]> {
   const ws = ctx.workspaceId;
-  const [dues, meetings, payments, tasks, followups] = await Promise.all([
+  const [dues, payments, tasks, followups] = await Promise.all([
     ctx.supabase
       .from('lead_projects')
       .select(`lead_id, due_on, ${LEAD_EMBED}`)
@@ -529,15 +528,6 @@ export async function projectCalendar(ctx: ApiContext, from: string, to: string,
       .lte('due_on', to)
       .eq('lead.status', 'cliente')
       .is('lead.project_completed_at', null)
-      .is('lead.archived_at', null),
-    ctx.supabase
-      .from('lead_meetings')
-      .select(`id, starts_at, location, ${LEAD_EMBED}`)
-      .eq('workspace_id', ws)
-      .is('canceled_at', null)
-      // Um dia de folga de cada lado (fuso de Lisboa); o dia certo filtra-se abaixo.
-      .gte('starts_at', `${addDays(from, -1)}T00:00:00Z`)
-      .lt('starts_at', `${addDays(to, 2)}T00:00:00Z`)
       .is('lead.archived_at', null),
     ctx.supabase
       .from('lead_payments')
@@ -567,30 +557,22 @@ export async function projectCalendar(ctx: ApiContext, from: string, to: string,
           .limit(1000)
       : Promise.resolve({ data: [], error: null }),
   ]);
-  for (const r of [dues, meetings, payments, tasks, followups]) if (r.error) throw fromPostgrest(r.error);
+  for (const r of [dues, payments, tasks, followups]) if (r.error) throw fromPostgrest(r.error);
   const events: CalendarEvent[] = [];
   for (const d of (dues.data ?? []) as unknown as { lead_id: string; due_on: string; lead: LeadRef }[]) {
-    events.push({ id: `due-${d.lead_id}`, date: d.due_on, type: 'due', title: 'Entrega do projeto', starts_at: null, amount: null, done: false, lead: leadRef(d.lead) });
-  }
-  for (const m of (meetings.data ?? []) as unknown as { id: string; starts_at: string; location: string | null; lead: LeadRef }[]) {
-    const date = todayIso(new Date(m.starts_at));
-    if (date < from || date > to || m.lead.anonymized_at) continue;
-    events.push({ id: `meeting-${m.id}`, date, type: 'meeting', title: m.location ? `Reunião · ${m.location}` : 'Reunião', starts_at: m.starts_at, amount: null, done: false, lead: leadRef(m.lead) });
+    events.push({ id: `due-${d.lead_id}`, date: d.due_on, type: 'due', title: 'Entrega do projeto', amount: null, done: false, lead: leadRef(d.lead) });
   }
   for (const p of (payments.data ?? []) as unknown as { id: string; description: string; amount: number | string; due_on: string; paid_on: string | null; lead: LeadRef }[]) {
-    events.push({ id: `payment-${p.id}`, date: p.due_on, type: 'payment', title: p.description, starts_at: null, amount: Number(p.amount), done: !!p.paid_on, lead: leadRef(p.lead) });
+    events.push({ id: `payment-${p.id}`, date: p.due_on, type: 'payment', title: p.description, amount: Number(p.amount), done: !!p.paid_on, lead: leadRef(p.lead) });
   }
   for (const t of (tasks.data ?? []) as unknown as { id: string; title: string; due_on: string; done_at: string | null; lead: LeadRef }[]) {
-    events.push({ id: `task-${t.id}`, date: t.due_on, type: 'task', title: t.title, starts_at: null, amount: null, done: !!t.done_at, lead: leadRef(t.lead) });
+    events.push({ id: `task-${t.id}`, date: t.due_on, type: 'task', title: t.title, amount: null, done: !!t.done_at, lead: leadRef(t.lead) });
   }
-  // A reunião já está no dia: a próxima ação "Reunião às …" desse lead nesse dia não se repete.
-  const meetingDays = new Set(events.filter((e) => e.type === 'meeting').map((e) => `${e.lead.id}|${e.date}`));
   for (const l of (followups.data ?? []) as { id: string; number: number; company_name: string; next_action_text: string | null; next_action_on: string }[]) {
-    if (meetingDays.has(`${l.id}|${l.next_action_on}`)) continue;
-    events.push({ id: `followup-${l.id}`, date: l.next_action_on, type: 'followup', title: l.next_action_text ?? 'Próxima ação', starts_at: null, amount: null, done: false, lead: leadRef(l) });
+    events.push({ id: `followup-${l.id}`, date: l.next_action_on, type: 'followup', title: l.next_action_text ?? 'Próxima ação', amount: null, done: false, lead: leadRef(l) });
   }
-  const order = { due: 0, meeting: 1, followup: 2, payment: 3, task: 4 } as const;
-  return events.sort((a, b) => a.date.localeCompare(b.date) || order[a.type] - order[b.type] || (a.starts_at ?? '').localeCompare(b.starts_at ?? ''));
+  const order = { due: 0, followup: 1, payment: 2, task: 3 } as const;
+  return events.sort((a, b) => a.date.localeCompare(b.date) || order[a.type] - order[b.type]);
 }
 
 // -----------------------------------------------------------------------------
@@ -691,19 +673,8 @@ export async function getSharedProject(token: string): Promise<SharedProject | n
   const features = WorkspaceSettingsSchema.parse(workspace.settings ?? {}).features;
   if (!features.projects || !features.client_page) return null;
 
-  const [tasks, meetings, deliverables, payments, revisions, signatures, contracts] = await Promise.all([
+  const [tasks, deliverables, payments, revisions, signatures, contracts] = await Promise.all([
     admin.from('lead_tasks').select('title, done_at, position').eq('workspace_id', ws).eq('lead_id', leadId).order('position', { ascending: true }),
-    features.meetings
-      ? admin
-          .from('lead_meetings')
-          .select('starts_at, location')
-          .eq('workspace_id', ws)
-          .eq('lead_id', leadId)
-          .is('canceled_at', null)
-          .gte('starts_at', new Date().toISOString())
-          .order('starts_at', { ascending: true })
-          .limit(1)
-      : Promise.resolve({ data: [] }),
     features.deliverables
       ? admin
           .from('project_deliverables')
@@ -744,7 +715,6 @@ export async function getSharedProject(token: string): Promise<SharedProject | n
   }));
   const sum = pays?.length ? summarizePayments(pays, todayIso()) : null;
   const nextPay = pays?.find((p) => !p.paid_on) ?? null;
-  const meeting = ((meetings.data ?? []) as { starts_at: string; location: string | null }[])[0] ?? null;
 
   return {
     company_name: lead.company_name as string,
@@ -753,7 +723,6 @@ export async function getSharedProject(token: string): Promise<SharedProject | n
     due_on: (project.due_on as string | null) ?? null,
     completed_at: (lead.project_completed_at as string | null) ?? null,
     tasks: ((tasks.data ?? []) as { title: string; done_at: string | null }[]).map((t) => ({ title: t.title, done: !!t.done_at })),
-    next_meeting: meeting,
     deliverables: (
       (deliverables.data ?? []) as { id: string; title: string; url: string | null; status: SharedProject['deliverables'][number]['status']; sent_at: string | null; approved_at: string | null }[]
     ).map((d) => ({ id: d.id, title: d.title, url: d.url, status: d.status, date: d.approved_at ?? d.sent_at })),

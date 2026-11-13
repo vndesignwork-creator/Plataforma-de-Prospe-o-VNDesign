@@ -3,7 +3,7 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 /*
  * Ações em massa (etiqueta, estado, follow-up), gerir etiquetas (renomear,
  * juntar, apagar), "Pôr em dia" os atrasados, "Anular", follow-ups no
- * calendário subscrito, pesquisa nas notas, ditado e atalhos de teclado.
+ * calendário subscrito, pesquisa nas chamadas e registos, ditado e atalhos de teclado.
  */
 const run = Date.now().toString(36);
 // Dias de calendário em Lisboa (somar 24 h falha na mudança de hora).
@@ -158,7 +158,7 @@ test('pesquisa rápida encontra o texto das notas e chamadas (sem acentos)', asy
   await expect(page).toHaveURL(new RegExp(`/leads/.*#atividade$`));
 });
 
-test('ditado: o que se diz junta-se aos apontamentos (reconhecimento de voz simulado)', async ({ page }) => {
+test('ditado: o que se diz junta-se ao texto (reconhecimento de voz simulado)', async ({ page }) => {
   // O Chromium de teste não tem microfone: um reconhecimento falso que "ouve" uma frase.
   await page.addInitScript(() => {
     class FakeRecognition {
@@ -184,10 +184,11 @@ test('ditado: o que se diz junta-se aos apontamentos (reconhecimento de voz simu
   });
   const lead = await createLead(page.request, { company_name: `Ditado ${run}` });
   await page.goto(`/leads/${lead.id}`);
-  await page.getByRole('button', { name: 'Notas com IA' }).click();
-  // A ficha tem outro "Ditar" (no editor da mensagem): tudo dentro da janela.
-  const dialog = page.getByRole('dialog', { name: 'Notas com IA' });
-  const notes = dialog.getByLabel('Apontamentos');
+  // Registar uma chamada na linha do tempo (a ficha tem outro "Ditar", no editor da mensagem: tudo dentro do formulário).
+  await page.getByRole('button', { name: 'Registar', exact: true }).first().click();
+  const dialog = page.getByRole('form', { name: 'Registar contacto' });
+  await dialog.getByLabel('Tipo de registo').selectOption('call_logged');
+  const notes = dialog.getByLabel('Texto do registo');
   await notes.fill('Falei com a Marta.');
   await dialog.getByRole('button', { name: 'Ditar (falar em vez de escrever)' }).click();
   await expect(notes).toHaveValue('Falei com a Marta. Querem loja online até ao natal');
@@ -231,7 +232,7 @@ test('atalhos de teclado: G + tecla, N, ? e nada enquanto se escreve', async ({ 
   await expect(name).toHaveValue('gl');
 });
 
-test('ditar no novo lead (empresa e notas recolhíveis), na prospeção e no gerar leads', async ({ page }) => {
+test('ditar no novo lead (empresa) e no gerar leads', async ({ page }) => {
   await page.addInitScript(() => {
     class FakeRecognition {
       lang = '';
@@ -258,16 +259,8 @@ test('ditar no novo lead (empresa e notas recolhíveis), na prospeção e no ger
   await expect(company).toHaveValue('Padaria do bairro');
   await page.getByRole('button', { name: 'Concluir o ditado' }).click();
 
-  // Notas: recolhidas quando vazias; abrem e também se dita.
+  // O formulário já não tem o campo "Notas".
   await expect(page.getByLabel('Notas', { exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Expandir: Notas' }).click();
-  const notes = page.getByLabel('Notas', { exact: true });
-  await expect(notes).toBeVisible();
-  await notes.locator('xpath=ancestor::div[contains(@class,"grid")][1]').getByRole('button', { name: 'Ditar (falar em vez de escrever)' }).click();
-  await expect(notes).toHaveValue('Padaria do bairro');
-  await page.getByRole('button', { name: 'Concluir o ditado' }).click();
-  await page.getByRole('button', { name: 'Recolher: Notas' }).click();
-  await expect(page.getByText('Padaria do bairro', { exact: true })).toBeVisible();
 
   await page.goto('/gerar-leads');
   const query = page.getByLabel('O que procuras?');
@@ -311,10 +304,10 @@ test('ditado no telemóvel (Android): frases repetidas ou cumulativas não dupli
   });
   const lead = await createLead(page.request, { company_name: `Ditado Android ${run}` });
   await page.goto(`/leads/${lead.id}`);
-  await page.getByRole('button', { name: 'Notas com IA' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Notas com IA' });
+  await page.getByRole('button', { name: 'Registar', exact: true }).first().click();
+  const dialog = page.getByRole('form', { name: 'Registar contacto' });
   await dialog.getByRole('button', { name: 'Ditar (falar em vez de escrever)' }).click();
   await page.waitForTimeout(600);
-  await expect(dialog.getByLabel('Apontamentos')).toHaveValue('Querem loja online');
+  await expect(dialog.getByLabel('Texto do registo')).toHaveValue('Querem loja online');
   await dialog.getByRole('button', { name: 'Concluir o ditado' }).click();
 });

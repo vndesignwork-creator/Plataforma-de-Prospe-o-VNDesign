@@ -90,7 +90,6 @@ import { LeadLocation } from './lead-location';
 import { ProposalsCard } from '@/components/proposals/proposals-card';
 import { ContactFinder } from './contact-finder';
 import { TasksCard } from '@/components/tasks/tasks-card';
-import { NotesCard } from './notes-card';
 import { rememberLead } from '@/lib/recent-leads';
 import { TagChips, TagEditor } from './tags';
 import { CustomFieldsRows } from './custom-fields';
@@ -108,7 +107,6 @@ import { ServiceChips, useServiceCatalog } from '@/components/services/services'
 import { FollowUpEmailButton, SendEmailButton } from '@/components/email/send-email-dialog';
 import { LeadScoreDetails } from '@/components/leads/lead-score';
 import { WhatsAppMenu } from '@/components/leads/whatsapp-menu';
-import { MeetingsCard } from '@/components/meetings/meetings-card';
 import { PaymentsCard } from '@/components/projects/payments-card';
 import { ContractsCard } from '@/components/projects/contracts-card';
 import { BrandKitCard } from '@/components/projects/brand-kit-card';
@@ -531,8 +529,6 @@ export function LeadDetail({ id }: { id: string }) {
     brand_kit: staff && settings?.features.brand_kit && (lead.status === 'cliente' || lead.client_of) && !lead.anonymized_at ? <BrandKitCard lead={lead} /> : null,
     // Antes de ser cliente: só os ficheiros (os mesmos do kit, que ficam lá quando ganhar).
     files: settings?.features.brand_kit && lead.status !== 'cliente' && !lead.client_of && !lead.anonymized_at ? <LeadFilesCard lead={lead} /> : null,
-    meetings: settings?.features.meetings ? <MeetingsCard lead={lead} /> : null,
-    notes: <NotesCard lead={lead} />,
     proposals: staff ? <ProposalsCard lead={lead} /> : null,
     contracts: staff && settings?.features.contracts ? <ContractsCard lead={lead} /> : null,
     activity: (
@@ -915,8 +911,8 @@ export function LeadDetail({ id }: { id: string }) {
           </p>
         </div>
 
-        {/* Coluna lateral (computador): o que se consulta durante uma chamada — notas, propostas e atividade. */}
-        <aside aria-label="Tarefas, pagamentos, notas, propostas e atividade" className="flex flex-col gap-5">
+        {/* Coluna lateral (computador): o que se consulta durante uma chamada — propostas e atividade. */}
+        <aside aria-label="Tarefas, pagamentos, propostas e atividade" className="flex flex-col gap-5">
           {asideCards.map(([key, node]) => (
             <Fragment key={key}>{node}</Fragment>
           ))}
@@ -995,7 +991,7 @@ function DeleteDialog({
       description={
         dnc
           ? 'Pedido RGPD: o lead e tudo o que tem são apagados de vez. Não é possível desfazer.'
-          : 'O lead vai para Leads → Apagados, com tudo o que tem (tarefas, pagamentos, reuniões, linha do tempo). Durante 30 dias podes repô-lo; depois sai de vez.'
+          : 'O lead vai para Leads → Apagados, com tudo o que tem (tarefas, pagamentos, linha do tempo). Durante 30 dias podes repô-lo; depois sai de vez.'
       }
       footer={
         <>
@@ -1050,7 +1046,7 @@ function AnonymizeDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Anonimizar lead?"
-      description="Apaga nome, website, morada, contactos, notas, emails e as notas da linha do tempo. Mantém setor, cidade, estado e valor para as estatísticas."
+      description="Apaga nome, website, morada, contactos, emails e os registos automáticos da linha do tempo. Mantém setor, cidade, estado e valor para as estatísticas."
       footer={
         <>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>

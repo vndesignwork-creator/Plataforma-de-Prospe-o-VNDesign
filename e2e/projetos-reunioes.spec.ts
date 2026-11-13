@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
 /*
- * Relatório de diagnóstico em PDF, pagamentos + Projetos, reuniões (convite .ics)
+ * Relatório de diagnóstico em PDF, pagamentos + Projetos
  * e cópia de segurança semanal — cada um pode desligar-se em Definições → Funcionalidades.
  * Emails: Mailpit do Supabase local (SMTP 127.0.0.1:54325, API :54324).
  */
@@ -76,7 +76,7 @@ test.afterAll(async ({ browser }) => {
   const page = await browser.newPage({ storageState: 'e2e/.auth/user.json' });
   await page.request.delete('/api/v1/mail-account');
   await page.request.patch('/api/v1/settings', {
-    data: { features: { diagnosis_report: true, payments: true, meetings: true, projects: true }, weekly_backup: { enabled: true, recipient: null, weekday: 1 } },
+    data: { features: { diagnosis_report: true, payments: true, projects: true }, weekly_backup: { enabled: true, recipient: null, weekday: 1 } },
   });
   await page.close();
 });
@@ -161,58 +161,6 @@ test('pagamentos e Projetos: plano 50/50, receber o sinal, concluir o projeto', 
   await page.request.patch('/api/v1/settings', { data: { features: { projects: true, payments: true } } });
 });
 
-test('reunião: marcar com convite (.ics), aparece em Hoje, lembrete e desmarcar avisando o cliente', async ({ page, request }) => {
-  await connectAccount(page);
-  const to = `cliente@reuniao-${run}.pt`;
-  const lead = await createLead(page.request, { company_name: `Oficina Reunião ${run}`, email: to, status: 'respondeu' });
-
-  const day = new Date(Date.now() + 2 * 86_400_000);
-  const dd = new Intl.DateTimeFormat('pt-PT', { timeZone: 'Europe/Lisbon', day: '2-digit', month: '2-digit', year: 'numeric' }).format(day);
-  await page.goto(`/leads/${lead.id}`);
-  await page.getByRole('button', { name: 'Marcar reunião' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Marcar reunião' });
-  await dialog.getByLabel('Dia e hora').fill(`${dd} 10:00`);
-  await dialog.getByLabel('Local ou link').fill('https://meet.google.com/abc-defg-hij');
-  await expect(dialog.getByLabel('Enviar o convite ao cliente por email (entra no calendário dele)')).toBeChecked();
-  await dialog.getByRole('button', { name: 'Marcar' }).click();
-  await expect(page.getByText(new RegExp(`Reunião marcada para .*Convite enviado para ${to}\\. Estado: Reunião\\.`))).toBeVisible();
-
-  const updated = await getLead(page.request, lead.id);
-  expect(updated).toMatchObject({ status: 'reuniao', next_action_text: 'Reunião às 10:00' });
-  const invite = await mailTo(page.request, to, /^Reunião marcada/);
-  const raw = await (await page.request.get(`${MAILPIT}/message/${invite.ID}/raw`)).text();
-  expect(raw).toContain('BEGIN:VCALENDAR');
-  expect(raw).toContain('METHOD:REQUEST');
-
-  await page.goto('/dashboard');
-  await expect(page.getByRole('region', { name: 'Reuniões' }).getByText(`Oficina Reunião ${run}`)).toBeVisible();
-
-  // .ics para o próprio calendário.
-  const meetings = (await (await page.request.get(`/api/v1/leads/${lead.id}/meetings`)).json()).data;
-  const ics = await page.request.get(`/api/v1/meetings/${meetings[0].id}/ics`);
-  expect(ics.headers()['content-type']).toContain('text/calendar');
-
-  // Lembrete: uma reunião daqui a 30 minutos entra no cron.
-  const soon = await page.request.post(`/api/v1/leads/${lead.id}/meetings`, {
-    data: { starts_at: new Date(Date.now() + 30 * 60_000).toISOString(), duration_min: 15 },
-  });
-  expect(soon.status()).toBe(201);
-  const soonId = (await soon.json()).data.meeting.id;
-  if (process.env.CRON_SECRET) {
-    const cron = await request.get('/api/v1/cron/reminders', { headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` } });
-    expect((await cron.json()).meetings.map((m: { meeting_id: string }) => m.meeting_id)).toContain(soonId);
-  }
-
-  // Desmarcar avisando: o cliente recebe o cancelamento.
-  await page.goto(`/leads/${lead.id}`);
-  const card = page.locator('div.rounded-xl').filter({ has: page.getByRole('heading', { name: 'Reuniões' }) });
-  await card.getByRole('listitem').filter({ hasText: 'meet.google.com' }).getByRole('button', { name: 'Desmarcar a reunião' }).click();
-  await page.getByRole('button', { name: 'Desmarcar e avisar o cliente' }).click();
-  await expect(page.getByText('Reunião desmarcada. O cliente foi avisado.')).toBeVisible();
-  const cancel = await mailTo(page.request, to, /^Reunião desmarcada/);
-  expect(await (await page.request.get(`${MAILPIT}/message/${cancel.ID}/raw`)).text()).toContain('METHOD:CANCEL');
-});
-
 test('cópia de segurança: enviar agora (Excel em anexo) e o dia da semana', async ({ page }) => {
   await connectAccount(page);
   const recipient = `copia-${run}@vndesign.pt`;
@@ -237,5 +185,5 @@ test('cópia de segurança: enviar agora (Excel em anexo) e o dia da semana', as
   await page.getByRole('button', { name: 'Guardar', exact: true }).click();
   // (a mensagem da primeira gravação pode ainda estar à vista)
   await expect(page.getByText('Cópia de segurança guardada.').last()).toBeVisible();
-  expect((await (await page.request.get('/api/v1/settings')).json()).data.weekly_backup.enabled).toBe(false);
+  await expect.poll(async () => (await (await page.request.get('/api/v1/settings')).json()).data.weekly_backup.enabled).toBe(false);
 });

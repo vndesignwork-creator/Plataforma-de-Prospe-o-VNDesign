@@ -1,7 +1,7 @@
 /**
  * Projetos: os clientes (estado "Cliente") com o projeto em curso ou concluído,
- * com o prazo, a fase, o progresso das tarefas, os pagamentos, a próxima
- * reunião, as revisões, as horas e as entregas.
+ * com o prazo, a fase, o progresso das tarefas, os pagamentos, as revisões,
+ * as horas e as entregas.
  */
 import { DEFAULT_PROJECT_INFO, UPSELL_TASK_PREFIX, addDays, addMonths, entrySeconds, summarizePayments, todayIso, type Lead, type Project, type ProjectComplete } from '@vndesign/core';
 import type { ApiContext } from '../context';
@@ -29,23 +29,12 @@ export async function listProjects(ctx: ApiContext, state: 'active' | 'completed
   if (!leads.length) return [];
   const ids = leads.map((l) => l.id);
 
-  const now = new Date().toISOString();
   const ws = ctx.workspaceId;
-  const [tasks, payments, meetings, revisions, time, deliverables, infos, values, expenses] = await Promise.all([
+  const [tasks, payments, revisions, time, deliverables, infos, values, expenses] = await Promise.all([
     // Completas (como GET /leads/{id}/tasks): a página Projetos não as pede uma a uma.
     listTasksForLeads(ctx, ids),
     selectInBatches<{ lead_id: string; amount: number | string; due_on: string | null; paid_on: string | null }>(ids, (batch) =>
       ctx.supabase.from('lead_payments').select('lead_id, amount, due_on, paid_on').eq('workspace_id', ws).in('lead_id', batch),
-    ),
-    selectInBatches<{ id: string; lead_id: string; starts_at: string }>(ids, (batch) =>
-      ctx.supabase
-        .from('lead_meetings')
-        .select('id, lead_id, starts_at')
-        .eq('workspace_id', ws)
-        .in('lead_id', batch)
-        .is('canceled_at', null)
-        .gte('starts_at', now)
-        .order('starts_at', { ascending: true }),
     ),
     selectInBatches<{ lead_id: string }>(ids, (batch) => ctx.supabase.from('project_revisions').select('lead_id').eq('workspace_id', ws).in('lead_id', batch)),
     selectInBatches<{ lead_id: string; user_id: string; started_at: string; ended_at: string | null }>(ids, (batch) =>
@@ -72,7 +61,6 @@ export async function listProjects(ctx: ApiContext, state: 'active' | 'completed
       due_on: p.due_on,
       paid_on: p.paid_on,
     }));
-    const meeting = byLead(meetings, lead.id)[0];
     const entries = byLead(time, lead.id);
     const mine = entries.find((e) => !e.ended_at && e.user_id === ctx.user.id);
     const delivered = byLead(deliverables, lead.id);
@@ -82,7 +70,6 @@ export async function listProjects(ctx: ApiContext, state: 'active' | 'completed
       tasks: { total: own.length, done: own.length - open.length },
       next_task: next ? { id: next.id, title: next.title, due_on: next.due_on } : null,
       payments: summarizePayments(pays, today),
-      next_meeting: meeting ? { id: meeting.id, starts_at: meeting.starts_at } : null,
       revisions: { used: byLead(revisions, lead.id).length },
       time: {
         minutes: Math.floor(entries.reduce((sum, e) => sum + entrySeconds(e, nowMs), 0) / 60),

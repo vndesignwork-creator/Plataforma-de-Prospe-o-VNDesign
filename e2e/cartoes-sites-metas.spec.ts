@@ -342,17 +342,8 @@ test('Metas do mês no Dashboard: definir, barras com o ritmo e chamadas contada
   await page.request.delete(`/api/v1/leads/${lead.id}`);
 });
 
-test('Sem repetições: reunião marcada não aparece também como próxima ação no calendário; contactos contam uma vez por lead e dia', async ({ page }) => {
+test('Sem repetições: contactos contam uma vez por lead e dia', async ({ page }) => {
   const lead = (await (await page.request.post('/api/v1/leads?force=true', { data: { company_name: `Sem repetir ${run}`, status: 'respondeu', phone: '912345670' } })).json()).data as { id: string };
-  const day = new Date(Date.now() + 3 * 86_400_000);
-  day.setUTCHours(10, 0, 0, 0);
-  expect((await page.request.post(`/api/v1/leads/${lead.id}/meetings`, { data: { starts_at: day.toISOString(), duration_min: 30 } })).status()).toBe(201);
-  const iso = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Lisbon' }).format(day);
-  const updated = (await (await page.request.get(`/api/v1/leads/${lead.id}`)).json()).data as { next_action_on: string; next_action_text: string };
-  expect(updated.next_action_on).toBe(iso);
-  const events = (await (await page.request.get(`/api/v1/projects/calendar?from=${iso}&to=${iso}&followups=true`)).json()).data as { type: string; lead: { id: string } }[];
-  const mine = events.filter((e) => e.lead.id === lead.id).map((e) => e.type);
-  expect(mine).toEqual(['meeting']);
 
   // Equipa: WhatsApp aberto + "Contactado" na prospeção = 1 contacto (não 2).
   const stats = async () => ((await (await page.request.get('/api/v1/stats/team')).json()).data.members as { contacts_today: number }[])[0]!.contacts_today;

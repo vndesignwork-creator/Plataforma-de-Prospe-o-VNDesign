@@ -7,7 +7,6 @@ import { useAiVisibility, useSectors, useSettings, useSignature } from './querie
 /** Contexto das variáveis ({{empresa}}, {{assinatura}}…) para pré-visualizar no browser. */
 export function useTemplateContext(
   lead: Lead | null | undefined,
-  meeting?: { starts_at: string; location?: string | null } | null,
   /** false: o texto não usa {{visibilidade_ia}} (sem um pedido ao servidor por lead, ex.: listas da Prospeção). */
   options: { aiVisibility?: boolean } = {},
 ): TemplateContext {
@@ -26,7 +25,6 @@ export function useTemplateContext(
     today: todayIso(),
     services: catalog.all,
     categories: catalog.categories,
-    meeting,
     reviewUrl: settings?.google_review_url ?? null,
     aiVisibility: checks?.find((c) => c.status === 'done')?.summary ?? null,
   });

@@ -178,7 +178,7 @@ export async function deleteProposal(ctx: ApiContext, id: string): Promise<void>
 export async function markProposalSent(ctx: ApiContext, id: string): Promise<{ proposal: Proposal; lead: Lead }> {
   const proposal = await updateProposalStatus(ctx, id, 'enviada');
   const lead = await getLead(ctx, proposal.lead_id);
-  // Só avança leads em etapas anteriores (identificado → reunião); não mexe em clientes, perdidos ou em pausa.
+  // Só avança leads em etapas anteriores (identificado → respondeu); não mexe em clientes, perdidos ou em pausa.
   let updated = lead;
   if (LEAD_STATUSES.indexOf(lead.status) < LEAD_STATUSES.indexOf('proposta_enviada')) {
     const result = await ctx.supabase

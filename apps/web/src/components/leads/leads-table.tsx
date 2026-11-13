@@ -212,7 +212,6 @@ function buildColumns(today: string): Col[] {
       meta: { label: 'Valor est.', sort: 'estimated_value', className: 'text-right tabular' },
       cell: ({ row }) => formatCurrency(row.original.estimated_value) || muted,
     },
-    { id: 'notes', meta: { label: 'Notas', className: 'min-w-64' }, cell: ({ row }) => text(row.original.notes, 90) },
     {
       id: 'approach_angle',
       meta: { label: 'Ângulo de abordagem', className: 'min-w-64' },
@@ -247,7 +246,7 @@ function buildColumns(today: string): Col[] {
 }
 
 /** Colunas escondidas por omissão (as restantes da folha ficam a um clique). */
-const DEFAULT_HIDDEN = ['origin', 'website', 'problems', 'email', 'phone', 'contact_name', 'first_contact_on', 'last_follow_up_on', 'notes', 'approach_angle', 'source_url', 'email_subject'];
+const DEFAULT_HIDDEN = ['origin', 'website', 'problems', 'email', 'phone', 'contact_name', 'first_contact_on', 'last_follow_up_on', 'approach_angle', 'source_url', 'email_subject'];
 
 const DUE_OPTIONS = [
   { value: '', label: 'Todas as próximas ações' },
@@ -682,7 +681,7 @@ function LeadsTableView() {
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Pesquisar empresa, email, cidade, notas…"
+            placeholder="Pesquisar empresa, email, cidade…"
             aria-label="Pesquisar leads"
             className="pl-9"
           />

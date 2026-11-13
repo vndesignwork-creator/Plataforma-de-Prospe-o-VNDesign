@@ -2,20 +2,19 @@
 
 /**
  * Um projeto na página Projetos: em cima o prazo, a fase e as ações (WhatsApp,
- * reunião, concluir); depois o resumo (pagamentos, tarefas, revisões, horas);
+ * concluir); depois o resumo (pagamentos, tarefas, revisões, horas);
  * as tarefas e, ao lado, o tempo (Pomodoro e cronómetro); em baixo o resto.
  */
 import { formatCurrency, formatDate, formatDuration, hourlyRate, leadPath, type Features, type Lead, type Project } from '@vndesign/core';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ArrowRight, CalendarClock, CalendarPlus, ChevronDown, Clock, FolderOpen, GripVertical, ListChecks, Receipt, RefreshCcw } from 'lucide-react';
+import { ArrowRight, ChevronDown, Clock, FolderOpen, GripVertical, ListChecks, Receipt, RefreshCcw } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
-import { MeetingDialog, meetingLabel } from '@/components/meetings/meetings-card';
 import { WhatsAppMenu } from '@/components/leads/whatsapp-menu';
 import { ServiceChips } from '@/components/services/services';
 import { TasksCard } from '@/components/tasks/tasks-card';
-import { Button, buttonClasses } from '@/components/ui/button';
+import { buttonClasses } from '@/components/ui/button';
 import { Badge } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
@@ -71,8 +70,7 @@ export function ProjectRow({
   /** Lista de projetos: pega ⠿ para arrastar o bloco (rato, dedo ou Espaço + setas). */
   sortable?: boolean;
 }) {
-  const { lead, info, next_meeting: meeting, revisions, time, deliverables, value, tasks } = project;
-  const [meetingOpen, setMeetingOpen] = useState(false);
+  const { lead, info, revisions, time, deliverables, value, tasks } = project;
   const [hoursOpen, setHoursOpen] = useState(false);
   const completed = !!lead.project_completed_at;
   const rate = hourlyRate(value, time.minutes);
@@ -158,11 +156,6 @@ export function ProjectRow({
         {/* Telemóvel: botões em duas colunas, a toda a largura (o último ocupa a linha se sobrar). Computador: à direita. */}
         <div className="grid grid-cols-2 gap-2 sm:ml-auto sm:flex sm:flex-wrap sm:items-center sm:justify-end [&>*:last-child:nth-child(odd)]:col-span-2">
           {!completed ? <WhatsAppMenu lead={lead} className={buttonClasses('outline', 'sm', 'max-sm:w-full')} /> : null}
-          {!completed && features.meetings ? (
-            <Button size="sm" variant="outline" onClick={() => setMeetingOpen(true)} className="max-sm:w-full">
-              <CalendarPlus className="h-3.5 w-3.5" aria-hidden /> Reunião
-            </Button>
-          ) : null}
           <ProjectToggle lead={lead} onWrapUp={onWrapUp} className="max-sm:w-full" />
         </div>
       </div>
@@ -222,11 +215,6 @@ export function ProjectRow({
           </div>
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted">
-            {meeting && features.meetings ? (
-              <span className="inline-flex items-center gap-1.5">
-                <CalendarClock className="h-3.5 w-3.5" aria-hidden /> Reunião: {meetingLabel(meeting.starts_at)}
-              </span>
-            ) : null}
             {features.expenses && project.expenses > 0 ? (
               <span className="inline-flex items-center gap-1.5">
                 <Receipt className="h-3.5 w-3.5" aria-hidden /> Despesas {euros(project.expenses)}
@@ -249,7 +237,6 @@ export function ProjectRow({
           </div>
         </>
       )}
-      {meetingOpen ? <MeetingDialog lead={lead} onClose={() => setMeetingOpen(false)} /> : null}
       {hoursOpen ? (
         <Dialog open onOpenChange={(o) => (!o ? setHoursOpen(false) : undefined)} title="Horas" description={lead.company_name} className="max-w-xl">
           <TimeSection lead={lead} className="-mx-5 -my-4 border-t-0" />

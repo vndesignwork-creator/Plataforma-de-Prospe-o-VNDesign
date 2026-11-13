@@ -857,7 +857,7 @@ function EmailAction({ lead, onSent }: { lead: Lead; onSent: (result: LeadEmailS
       ? pickTemplate(templates, FIRST_EMAIL_STEP, leadServiceCategory(lead.services, catalog.all) ?? null)
       : null;
   // Só pede o teste "Aparece nas IAs?" se o modelo o usar (antes: um pedido por cada lead da lista).
-  const context = useTemplateContext(lead, null, { aiVisibility: usesAiVisibility(t?.subject, t?.body) });
+  const context = useTemplateContext(lead, { aiVisibility: usesAiVisibility(t?.subject, t?.body) });
   if (!lead.email || lead.email_bounced_at) return null;
   if (lead.status === 'contactado') return <FollowUpEmailButton lead={lead} variant="soft" onSent={onSent} />;
   let subject = lead.email_subject ?? '';
@@ -882,7 +882,7 @@ function EmailAction({ lead, onSent }: { lead: Lead; onSent: (result: LeadEmailS
   );
 }
 
-/** "Ver mais": o passo da sequência, o ângulo, os problemas do site, as notas e os scripts. */
+/** "Ver mais": o passo da sequência, o ângulo, os problemas do site e os scripts. */
 function LeadDetails({ item }: { item: ProspectingItem }) {
   const lead = item.lead;
   const [scripts, setScripts] = useState(false);
@@ -909,12 +909,6 @@ function LeadDetails({ item }: { item: ProspectingItem }) {
               <Flame className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted" aria-hidden />
               {lead.score_reasons.slice(0, 3).join(' · ')}
             </dd>
-          </div>
-        ) : null}
-        {lead.notes ? (
-          <div>
-            <dt className="text-xs font-medium tracking-wide text-muted uppercase">Notas</dt>
-            <dd className="mt-0.5 line-clamp-4 whitespace-pre-line">{lead.notes}</dd>
           </div>
         ) : null}
         {lead.website ? (

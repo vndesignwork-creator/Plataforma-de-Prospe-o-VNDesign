@@ -342,7 +342,6 @@ export const ProjectSchema = z
     tasks: z.object({ total: z.int(), done: z.int() }),
     next_task: z.object({ id: z.uuid(), title: z.string(), due_on: z.string().nullable() }).nullable(),
     payments: PaymentSummarySchema,
-    next_meeting: z.object({ id: z.uuid(), starts_at: z.string() }).nullable(),
     revisions: z.object({ used: z.int() }),
     time: z.object({
       minutes: z.int().meta({ description: 'Total em minutos (com o que está a contar)' }),
@@ -363,15 +362,14 @@ export const ProjectsQuerySchema = z.object({
 });
 
 // -----------------------------------------------------------------------------
-// Calendário (prazos, reuniões, pagamentos e tarefas)
+// Calendário (prazos, pagamentos e tarefas)
 // -----------------------------------------------------------------------------
 
 /** followup = próxima ação de um lead (só com followups=true). */
-export const CALENDAR_EVENT_TYPES = ['due', 'meeting', 'payment', 'task', 'followup'] as const;
+export const CALENDAR_EVENT_TYPES = ['due', 'payment', 'task', 'followup'] as const;
 export type CalendarEventType = (typeof CALENDAR_EVENT_TYPES)[number];
 export const CALENDAR_EVENT_LABELS: Record<CalendarEventType, string> = {
   due: 'Entrega',
-  meeting: 'Reunião',
   payment: 'Pagamento',
   task: 'Tarefa',
   followup: 'Follow-up',
@@ -383,7 +381,6 @@ export const CalendarEventSchema = z
     date: z.string().meta({ description: 'AAAA-MM-DD (hora de Lisboa)' }),
     type: z.enum(CALENDAR_EVENT_TYPES),
     title: z.string(),
-    starts_at: z.string().nullable().meta({ description: 'Reuniões: data e hora' }),
     amount: z.number().nullable(),
     done: z.boolean().meta({ description: 'Pago / tarefa feita' }),
     lead: z.object({ id: z.uuid(), number: z.int(), company_name: z.string() }),
@@ -441,7 +438,6 @@ export interface SharedProject {
   due_on: string | null;
   completed_at: string | null;
   tasks: { title: string; done: boolean }[];
-  next_meeting: { starts_at: string; location: string | null } | null;
   deliverables: { id: string; title: string; url: string | null; status: DeliverableStatus; date: string | null }[];
   /** O cliente pode aprovar entregas ou pedir alterações nesta página. */
   approvals: boolean;
@@ -518,7 +514,7 @@ export interface FeedEvent {
   description?: string | null;
   location?: string | null;
   url?: string | null;
-  /** Com hora (reuniões): início e duração. */
+  /** Com hora: início e duração. */
   startsAt?: string;
   durationMin?: number;
   /** Dia inteiro (entregas, pagamentos, tarefas): AAAA-MM-DD. */

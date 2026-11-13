@@ -16,7 +16,7 @@ test.afterAll(() => stop());
 
 test('proposta: pacote recomendado + manutenção, desconto, PDF e marcar como enviada', async ({ page }) => {
   const name = `Restaurante Proposta ${run}`;
-  const res = await page.request.post('/api/v1/leads', { data: { company_name: name, city: 'Amadora', contact_name: 'Sr. Manuel', status: 'reuniao' } });
+  const res = await page.request.post('/api/v1/leads', { data: { company_name: name, city: 'Amadora', contact_name: 'Sr. Manuel', status: 'respondeu' } });
   const lead = (await res.json()).data;
 
   await page.goto(`/leads/${lead.id}`);

@@ -86,12 +86,11 @@ test('despesas e lucro; rentabilidade nas Estatísticas', async ({ page }) => {
   await expect(page.getByRole('list', { name: 'Ganho por hora por cliente' }).getByText(`Despesas ${run}`)).toBeVisible();
 });
 
-test('calendário subscrito: link .ics sem sessão com as reuniões; desligar', async ({ page, request }) => {
+test('calendário subscrito: link .ics sem sessão com as tarefas; desligar', async ({ page, request }) => {
   const lead = await createLead(page.request, { company_name: `Calendário ${run}`, status: 'respondeu' });
-  const meeting = await page.request.post(`/api/v1/leads/${lead.id}/meetings`, {
-    data: { starts_at: new Date(Date.now() + 5 * 86_400_000).toISOString(), duration_min: 45, location: 'Google Meet' },
-  });
-  expect(meeting.status()).toBe(201);
+  const due = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Lisbon' }).format(new Date(Date.now() + 5 * 86_400_000));
+  const task = await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title: `Ligar ${run}`, due_on: due } });
+  expect(task.status()).toBe(201);
   await page.goto('/definicoes/funcionalidades');
   // Espera pelo estado real (ligado ou não) antes de decidir o que carregar.
   await page.waitForLoadState('networkidle');
@@ -107,7 +106,7 @@ test('calendário subscrito: link .ics sem sessão com as reuniões; desligar', 
   expect(ics.headers()['content-type']).toContain('text/calendar');
   const body = await ics.text();
   expect(body).toContain('BEGIN:VCALENDAR');
-  expect(body).toContain(`SUMMARY:Reunião · Calendário ${run}`);
+  expect(body).toContain(`Ligar ${run} · Calendário ${run}`);
 
   await card.getByRole('button', { name: 'Desligar' }).click();
   await expect(card.getByRole('button', { name: 'Criar link' })).toBeVisible();

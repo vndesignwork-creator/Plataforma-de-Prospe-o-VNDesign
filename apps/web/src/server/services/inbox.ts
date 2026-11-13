@@ -41,7 +41,7 @@ const FIRST_READ_DAYS = 14;
 /** O cron não lê a mesma caixa mais do que uma vez neste intervalo. */
 const CRON_INTERVAL_MS = 10 * 60_000;
 /** Estados em que uma resposta interessa (mais à frente no pipeline só se regista). */
-const WATCHED: LeadStatus[] = ['contactado', 'respondeu', 'reuniao', 'proposta_enviada'];
+const WATCHED: LeadStatus[] = ['contactado', 'respondeu', 'proposta_enviada'];
 
 type LeadRow = {
   id: string;

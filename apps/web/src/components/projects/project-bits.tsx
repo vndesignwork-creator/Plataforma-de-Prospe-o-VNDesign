@@ -9,7 +9,7 @@ import { errorMessage } from '@/lib/api-client';
 import { useUpdateProjectInfo } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
-/** Estados antes da reunião/proposta: ainda sem pagamentos nem contratos (os cartões nem perguntam ao servidor). */
+/** Estados antes da proposta: ainda sem pagamentos nem contratos (os cartões nem perguntam ao servidor). */
 export const EARLY_STATUSES: readonly LeadStatus[] = ['identificado', 'contactado', 'respondeu'];
 
 /** Cor de cada fase (pontos e colunas). */

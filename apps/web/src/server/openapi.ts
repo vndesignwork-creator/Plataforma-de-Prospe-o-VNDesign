@@ -111,9 +111,6 @@ import {
   CalendarFeedUpdateSchema,
   CalendarQuerySchema,
   BillingSummarySchema,
-  LeadMeetingSchema,
-  LeadMeetingCreateSchema,
-  LeadMeetingResultSchema,
   AiProviderCreateSchema,
   AiProviderSchema,
   AiProviderTestResultSchema,
@@ -187,8 +184,6 @@ import {
   SiteFormToggleSchema,
   LeadGeoSchema,
   LeadGeoUpdateSchema,
-  MeetingNotesInputSchema,
-  MeetingNotesResultSchema,
   TaskSearchQuerySchema,
   TaskListQuerySchema,
   TaskListItemSchema,
@@ -366,7 +361,6 @@ export function getOpenApiDocument() {
       { name: 'Email' },
       { name: 'Projetos', description: 'Pagamentos dos clientes e projetos em curso' },
       { name: 'Equipa', description: 'Equipa de prospeção: convites, papéis, responsável pelos leads e estatísticas' },
-      { name: 'Reuniões' },
       { name: 'Contratos', description: 'Contratos gerados a partir da proposta e aceites online' },
       { name: 'Colaboradores', description: 'Pessoas convidadas para um projeto e o portal delas' },
       { name: 'Mapa' },
@@ -1250,15 +1244,6 @@ export function getOpenApiDocument() {
           responses: { '200': ok(data(z.array(LeadTaskSchema))), ...withNotFound },
         }),
       },
-      '/leads/{id}/meeting-notes': {
-        post: op({
-          tags: ['Leads'],
-          summary: 'Notas de reunião com IA: resumo, tarefas e próximo passo a partir dos apontamentos (não grava nada)',
-          requestParams: { path: leadId },
-          requestBody: body(MeetingNotesInputSchema),
-          responses: { '200': ok(data(MeetingNotesResultSchema)), ...withNotFound },
-        }),
-      },
       '/leads/{id}/summary': {
         post: op({
           tags: ['Leads'],
@@ -1299,7 +1284,7 @@ export function getOpenApiDocument() {
       '/leads/trash/restore': {
         post: op({
           tags: ['Leads'],
-          summary: 'Repor leads apagados, tal como estavam (tarefas, pagamentos, reuniões, horas, linha do tempo…)',
+          summary: 'Repor leads apagados, tal como estavam (tarefas, pagamentos, horas, linha do tempo…)',
           requestBody: body(TrashIdsSchema),
           responses: { '200': ok(data(z.object({ lead_ids: z.array(z.uuid()) }))), ...common },
         }),
@@ -1660,7 +1645,7 @@ export function getOpenApiDocument() {
       '/projects': {
         get: op({
           tags: ['Projetos'],
-          summary: 'Clientes com o projeto em curso (ou concluídos), com tarefas, pagamentos e próxima reunião',
+          summary: 'Clientes com o projeto em curso (ou concluídos), com tarefas, pagamentos e entregas',
           requestParams: { query: ProjectsQuerySchema },
           responses: { '200': ok(data(z.array(ProjectSchema))), ...common },
         }),
@@ -1916,7 +1901,7 @@ export function getOpenApiDocument() {
       '/stats/compare': {
         get: op({
           tags: ['Dashboard'],
-          summary: 'Este mês (ou semana) até hoje contra o anterior até ao mesmo dia: leads novos, contactos, respostas, reuniões, propostas, clientes e recebido',
+          summary: 'Este mês (ou semana) até hoje contra o anterior até ao mesmo dia: leads novos, contactos, respostas, propostas, clientes e recebido',
           requestParams: { query: PeriodCompareQuerySchema },
           responses: { '200': ok(data(PeriodCompareSchema)), ...common },
         }),
@@ -2051,7 +2036,7 @@ export function getOpenApiDocument() {
       '/leads/{id}/client-projects/delete-first': {
         post: op({
           tags: ['Projetos'],
-          summary: 'Apagar o primeiro projeto (vai para a reciclagem): o projeto indicado passa a ser o principal e herda a linha do tempo, o kit da marca, os acessos, as notas e as etiquetas',
+          summary: 'Apagar o primeiro projeto (vai para a reciclagem): o projeto indicado passa a ser o principal e herda a linha do tempo, o kit da marca, os acessos e as etiquetas',
           requestParams: { path: leadId },
           requestBody: body(DeleteFirstProjectSchema),
           responses: { '200': ok(data(z.object({ main_id: z.uuid() }))), ...withNotFound },
@@ -2287,7 +2272,7 @@ export function getOpenApiDocument() {
       '/calendar/{token}.ics': {
         get: op({
           tags: ['Projetos'],
-          summary: 'Calendário subscrito (iCalendar, sem sessão): reuniões, entregas, pagamentos previstos e tarefas',
+          summary: 'Calendário subscrito (iCalendar, sem sessão): entregas, pagamentos previstos e tarefas',
           description: 'Para o Google Calendar ("A partir do URL"), o iPhone (webcal://) ou o Outlook. O código secreto é a autorização.',
           security: [],
           requestParams: { path: z.object({ token: z.string() }) },
@@ -2304,7 +2289,7 @@ export function getOpenApiDocument() {
       '/projects/calendar': {
         get: op({
           tags: ['Projetos'],
-          summary: 'Calendário: prazos de entrega, reuniões, pagamentos previstos e tarefas (máx. 62 dias); followups=true junta as próximas ações dos leads',
+          summary: 'Calendário: prazos de entrega, pagamentos previstos e tarefas (máx. 62 dias); followups=true junta as próximas ações dos leads',
           requestParams: { query: CalendarQuerySchema },
           responses: { '200': ok(data(z.array(CalendarEventSchema))), ...common },
         }),
@@ -2565,22 +2550,6 @@ export function getOpenApiDocument() {
       '/dashboard/billing': {
         get: op({ tags: ['Projetos'], summary: 'Faturação: recebido este mês, por receber, em atraso', responses: { '200': ok(data(BillingSummarySchema)), ...common } }),
       },
-      '/leads/{id}/meetings': {
-        get: op({ tags: ['Reuniões'], summary: 'Reuniões do lead', requestParams: { path: idParam }, responses: { '200': ok(data(z.array(LeadMeetingSchema))), ...withNotFound } }),
-        post: op({
-          tags: ['Reuniões'],
-          summary: 'Marcar uma reunião (o lead passa a "Reunião"; com send_invite, o cliente recebe o convite de calendário)',
-          requestParams: { path: idParam },
-          requestBody: body(LeadMeetingCreateSchema),
-          responses: { '201': ok(data(LeadMeetingResultSchema), 'Marcada'), '422': problem('Sem email ou sem conta de envio'), ...withNotFound },
-        }),
-      },
-      '/meetings/{id}/cancel': {
-        post: op({ tags: ['Reuniões'], summary: 'Desmarcar (notify: avisar o cliente que recebeu o convite)', requestParams: { path: idParam }, responses: { '200': ok(data(LeadMeetingSchema)), ...withNotFound } }),
-      },
-      '/meetings/{id}/ics': {
-        get: op({ tags: ['Reuniões'], summary: 'A reunião em .ics (para o próprio calendário)', requestParams: { path: idParam }, responses: { '200': { description: 'iCalendar' }, ...withNotFound } }),
-      },
       '/settings/backup': {
         post: op({ tags: ['Definições'], summary: 'Enviar já a cópia de segurança (todos os leads em Excel) por email', responses: { '200': ok(data(z.object({ sent_to: z.string(), leads: z.int() }))), '422': problem('Sem email para enviar'), ...common } }),
       },
@@ -2617,14 +2586,6 @@ export function getOpenApiDocument() {
           requestParams: { path: idParam },
           requestBody: body(LeadEmailSendSchema),
           responses: { '200': ok(data(LeadEmailSendResultSchema)), '429': problem('Limite diário atingido'), ...withNotFound },
-        }),
-      },
-      '/ai/transcribe': {
-        get: op({ tags: ['Fornecedores de IA'], summary: 'Há fornecedor (OpenAI ou compatível) para passar áudio a texto?', responses: { '200': ok(data(z.object({ available: z.boolean() }))), ...common } }),
-        post: op({
-          tags: ['Fornecedores de IA'],
-          summary: 'Passar um ditado gravado a texto (multipart: audio, até 25 MB); não grava nada',
-          responses: { '200': ok(data(z.object({ text: z.string(), provider: z.string() }))), '422': problem('Sem fornecedor OpenAI'), ...common },
         }),
       },
       '/ai-providers': {

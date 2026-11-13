@@ -8,7 +8,6 @@ import {
   BadgeCheck,
   BriefcaseBusiness,
   Calculator,
-  CalendarPlus,
   Camera,
   Palette,
   Quote,
@@ -57,12 +56,6 @@ export const FEATURES: { key: keyof Features; label: string; description: string
     label: 'Sessão de prospeção',
     description: 'Menu Prospeção: a lista de chamadas do dia, com o resultado do contacto registado com um toque.',
     icon: Target,
-  },
-  {
-    key: 'meetings',
-    label: 'Reuniões',
-    description: 'Marcar reuniões na ficha, com convite de calendário para o cliente e lembrete 1 hora antes.',
-    icon: CalendarPlus,
   },
   {
     key: 'payments',
@@ -188,7 +181,7 @@ export const FEATURES: { key: keyof Features; label: string; description: string
   {
     key: 'whatsapp_templates',
     label: 'Mensagens prontas no WhatsApp',
-    description: 'O botão WhatsApp da ficha abre um menu com mensagens já escritas (primeiro contacto, follow-up, lembrete de reunião). Editam-se em Scripts.',
+    description: 'O botão WhatsApp da ficha abre um menu com mensagens já escritas (primeiro contacto, follow-up). Editam-se em Scripts.',
     icon: MessageCircle,
   },
 ];
@@ -240,7 +233,7 @@ export const FEATURE_GROUPS: { title: string; description: string; master?: keyo
   {
     title: 'Leads e prospeção',
     description: 'Encontrar, analisar e contactar leads.',
-    parts: [{ keys: ['prospecting_session', 'monthly_goals', 'prospect_watch', 'email_tracking', 'whatsapp_templates', 'meetings', 'diagnosis_report', 'site_screenshots'] }],
+    parts: [{ keys: ['prospecting_session', 'monthly_goals', 'prospect_watch', 'email_tracking', 'whatsapp_templates', 'diagnosis_report', 'site_screenshots'] }],
   },
   {
     title: 'Vendas e faturação',

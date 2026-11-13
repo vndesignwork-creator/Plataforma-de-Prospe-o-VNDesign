@@ -47,7 +47,6 @@ export const IMPORT_FIELDS = [
   'next_action',
   'next_action_on',
   'estimated_value',
-  'notes',
   'approach_angle',
   'source_url',
   'suggested_on',
@@ -79,7 +78,6 @@ export const IMPORT_FIELD_LABELS: Record<ImportField, string> = {
   next_action: 'Próxima ação (texto e/ou data)',
   next_action_on: 'Data da próxima ação',
   estimated_value: 'Valor estimado (€)',
-  notes: 'Notas',
   approach_angle: 'Ângulo de abordagem',
   source_url: 'Fonte',
   suggested_on: 'Sugerido em',
@@ -113,7 +111,6 @@ const HEADER_ALIASES: Record<ImportField, string[]> = {
   next_action: ['prox-acao', 'proxima-acao', 'next-action', 'acao'],
   next_action_on: ['data-da-proxima-acao', 'data-proxima-acao', 'next-action-date'],
   estimated_value: ['valor-est', 'valor-estimado', 'valor', 'valor-eur', 'value', 'orcamento'],
-  notes: ['notas', 'nota', 'observacoes', 'obs', 'notes'],
   approach_angle: ['angulo-de-abordagem', 'angulo', 'abordagem'],
   source_url: ['fonte', 'origem', 'source', 'origem-dos-dados'],
   suggested_on: ['sugerido-em', 'data-sugestao', 'adicionado-em', 'data'],
@@ -202,7 +199,7 @@ export interface MappedRow {
 export type MapRowResult = { ok: true; value: MappedRow } | { ok: false; errors: string[]; warnings: string[] };
 
 const TEXT_FIELDS = [
-  'city', 'address', 'problems', 'phone', 'contact_name', 'notes', 'approach_angle', 'email_subject', 'email_body',
+  'city', 'address', 'problems', 'phone', 'contact_name', 'approach_angle', 'email_subject', 'email_body',
 ] as const;
 
 /** A linha está toda vazia (ou só com "--")? */

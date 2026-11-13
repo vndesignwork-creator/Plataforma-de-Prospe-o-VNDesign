@@ -8,8 +8,8 @@ import { todayIso } from './format';
 import { notificationTitle, type Notification } from './team-work';
 
 export type NotificationTone = 'accent' | 'warning' | 'success' | 'info' | 'violet' | 'danger' | 'muted';
-/** Ícone: o tipo do aviso ou uma variante (reunião, email devolvido, "não contactar"). */
-export type NotificationIcon = Notification['kind'] | 'meeting' | 'bounce' | 'blocked';
+/** Ícone: o tipo do aviso ou uma variante (email devolvido, "não contactar"). */
+export type NotificationIcon = Notification['kind'] | 'bounce' | 'blocked';
 export type NotificationAction = 'task' | 'reply' | 'call';
 
 export interface NotificationView {
@@ -69,8 +69,7 @@ export function describeNotification(n: Input, actor: string | null): Notificati
       [label, tone] = ['Menção', 'warning'];
       break;
     case 'reminder':
-      if (/^Reunião\b/.test(title)) [label, tone, icon] = ['Reunião', 'accent', 'meeting'];
-      else [label, tone, action] = ['Lembrete', 'accent', n.task_id ? 'task' : null];
+      [label, tone, action] = ['Lembrete', 'accent', n.task_id ? 'task' : null];
       break;
     case 'daily':
       // O aviso semanal dos leads a arrefecer também é um resumo.

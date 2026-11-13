@@ -283,9 +283,9 @@ export async function recordProspectingOutcome(ctx: ApiContext, leadId: string, 
       break;
     case 'interested':
       await updateLead(ctx, leadId, {
-        status: lead.status === 'reuniao' || lead.status === 'proposta_enviada' ? lead.status : 'respondeu',
+        status: lead.status === 'proposta_enviada' ? lead.status : 'respondeu',
         next_action_on: todayIso(),
-        next_action_text: 'Marcar reunião ou enviar proposta',
+        next_action_text: 'Enviar proposta',
       });
       break;
     case 'later':

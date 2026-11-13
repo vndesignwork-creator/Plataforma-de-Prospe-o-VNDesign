@@ -2,7 +2,7 @@
 
 /**
  * Definições → Funcionalidades: ligar/desligar o relatório de diagnóstico, os
- * pagamentos, as reuniões, a página Projetos (e as partes dela), as mensagens
+ * pagamentos, a página Projetos (e as partes dela), as mensagens
  * prontas do WhatsApp, o link de avaliação no Google e a cópia de segurança.
  */
 import { useQueryClient } from '@tanstack/react-query';

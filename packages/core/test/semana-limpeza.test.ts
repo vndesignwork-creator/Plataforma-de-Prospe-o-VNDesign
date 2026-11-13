@@ -5,7 +5,6 @@ import {
   LeadListQuerySchema,
   buildProjectUpdate,
   groupDuplicatePairs,
-  meetingNotesResult,
   normalizeTags,
   pickPrimary,
   weekStart,
@@ -18,6 +17,8 @@ describe('etiquetas', () => {
     expect(LeadUpdateSchema.parse({ tags: ['VIP', 'vip'] }).tags).toEqual(['VIP']);
     expect(LeadUpdateSchema.safeParse({ tags: ['x'.repeat(31)] }).success).toBe(false);
     expect(LeadListQuerySchema.parse({ tag: 'feira,urgente' }).tag).toEqual(['feira', 'urgente']);
+    // Links antigos com a fase "Reunião" (que já não existe) abrem em "Respondeu".
+    expect(LeadListQuerySchema.parse({ status: 'reuniao,proposta_enviada' }).status).toEqual(['respondeu', 'proposta_enviada']);
   });
 });
 
@@ -53,27 +54,8 @@ describe('agenda', () => {
   });
 });
 
-describe('notas de reunião com IA', () => {
-  it('datas a partir de hoje, no máximo 6 tarefas, sem tarefas vazias', () => {
-    const r = meetingNotesResult(
-      {
-        resumo: ' Querem loja online. ',
-        tarefas: [{ titulo: 'Enviar proposta', prazo_dias: 3 }, { titulo: '  ', prazo_dias: 1 }, ...Array.from({ length: 8 }, (_, i) => ({ titulo: `T${i}`, prazo_dias: null }))],
-        proximo_passo: { texto: 'Ligar', dias: 7 },
-      },
-      '2026-10-23',
-      'claude',
-    );
-    expect(r.summary).toBe('Querem loja online.');
-    expect(r.tasks).toHaveLength(6);
-    expect(r.tasks[0]).toEqual({ title: 'Enviar proposta', due_on: '2026-10-26' });
-    expect(r.tasks[1]!.due_on).toBeNull();
-    expect(r.next_action).toEqual({ text: 'Ligar', on: '2026-10-30' });
-  });
-});
-
 describe('ponto de situação', () => {
-  it('o que foi feito desde o último, próximos passos, reunião, pagamento e link', () => {
+  it('o que foi feito desde o último, próximos passos, pagamento e link', () => {
     const { subject, body } = buildProjectUpdate({
       company: 'Padaria Sol',
       projectTitle: 'Loja online',
@@ -85,7 +67,6 @@ describe('ponto de situação', () => {
         { title: 'Página de produtos', done_at: null, due_on: '2026-10-30' },
       ],
       deliverables: [{ title: 'Logótipo', status: 'aprovada', approved_at: '2026-10-22T10:00:00Z' }],
-      meeting: { starts_at: '2026-10-28T14:30:00Z' },
       nextPayment: { description: 'Sinal', amount: 300, due_on: '2026-10-31' },
       shareUrl: 'https://leads.vndesign.pt/p/abc',
       signature: 'Vá\nVNDesign',
@@ -97,7 +78,7 @@ describe('ponto de situação', () => {
     expect(body).not.toContain('• Briefing');
     expect(body).toContain('• Logótipo — aprovada');
     expect(body).toContain('• Página de produtos (até 30/10/2026)');
-    expect(body).toContain('Próxima reunião: 28/10/2026 às 14:30');
+    expect(body).not.toContain('reunião');
     expect(body).toMatch(/Próximo pagamento: Sinal — 300\s€ até 31\/10\/2026/);
     expect(body).toContain('https://leads.vndesign.pt/p/abc');
     expect(body.endsWith('Vá\nVNDesign')).toBe(true);

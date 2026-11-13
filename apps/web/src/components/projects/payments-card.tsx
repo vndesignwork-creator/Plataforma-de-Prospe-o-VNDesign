@@ -194,7 +194,7 @@ export function PlanForm({ lead, onDone, className = 'p-4' }: { lead: Lead; onDo
 }
 
 export function PaymentsCard({ lead }: { lead: Lead }) {
-  // Antes da reunião/proposta não há pagamentos: nem se pergunta ao servidor (o cartão não aparece).
+  // Antes da proposta não há pagamentos: nem se pergunta ao servidor (o cartão não aparece).
   const { data: payments, isLoading } = usePayments(lead.id, !EARLY_STATUSES.includes(lead.status));
   const [adding, setAdding] = useState(false);
   const [planning, setPlanning] = useState(false);

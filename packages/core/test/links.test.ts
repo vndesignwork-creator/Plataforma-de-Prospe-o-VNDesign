@@ -25,10 +25,8 @@ describe('links', () => {
     expect(fixDirectoryWebsite({ website: 'https://olagar.pt' })).toBeNull();
     expect(fixDirectoryWebsite({ website: 'https://sluurpy.com/a', source_url: null })).toEqual({ website: null, source_url: 'https://sluurpy.com/a' });
     expect(fixDirectoryWebsite({ website: 'https://sluurpy.com/a', source_url: 'https://www.sluurpy.com/a/' })).toEqual({ website: null });
-    expect(fixDirectoryWebsite({ website: 'https://sluurpy.com/a', source_url: 'https://wanderlog.com/b', notes: 'Nota' })).toEqual({
-      website: null,
-      notes: 'Nota\nLink de diretório: https://sluurpy.com/a',
-    });
+    // A Fonte já tem outro link: fica como está (nada se perde).
+    expect(fixDirectoryWebsite({ website: 'https://sluurpy.com/a', source_url: 'https://wanderlog.com/b' })).toBeNull();
     // Redes sociais também não são o site da empresa.
     expect(fixDirectoryWebsite({ website: 'https://m.facebook.com/x', source_url: null })).toEqual({ website: null, social_links: ['https://m.facebook.com/x'] });
     expect(fixDirectoryWebsite({ website: 'https://instagram.com/x', social_links: ['https://instagram.com/x/'] })).toEqual({

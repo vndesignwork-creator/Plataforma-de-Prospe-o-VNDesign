@@ -334,7 +334,7 @@ export async function teamStats(ctx: ApiContext, days = 30): Promise<TeamStats> 
         .select('lead_id, actor_user_id, to:payload->>to, lead:leads!inner(assigned_to)')
         .eq('workspace_id', ctx.workspaceId)
         .eq('type', 'status_changed')
-        .in('payload->>to', ['respondeu', 'reuniao', 'cliente'])
+        .in('payload->>to', ['respondeu', 'cliente'])
         .gte('created_at', since)
         .order('id')
         .range(from, to),
@@ -392,7 +392,6 @@ export async function teamStats(ctx: ApiContext, days = 30): Promise<TeamStats> 
     return count([...seen.values()], (person) => person);
   };
   const replied = leadsTo('respondeu');
-  const meetings = leadsTo('reuniao');
   const won = leadsTo('cliente');
   const generated = count(created, (r) => r.created_by);
   const assigned = count(open, (r) => r.assigned_to);
@@ -417,7 +416,6 @@ export async function teamStats(ctx: ApiContext, days = 30): Promise<TeamStats> 
       contacts: contacts.get(p.user_id) ?? 0,
       contacts_today: contactsToday.get(p.user_id) ?? 0,
       replied: replied.get(p.user_id) ?? 0,
-      meetings: meetings.get(p.user_id) ?? 0,
       won: won.get(p.user_id) ?? 0,
       generated: generated.get(p.user_id) ?? 0,
       assigned_open: assigned.get(p.user_id) ?? 0,

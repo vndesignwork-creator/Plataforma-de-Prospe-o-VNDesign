@@ -1,7 +1,7 @@
 /**
  * Resumo do lead com IA (antes de ligar): lê a ficha, as últimas 40 entradas
- * da linha do tempo, as tarefas, as propostas e as reuniões. Não grava nada.
- * Usa o fornecedor do "Email com IA", como as Notas com IA.
+ * da linha do tempo, as tarefas e as propostas. Não grava nada.
+ * Usa o fornecedor do "Email com IA".
  */
 import { ACTIVITY_TYPE_LABELS, LEAD_STATUS_META, LEAD_SUMMARY_SYSTEM_PROMPT, LeadSummaryDraftSchema, buildLeadSummaryPrompt, leadSummaryResult, todayIso, type ActivityType, type LeadSummary } from '@vndesign/core';
 import { aiModel } from '../ai/claude';
@@ -25,11 +25,10 @@ export async function summarizeLead(ctx: ApiContext, leadId: string): Promise<Le
   const lead = await getLead(ctx, leadId);
   if (lead.anonymized_at) throw new ApiError(422, 'Lead anonimizado');
   const ws = ctx.workspaceId;
-  const [activities, tasks, proposals, meetings] = await Promise.all([
+  const [activities, tasks, proposals] = await Promise.all([
     ctx.supabase.from('lead_activities').select('type, body, payload, created_at').eq('workspace_id', ws).eq('lead_id', leadId).order('created_at', { ascending: false }).limit(40),
     ctx.supabase.from('lead_tasks').select('title, due_on, done_at').eq('workspace_id', ws).eq('lead_id', leadId).order('position').limit(30),
     ctx.supabase.from('proposals').select('status, total, created_at').eq('workspace_id', ws).eq('lead_id', leadId).order('created_at', { ascending: false }).limit(5),
-    ctx.supabase.from('lead_meetings').select('starts_at, canceled_at').eq('workspace_id', ws).eq('lead_id', leadId).order('starts_at', { ascending: false }).limit(5),
   ]);
   const settings = await getSettings(ctx);
   const { provider, model } = await resolveAiFeature(ctx, settings.ai.email, { anthropicModel: aiModel() });
@@ -42,7 +41,6 @@ export async function summarizeLead(ctx: ApiContext, leadId: string): Promise<Le
       city: lead.city,
       website: lead.website,
       services: lead.services ?? [],
-      notes: lead.notes,
       pinned_note: lead.pinned_note ?? null,
       problems: lead.problems,
       next_action_text: lead.next_action_text,
@@ -60,7 +58,6 @@ export async function summarizeLead(ctx: ApiContext, leadId: string): Promise<Le
       total: ctx.role === 'prospector' || p.total === null ? null : Number(p.total),
       date: day(p.created_at),
     })),
-    meetings: ((meetings.data ?? []) as { starts_at: string; canceled_at: string | null }[]).map((m) => ({ starts_at: m.starts_at, canceled: !!m.canceled_at })),
   });
   const { data, model: used } = await generateJson(provider, model, {
     system: LEAD_SUMMARY_SYSTEM_PROMPT,

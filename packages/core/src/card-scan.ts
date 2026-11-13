@@ -23,7 +23,6 @@ export const CardScanDraftSchema = z.object({
   site: z.string().nullable(),
   cidade: z.string().nullable(),
   morada: z.string().nullable(),
-  notas: z.string().nullable(),
 });
 export type CardScanDraft = z.infer<typeof CardScanDraftSchema>;
 
@@ -36,14 +35,13 @@ export const CardScanResultSchema = z
     website: z.string().nullable(),
     city: z.string().nullable(),
     address: z.string().nullable(),
-    notes: z.string().nullable(),
     model: z.string(),
   })
   .meta({ id: 'CardScanResult' });
 export type CardScanResult = z.infer<typeof CardScanResultSchema>;
 
 export const CARD_SCAN_SYSTEM_PROMPT = `Lês a fotografia de um cartão de visita de uma empresa (Portugal, normalmente) e extrais os dados para a ficha de um lead.
-Devolves: empresa, contacto (nome da pessoa), email, telefone (como está escrito), site, cidade, morada e notas (cargo ou outros dados úteis, curto).
+Devolves: empresa, contacto (nome da pessoa), email, telefone (como está escrito), site, cidade e morada.
 Usa null para o que não estiver no cartão ou não se ler bem. Não inventes nada.`;
 
 /** Limpa a leitura: email válido em minúsculas, site sem espaços, textos curtos. */
@@ -59,7 +57,6 @@ export function cardScanResult(d: CardScanDraft, model: string): CardScanResult 
     website: site && /\./.test(site) ? site : null,
     city: t(d.cidade, 120),
     address: t(d.morada, 300),
-    notes: t(d.notas, 500),
     model,
   };
 }

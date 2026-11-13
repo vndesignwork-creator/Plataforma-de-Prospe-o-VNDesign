@@ -16,7 +16,6 @@ import { fromPostgrest } from '../http';
 import { LEAD_SELECT } from './leads';
 import { fetchTodayTasks } from './tasks';
 import { fetchRecentlyOpened } from './email-tracking';
-import { fetchTodayMeetings } from './meetings';
 
 export async function getDashboard(ctx: ApiContext): Promise<Dashboard> {
   const { data, error } = await ctx.supabase.rpc('dashboard_summary', { p_workspace_id: ctx.workspaceId });
@@ -62,7 +61,6 @@ export type StatsPeriod = {
   proposals: number;
   won: number;
   value_won: number;
-  meetings: number;
   received: number;
 };
 
@@ -78,7 +76,6 @@ export async function statsPeriod(ctx: ApiContext, from: string, to: string): Pr
     proposals: n('proposals'),
     won: n('won'),
     value_won: n('value_won'),
-    meetings: n('meetings'),
     received: n('received'),
   };
 }
@@ -150,15 +147,14 @@ export async function fetchHotLeads(client: SupabaseClient, workspaceId: string,
   return (data ?? []) as unknown as Lead[];
 }
 
-/** Lista "Hoje": follow-ups em atraso, para hoje e nos próximos 7 dias, reuniões e os leads mais quentes. */
+/** Lista "Hoje": follow-ups em atraso, para hoje e nos próximos 7 dias e os leads mais quentes. */
 export async function getToday(ctx: ApiContext): Promise<Today> {
-  const [today, hot, meetings, opened] = await Promise.all([
+  const [today, hot, opened] = await Promise.all([
     fetchToday(ctx.supabase, ctx.workspaceId),
     fetchHotLeads(ctx.supabase, ctx.workspaceId),
-    fetchTodayMeetings(ctx.supabase, ctx.workspaceId),
     fetchRecentlyOpened(ctx.supabase, ctx.workspaceId),
   ]);
-  if (ctx.role !== 'prospector') return { ...today, hot, meetings, opened };
+  if (ctx.role !== 'prospector') return { ...today, hot, opened };
   // Equipa de prospeção: só os leads de que é responsável.
   const { data: own, error } = await ctx.supabase.from('leads').select('id').eq('workspace_id', ctx.workspaceId).eq('assigned_to', ctx.user.id).limit(10_000);
   if (error) throw fromPostgrest(error);
@@ -178,7 +174,6 @@ export async function getToday(ctx: ApiContext): Promise<Today> {
       ? { ...today.tasks, overdue: byTask(today.tasks.overdue), due_today: byTask(today.tasks.due_today), upcoming: byTask(today.tasks.upcoming) }
       : today.tasks,
     hot: byLead(hot),
-    meetings: byRef(meetings),
     opened: byRef(opened),
   };
 }

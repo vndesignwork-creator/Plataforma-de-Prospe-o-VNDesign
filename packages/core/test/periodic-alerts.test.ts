@@ -12,7 +12,7 @@ describe('avisos periódicos', () => {
   it('textos', () => {
     expect(coolingAlert(5, ['A', 'B', 'C', 'D', 'E'])).toMatchObject({ title: '🧊 5 leads a arrefecer', body: 'Em conversa e sem novidades há mais de 14 dias: A, B, C e mais 2.' });
     expect(coolingAlert(2, ['A', 'B']).body).toContain('A e B.');
-    expect(coolingAlert(1, ['A']).url).toBe('/leads?status=respondeu,reuniao,proposta_enviada&parado=14');
+    expect(coolingAlert(1, ['A']).url).toBe('/leads?status=respondeu,proposta_enviada&parado=14');
     expect(monthlyUpdateAlert(1, ['Atelier'], new Date('2026-12-01T09:00:00Z')).title).toBe('📨 Ponto de situação de dezembro');
   });
   it('no sino', () => {

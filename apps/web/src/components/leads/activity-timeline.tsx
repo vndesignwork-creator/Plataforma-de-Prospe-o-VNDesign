@@ -49,8 +49,6 @@ import {
   Phone,
   Quote,
   Wallet,
-  CalendarPlus,
-  CalendarX,
   BriefcaseBusiness,
   RotateCcw,
   Plus,
@@ -100,8 +98,6 @@ export const ICONS: Partial<Record<Activity["type"], LucideIcon>> = {
   tasks_added: ListPlus,
   email_received: MailOpen,
   payment_received: Wallet,
-  meeting_scheduled: CalendarPlus,
-  meeting_canceled: CalendarX,
   project_completed: BriefcaseBusiness,
   project_reopened: RotateCcw,
   project_stage_changed: Milestone,
@@ -187,12 +183,6 @@ export function describe(a: Activity): string | null {
       return p.template ? `Modelo: ${String(p.template)}` : null;
     case 'payment_received':
       return [p.label ? String(p.label) : null, p.method ? String(p.method) : null].filter(Boolean).join(' · ') || null;
-    case 'meeting_scheduled':
-      return [p.location ? String(p.location) : null, p.invite_sent_to ? `Convite enviado para ${String(p.invite_sent_to)}` : null]
-        .filter(Boolean)
-        .join(' · ') || null;
-    case 'meeting_canceled':
-      return p.notified ? 'O cliente foi avisado' : null;
     case 'project_stage_changed': {
       const stage = (v: unknown) => PROJECT_STAGE_LABELS[v as ProjectStage] ?? String(v);
       return p.from ? `${stage(p.from)} → ${stage(p.to)}` : null;
@@ -315,11 +305,10 @@ function useFitHeight(fitTo: RefObject<HTMLElement | null> | undefined, list: Re
   return max;
 }
 
-/** "Registar contacto": o email primeiro (o caso mais comum); "Outro registo" é uma nota com data. */
+/** "Registar contacto": o email primeiro (o caso mais comum). */
 const LOG_TYPES = [
   { value: 'email_sent', label: 'Email enviado' },
   { value: 'call_logged', label: 'Chamada' },
-  { value: 'note', label: 'Outro registo' },
 ];
 /** Com equipa: comentário interno (o cliente não vê), com @menções. */
 const COMMENT_TYPE = { value: 'comment', label: 'Comentário para a equipa' };
@@ -372,7 +361,7 @@ export function ActivityTimeline({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if ((type === 'note' || type === 'comment') && !body.trim()) return;
+    if (type === 'comment' && !body.trim()) return;
     try {
       if (type === 'comment') {
         const mentions = findMentions(body, team ?? []);
@@ -478,11 +467,9 @@ export function ActivityTimeline({
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder={
-                type === 'note'
-                  ? 'O que aconteceu? (ex.: encontrei o dono na feira, pediu portefólio)'
-                  : type === 'call_logged'
-                    ? 'O que aconteceu? (ex.: liguei, pediu para voltar a ligar em março)'
-                    : 'O que enviaste? (ex.: proposta do site, com 2 opções de preço)'
+                type === 'call_logged'
+                  ? 'O que aconteceu? (ex.: liguei, pediu para voltar a ligar em março)'
+                  : 'O que enviaste? (ex.: proposta do site, com 2 opções de preço)'
               }
             />
           )}
@@ -491,7 +478,7 @@ export function ActivityTimeline({
             <Button type="button" size="sm" variant="ghost" onClick={close}>
               Cancelar
             </Button>
-            <Button type="submit" size="sm" loading={log.isPending} disabled={(type === 'note' || type === 'comment') && !body.trim()}>
+            <Button type="submit" size="sm" loading={log.isPending} disabled={type === 'comment' && !body.trim()}>
               Registar
             </Button>
           </div>

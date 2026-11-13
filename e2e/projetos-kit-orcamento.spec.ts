@@ -256,8 +256,8 @@ test('empresa à parte do nome do projeto; sem empresa usa a pessoa de contacto 
   await page.request.delete(`/api/v1/leads/${main.id}`);
 });
 
-test('apagar o primeiro projeto: o outro passa a principal e fica com a linha do tempo e as notas', async ({ page }) => {
-  const main = await createLead(page.request, { company_name: `Cliente Primeiro ${run}`, status: 'cliente', notes: `Nota do cliente ${run}` });
+test('apagar o primeiro projeto: o outro passa a principal e fica com a linha do tempo e a nota afixada', async ({ page }) => {
+  const main = await createLead(page.request, { company_name: `Cliente Primeiro ${run}`, status: 'cliente', pinned_note: `Nota do cliente ${run}` });
   const child = (await (await page.request.post(`/api/v1/leads/${main.id}/client-projects`, { data: { title: `Segundo ${run}` } })).json()).data as { id: string; number: number };
   await page.goto(`/leads/${main.id}`);
   const list = page.getByRole('list', { name: 'Projetos do cliente' });
@@ -270,9 +270,9 @@ test('apagar o primeiro projeto: o outro passa a principal e fica com a linha do
   const family = (await (await page.request.get(`/api/v1/leads/${child.id}/client-projects`)).json()).data as { main_id: string; projects: unknown[] };
   expect(family.main_id).toBe(child.id);
   expect(family.projects).toHaveLength(1);
-  const kept = (await (await page.request.get(`/api/v1/leads/${child.id}`)).json()).data as { notes: string | null; client_of: string | null };
+  const kept = (await (await page.request.get(`/api/v1/leads/${child.id}`)).json()).data as { pinned_note: string | null; client_of: string | null };
   expect(kept.client_of).toBeNull();
-  expect(kept.notes).toContain(`Nota do cliente ${run}`);
+  expect(kept.pinned_note).toContain(`Nota do cliente ${run}`);
   expect((await page.request.get(`/api/v1/leads/${main.id}`)).status()).toBe(404);
   await page.request.delete(`/api/v1/leads/${child.id}`);
 });

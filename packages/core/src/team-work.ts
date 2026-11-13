@@ -104,7 +104,7 @@ export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 export const ALERT_KINDS = ['reminder', 'daily', 'reply', 'email_open', 'site_form', 'client', 'system'] as const;
 export type AlertKind = (typeof ALERT_KINDS)[number];
 export const ALERT_KIND_LABELS: Record<AlertKind, { label: string; hint: string }> = {
-  reminder: { label: 'Lembretes', hint: 'Tarefas com lembrete e reuniões daqui a 1 hora' },
+  reminder: { label: 'Lembretes', hint: 'Tarefas com lembrete, à hora marcada' },
   daily: { label: 'Atrasados e para hoje', hint: 'Um resumo por dia dos follow-ups e tarefas em atraso ou para hoje' },
   reply: { label: 'Respostas aos emails', hint: 'Respostas dos leads, ausências e emails devolvidos' },
   email_open: { label: 'Leads quentes', hint: 'Quando um lead abre o email, carrega num link ou o site dele tem um problema (bom momento para contactar)' },
@@ -221,7 +221,7 @@ export function taskGroup(due: string | null, today: string, weekEnd: string): T
 // -----------------------------------------------------------------------------
 // Ordem dos cartões da ficha (coluna lateral)
 // -----------------------------------------------------------------------------
-export const LEAD_CARDS = ['tasks', 'payments', 'projects', 'brand_kit', 'files', 'meetings', 'notes', 'proposals', 'contracts', 'activity'] as const;
+export const LEAD_CARDS = ['tasks', 'payments', 'projects', 'brand_kit', 'files', 'proposals', 'contracts', 'activity'] as const;
 export type LeadCard = (typeof LEAD_CARDS)[number];
 export const LEAD_CARD_LABELS: Record<LeadCard, string> = {
   tasks: 'Tarefas',
@@ -229,8 +229,6 @@ export const LEAD_CARD_LABELS: Record<LeadCard, string> = {
   projects: 'Projetos do cliente',
   brand_kit: 'Kit da marca',
   files: 'Ficheiros',
-  meetings: 'Reuniões',
-  notes: 'Notas',
   proposals: 'Propostas',
   contracts: 'Contratos',
   activity: 'Linha do tempo',

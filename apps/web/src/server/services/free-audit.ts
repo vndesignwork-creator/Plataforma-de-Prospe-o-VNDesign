@@ -420,8 +420,8 @@ export async function freeAuditStats(ctx: ApiContext): Promise<FreeAuditStats> {
   }
   const clients = (leads ?? []).filter((l) => l.status === 'cliente').length;
   const answered = new Set((replies ?? []).filter((r) => r.created_at >= (first.get(r.lead_id as string) ?? '')).map((r) => r.lead_id as string));
-  // Também conta quem avançou (reunião, proposta, cliente) mesmo sem email.
-  for (const l of leads ?? []) if (['reuniao', 'proposta_enviada', 'cliente'].includes(l.status as string)) answered.add(l.id as string);
+  // Também conta quem avançou (proposta, cliente) mesmo sem email.
+  for (const l of leads ?? []) if (['proposta_enviada', 'cliente'].includes(l.status as string)) answered.add(l.id as string);
   const replied = answered.size;
   return {
     month: rows.filter((r) => r.created_at >= monthStart).length,

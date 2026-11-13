@@ -52,8 +52,6 @@ export async function sendWithAccount(
     attachments?: { filename: string; content: Buffer; contentType: string; cid?: string }[];
     /** Resposta a este Message-ID (o cliente de email junta-os na mesma conversa). */
     inReplyTo?: string;
-    /** Convite de calendário (.ics): o Gmail/Outlook mostram "Adicionar ao calendário". */
-    icalEvent?: { method: 'REQUEST' | 'CANCEL'; content: string; filename?: string };
   },
 ) {
   const transport = nodemailer.createTransport({

@@ -90,7 +90,7 @@ export const SETTINGS_KEYWORDS: Partial<Record<SettingsSection['slug'], string>>
   assinatura: 'nome email telefone rodapé portfólio logótipo cargo',
   email: 'smtp gmail enviar conta de email imap respostas limite diário remetente',
   lembretes: 'follow-up notificações resumo diário sequência multicanal horário de silêncio fim de semana push lembrete',
-  funcionalidades: 'ligar desligar módulos pomodoro pagamentos projetos tempo dinheiro reuniões prospeção',
+  funcionalidades: 'ligar desligar módulos pomodoro pagamentos projetos tempo dinheiro prospeção',
   servicos: 'serviços categorias componentes catálogo pacotes',
   propostas: 'pacotes preços pdf orçamento iva validade valor por hora calculadora',
   testemunhos: 'opinião opiniões avaliação estrelas clientes satisfeitos recomendação google review',

@@ -152,7 +152,7 @@ function QuietHoursSettings() {
       </div>
       <p className="text-sm text-muted">
         Nesse período não recebes notificações no telemóvel nem no computador; os avisos ficam no sino e os lembretes das tarefas chegam
-        quando o silêncio acabar. Os alertas das reuniões e do pomodoro continuam.
+        quando o silêncio acabar. Os alertas do pomodoro continuam.
       </p>
       {quiet.enabled ? (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">

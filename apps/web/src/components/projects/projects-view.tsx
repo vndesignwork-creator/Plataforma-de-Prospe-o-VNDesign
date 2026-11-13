@@ -78,7 +78,7 @@ function Kpi({ label, value, children }: { label: string; value: React.ReactNode
 
 /** Topo: quantos projetos estão em curso e quantos entregam esta semana. */
 function ProjectsSummary({ projects, today }: { projects: Project[] | undefined; today: string }) {
-  if (!projects) return <>Os clientes com o projeto em curso: tarefas, pagamentos e próxima reunião.</>;
+  if (!projects) return <>Os clientes com o projeto em curso: tarefas, pagamentos e entregas.</>;
   const week = projects.filter((p) => projectMatches(p, 'semana', today)).length;
   return (
     <>

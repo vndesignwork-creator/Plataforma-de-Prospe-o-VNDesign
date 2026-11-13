@@ -23,7 +23,7 @@ test.afterAll(async ({ browser }) => {
   const page = await browser.newPage({ storageState: 'e2e/.auth/user.json' });
   await page.request.post('/api/v1/time/stop');
   await page.request.patch('/api/v1/settings', {
-    data: { google_review_url: '', features: { projects: true, payments: true, meetings: true, revisions: true, time_tracking: true, deliverables: true, client_page: true } },
+    data: { google_review_url: '', features: { projects: true, payments: true, revisions: true, time_tracking: true, deliverables: true, client_page: true } },
   });
   await page.close();
 });

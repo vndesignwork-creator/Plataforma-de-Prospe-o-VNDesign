@@ -1,6 +1,6 @@
 'use client';
 
-/** Onda do som do microfone (gravação da reunião e ditado). */
+/** Onda do som do microfone (ditado). */
 import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 

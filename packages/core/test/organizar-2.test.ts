@@ -135,11 +135,11 @@ describe('reciclagem', () => {
 describe('cartão de visita e resumo com IA', () => {
   it('limpa a leitura do cartão (email, site, textos)', () => {
     const r = cardScanResult(
-      { empresa: ' Padaria  Estrela ', contacto: 'Ana', email: 'ANA@Padaria.PT', telefone: '912 345 678', site: 'padaria estrela.pt', cidade: null, morada: '', notas: null },
+      { empresa: ' Padaria  Estrela ', contacto: 'Ana', email: 'ANA@Padaria.PT', telefone: '912 345 678', site: 'padaria estrela.pt', cidade: null, morada: '' },
       'm',
     );
     expect(r).toMatchObject({ company_name: 'Padaria Estrela', email: 'ana@padaria.pt', website: 'padariaestrela.pt', address: null, model: 'm' });
-    expect(cardScanResult({ empresa: null, contacto: null, email: 'não é email', telefone: null, site: 'x', cidade: null, morada: null, notas: null }, 'm')).toMatchObject({
+    expect(cardScanResult({ empresa: null, contacto: null, email: 'não é email', telefone: null, site: 'x', cidade: null, morada: null }, 'm')).toMatchObject({
       email: null,
       website: null,
     });
@@ -157,7 +157,6 @@ describe('cartão de visita e resumo com IA', () => {
         city: 'Lisboa',
         website: null,
         services: ['Site'],
-        notes: 'Quer reservas online',
         pinned_note: 'Só depois das 15h',
         problems: null,
         next_action_text: null,
@@ -167,7 +166,6 @@ describe('cartão de visita e resumo com IA', () => {
       activities: [{ date: '2026-10-20', type: 'Chamada', text: 'Pediu proposta' }],
       tasks: [{ title: 'Enviar proposta', due_on: '2026-10-25', done: false }],
       proposals: [],
-      meetings: [],
     });
     expect(prompt).toContain('Empresa: Tasca do Zé');
     expect(prompt).toContain('Nota afixada: Só depois das 15h');

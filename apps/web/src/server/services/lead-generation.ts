@@ -32,6 +32,7 @@ import { resolveAiFeature, type ResolvedProvider } from '../ai/providers';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
 import { createSupabaseBearerClient } from '../supabase';
+import { createActivity } from './activities';
 import { applyAudit, runLeadAudit } from './audits';
 import { lookupConflicts } from './imports';
 import { createLead } from './leads';
@@ -395,7 +396,6 @@ export async function addLeadGenerationCandidates(
       approach_angle: cleanAiText(c.approach_angle),
       source_url: c.source_url || null,
       suggested_on: todayIso(),
-      notes: `Encontrado pelo gerador de leads (“${run.query}”): ${cleanAiText(c.opportunity)}`,
     });
     if (!parsed.success) {
       result.skipped.push({ index, reason: 'Dados inválidos: corrige-os depois de criar o lead manualmente.' });
@@ -403,6 +403,12 @@ export async function addLeadGenerationCandidates(
     }
     try {
       const lead = await createLead(ctx, parsed.data, { origin: 'prospecting' });
+      // Porque foi sugerido: um registo automático na linha do tempo.
+      await createActivity(ctx, lead.id, {
+        type: 'note',
+        body: `🔎 Encontrado pelo gerador de leads (“${run.query}”): ${cleanAiText(c.opportunity)}`,
+        payload: { via: 'lead_generation' },
+      }).catch(() => undefined);
       candidates[index] = { ...c, added_lead_id: lead.id };
       result.created.push({ index, lead_id: lead.id, number: lead.number });
       if (c.website) toAudit.push(lead.id);

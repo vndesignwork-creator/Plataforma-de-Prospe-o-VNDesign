@@ -6,7 +6,7 @@ import type { LeadStatus } from './enums';
 import { todayIso } from './format';
 
 /** Em conversa: já responderam, mas ainda não fecharam. */
-export const COOLING_STATUSES: readonly LeadStatus[] = ['respondeu', 'reuniao', 'proposta_enviada'];
+export const COOLING_STATUSES: readonly LeadStatus[] = ['respondeu', 'proposta_enviada'];
 /** Sem mudar de fase há mais de isto, o lead está "a arrefecer". */
 export const COOLING_DAYS = 14;
 

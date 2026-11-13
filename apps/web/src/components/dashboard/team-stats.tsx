@@ -2,7 +2,7 @@
 
 /**
  * Estatísticas → Equipa: o trabalho de cada pessoa nos últimos 30 dias
- * (contactos, respostas, reuniões, clientes, leads criados e gerador).
+ * (contactos, respostas, clientes, leads criados e gerador).
  * O prospetor vê só os seus números, em cartões.
  */
 import { MEMBER_ROLE_LABELS, type TeamStats } from '@vndesign/core';
@@ -22,7 +22,7 @@ export function MyTeamTiles() {
   return (
     <section aria-label="O meu trabalho" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <StatTile label="Contactos hoje" value={me.contacts_today} hint={`${me.contacts} nos últimos ${data!.days} dias`} />
-      <StatTile label="Responderam" value={me.replied} hint={`${me.meetings} reuniões · ${me.won} clientes`} />
+      <StatTile label="Responderam" value={me.replied} hint={`${me.won} clientes`} />
       <StatTile label="Os meus leads em aberto" value={me.assigned_open} hint={`${me.generated} criados em ${data!.days} dias`} />
       <StatTile label="Gerador esta semana" value={generator(me)} hint={me.generation_limit === null ? undefined : 'leads juntados pela IA (últimos 7 dias)'} />
     </section>
@@ -44,14 +44,13 @@ export function TeamStatsSection({ bare }: { bare?: boolean } = {}) {
         </div>
       )}
       <Card>
-        <CardHeader title="Por pessoa" description="Contactos que cada pessoa registou; leads de que é responsável que responderam, tiveram reunião ou passaram a cliente (cada lead conta uma vez); leads criados." />
-        {/* No telemóvel, um cartão por pessoa (a tabela de 8 colunas obrigava a deslizar para o lado). */}
+        <CardHeader title="Por pessoa" description="Contactos que cada pessoa registou; leads de que é responsável que responderam ou passaram a cliente (cada lead conta uma vez); leads criados." />
+        {/* No telemóvel, um cartão por pessoa (a tabela de 7 colunas obrigava a deslizar para o lado). */}
         <ul className="flex flex-col gap-2 p-3 sm:hidden" aria-label="Trabalho de cada pessoa da equipa">
           {data.members.map((m) => {
             const cells = [
               { label: 'Contactos (hoje)', value: `${m.contacts} (${m.contacts_today})` },
               { label: 'Responderam', value: String(m.replied) },
-              { label: 'Reuniões', value: String(m.meetings) },
               { label: 'Clientes', value: String(m.won) },
               { label: 'Leads criados', value: String(m.generated) },
               { label: 'Em aberto', value: String(m.assigned_open) },
@@ -83,7 +82,6 @@ export function TeamStatsSection({ bare }: { bare?: boolean } = {}) {
                 <th className="px-4 py-2 font-medium">Pessoa</th>
                 <th className="px-2 py-2 text-right font-medium">Contactos (hoje)</th>
                 <th className="px-2 py-2 text-right font-medium">Responderam</th>
-                <th className="px-2 py-2 text-right font-medium">Reuniões</th>
                 <th className="px-2 py-2 text-right font-medium">Clientes</th>
                 <th className="px-2 py-2 text-right font-medium">Leads criados</th>
                 <th className="px-2 py-2 text-right font-medium">Em aberto</th>
@@ -100,7 +98,6 @@ export function TeamStatsSection({ bare }: { bare?: boolean } = {}) {
                     {m.contacts} <span className="text-muted">({m.contacts_today})</span>
                   </td>
                   <td className="tabular px-2 py-2 text-right">{m.replied}</td>
-                  <td className="tabular px-2 py-2 text-right">{m.meetings}</td>
                   <td className="tabular px-2 py-2 text-right">{m.won}</td>
                   <td className="tabular px-2 py-2 text-right">{m.generated}</td>
                   <td className="tabular px-2 py-2 text-right">{m.assigned_open}</td>

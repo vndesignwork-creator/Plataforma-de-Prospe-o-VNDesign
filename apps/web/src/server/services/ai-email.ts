@@ -79,7 +79,6 @@ export async function generateAiEmail(ctx: ApiContext, leadId: string, request: 
       pagespeed: lead.pagespeed,
       mobile: lead.mobile === 'desconhecido' ? null : MOBILE_STATUS_META[lead.mobile].label,
       approach_angle: lead.approach_angle,
-      notes: lead.notes,
       first_contact_on: lead.first_contact_on,
       previous_subject: request.kind === 'follow_up' ? lead.email_subject : null,
       services: lead.services ?? [],

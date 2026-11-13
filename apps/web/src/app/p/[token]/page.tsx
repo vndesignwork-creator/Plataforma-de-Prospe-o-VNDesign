@@ -8,7 +8,7 @@ import {
   formatDateTime,
   type SharedProject,
 } from '@vndesign/core';
-import { CalendarClock, CheckCircle2, ClipboardList, ExternalLink, FileSignature, FolderOpen, Globe, ListChecks, Mail, PackageCheck, Phone, RefreshCcw, Wallet } from 'lucide-react';
+import { CheckCircle2, ClipboardList, ExternalLink, FileSignature, FolderOpen, Globe, ListChecks, Mail, PackageCheck, Phone, RefreshCcw, Wallet } from 'lucide-react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { StageSteps } from '@/components/projects/project-bits';
@@ -19,7 +19,7 @@ import { DeliverableResponse } from './deliverable-response';
 
 /*
  * Página de acompanhamento para o cliente (link /p/<código>, sem login): a
- * fase, as tarefas, a próxima entrega e reunião, as entregas enviadas e o que
+ * fase, as tarefas, a próxima entrega, as entregas enviadas e o que
  * falta pagar. Só leitura; o link desliga-se ou renova-se na ficha do cliente.
  */
 export const dynamic = 'force-dynamic';
@@ -33,15 +33,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     robots: { index: false, follow: false },
   };
 }
-
-const meetingFmt = new Intl.DateTimeFormat('pt-PT', {
-  timeZone: 'Europe/Lisbon',
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-  hour: '2-digit',
-  minute: '2-digit',
-});
 
 function Box({ icon: Icon, title, children, className }: { icon: typeof ListChecks; title: string; children: React.ReactNode; className?: string }) {
   return (
@@ -87,7 +78,7 @@ export default async function SharedProjectPage({ params }: Props) {
   if (!project) notFound();
   const requests = await sharedClientRequests(token);
   const missing = requests.filter((r) => r.status === 'pending').length;
-  const { tasks, payments, deliverables, revisions, next_meeting: meeting } = project;
+  const { tasks, payments, deliverables, revisions } = project;
   const done = tasks.filter((t) => t.done).length;
   const pct = tasks.length ? Math.round((done / tasks.length) * 100) : null;
   const brand = project.from.company ?? project.from.name;
@@ -131,12 +122,6 @@ export default async function SharedProjectPage({ params }: Props) {
         {!project.completed_at ? (
           <Box icon={PackageCheck} title="Entrega prevista">
             <p className="text-xl font-semibold">{project.due_on ? formatDate(project.due_on) : 'A combinar'}</p>
-          </Box>
-        ) : null}
-        {meeting ? (
-          <Box icon={CalendarClock} title="Próxima reunião">
-            <p className="font-semibold first-letter:uppercase">{meetingFmt.format(new Date(meeting.starts_at))}</p>
-            {meeting.location ? <p className="mt-0.5 text-sm break-words text-muted">{meeting.location}</p> : null}
           </Box>
         ) : null}
         {pct !== null ? (

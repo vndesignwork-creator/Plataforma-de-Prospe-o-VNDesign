@@ -99,9 +99,9 @@ npm run dev        # http://localhost:3000
 Em qualquer página, **Ctrl+K** (⌘K no Mac), o botão **Pesquisar…** na barra lateral ou a lupa 🔍 no telemóvel abrem uma caixa para escrever o nome de um **lead ou projeto**, uma **tarefa**, uma **página** (incluindo as secções das Definições, ex.: "Setores", e outras palavras como "palavra-passe" → Conta) ou um **estado, setor ou serviço** ("Respondeu", "Restauração", "Loja online" → a lista de leads já filtrada). Setas ↑↓ e **Enter** (ou tocar) para saltar: os clientes abrem no Projeto, as tarefas na lista de tarefas da ficha. API: `GET /api/v1/tasks?q=` (pelo menos 2 letras).
 
 - **Recentes**: com a caixa vazia aparecem os últimos 8 leads que abriste (guardados neste browser) e as **Ações** gerais: *Novo lead*, *Limpar duplicados*.
-- **Ações num lead**: num lead da lista, **→**, **Tab** ou o botão **Ações ›** mostra o que fazer sem abrir a ficha: *Nova tarefa…*, *Registar chamada…* e *Registar nota…* (escreves logo ali e carregas Enter), *Notas com IA*, *Marcar reunião*, *Começar Pomodoro* (clientes) ou *Abrir a ficha*. **Backspace** com a caixa vazia volta atrás.
+- **Ações num lead**: num lead da lista, **→**, **Tab** ou o botão **Ações ›** mostra o que fazer sem abrir a ficha: *Nova tarefa…* e *Registar chamada…* (escreves logo ali e carregas Enter), *Resumo com IA*, *Começar Pomodoro* (clientes) ou *Abrir a ficha*. **Backspace** com a caixa vazia volta atrás.
 - **Etiquetas**: escrever o nome de uma etiqueta abre a lista de leads filtrada por ela.
-- **Notas e chamadas**: também procura no texto das notas e chamadas registadas (sem contar acentos), com um excerto; abre a linha do tempo do lead.
+- **Notas e chamadas**: também procura no texto das chamadas e dos registos da linha do tempo (sem contar acentos), com um excerto; abre a linha do tempo do lead.
 - No *Registar nota…* / *chamada…*, o 🎤 **Ditar** escreve o que dizes.
 
 ## Atalhos de teclado (computador)
@@ -110,7 +110,7 @@ Fora dos campos de texto: **N** novo lead, **/** pesquisar, **?** a lista de ata
 
 ## Ditar por voz
 
-O botão 🎤 **Ditar** (Notas com IA, Registar na linha do tempo e nas ações da pesquisa rápida) usa o reconhecimento de voz do próprio browser, em português de Portugal: falas e o texto aparece. Sem custos nem IA. Funciona no Chrome, Edge e Safari (computador, Android e iPhone); no Firefox o botão não aparece. Da primeira vez, o browser pede para usar o microfone.
+O botão 🎤 **Ditar** (Registar na linha do tempo, novo lead, gerar leads…) usa o reconhecimento de voz do próprio browser, em português de Portugal: falas e o texto aparece. Sem custos nem IA. Funciona no Chrome, Edge e Safari (computador, Android e iPhone); no Firefox o botão não aparece. Da primeira vez, o browser pede para usar o microfone.
 
 ## Etiquetas
 
@@ -132,17 +132,17 @@ Seleciona leads com as caixas à esquerda: **Arquivar**/**Repor**, **Atribuir a�
 **Leads → Importar/Exportar → Limpar duplicados…** (ou "duplicados" na pesquisa rápida) mostra os grupos de leads com o mesmo **email**, **site** ou **nome**:
 
 - Em cada grupo fica escolhido o **principal** (o mais avançado no pipeline: cliente → proposta → … ; os arquivados por último). Podes escolher outro.
-- **Juntar em #N** passa tudo dos outros para o principal: tarefas, pagamentos, reuniões, horas, despesas, entregas, revisões, contratos, propostas, etiquetas, aberturas de email e a linha do tempo; depois apaga-os. Os campos do principal ficam como estão.
+- **Juntar em #N** passa tudo dos outros para o principal: tarefas, pagamentos, horas, despesas, entregas, revisões, contratos, propostas, etiquetas, aberturas de email e a linha do tempo; depois apaga-os. Os campos do principal ficam como estão.
 - **Comparar** abre a junção campo a campo (para escolher o telefone, a morada… de cada um).
 - **Não são duplicados** esconde o grupo de vez.
 - **Juntar todos nos principais** faz o mesmo em todos os grupos de uma vez (pede confirmação; não dá para desfazer).
-- Juntar leads (aqui ou no aviso de duplicado da ficha) **já não perde dados**: antes, pagamentos, reuniões, horas e o projeto do duplicado eram apagados com ele.
+- Juntar leads (aqui ou no aviso de duplicado da ficha) **já não perde dados**: antes, pagamentos, horas e o projeto do duplicado eram apagados com ele.
 
 ## Fins de semana
 
 Os follow-ups que a plataforma marca sozinha ("Contactado", "Não atendeu", "Mais tarde", follow-up feito, sequências, "agora não" que volta) nunca caem ao sábado nem ao domingo — passam para segunda-feira. Quem trabalha ao fim de semana liga **Também trabalho ao fim de semana** em Definições → Follow-up e lembretes. As datas escolhidas à mão ficam como estão.
 
-Os follow-ups do dia e os atrasados estão no cartão **Hoje** do Dashboard (com **Pôr em dia**) e fazem-se na **Prospeção**; reuniões, entregas, pagamentos e tarefas com prazo estão no **calendário dos Projetos** e no **calendário subscrito**. (A antiga página Agenda foi retirada: o endereço `/agenda` leva ao Dashboard.)
+Os follow-ups do dia e os atrasados estão no cartão **Hoje** do Dashboard (com **Pôr em dia**) e fazem-se na **Prospeção**; entregas, pagamentos e tarefas com prazo estão no **calendário dos Projetos** e no **calendário subscrito**. (A antiga página Agenda foi retirada: o endereço `/agenda` leva ao Dashboard.)
 
 ## Filtros guardados
 
@@ -150,14 +150,10 @@ Na lista de leads, o botão 🔖 **Guardados** → **Guardar estes filtros…** 
 
 ## Leads sem próximo passo
 
-Um lead **em conversa** (Contactado, Respondeu, Reunião, Proposta enviada) sem próxima ação marcada está a ser esquecido:
+Um lead **em conversa** (Contactado, Respondeu, Proposta enviada) sem próxima ação marcada está a ser esquecido:
 
 - no cartão **Hoje** aparece "**N leads em conversa sem próximo passo**" (toca para ver a lista) com **Marcar follow-up** (hoje, amanhã, próxima semana ou outra data, com **Anular**) — o mesmo menu do *Pôr em dia*;
 - na lista, filtro **Próxima ação → Sem próximo passo (em conversa)** (API: `?due=none`).
-
-## Notas
-
-O cartão **Notas** da ficha edita-se no sítio (**Editar**; Ctrl+Enter guarda) e tem as **Notas com IA** (ver abaixo). A seta ⌃ recolhe-o: fica só o início das notas à vista (a escolha fica guardada neste dispositivo).
 
 ## Nota afixada
 
@@ -165,11 +161,11 @@ Uma frase sempre à vista no topo da ficha (ex.: "Só atende depois das 15h", "F
 
 ## Resumo com IA (antes de ligar)
 
-Na ficha, ao lado de Ligar/WhatsApp/Email, **Resumo IA**: a IA lê a ficha (notas, linha do tempo, tarefas, propostas, reuniões) e diz em poucas frases quem é, em que ponto está a conversa, **o que ficou combinado**, o **próximo passo** (com *Usar como próxima ação*) e um cuidado a ter (com *Afixar na ficha*). Não grava nada sozinho. Também em Ctrl+K → um lead → *Resumo com IA*. É o contrário das *Notas com IA* (essas escrevem na ficha); usam o mesmo fornecedor de IA.
+Na ficha, ao lado de Ligar/WhatsApp/Email, **Resumo IA**: a IA lê a ficha (linha do tempo, tarefas, propostas) e diz em poucas frases quem é, em que ponto está a conversa, **o que ficou combinado**, o **próximo passo** (com *Usar como próxima ação*) e um cuidado a ter (com *Afixar na ficha*). Não grava nada sozinho. Também em Ctrl+K → um lead → *Resumo com IA*. Usa o fornecedor de IA dos emails.
 
 ## Ler cartão de visita
 
-Em **Novo lead**, **📷 Ler cartão de visita**: no telemóvel abre a câmara. A IA lê a fotografia e preenche a empresa, o contacto, o email, o telefone, o site, a cidade e a morada (só os campos ainda vazios; o cargo vai para as notas). Revês e carregas em *Criar lead* — o aviso de duplicados funciona como sempre. A foto é reduzida antes de enviar e não fica guardada. Precisa de um fornecedor de IA que leia imagens (Claude, ou um modelo da OpenAI/OpenRouter com visão).
+Em **Novo lead**, **📷 Ler cartão de visita**: no telemóvel abre a câmara. A IA lê a fotografia e preenche a empresa, o contacto, o email, o telefone, o site, a cidade e a morada (só os campos ainda vazios). Revês e carregas em *Criar lead* — o aviso de duplicados funciona como sempre. A foto é reduzida antes de enviar e não fica guardada. Precisa de um fornecedor de IA que leia imagens (Claude, ou um modelo da OpenAI/OpenRouter com visão).
 
 ## Campos personalizados
 
@@ -183,7 +179,7 @@ Em **Novo lead**, **📷 Ler cartão de visita**: no telemóvel abre a câmara. 
 
 ## Estatísticas: comparar com o período anterior
 
-No topo de **Estatísticas**, "**Este mês vs. o mês passado**" (ou **Semana**): leads novos, primeiros contactos, respostas, reuniões marcadas, propostas enviadas, clientes ganhos e recebido, comparados **até ao mesmo dia** (1–24 de outubro contra 1–24 de setembro), com ↑/↓ e a percentagem. Não são metas: mostra só se estás a melhorar. API: `GET /api/v1/stats/compare?period=month|week`.
+No topo de **Estatísticas**, "**Este mês vs. o mês passado**" (ou **Semana**): leads novos, primeiros contactos, respostas, propostas enviadas, clientes ganhos e recebido, comparados **até ao mesmo dia** (1–24 de outubro contra 1–24 de setembro), com ↑/↓ e a percentagem. Não são metas: mostra só se estás a melhorar. API: `GET /api/v1/stats/compare?period=month|week`.
 
 ### Como se contam os números (iguais no Dashboard e nas Estatísticas)
 
@@ -195,7 +191,7 @@ Uma só definição na base de dados (`stats_period`), usada pelo Dashboard ("Es
 - **Desde sempre / Pipeline / por setor, serviço e canal** — sem os anonimizados (como a lista). Os números do Pipeline incluem os arquivados; ao clicar, a lista abre com os arquivados, para bater certo.
 - **Contactados (taxa de conversão)** — leads com 1.º contacto ou que já passaram de "Identificado"; "Em pausa" sem contacto não conta.
 - **Funis** — quem saltou fases conta também nas anteriores; com menos de 10 leads numa fase mostra "x de y" em vez de uma percentagem.
-- **Equipa** — contactos: o que cada pessoa registou; responderam/reuniões/clientes: leads de que a pessoa é responsável (sem responsável, quem mudou o estado), cada lead uma vez.
+- **Equipa** — contactos: o que cada pessoa registou; responderam/clientes: leads de que a pessoa é responsável (sem responsável, quem mudou o estado), cada lead uma vez.
 - **Emails** — % abertos e % com clique só sobre os emails enviados com o rastreio ligado.
 - Todos os totais leem os registos página a página (o Supabase devolve no máximo 1000 linhas por pedido).
 
@@ -216,20 +212,10 @@ No cartão **Hoje**, quando há follow-ups ou tarefas em atraso, aparece "**Em a
 
 O aviso que aparece depois de uma ação traz **Anular** durante uns segundos em: arquivar (ficha e lista), etiquetas (pôr em vários, tirar na ficha), follow-up em massa, Pôr em dia, adiar um follow-up e concluir uma tarefa no cartão Hoje. Mudar o estado não tem Anular (as regras do estado já mudaram outras coisas, como o follow-up): muda-se outra vez.
 
-## Notas de reunião com IA
-
-Na ficha, cartão **Notas** → **Notas com IA** (ou *Notas com IA* nas ações da pesquisa rápida): cola ou escreve os apontamentos de uma chamada ou reunião, carrega em **Resumir** e revê:
-
-- o **resumo** (fica na linha do tempo como nota “📝 Resumo da reunião/chamada”);
-- as **tarefas** com prazo (até 6; desmarca as que não queres);
-- o **próximo passo** com data (passa a ser a próxima ação do lead).
-
-Tudo é editável antes de **Guardar**. Usa o fornecedor de IA escolhido para os emails (Definições → Inteligência artificial).
-
 ## Projetos a precisar de atenção e Ponto de situação
 
 - **Dashboard → Projetos**: por cima da lista, “**N com a entrega atrasada**” e “**N com pagamentos em atraso**” levam aos **Projetos** já filtrados; os projetos com problemas aparecem primeiro.
-- **Ponto de situação** (cartão **Projeto** na ficha do cliente): prepara um email ao cliente com o que foi **concluído** desde o último ponto de situação, as **entregas**, os **próximos passos** (com datas), a **próxima reunião**, o **próximo pagamento** e o link da página do cliente. Revês e envias pela plataforma; sem email do cliente (ou sem a conta de envio ligada) copia o texto para colares no WhatsApp ou no teu email.
+- **Ponto de situação** (cartão **Projeto** na ficha do cliente): prepara um email ao cliente com o que foi **concluído** desde o último ponto de situação, as **entregas**, os **próximos passos** (com datas), o **próximo pagamento** e o link da página do cliente. Revês e envias pela plataforma; sem email do cliente (ou sem a conta de envio ligada) copia o texto para colares no WhatsApp ou no teu email.
 
 ## Motivo de “Sem interesse”
 
@@ -252,11 +238,11 @@ Na ficha de um lead que ainda não é cliente, cartão **Ficheiros**: fotografia
 
 ## O que mudou (e Repor)
 
-Na linha do tempo, cada **Lead editado** mostra o valor de antes e o de depois (“Telefone: 912 345 678 → 934 567 890”). **Repor** volta a pôr o valor de antes — só aparece enquanto o campo ainda tem o valor dessa edição (não desfaz uma alteração mais recente) e a reposição fica também registada. Textos longos (notas, emails) mostram só “(texto longo)” e não se repõem por aqui; os campos personalizados também não. Ao anonimizar um lead, os valores antigos são apagados da linha do tempo.
+Na linha do tempo, cada **Lead editado** mostra o valor de antes e o de depois (“Telefone: 912 345 678 → 934 567 890”). **Repor** volta a pôr o valor de antes — só aparece enquanto o campo ainda tem o valor dessa edição (não desfaz uma alteração mais recente) e a reposição fica também registada. Textos longos (emails) mostram só “(texto longo)” e não se repõem por aqui; os campos personalizados também não. Ao anonimizar um lead, os valores antigos são apagados da linha do tempo.
 
 ## Boas-vindas ao novo cliente
 
-No cartão **Projeto** de um cliente novo, **Boas-vindas** prepara o primeiro email: agradecimento, o link do **briefing** (se ainda não foi respondido), a **reunião de arranque**, os primeiros passos (tarefas abertas, com datas), a **entrega prevista**, o **plano de pagamentos** e o link da **página do projeto**. Revês e envias pela plataforma; sem email do cliente (ou sem a conta de envio ligada) copia o texto. Depois de enviado (ou copiado) o botão sai e fica o **Ponto de situação** para os emails seguintes.
+No cartão **Projeto** de um cliente novo, **Boas-vindas** prepara o primeiro email: agradecimento, o link do **briefing** (se ainda não foi respondido), os primeiros passos (tarefas abertas, com datas), a **entrega prevista**, o **plano de pagamentos** e o link da **página do projeto**. Revês e envias pela plataforma; sem email do cliente (ou sem a conta de envio ligada) copia o texto. Depois de enviado (ou copiado) o botão sai e fica o **Ponto de situação** para os emails seguintes.
 
 ## Seguinte / Anterior na ficha
 
@@ -275,11 +261,11 @@ Abre um lead a partir da lista (com os filtros e a ordem que quiseres): no topo 
 
 ## Comentários da equipa (@menções)
 
-Na linha do tempo → **Registar → Comentário para a equipa** (com equipa): conversa interna sobre o lead, separada das notas (o cliente nunca vê). Escreve **@** e escolhe a pessoa (setas + Enter); quem é mencionado recebe um aviso. O comentário fica destacado na linha do tempo e quem o escreveu pode apagá-lo. API: `POST /api/v1/leads/{id}/comments` (`{ body, mentions }`).
+Na linha do tempo → **Registar → Comentário para a equipa** (com equipa): conversa interna sobre o lead (o cliente nunca vê). Escreve **@** e escolhe a pessoa (setas + Enter); quem é mencionado recebe um aviso. O comentário fica destacado na linha do tempo e quem o escreveu pode apagá-lo. API: `POST /api/v1/leads/{id}/comments` (`{ body, mentions }`).
 
 ## Organizar os cartões da ficha
 
-No fim da coluna lateral da ficha, **Organizar cartões**: muda a ordem (↑ ↓) de Tarefas, Pagamentos, Reuniões, Notas, Propostas, Linha do tempo… e esconde os que não usas (a Linha do tempo fica sempre). Vale para todos os leads e fica na tua conta (computador e telemóvel); **Repor original** volta ao de sempre.
+No fim da coluna lateral da ficha, **Organizar cartões**: muda a ordem (↑ ↓) de Tarefas, Pagamentos, Propostas, Linha do tempo… e esconde os que não usas (a Linha do tempo fica sempre). Vale para todos os leads e fica na tua conta (computador e telemóvel); **Repor original** volta ao de sempre.
 
 ## Prospeção: tentativas e "Não responde"
 
@@ -293,7 +279,7 @@ Ao escolher o motivo **Agora não (talvez mais tarde)**, escolhe também **Volta
 
 Em **Novo lead**, além de *Ler cartão de visita*:
 
-- **Ditar ou escrever**: diz (🎤 Ditar) ou cola o que sabes — “Restaurante O Quintal em Braga, falei com a Ana, 912 345 678, querem site com reservas” — e a IA preenche a empresa, o contacto, o telefone, o email, a cidade e as notas (só os campos vazios). Revês antes de criar. API: `POST /api/v1/leads/from-text`.
+- **Ditar ou escrever**: diz (🎤 Ditar) ou cola o que sabes — “Restaurante O Quintal em Braga, falei com a Ana, 912 345 678, querem site com reservas” — e a IA preenche a empresa, o contacto, o telefone, o email e a cidade (só os campos vazios). Revês antes de criar. API: `POST /api/v1/leads/from-text`.
 - **Escolher dos contactos** (telemóvel Android com Chrome): puxa o nome, o telefone e o email de um contacto que já tens.
 
 ## Guardar contacto no telemóvel
@@ -340,8 +326,8 @@ português) com as mesmas colunas — pode ser reimportado sem mapear nada.
 - **Scripts** (menu): biblioteca de modelos com variáveis — `{{empresa}}`, `{{contacto}}`,
   `{{setor}}`, `{{cidade}}`, `{{problema}}`, `{{angulo}}`, `{{website}}`, `{{argumentos}}`,
   `{{data}}`, `{{hoje}}`, `{{meu_nome}}`, `{{meu_cargo}}`, `{{meu_telefone}}`, `{{meu_email}}`,
-  `{{meu_site}}`, `{{portfolio}}`, `{{projetos}}`, `{{assinatura}}`, `{{opt_out}}`,
-  `{{reuniao}}` (próxima reunião: “amanhã, às 10:00”), `{{reuniao_local}}` e `{{avaliacao}}` (link para avaliação no Google).
+  `{{meu_site}}`, `{{portfolio}}`, `{{projetos}}`, `{{assinatura}}`, `{{opt_out}}` e
+  `{{avaliacao}}` (link para avaliação no Google).
   `{{contacto|equipa}}` usa “equipa” quando o lead não tem contacto.
 - **Logótipo na assinatura** (Definições → Assinatura → Logótipo): escolhe uma imagem (PNG com fundo transparente fica melhor; JPEG, SVG e
   WebP também — o browser converte para PNG) e o tamanho (Pequeno, Médio, Grande). Nos emails enviados pela plataforma aos leads, o
@@ -358,11 +344,10 @@ português) com as mesmas colunas — pode ser reimportado sem mapear nada.
 - **Ficha do lead → Scripts de contacto:** escolhe o modelo, edita, copia, abre no email,
   guarda como email de prospeção ou marca como enviado (passa a “Contactado” e agenda o follow-up).
 - **WhatsApp com mensagens prontas:** na ficha, o botão **WhatsApp** abre um menu com os
-  modelos do tipo *WhatsApp* (de origem: primeiro contacto, follow-up e lembrete de reunião)
+  modelos do tipo *WhatsApp* (de origem: primeiro contacto e follow-up)
   e abre a conversa — no telemóvel, na app WhatsApp ou WhatsApp Business — com a mensagem já
   escrita, para rever e enviar. Fica registado na linha do tempo; num lead “Identificado”, o
-  aviso tem **Marcar como contactado** (canal WhatsApp). O lembrete só fica ativo com uma
-  reunião marcada. Os textos editam-se em **Scripts**; no cartão *Scripts de contacto* há
+  aviso tem **Marcar como contactado** (canal WhatsApp). Os textos editam-se em **Scripts**; no cartão *Scripts de contacto* há
   também **Abrir no WhatsApp** (com o texto editado). Desliga-se em **Definições →
   Funcionalidades** (o botão volta a abrir só a conversa). Só aparece para telemóveis
   (9xx xxx xxx ou com indicativo).
@@ -414,7 +399,7 @@ português) com as mesmas colunas — pode ser reimportado sem mapear nada.
   mostra os arquivados.
 - **Arquivo automático** (opcional): Definições → Follow-up e lembretes → leads em “Sem
   interesse” há mais de N dias são arquivados todas as manhãs (pelo mesmo cron do resumo diário).
-- **Apagar** (ficha ou vários na lista) leva o lead para a **reciclagem**: **Leads → Importar/Exportar → Apagados (reciclagem)** (ou "apagados" no Ctrl+K). Fica lá **30 dias com tudo** (tarefas, pagamentos, reuniões, horas, propostas, contratos, kit da marca, linha do tempo…); **Repor** volta a pô-lo como estava (o mesmo #). O aviso depois de apagar também tem **Anular**. Depois de 30 dias sai de vez sozinho (no cron diário), com os ficheiros; **Apagar de vez** e **Esvaziar** fazem-no logo. Só o dono ou um administrador vê a reciclagem.
+- **Apagar** (ficha ou vários na lista) leva o lead para a **reciclagem**: **Leads → Importar/Exportar → Apagados (reciclagem)** (ou "apagados" no Ctrl+K). Fica lá **30 dias com tudo** (tarefas, pagamentos, horas, propostas, contratos, kit da marca, linha do tempo…); **Repor** volta a pô-lo como estava (o mesmo #). O aviso depois de apagar também tem **Anular**. Depois de 30 dias sai de vez sozinho (no cron diário), com os ficheiros; **Apagar de vez** e **Esvaziar** fazem-no logo. Só o dono ou um administrador vê a reciclagem.
 - **Pedidos RGPD**: *Anonimizar*, ou *Apagar* com "Acrescentar à lista não contactar" — estes apagam **de vez** (não vão para a reciclagem).
 
 ### Configurar o email (resumo diário)
@@ -445,7 +430,7 @@ Enviar um resumo de teste agora**.
 
 O mesmo cron envia também as **notificações push** a todos os dispositivos ativados.
 
-**Horário de silêncio** (Definições → Conta → Notificações, de cada pessoa): por exemplo das 21:00 às 08:00 e, se quiseres, o fim de semana inteiro. Nesse período não chegam notificações push (os avisos ficam no sino da plataforma); os **lembretes das tarefas** esperam e chegam quando o silêncio acaba (até 3 dias). O aviso da manhã não é enviado a quem estiver em silêncio à hora do cron. Os alertas das reuniões e do pomodoro continuam.
+**Horário de silêncio** (Definições → Conta → Notificações, de cada pessoa): por exemplo das 21:00 às 08:00 e, se quiseres, o fim de semana inteiro. Nesse período não chegam notificações push (os avisos ficam no sino da plataforma); os **lembretes das tarefas** esperam e chegam quando o silêncio acaba (até 3 dias). O aviso da manhã não é enviado a quem estiver em silêncio à hora do cron. Os alertas do pomodoro continuam.
 
 **Lembretes das tarefas** (sino 🔔 no cartão Tarefas: dia e hora) — outro cron, **de 5 em 5
 minutos**, envia a notificação quando chega a hora (e lança as pesquisas automáticas do gerador de leads e lê as caixas de entrada para detetar respostas):
@@ -631,12 +616,12 @@ Menu **Prospeção**: os contactos do dia numa lista, sem saltar de lead. Em cim
 - **Telefone**: Ligar, WhatsApp e os resultados com um toque, como abaixo.
 
 - A lista começa por quem **abriu um email** nas últimas 48 horas, depois os **follow-ups** em atraso ou para hoje e, por fim, os leads **por contactar** (os mais quentes primeiro). Os separadores filtram cada grupo e mostram quantos leads há em cada um. **Falta email** (a trabalhar por email) e **Falta contacto** (por telefone) juntam os follow-ups e os por contactar sem forma de contactar — um email devolvido não conta; quem abriu o email fica sempre em *Abriram o email*. Cada pedido traz até 150 leads; com mais, aparece "A mostrar os primeiros 150 de N". API: `GET /api/v1/prospecting?filter=all|opened|follow_up|new|missing&mode=email|phone` (com `counts`).
-- Cada linha: o motivo ("Abriu o email há 2 h"), a nota afixada, **Ligar**, **WhatsApp** (com as mensagens prontas), **Email** (o de prospeção) e os botões do resultado. **Nota** abre uma caixa para escrever (vai com o próximo resultado); **Ver mais** mostra o ângulo de abordagem, os problemas, as notas, o site e os scripts; **Ficha** abre o lead num separador novo.
+- Cada linha: o motivo ("Abriu o email há 2 h"), a nota afixada, **Ligar**, **WhatsApp** (com as mensagens prontas), **Email** (o de prospeção) e os botões do resultado. **Nota** abre uma caixa para escrever (vai com o próximo resultado); **Ver mais** mostra o ângulo de abordagem, os problemas, o site e os scripts; **Ficha** abre o lead num separador novo.
 - O resultado regista-se com um toque. O lead **não salta**: passa para **Feito nesta sessão**, com o resultado ("Não atendeu (2.ª vez) · volta a 26/10/2026") e os mesmos botões, para registar outra tentativa. O número nos botões **Não atendeu** e **Contactado** é quantas vezes já o fizeste nesse lead; à 3.ª vez seguida sem atender, pergunta se passa a Sem interesse (Não responde).
 - Os resultados:
   - **Não atendeu** — volta a aparecer amanhã;
   - **Contactado** — passa a Contactado e agenda o follow-up (ou, se já estava contactado, conta como follow-up feito);
-  - **Interessado** — passa a Respondeu, com "Marcar reunião ou enviar proposta" para hoje;
+  - **Interessado** — passa a Respondeu, com "Enviar proposta" para hoje;
   - **Mais tarde** — amanhã, 3 dias, 1 semana, 2 semanas ou 1 mês;
   - **Sem interesse** (pergunta o motivo).
 - Em cima: quantos contactos fizeste nesta sessão e hoje, e quantos faltam.
@@ -665,7 +650,7 @@ Menu **Prospeção**: os contactos do dia numa lista, sem saltar de lead. Em cim
 
 Cada lead tem uma pontuação de 0 a 100 (Quente ≥ 60 com uma chama, Morno ≥ 35 com um sol, Frio com um floco de neve), atualizada sozinha sempre que o lead muda.
 
-- Somam pontos: o estado (Reunião, Respondeu, Proposta enviada), sem site próprio ou só redes sociais, site lento ou que não funciona no telemóvel (só se o lead precisar de web design), problemas identificados, ter email ou telefone, setor prioritário (Definições → Setores), valor estimado e ângulo de abordagem.
+- Somam pontos: o estado (Respondeu, Proposta enviada), sem site próprio ou só redes sociais, site lento ou que não funciona no telemóvel (só se o lead precisar de web design), problemas identificados, ter email ou telefone, setor prioritário (Definições → Setores), valor estimado e ângulo de abordagem.
 - Clientes, sem interesse, em pausa e arquivados ficam com 0.
 - **Leads → ordenar por Prioridade** (coluna "Prioridade"; no telemóvel, "Ordenar → Prioridade (mais quentes)").
 - **Dashboard → Leads mais quentes**: os 8 com mais pontos.
@@ -673,7 +658,7 @@ Cada lead tem uma pontuação de 0 a 100 (Quente ≥ 60 com uma chama, Morno ≥
 
 ---
 
-## Projetos, pagamentos e reuniões
+## Projetos e pagamentos
 
 Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**. Desligada, sai do menu e da ficha, mas os dados ficam guardados.
 
@@ -691,20 +676,20 @@ Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**
 **Projetos**
 - Menu **Projetos**, com três vistas (a última escolhida fica lembrada neste browser):
   - **Lista**: os projetos em curso ordenados pelo prazo de entrega ("Faltam 5 dias", "Entrega hoje", "Atrasado 2 dias" a vermelho). Cada projeto tem, de cima para baixo:
-    - o nome, a fase, o prazo e as ações (**WhatsApp**, **Reunião**, **Concluir projeto**);
+    - o nome, a fase, o prazo e as ações (**WhatsApp**, **Concluir projeto**);
     - o **resumo** em caixinhas: **Pagamentos** (recebido de total, em atraso, ou **Criar plano**), **Tarefas** (feitas de total), **Revisões** e **Horas** (com €/hora e **Ver registos**);
     - **todas as tarefas** (a mesma lista da ficha: marcar como feitas, arrastar pela pega ⠿ para mudar a ordem, editar, apagar e acrescentar; **Esconder tarefas** recolhe a lista) e, ao lado, o bloco **Tempo** com o Pomodoro e o ▶ cronómetro (no telemóvel fica por baixo das tarefas);
-    - em baixo, a próxima reunião, despesas, entregas e **Detalhes do projeto**.
+    - em baixo, despesas, entregas e **Detalhes do projeto**.
   - Por cima da lista: filtros **Atrasados**, **Pagamentos em atraso** e **Entregam esta semana** (com o número de projetos), **Ordenar por** prazo, valor ou fase (fica lembrado), e **Recolher todos / Abrir todos**. O ⌄ ao lado do nome recolhe cada projeto à linha do título, com um resumo curto (tarefas, pagamentos, horas).
   - "Concluídos" mostra os terminados.
   - **Fases**: colunas Briefing → Em produção → Revisões → Entrega. Arrasta o cartão (no telemóvel, mantém o dedo) ou usa o botão da fase.
-  - **Calendário**: o mês com as entregas, reuniões, pagamentos previstos e tarefas (no telemóvel, a lista dos dias com alguma coisa).
+  - **Calendário**: o mês com as entregas, pagamentos previstos e tarefas (no telemóvel, a lista dos dias com alguma coisa).
 - Na ficha de um cliente, cartão **Projeto** (na coluna larga, logo a seguir ao Pipeline): prazo de entrega, fase, o mesmo **resumo** em caixinhas (Pagamentos, Tarefas, Revisões, Horas) e as secções abaixo; à direita, o bloco **Tempo** com o Pomodoro e as horas (no telemóvel, no fim do cartão). Na coluna da direita, **Pagamentos** fica logo a seguir às Tarefas.
 - **Rondas de revisão**: indicas quantas estão incluídas no preço (2 por omissão) e registas cada pedido do cliente. A partir da primeira além das incluídas, aparece o aviso e a revisão fica "A cobrar".
 - **Registo de horas**: ▶ **Começar** → ⏸ **Pausar** → ▶ **Continuar** quantas vezes quiseres: o relógio mostra sempre o total do projeto (o já registado mais a sessão atual). Só há um temporizador a contar de cada vez; enquanto conta aparece no menu (também no telemóvel). **À mão** regista horas sem temporizador; sessões de menos de 5 segundos (começar e pausar logo) não ficam guardadas; **Pôr a zero** apaga todas as horas do projeto (com confirmação); cada registo pode ser corrigido (✎ horas, minutos, notas) ou apagado — na ficha ou em **ver registos** na lista de projetos. Mostra o total e quanto ganhas por hora (valor da proposta aceite; sem ela, o total dos pagamentos; por fim, o valor estimado).
 - **Horas por tarefa**: o Pomodoro guarda a tarefa escolhida e o registo **À mão** (ou o ✎ de um registo) também deixa escolher a tarefa. Cada tarefa mostra o tempo gasto (⏱ 3 h 20 min) e as **Horas** mostram o **Tempo por tarefa** (barras, com "Sem tarefa" no fim).
 - **Ficheiros e entregas**: links do Google Drive, Figma, Canva… com o estado *Por enviar → Enviada → Aprovada pelo cliente* (fica na linha do tempo).
-- **Página para o cliente**: **Criar link** gera uma página só de leitura (sem login, endereço `/p/<código>`) com a fase, o progresso das tarefas, a entrega prevista, a próxima reunião, as entregas enviadas, os pagamentos (total, pago, em falta) e as revisões. Não mostra notas, horas nem valores internos. **Enviar por WhatsApp**, **Novo link** (o antigo deixa de abrir) ou **Desligar**.
+- **Página para o cliente**: **Criar link** gera uma página só de leitura (sem login, endereço `/p/<código>`) com a fase, o progresso das tarefas, a entrega prevista, as entregas enviadas, os pagamentos (total, pago, em falta) e as revisões. Não mostra notas, horas nem valores internos. **Enviar por WhatsApp**, **Novo link** (o antigo deixa de abrir) ou **Desligar**.
 - **Concluir projeto** abre os passos finais: criar a tarefa *Juntar o projeto ao portefólio* (daqui a 7 dias), lembrar de *propor um novo serviço* daqui a 3, 6 ou 12 meses (tarefas que aparecem em "Hoje" no dia) e, no fim, **pedir uma avaliação no Google** por WhatsApp ou email (modelos *pedido de avaliação* em Scripts, com `{{avaliacao}}`). O link de avaliação guarda-se em Definições → Funcionalidades → *Avaliações no Google*. **Reabrir projeto** volta a pô-lo em curso.
 - **Resumo diário por email**: inclui as entregas de projeto atrasadas e dos próximos 7 dias e os pagamentos em atraso.
 - Arranque automático, briefing, revisões, horas, despesas, entregas, página do cliente e aprovação pelo cliente desligam-se uma a uma em Definições → Funcionalidades.
@@ -782,18 +767,10 @@ Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**
 - Em **Estatísticas → Rentabilidade**: ganho médio por hora (e depois das despesas), horas registadas, duração média e horas por projeto concluído, ganho por hora por serviço e por cliente, e gráficos das horas e do recebido nos últimos 12 meses.
 
 **Calendário no telemóvel (subscrição)**
-- Em Definições → Funcionalidades → *Calendário no telemóvel*, **Criar link** gera um endereço privado com as reuniões, as entregas dos projetos, os pagamentos previstos, as tarefas e os follow-ups (do último mês até 6 meses à frente). Atualiza-se sozinho.
+- Em Definições → Funcionalidades → *Calendário no telemóvel*, **Criar link** gera um endereço privado com as entregas dos projetos, os pagamentos previstos, as tarefas e os follow-ups (do último mês até 6 meses à frente). Atualiza-se sozinho.
 - **iPhone / Mac:** carrega em **Abrir no iPhone / Mac** e confirma "Subscrever".
 - **Google Calendar:** no computador, calendar.google.com → ⚙ → *Adicionar calendário* → *A partir do URL* → cola o link. O Google atualiza-o de algumas em algumas horas.
 - Quem tiver o link vê estes dados: **Novo link** troca-o (o antigo deixa de funcionar) e **Desligar** apaga-o.
-
-**Reuniões**
-- Na ficha, cartão **Reuniões → Marcar reunião**: dia e hora, duração, local ou link (Google Meet, Zoom, morada) e notas.
-- O lead passa a **Reunião**, com a próxima ação nesse dia.
-- Com **Enviar o convite ao cliente**, o cliente recebe um email com o convite de calendário (.ics): no Gmail, no Outlook e no iPhone aparece "Adicionar ao calendário".
-- Recebes uma notificação **1 hora antes** (pelo cron dos lembretes). A reunião aparece em **Hoje** no Dashboard.
-- O botão ⬇ junta a reunião ao teu calendário.
-- **Desmarcar** pode avisar o cliente: recebe o cancelamento e a reunião sai do calendário dele.
 
 **Cópia de segurança semanal**
 - Todas as semanas (segunda-feira por omissão, de manhã, pelo cron do resumo diário) recebes por email um Excel com todos os leads, também os arquivados.
@@ -845,9 +822,9 @@ Pessoas que te ajudam a procurar, gerar, organizar e contactar leads, cada uma c
 **Gerador de leads**
 - A pesquisa com IA é paga pela tua conta: cada prospetor junta no máximo **50 leads por semana** (últimos 7 dias). Muda-se em Equipa → Prospeção (0 = sem gerador). As pesquisas automáticas são só tuas.
 
-**Equipa → Atividade** ("quem fez o quê"): os registos de cada pessoa nos leads (contactos, estados, emails, notas), com filtro por pessoa e período. Na linha do tempo de cada lead aparece quem fez cada coisa, com filtro por pessoa.
+**Equipa → Atividade** ("quem fez o quê"): os registos de cada pessoa nos leads (contactos, estados, emails, comentários), com filtro por pessoa e período. Na linha do tempo de cada lead aparece quem fez cada coisa, com filtro por pessoa.
 
-**Estatísticas → Equipa** — por pessoa, nos últimos 30 dias: contactos (e hoje), responderam, reuniões, clientes, leads criados, leads em aberto e o gerador da semana. Aparece quando a equipa tem mais de uma pessoa.
+**Estatísticas → Equipa** — por pessoa, nos últimos 30 dias: contactos (e hoje), responderam, clientes, leads criados, leads em aberto e o gerador da semana. Aparece quando a equipa tem mais de uma pessoa.
 
 ---
 

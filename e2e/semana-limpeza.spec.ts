@@ -2,8 +2,8 @@ import { expect, test, type APIRequestContext } from '@playwright/test';
 import { startStubs } from './stubs';
 
 /*
- * Etiquetas, limpeza de duplicados (juntar sem perder pagamentos/reuniões/horas),
- * Notas de reunião com IA, ações e recentes na pesquisa rápida,
+ * Etiquetas, limpeza de duplicados (juntar sem perder pagamentos/horas),
+ * ações e recentes na pesquisa rápida,
  * avisos dos projetos no Dashboard e o "Ponto de situação".
  * IA falsa em e2e/stubs.ts.
  */
@@ -61,13 +61,12 @@ test('etiquetas: na ficha, filtro na lista e na API, e na pesquisa rápida', asy
   await expect(page).toHaveURL(new RegExp(`etiqueta=${encodeURIComponent(tag).replace(/%/g, '%')}`));
 });
 
-test('duplicados: juntar no principal passa pagamentos, reuniões, horas e etiquetas; "não são duplicados" esconde', async ({ page }) => {
+test('duplicados: juntar no principal passa pagamentos, horas e etiquetas; "não são duplicados" esconde', async ({ page }) => {
   test.setTimeout(120_000);
   const email = `dup-${run}@exemplo.pt`;
   const main = await createLead(page.request, { company_name: `Duplicado Cliente ${run}`, email, status: 'cliente', tags: ['principal'] });
   const dup = await createLead(page.request, { company_name: `Duplicado Outro ${run}`, email, tags: ['repetido'] });
   expect((await page.request.post(`/api/v1/leads/${dup.id}/payments`, { data: { description: 'Sinal', amount: 250, due_on: iso(10) } })).status()).toBe(201);
-  expect((await page.request.post(`/api/v1/leads/${dup.id}/meetings`, { data: { starts_at: new Date(Date.now() + 3 * 86_400_000).toISOString() } })).status()).toBe(201);
   expect((await page.request.post(`/api/v1/leads/${dup.id}/time`, { data: { date: iso(0), minutes: 45 } })).status()).toBe(201);
   // Outro par que não é duplicado de verdade (mesmo nome).
   const a = await createLead(page.request, { company_name: `Café Igual ${run}`, city: 'Porto' });
@@ -84,10 +83,8 @@ test('duplicados: juntar no principal passa pagamentos, reuniões, horas e etiqu
 
   expect((await page.request.get(`/api/v1/leads/${dup.id}`)).status()).toBe(404);
   const payments = (await (await page.request.get(`/api/v1/leads/${main.id}/payments`)).json()).data as unknown[];
-  const meetings = (await (await page.request.get(`/api/v1/leads/${main.id}/meetings`)).json()).data as unknown[];
   const time = (await (await page.request.get(`/api/v1/leads/${main.id}/time`)).json()).data as { entries: unknown[] };
   expect(payments).toHaveLength(1);
-  expect(meetings).toHaveLength(1);
   expect(time.entries).toHaveLength(1);
   const merged = (await (await page.request.get(`/api/v1/leads/${main.id}`)).json()).data as { tags: string[] };
   expect([...merged.tags].sort()).toEqual(['principal', 'repetido']);
@@ -98,62 +95,6 @@ test('duplicados: juntar no principal passa pagamentos, reuniões, horas e etiqu
   await expect(groups.getByRole('listitem').filter({ hasText: `Café Igual ${run}` })).toHaveCount(0);
   const left = (await (await page.request.get('/api/v1/leads/duplicates')).json()).data as { leads: { id: string }[] }[];
   expect(left.some((g) => g.leads.some((l) => l.id === a.id || l.id === b.id))).toBe(false);
-});
-
-test('notas de reunião com IA: resumo na linha do tempo, tarefas e próximo passo', async ({ page }) => {
-  test.setTimeout(90_000);
-  const lead = await createLead(page.request, { company_name: `Notas IA ${run}`, contact_name: 'Marta' });
-  await page.goto(`/leads/${lead.id}`);
-  await page.getByRole('button', { name: 'Notas com IA' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Notas com IA' });
-  await dialog.getByLabel('Apontamentos').fill('Falei com a Marta. Querem loja online até ao Natal, até 2000 €. Mandar proposta até sexta e ligar para a semana.');
-  await dialog.getByRole('button', { name: 'Resumir' }).click();
-  await expect(dialog.getByLabel('Resumo (vai para a linha do tempo)')).toHaveValue(/loja online até ao Natal/, { timeout: 30_000 });
-  await expect(dialog.getByLabel('Tarefa 1', { exact: true })).toHaveValue('Enviar proposta da loja online');
-  // A segunda tarefa fica de fora.
-  await dialog.getByLabel('Criar a tarefa 2').uncheck();
-  await dialog.getByRole('button', { name: 'Guardar' }).click();
-  await expect(page.getByText(/Guardado: resumo, 1 tarefa e próximo passo/)).toBeVisible();
-
-  const tasks = (await (await page.request.get(`/api/v1/leads/${lead.id}/tasks`)).json()).data as { title: string; due_on: string | null }[];
-  expect(tasks.map((t) => t.title)).toEqual(['Enviar proposta da loja online']);
-  expect(tasks[0]!.due_on).toBe(iso(3));
-  const saved = (await (await page.request.get(`/api/v1/leads/${lead.id}`)).json()).data as { next_action_text: string; next_action_on: string };
-  expect(saved).toMatchObject({ next_action_text: 'Ligar para saber a decisão', next_action_on: iso(7) });
-  const activities = (await (await page.request.get(`/api/v1/leads/${lead.id}/activities`)).json()).data as { type: string; body: string | null }[];
-  expect(activities.some((a) => a.type === 'note' && a.body?.includes('Resumo da reunião/chamada'))).toBe(true);
-});
-
-test('notas com IA: conversa colada (com a fase) e gravação passada a texto', async ({ page }) => {
-  test.setTimeout(90_000);
-  const lead = await createLead(page.request, { company_name: `Conversa ${run}`, status: 'respondeu' });
-  await page.goto(`/leads/${lead.id}`);
-  await page.getByRole('button', { name: 'Notas com IA' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Notas com IA' });
-  await dialog.getByRole('button', { name: 'Conversa colada' }).click();
-  await dialog.getByLabel('Conversa').fill('[10:02] Marta: Olá! Gostava de um site novo para a loja.\n[10:05] Eu: Claro! Podemos falar na quinta às 15h?\n[10:06] Marta: Combinado.');
-  await dialog.getByRole('button', { name: 'Resumir' }).click();
-  await expect(dialog.getByText(/Mudar a fase de/)).toBeVisible({ timeout: 30_000 });
-  await dialog.getByText(/Mudar a fase de/).click();
-  await dialog.getByLabel('Criar a tarefa 2').uncheck();
-  await dialog.getByRole('button', { name: 'Guardar' }).click();
-  await expect(page.getByText(/fase: Reunião/)).toBeVisible();
-  const saved = (await (await page.request.get(`/api/v1/leads/${lead.id}`)).json()).data as { status: string };
-  expect(saved.status).toBe('reuniao');
-  const activities = (await (await page.request.get(`/api/v1/leads/${lead.id}/activities`)).json()).data as { type: string; body: string | null }[];
-  expect(activities.some((a) => a.type === 'note' && a.body?.includes('Resumo da conversa'))).toBe(true);
-
-  // Gravação: sem fornecedor OpenAI, explica o que falta; com ele, passa a texto.
-  const form = { audio: { name: 'reuniao.webm', mimeType: 'audio/webm', buffer: Buffer.from('áudio de teste') } };
-  const without = await page.request.post(`/api/v1/leads/${lead.id}/transcribe`, { multipart: form });
-  if (without.status() === 422) expect((await without.json()).detail).toMatch(/OpenAI/);
-  const provider = await page.request.post('/api/v1/ai-providers', { data: { kind: 'openai', label: `OpenAI ${run}`, api_key: 'sk-teste-transcricao' } });
-  expect(provider.ok()).toBe(true);
-  const id = (await provider.json()).data.id as string;
-  const transcribed = await page.request.post(`/api/v1/leads/${lead.id}/transcribe`, { multipart: form });
-  expect(transcribed.status()).toBe(200);
-  expect((await transcribed.json()).data.text).toMatch(/loja online/);
-  await page.request.delete(`/api/v1/ai-providers/${id}`);
 });
 
 test('pesquisa rápida: recentes e ações num lead (tarefa e chamada sem abrir a ficha)', async ({ page }) => {
@@ -186,12 +127,13 @@ test('pesquisa rápida: recentes e ações num lead (tarefa e chamada sem abrir 
   const activities = (await (await page.request.get(`/api/v1/leads/${lead.id}/activities`)).json()).data as { type: string; body: string | null }[];
   expect(activities.some((a) => a.type === 'call_logged' && a.body === 'Pediu para ligar em março')).toBe(true);
 
-  // Marcar reunião: abre a ficha com o formulário aberto.
+  // Sem reuniões nem notas nas ações.
   await page.keyboard.press('Control+k');
   await page.getByRole('combobox').fill(`Ações Rápidas ${run}`);
   await page.getByRole('button', { name: new RegExp(`Ações para #${lead.number}`) }).first().click();
-  await page.getByRole('option', { name: 'Marcar reunião' }).click();
-  await expect(page.getByRole('dialog', { name: /reunião/i })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('option', { name: 'Nova tarefa…' })).toBeVisible();
+  await expect(page.getByRole('option', { name: 'Marcar reunião' })).toHaveCount(0);
+  await expect(page.getByRole('option', { name: 'Registar nota…' })).toHaveCount(0);
 });
 
 test('Dashboard: projetos a precisar de atenção levam aos Projetos já filtrados; Ponto de situação', async ({ page }) => {

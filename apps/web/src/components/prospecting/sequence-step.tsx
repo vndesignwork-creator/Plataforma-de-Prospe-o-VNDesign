@@ -47,7 +47,7 @@ export function SequenceStep({ lead, step }: { lead: Lead; step: NonNullable<Pro
   const category = leadServiceCategory(lead.services, catalog.all) ?? null;
   const template = templates ? pickTemplate(templates, step, category) : null;
   // Só pede o teste "Aparece nas IAs?" se o modelo o usar (um pedido por lead, na lista toda).
-  const context = useTemplateContext(lead, null, { aiVisibility: usesAiVisibility(template?.subject, template?.body) });
+  const context = useTemplateContext(lead, { aiVisibility: usesAiVisibility(template?.subject, template?.body) });
   const version = template ? pickTemplateVariant(template, lead) : null;
   const subject = version?.subject ? renderTemplate(version.subject, context).text : '';
   const body = version ? renderTemplate(version.body, context).text : '';

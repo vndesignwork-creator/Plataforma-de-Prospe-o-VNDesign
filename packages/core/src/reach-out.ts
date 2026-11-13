@@ -103,7 +103,7 @@ export const LeadTextInputSchema = z
 export type LeadTextInput = z.output<typeof LeadTextInputSchema>;
 
 export const LEAD_TEXT_SYSTEM_PROMPT = `Recebes um texto ditado ou colado sobre uma empresa que pode vir a ser cliente (Portugal, normalmente) e extrais os dados para a ficha de um lead.
-Devolves: empresa, contacto (nome da pessoa), email, telefone (como foi dito, só dígitos e espaços, com indicativo se houver), site, cidade, morada e notas (o resto que for útil: o que precisam, o que ficou combinado, cargo — curto).
+Devolves: empresa, contacto (nome da pessoa), email, telefone (como foi dito, só dígitos e espaços, com indicativo se houver), site, cidade e morada.
 Usa null para o que não estiver no texto. Não inventes nada. Emails e sites ditados ("arroba", "ponto pt") passam a escrita normal.`;
 
 // -----------------------------------------------------------------------------

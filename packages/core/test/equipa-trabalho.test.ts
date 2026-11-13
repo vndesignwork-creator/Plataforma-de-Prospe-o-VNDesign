@@ -74,20 +74,20 @@ describe('tarefas com responsável', () => {
 
 describe('ordem dos cartões da ficha', () => {
   it('por omissão, a ordem de sempre', () => {
-    expect(arrangeCards(null)).toEqual(['tasks', 'payments', 'projects', 'brand_kit', 'files', 'meetings', 'notes', 'proposals', 'contracts', 'activity']);
+    expect(arrangeCards(null)).toEqual(['tasks', 'payments', 'projects', 'brand_kit', 'files', 'proposals', 'contracts', 'activity']);
   });
 
   it('a ordem escolhida; cartões desconhecidos saem e os que faltam entram no sítio de sempre', () => {
-    const order = arrangeCards({ order: ['activity', 'notes', 'tasks', 'antigo'] });
-    expect(order.slice(0, 3)).toEqual(['activity', 'notes', 'proposals']);
+    const order = arrangeCards({ order: ['activity', 'files', 'tasks', 'antigo'] });
+    expect(order.slice(0, 3)).toEqual(['activity', 'files', 'proposals']);
     expect(order).toContain('payments');
     expect(order).not.toContain('antigo');
     expect(order.indexOf('payments')).toBe(order.indexOf('tasks') + 1);
-    expect(new Set(order).size).toBe(10);
+    expect(new Set(order).size).toBe(8);
   });
 
   it('a Linha do tempo nunca se esconde', () => {
-    expect(isCardHidden({ hidden: ['notes', 'activity'] }, 'notes')).toBe(true);
-    expect(isCardHidden({ hidden: ['notes', 'activity'] }, 'activity')).toBe(false);
+    expect(isCardHidden({ hidden: ['files', 'activity'] }, 'files')).toBe(true);
+    expect(isCardHidden({ hidden: ['files', 'activity'] }, 'activity')).toBe(false);
   });
 });

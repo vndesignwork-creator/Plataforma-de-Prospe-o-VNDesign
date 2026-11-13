@@ -683,7 +683,7 @@ export function KanbanBoard() {
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Filtrar empresa, cidade, notas…"
+            placeholder="Filtrar empresa, cidade…"
             aria-label="Filtrar leads no Kanban"
             className="pl-9"
           />
@@ -822,7 +822,7 @@ export function KanbanBoard() {
 /** Topo: leads em aberto, clientes e (para quem vê valores) o valor das propostas enviadas. */
 function BoardSummary({ board, showValue }: { board: BoardColumn[]; showValue: boolean }) {
   const total = (status: LeadStatus) => board.find((c) => c.status === status)?.total ?? 0;
-  const open = (['identificado', 'contactado', 'respondeu', 'reuniao', 'proposta_enviada'] as LeadStatus[]).reduce((n, st) => n + total(st), 0);
+  const open = (['identificado', 'contactado', 'respondeu', 'proposta_enviada'] as LeadStatus[]).reduce((n, st) => n + total(st), 0);
   const proposals = board.find((c) => c.status === 'proposta_enviada')?.value ?? 0;
   const clients = total('cliente');
   return (

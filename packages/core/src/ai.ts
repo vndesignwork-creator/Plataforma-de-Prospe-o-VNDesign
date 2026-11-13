@@ -85,7 +85,6 @@ export interface AiEmailContext {
     pagespeed?: number | null;
     mobile?: string | null;
     approach_angle?: string | null;
-    notes?: string | null;
     first_contact_on?: string | null;
     previous_subject?: string | null;
     services?: readonly string[] | null;
@@ -168,7 +167,6 @@ export function buildAiEmailPrompt(request: AiEmailRequest, ctx: AiEmailContext)
       : null,
     line('Ângulo de abordagem', l.approach_angle),
     line('Argumentos para o setor', ctx.sectorArguments),
-    line('Notas', l.notes),
     line('Data do primeiro contacto', l.first_contact_on ? formatDate(l.first_contact_on) : null),
     line('Assunto do email anterior', l.previous_subject),
     ctx.proposal ? `Proposta: n.º ${ctx.proposal.code}, total ${ctx.proposal.total}` : null,

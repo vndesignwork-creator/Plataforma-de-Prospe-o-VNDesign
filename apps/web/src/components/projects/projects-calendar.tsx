@@ -1,12 +1,12 @@
 'use client';
 
 /**
- * Calendário do mês: prazos de entrega, reuniões, pagamentos previstos e
+ * Calendário do mês: prazos de entrega, pagamentos previstos e
  * tarefas com prazo. No computador, a grelha do mês; no telemóvel, a lista
  * dos dias com alguma coisa.
  */
 import { CALENDAR_EVENT_LABELS, CALENDAR_EVENT_TYPES, formatCurrency, leadPath, monthGrid, type CalendarEvent, type CalendarEventType } from '@vndesign/core';
-import { BellRing, CalendarClock, ChevronLeft, ChevronRight, ListChecks, PackageCheck, Wallet, type LucideIcon } from 'lucide-react';
+import { BellRing, ChevronLeft, ChevronRight, ListChecks, PackageCheck, Wallet, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,6 @@ import { cn } from '@/lib/utils';
 
 export const TYPE_STYLE: Record<CalendarEventType, { icon: LucideIcon; className: string }> = {
   due: { icon: PackageCheck, className: 'bg-warning-soft text-warning font-medium' },
-  meeting: { icon: CalendarClock, className: 'bg-accent-soft text-accent-text' },
   payment: { icon: Wallet, className: 'bg-success-soft text-success' },
   task: { icon: ListChecks, className: 'bg-surface-3 text-fg' },
   followup: { icon: BellRing, className: 'bg-danger-soft text-danger' },
@@ -25,7 +24,6 @@ export const TYPE_STYLE: Record<CalendarEventType, { icon: LucideIcon; className
 const WEEKDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 const monthFmt = new Intl.DateTimeFormat('pt-PT', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 const dayFmt = new Intl.DateTimeFormat('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
-const timeFmt = new Intl.DateTimeFormat('pt-PT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Lisbon' });
 
 function shiftMonth(month: string, delta: number): string {
   const [y, m] = month.split('-').map(Number) as [number, number];
@@ -34,9 +32,8 @@ function shiftMonth(month: string, delta: number): string {
 }
 
 function eventText(e: CalendarEvent): string {
-  const time = e.starts_at ? `${timeFmt.format(new Date(e.starts_at))} ` : '';
   const amount = e.amount !== null ? ` · ${formatCurrency(e.amount, { decimals: false })}` : '';
-  return `${time}${e.type === 'due' ? 'Entrega' : e.title}${amount}`;
+  return `${e.type === 'due' ? 'Entrega' : e.title}${amount}`;
 }
 
 function EventChip({ event, compact }: { event: CalendarEvent; compact?: boolean }) {

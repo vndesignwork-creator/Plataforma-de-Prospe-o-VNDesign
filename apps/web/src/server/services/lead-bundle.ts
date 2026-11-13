@@ -17,7 +17,6 @@ import { listCollaborators } from './collaborators';
 import { listContracts } from './contracts';
 import { getLaunchChecklist } from './launch';
 import { getLead } from './leads';
-import { listMeetings } from './meetings';
 import { listPayments } from './payments';
 import { getProjectInfo, getProjectTime, listDeliverables, listExpenses, listRevisions } from './project-tools';
 import { listProposals } from './proposals';
@@ -34,7 +33,6 @@ const COMMERCIAL: Record<string, Part> = {
   activities: listActivities,
   audits: listAudits,
   proposals: listProposals,
-  meetings: listMeetings,
   // O kit da marca também aparece antes do projeto (GEO, perfil do Google).
   'brand-kit': getBrandKit,
 };

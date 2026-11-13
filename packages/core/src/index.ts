@@ -44,7 +44,6 @@ export * from './geo-assets';
 export * from './site-form';
 export * from './prospecting-sequence';
 export * from './duplicates';
-export * from './meeting-notes';
 export * from './project-update';
 export * from './reschedule';
 export * from './note-search';

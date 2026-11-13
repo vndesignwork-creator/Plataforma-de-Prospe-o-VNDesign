@@ -3,7 +3,7 @@ import { apiRoute, json, parseQuery } from '@/server/http';
 import { projectCalendar } from '@/server/services/project-tools';
 
 /**
- * GET /api/v1/projects/calendar?from=AAAA-MM-DD&to=AAAA-MM-DD — prazos, reuniões, pagamentos e tarefas
+ * GET /api/v1/projects/calendar?from=AAAA-MM-DD&to=AAAA-MM-DD — prazos, pagamentos e tarefas
  * (máx. 62 dias); com followups=true, também as próximas ações dos leads.
  */
 export const GET = apiRoute(async (req, ctx) => {

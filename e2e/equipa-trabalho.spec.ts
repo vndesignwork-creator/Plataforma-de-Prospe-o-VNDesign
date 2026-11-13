@@ -110,12 +110,12 @@ test('organizar os cartões da ficha: esconder e mudar a ordem (e repor)', async
   const lead = await createLead(page.request, { company_name: `Cartões ${run}` });
   expect((await page.request.put('/api/v1/preferences/lead.cards', { data: { value: { order: [], hidden: [] } } })).status()).toBeLessThan(300);
   await page.goto(`/leads/${lead.id}`);
-  const aside = page.getByRole('complementary', { name: 'Tarefas, pagamentos, notas, propostas e atividade' });
-  await expect(aside.getByRole('heading', { name: 'Notas' })).toBeVisible();
+  const aside = page.getByRole('complementary', { name: 'Tarefas, pagamentos, propostas e atividade' });
+  await expect(aside.getByRole('heading', { name: 'Propostas', exact: true })).toBeVisible();
 
   await aside.getByRole('button', { name: 'Organizar cartões' }).click();
   const dialog = page.getByRole('dialog', { name: 'Organizar cartões' });
-  await dialog.getByLabel('Mostrar Notas').uncheck();
+  await dialog.getByLabel('Mostrar Propostas').uncheck();
   await expect(dialog.getByLabel('Mostrar Linha do tempo')).toBeDisabled();
   // A Linha do tempo sobe até ao topo.
   for (let i = 0; i < 12; i++) {
@@ -125,7 +125,7 @@ test('organizar os cartões da ficha: esconder e mudar a ordem (e repor)', async
   }
   await dialog.getByRole('button', { name: 'Guardar' }).click();
   await expect(page.getByText('Cartões organizados.')).toBeVisible();
-  await expect(aside.getByRole('heading', { name: 'Notas' })).toHaveCount(0);
+  await expect(aside.getByRole('heading', { name: 'Propostas', exact: true })).toHaveCount(0);
   await expect(aside.getByRole('heading').first()).toHaveText('Linha do tempo');
 
   // Vale para os outros leads; Repor original volta ao que era.
@@ -134,7 +134,7 @@ test('organizar os cartões da ficha: esconder e mudar a ordem (e repor)', async
   await aside.getByRole('button', { name: 'Organizar cartões' }).click();
   await page.getByRole('dialog', { name: 'Organizar cartões' }).getByRole('button', { name: 'Repor original' }).click();
   await expect(page.getByText('Ordem original reposta.')).toBeVisible();
-  await expect(aside.getByRole('heading', { name: 'Notas' })).toBeVisible();
+  await expect(aside.getByRole('heading', { name: 'Propostas', exact: true })).toBeVisible();
   await expect(aside.getByRole('heading').first()).toHaveText('Tarefas');
 });
 

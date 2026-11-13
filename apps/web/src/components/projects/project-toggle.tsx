@@ -29,7 +29,7 @@ function ReviewRequest({ lead }: { lead: Lead }) {
   const { data: me } = useMe();
   const { data: templates } = useTemplates();
   const withReview = (templates ?? []).filter((t) => templateVariablesIn(t.body).includes('avaliacao'));
-  const context = useTemplateContext(lead, null, { aiVisibility: withReview.some((t) => usesAiVisibility(t.subject, t.body)) });
+  const context = useTemplateContext(lead, { aiVisibility: withReview.some((t) => usesAiVisibility(t.subject, t.body)) });
   const log = useLogActivity(lead.id);
   const [link, setLink] = useState('');
   const [error, setError] = useState<string | null>(null);

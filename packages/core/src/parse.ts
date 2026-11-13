@@ -45,6 +45,8 @@ export function parseStatus(value: unknown): LeadStatus | null {
     perdido: 'sem_interesse',
     pausa: 'em_pausa',
     novo: 'identificado',
+    // A fase "Reunião" já não existe: fica em "Respondeu".
+    reuniao: 'respondeu',
   });
 }
 

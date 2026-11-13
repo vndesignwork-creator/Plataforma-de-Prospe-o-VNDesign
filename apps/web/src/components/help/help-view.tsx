@@ -90,7 +90,7 @@ function About() {
     { title: 'Encontrar', text: 'Importar, criar ou gerar com IA leads de empresas que precisam de um site.' },
     { title: 'Contactar', text: 'Email, telefone ou WhatsApp com mensagens prontas, numa sessão de prospeção.' },
     { title: 'Acompanhar', text: 'Follow-ups, respostas e tarefas no dia certo, sem nada esquecido.' },
-    { title: 'Fechar', text: 'Reuniões, diagnóstico do site atual, propostas e contratos.' },
+    { title: 'Fechar', text: 'Diagnóstico do site atual, propostas e contratos.' },
     { title: 'Entregar', text: 'O projeto do cliente: fases, prazos, pagamentos, horas e entregas.' },
   ];
   return (

@@ -121,13 +121,6 @@ const IDEAS: (AutomationRuleCreate & { hint: string })[] = [
     actions: [{ type: 'set_next_action', text: 'Enviar follow-up', in_days: 0 }],
   },
   {
-    name: 'Reunião marcada: preparar',
-    hint: 'Quando passa a Reunião, cria a tarefa de preparar o diagnóstico e as ideias.',
-    enabled: false,
-    conditions: [{ type: 'status_in', values: ['reuniao'] }],
-    actions: [{ type: 'create_task', title: 'Preparar a reunião (diagnóstico e ideias)', due_in_days: 0 }],
-  },
-  {
     name: 'Proposta enviada: ligar em 3 dias',
     hint: 'Depois de enviar a proposta, a próxima ação fica: ligar daqui a 3 dias.',
     enabled: false,

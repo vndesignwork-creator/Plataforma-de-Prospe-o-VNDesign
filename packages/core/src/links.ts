@@ -42,14 +42,13 @@ export function isSocialOrDirectoryUrl(url: string | null | undefined): boolean 
 export interface LeadLinks {
   website?: string | null;
   source_url?: string | null;
-  notes?: string | null;
   social_links?: string[];
 }
 
 /**
  * Se o "Website" for um diretório ou uma rede social (não é o site da empresa),
- * passa-o para "Fonte" (ou, se a Fonte já tiver outro link, para as notas) e limpa
- * o Website. Devolve só os campos alterados.
+ * passa-o para "Fonte" e limpa o Website (se a Fonte já tiver outro link, fica
+ * como está, para não se perder). Devolve só os campos alterados.
  */
 export function fixDirectoryWebsite(lead: LeadLinks): Partial<LeadLinks> | null {
   const website = lead.website?.trim();
@@ -62,7 +61,5 @@ export function fixDirectoryWebsite(lead: LeadLinks): Partial<LeadLinks> | null 
   const source = lead.source_url?.trim();
   if (!source) return { website: null, source_url: website };
   if (websiteKey(source) === websiteKey(website) || source === website) return { website: null };
-  const line = `Link de diretório: ${website}`;
-  const notes = lead.notes?.includes(website) ? lead.notes : [lead.notes?.trim(), line].filter(Boolean).join('\n');
-  return { website: null, notes };
+  return null;
 }

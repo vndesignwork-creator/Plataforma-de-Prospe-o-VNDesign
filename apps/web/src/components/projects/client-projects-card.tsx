@@ -187,7 +187,7 @@ export function ClientProjectsCard({ lead }: { lead: Lead }) {
         title={removing ? `Apagar o projeto “${projectName(removing)}”?` : 'Apagar o projeto?'}
         description={
           removing?.main
-            ? 'É o primeiro projeto: o projeto que escolheres passa a ser o principal do cliente e fica com a linha do tempo, o kit da marca, os acessos, as notas e as etiquetas. As tarefas, os pagamentos, as horas e as propostas deste vão para a Reciclagem (Definições → Apagados) durante 30 dias.'
+            ? 'É o primeiro projeto: o projeto que escolheres passa a ser o principal do cliente e fica com a linha do tempo, o kit da marca, os acessos e as etiquetas. As tarefas, os pagamentos, as horas e as propostas deste vão para a Reciclagem (Definições → Apagados) durante 30 dias.'
             : 'Vai para a Reciclagem (Definições → Apagados) durante 30 dias, com as tarefas, os pagamentos e as horas dele; lá podes repô-lo. O cliente e os outros projetos ficam como estão.'
         }
         footer={

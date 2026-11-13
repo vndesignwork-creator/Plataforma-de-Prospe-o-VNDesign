@@ -29,12 +29,11 @@ export const DuplicateIgnoreSchema = z
 const STATUS_RANK: Record<LeadStatus, number> = {
   cliente: 0,
   proposta_enviada: 1,
-  reuniao: 2,
-  respondeu: 3,
-  contactado: 4,
-  identificado: 5,
-  em_pausa: 6,
-  sem_interesse: 7,
+  respondeu: 2,
+  contactado: 3,
+  identificado: 4,
+  em_pausa: 5,
+  sem_interesse: 6,
 };
 
 /** O lead que fica: o mais avançado; em empate, o mais antigo (número mais baixo). */

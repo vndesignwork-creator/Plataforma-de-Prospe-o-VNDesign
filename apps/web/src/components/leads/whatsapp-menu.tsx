@@ -2,18 +2,17 @@
 
 /**
  * Botão WhatsApp da ficha: abre a conversa já com uma mensagem pronta
- * (primeiro contacto, follow-up, lembrete de reunião…). As mensagens são os
+ * (primeiro contacto, follow-up…). As mensagens são os
  * modelos do tipo "WhatsApp" em Scripts, preenchidos com os dados do lead.
  */
 import { leadServiceCategory, rankTemplatesForLead, renderTemplate, templateVariablesIn, type Lead, toPlainText, pickTemplateVariant } from '@vndesign/core';
 import { ChevronDown, MessageCircle, MessageCircleMore, Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 import { toast } from 'sonner';
 import { useServiceCatalog } from '@/components/services/services';
 import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownSeparator, DropdownTrigger } from '@/components/ui/dropdown';
 import { errorMessage } from '@/lib/api-client';
-import { useLogActivity, useMeetings, useSettings, useTemplates, useUpdateLead } from '@/lib/queries';
+import { useLogActivity, useTemplates, useUpdateLead } from '@/lib/queries';
 import { useTemplateContext } from '@/lib/template-context';
 import { whatsappUrl } from '@/lib/utils';
 
@@ -40,24 +39,16 @@ export function WhatsAppMenu({ lead, className }: { lead: Lead; className?: stri
 }
 
 /**
- * O conteúdo do menu só existe com o menu aberto: as reuniões e o resto das
- * variáveis só são pedidos nessa altura (na página Projetos há um botão por projeto).
+ * O conteúdo do menu só existe com o menu aberto: as variáveis só são pedidas
+ * nessa altura (na página Projetos há um botão por projeto).
  */
 function WhatsAppMessages({ lead }: { lead: Lead }) {
   const router = useRouter();
   const { data: templates } = useTemplates();
-  const { data: settings } = useSettings();
-  const { data: meetings } = useMeetings(lead.id, !!settings?.features.meetings);
   const catalog = useServiceCatalog();
   const log = useLogActivity(lead.id);
   const update = useUpdateLead(lead.id);
-  // Hora fixa ao abrir o menu (para escolher a próxima reunião).
-  const [now] = useState(() => Date.now());
-  const nextMeeting =
-    (meetings ?? [])
-      .filter((m) => !m.canceled_at && new Date(m.starts_at).getTime() >= now)
-      .sort((a, b) => a.starts_at.localeCompare(b.starts_at))[0] ?? null;
-  const context = useTemplateContext(lead, nextMeeting);
+  const context = useTemplateContext(lead);
   const category = leadServiceCategory(lead.services, catalog.all);
   const messages = rankTemplatesForLead((templates ?? []).filter((t) => t.kind === 'whatsapp'), lead, category);
   const plain = whatsappUrl(lead.phone)!;
@@ -94,11 +85,7 @@ function WhatsAppMessages({ lead }: { lead: Lead }) {
       {messages.map((t) => {
         // Mensagens que precisam de dados que ainda não existem ficam desativadas, com o motivo.
         const vars = templateVariablesIn(t.body);
-        const blocked = vars.includes('reuniao') && !nextMeeting
-          ? 'Sem reunião marcada'
-          : vars.includes('avaliacao') && !context.avaliacao
-            ? 'Falta o link de avaliação (Definições → Funcionalidades)'
-            : null;
+        const blocked = vars.includes('avaliacao') && !context.avaliacao ? 'Falta o link de avaliação (Definições → Funcionalidades)' : null;
         return (
           <DropdownItem key={t.id} onSelect={() => open(t)} disabled={!!blocked}>
             <MessageCircleMore className="h-4 w-4 text-accent-text" aria-hidden />

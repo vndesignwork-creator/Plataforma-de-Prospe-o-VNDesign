@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildMeetingIcs, paymentPlanItems, summarizePayments } from '../src/projects';
+import { paymentPlanItems, summarizePayments } from '../src/projects';
 import { DEFAULT_FEATURES, WorkspaceSettingsSchema } from '../src/schemas';
 import { topAuditIssues } from '../src/audit';
 
@@ -25,35 +25,6 @@ describe('pagamentos', () => {
       '2026-10-20',
     );
     expect(s).toEqual({ total: 1500, paid: 750, outstanding: 750, overdue: 500, overdue_count: 1 });
-  });
-});
-
-describe('convite de calendário (.ics)', () => {
-  it('pedido com organizador, convidado e alarme', () => {
-    const ics = buildMeetingIcs({
-      uid: 'abc@vndesign-leads',
-      startsAt: '2026-10-28T10:00:00.000Z',
-      durationMin: 45,
-      title: 'Reunião VNDesign · Padaria, Lda',
-      location: 'Rua A, 1; Amadora',
-      organizer: { name: 'Va', email: 'va@vndesign.pt' },
-      attendee: { name: 'Sr. Manuel', email: 'geral@padaria.pt' },
-      now: new Date('2026-10-20T09:00:00Z'),
-    });
-    expect(ics).toContain('METHOD:REQUEST');
-    expect(ics).toContain('DTSTART:20261028T100000Z');
-    expect(ics).toContain('DTEND:20261028T104500Z');
-    expect(ics).toContain('SUMMARY:Reunião VNDesign · Padaria\\, Lda');
-    expect(ics).toContain('LOCATION:Rua A\\, 1\\; Amadora');
-    expect(ics).toContain('mailto:geral@padaria.pt');
-    expect(ics.split('\r\n').every((l) => l.length <= 75)).toBe(true);
-  });
-  it('cancelamento', () => {
-    const ics = buildMeetingIcs({
-      uid: 'abc', startsAt: '2026-10-28T10:00:00Z', durationMin: 30, title: 'X', organizer: { name: 'Va', email: 'va@vndesign.pt' }, method: 'CANCEL',
-    });
-    expect(ics).toContain('METHOD:CANCEL');
-    expect(ics).toContain('STATUS:CANCELLED');
   });
 });
 

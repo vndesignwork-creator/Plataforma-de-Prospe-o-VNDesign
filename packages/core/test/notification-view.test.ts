@@ -10,11 +10,6 @@ describe('describeNotification', () => {
     expect(v).toMatchObject({ label: 'Lembrete', tone: 'accent', title: 'Ligar ao Sr. Rui', detail: null, action: 'task' });
   });
 
-  it('reunião: o local fica como detalhe, sem repetir o lead', () => {
-    const v = describeNotification({ ...base, kind: 'reminder', title: '📅 Reunião às 10:00', text: 'O Quintal · Rua Direita' }, null);
-    expect(v).toMatchObject({ label: 'Reunião', icon: 'meeting', title: 'Reunião às 10:00', detail: 'Rua Direita', action: null });
-  });
-
   it('respostas: o nome sai do título; devolvidos a vermelho', () => {
     expect(describeNotification({ ...base, kind: 'reply', title: '💬 O Quintal respondeu', text: 'Re: Proposta' }, null)).toMatchObject({
       label: 'Resposta',

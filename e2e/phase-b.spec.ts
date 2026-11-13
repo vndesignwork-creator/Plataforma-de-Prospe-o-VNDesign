@@ -134,7 +134,7 @@ test('Dashboard: o essencial e "Hoje"; o resto em Estatísticas', async ({ page 
   // Funil por período (pela linha do tempo): os leads novos e até onde chegaram.
   await expect(page.getByRole('heading', { name: 'Funil dos leads novos' })).toBeVisible();
   const cohort = page.getByRole('list', { name: 'Funil dos leads novos' });
-  await expect(cohort.getByRole('listitem')).toHaveCount(6);
+  await expect(cohort.getByRole('listitem')).toHaveCount(5);
   await page.getByRole('radiogroup', { name: 'Período do funil' }).getByRole('radio', { name: '12 meses' }).click();
   await expect(cohort.getByRole('listitem').first()).toContainText(/\d+ leads novos/);
   await expect(page.getByRole('table', { name: 'Leads por estado' })).toBeAttached();
@@ -178,9 +178,9 @@ test('Kanban: mudar o estado pelo menu ⇄ e mostrar/esconder colunas pelo índi
   await page.getByLabel('Filtrar leads no Kanban').fill(name);
   await expect(page.getByRole('button', { name: /, Identificado$/ })).toHaveCount(1);
   await page.getByRole('button', { name: new RegExp(`^Mudar estado de .*${name}$`) }).click();
-  await page.getByRole('menuitem', { name: 'Reunião' }).click();
-  await expect(page.getByText(/→ Reunião\./)).toBeVisible();
-  await expect(page.getByLabel('Leads em Reunião').getByText(name)).toBeVisible();
+  await page.getByRole('menuitem', { name: 'Respondeu' }).click();
+  await expect(page.getByText(/→ Respondeu\./)).toBeVisible();
+  await expect(page.getByLabel('Leads em Respondeu').getByText(name)).toBeVisible();
 
   // No computador, o índice mostra/esconde colunas (fica guardado na conta).
   const nav = page.getByRole('navigation', { name: 'Colunas do Kanban' });
@@ -201,7 +201,7 @@ test('Dashboard: com pouco no "Hoje", os quentes acompanham a altura dele; Pipel
     const json = await res.json();
     const d = json.data;
     d.upcoming = [...d.upcoming, ...d.overdue, ...d.due_today].slice(0, 1);
-    Object.assign(d, { overdue: [], due_today: [], meetings: [], opened: [], stalled: [], tasks: { overdue: [], due_today: [], upcoming: [] } });
+    Object.assign(d, { overdue: [], due_today: [], opened: [], stalled: [], tasks: { overdue: [], due_today: [], upcoming: [] } });
     await route.fulfill({ response: res, json });
   });
   await page.setViewportSize({ width: 1440, height: 1000 });

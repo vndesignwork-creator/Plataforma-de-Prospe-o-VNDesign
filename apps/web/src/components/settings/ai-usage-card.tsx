@@ -188,7 +188,7 @@ export function AiUsageCard() {
             {data.calls === 0 ? <p className="text-sm text-muted">Nenhum pedido à IA neste mês.</p> : null}
             <p className="text-xs text-muted">
               Estimativa pelo preço de tabela (os valores reais podem variar um pouco).{' '}
-              {data.unpriced_calls ? `${data.unpriced_calls} pedidos de modelos sem preço conhecido não entram no total. ` : ''}A transcrição de áudio não entra nesta conta.
+              {data.unpriced_calls ? `${data.unpriced_calls} pedidos de modelos sem preço conhecido não entram no total.` : ''}
             </p>
           </>
         )}

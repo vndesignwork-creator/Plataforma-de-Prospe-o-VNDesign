@@ -3,7 +3,7 @@
 /**
  * Limpar duplicados: cada grupo (mesmo email, site ou nome) com o principal
  * sugerido (o mais avançado no pipeline). "Juntar" passa tudo dos outros para o
- * principal — tarefas, pagamentos, reuniões, horas, propostas, linha do tempo… —
+ * principal — tarefas, pagamentos, horas, propostas, linha do tempo… —
  * e apaga-os; "Comparar" abre a junção campo a campo; "Não são duplicados"
  * esconde o grupo de vez.
  */
@@ -125,7 +125,7 @@ export function DuplicatesView() {
           }
         >
           <p className="text-sm text-muted">
-            Tarefas, pagamentos, reuniões, horas, propostas, contratos e a linha do tempo passam para o principal; os campos do principal ficam (os vazios não
+            Tarefas, pagamentos, horas, propostas, contratos e a linha do tempo passam para o principal; os campos do principal ficam (os vazios não
             são preenchidos — para escolher campo a campo usa “Comparar”). Não dá para desfazer.
           </p>
         </Dialog>

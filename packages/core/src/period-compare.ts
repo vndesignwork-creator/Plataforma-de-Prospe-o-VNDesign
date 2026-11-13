@@ -13,13 +13,12 @@ export const PeriodCompareQuerySchema = z
   .object({ period: z.enum(COMPARE_PERIODS).default('month') })
   .meta({ id: 'PeriodCompareQuery' });
 
-export const COMPARE_METRICS = ['new_leads', 'contacted', 'replied', 'meetings', 'proposals', 'won', 'received'] as const;
+export const COMPARE_METRICS = ['new_leads', 'contacted', 'replied', 'proposals', 'won', 'received'] as const;
 export type CompareMetric = (typeof COMPARE_METRICS)[number];
 export const COMPARE_METRIC_LABELS: Record<CompareMetric, string> = {
   new_leads: 'Leads novos',
   contacted: 'Primeiros contactos',
   replied: 'Respostas',
-  meetings: 'Reuniões marcadas',
   proposals: 'Propostas enviadas',
   won: 'Clientes ganhos',
   received: 'Recebido',

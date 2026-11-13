@@ -7,7 +7,7 @@
  * estado, setor, serviço ou etiqueta (abre a lista de leads já filtrada) e
  * saltar logo para lá (setas + Enter). Sem escrever, mostra os leads recentes.
  * Num lead, → (ou "Ações") mostra o que se pode fazer sem abrir a ficha: nova
- * tarefa, registar chamada ou nota, notas com IA, marcar reunião, Pomodoro.
+ * tarefa, registar chamada, resumo com IA, Pomodoro.
  */
 import * as RadixDialog from '@radix-ui/react-dialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -16,7 +16,6 @@ import {
   ArrowLeft,
   Bookmark,
   BriefcaseBusiness,
-  CalendarPlus,
   CheckSquare,
   CircleDot,
   CopyX,
@@ -139,12 +138,11 @@ export function QuickSearch({
 }
 
 type LeadRef = { id: string; number: number; company_name: string; status: Lead['status']; project_title: string | null };
-/** Ação com texto (escrito na mesma caixa): tarefa, nota ou chamada. */
-type Compose = { kind: 'task' | 'note' | 'call'; lead: LeadRef };
+/** Ação com texto (escrito na mesma caixa): tarefa ou chamada. */
+type Compose = { kind: 'task' | 'call'; lead: LeadRef };
 
 const COMPOSE_META: Record<Compose['kind'], { placeholder: string; required: boolean }> = {
   task: { placeholder: 'Título da tarefa (Enter para criar)', required: true },
-  note: { placeholder: 'O que aconteceu? (Enter para registar)', required: true },
   call: { placeholder: 'Como correu a chamada? (opcional, Enter para registar)', required: false },
 };
 
@@ -230,10 +228,7 @@ function SearchBody({
       { key: 'a:abrir', group: 'Ações', label: 'Abrir a ficha', href: path(), icon: ExternalLink },
       { key: 'a:tarefa', group: 'Ações', label: 'Nova tarefa…', icon: ListPlus, compose: 'task' },
       { key: 'a:chamada', group: 'Ações', label: 'Registar chamada…', icon: Phone, compose: 'call' },
-      { key: 'a:nota', group: 'Ações', label: 'Registar nota…', icon: StickyNote, compose: 'note' },
       { key: 'a:resumo', group: 'Ações', label: 'Resumo com IA (antes de ligar)', href: path('?acao=resumo'), icon: Sparkles },
-      { key: 'a:notas-ia', group: 'Ações', label: 'Notas com IA (resumo de reunião)', href: path('?acao=notas'), icon: Sparkles },
-      ...(features?.meetings !== false ? [{ key: 'a:reuniao', group: 'Ações' as const, label: 'Marcar reunião', href: path('?acao=reuniao'), icon: CalendarPlus }] : []),
       ...(pomodoroOn ? [{ key: 'a:pomodoro', group: 'Ações' as const, label: 'Começar Pomodoro', icon: Timer, run: 'pomodoro' as const }] : []),
     ];
     items = actions.filter((a) => !q || normalize(a.label).includes(q));
@@ -394,9 +389,9 @@ function SearchBody({
       } else {
         await api(`/leads/${compose.lead.id}/activities`, {
           method: 'POST',
-          body: { type: compose.kind === 'call' ? 'call_logged' : 'note', body: value || undefined },
+          body: { type: 'call_logged', body: value || undefined },
         });
-        toast.success(`${compose.kind === 'call' ? 'Chamada' : 'Nota'} registada em ${compose.lead.company_name}.`);
+        toast.success(`Chamada registada em ${compose.lead.company_name}.`);
       }
       void qc.invalidateQueries({ queryKey: ['activities', compose.lead.id] });
       onClose();
@@ -452,7 +447,7 @@ function SearchBody({
             <ArrowLeft className="h-3 w-3 shrink-0" aria-hidden />
             <span className="truncate">
               #{context.lead.number} {context.lead.company_name}
-              {compose ? ` · ${compose.kind === 'task' ? 'tarefa' : compose.kind === 'call' ? 'chamada' : 'nota'}` : ''}
+              {compose ? ` · ${compose.kind === 'task' ? 'tarefa' : 'chamada'}` : ''}
             </span>
           </button>
         ) : null}
@@ -553,7 +548,7 @@ function SearchBody({
           {!searching && !focus && text.trim().length === 1 ? <li className="px-2 py-2 text-xs text-muted">Escreve mais uma letra para procurar leads, tarefas e notas.</li> : null}
           {!focus && items.some((it) => it.lead) ? (
             <li className="hidden px-2 pt-2 text-[11px] text-muted pointer-fine:block" role="presentation">
-              → num lead: criar tarefa, registar chamada ou nota, marcar reunião…
+              → num lead: criar tarefa, registar chamada, resumo com IA…
             </li>
           ) : null}
         </ul>

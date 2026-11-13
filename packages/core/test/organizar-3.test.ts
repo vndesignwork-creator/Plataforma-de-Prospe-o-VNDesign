@@ -33,13 +33,12 @@ describe('Boas-vindas ao novo cliente', () => {
     dueOn: null,
     tasks: [],
     payments: [],
-    meeting: null,
     shareUrl: null,
     briefingUrl: null,
     signature: null,
   };
 
-  it('com briefing, reunião, tarefas, entrega, pagamentos e página', () => {
+  it('com briefing, tarefas, entrega, pagamentos e página', () => {
     const { subject, body } = buildWelcomeEmail({
       ...base,
       projectTitle: 'Site novo',
@@ -52,7 +51,6 @@ describe('Boas-vindas ao novo cliente', () => {
         { description: 'Adjudicação (50%)', amount: 600, due_on: '2026-11-01', paid_on: null },
         { description: 'Pago', amount: 100, due_on: null, paid_on: '2026-10-01' },
       ],
-      meeting: { starts_at: '2026-11-03T10:30:00Z' },
       shareUrl: 'https://leads.vndesign.pt/p/abc',
       briefingUrl: 'https://leads.vndesign.pt/b/xyz',
       signature: 'Va\nVNDesign',
@@ -61,7 +59,6 @@ describe('Boas-vindas ao novo cliente', () => {
     expect(body).toMatch(/^Olá Ana,/);
     expect(body).toContain('projeto Site novo (Café Central)');
     expect(body).toContain('briefing (10 minutos, pode juntar logótipos e fotografias): https://leads.vndesign.pt/b/xyz');
-    expect(body).toContain('reunião de arranque: 03/11/2026 às 10:30');
     expect(body).toContain('• Enviar textos (até 05/11/2026)');
     expect(body).not.toContain('Já feita');
     expect(body).toContain('Entrega prevista: 15/12/2026.');

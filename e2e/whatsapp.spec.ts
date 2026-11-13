@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 /*
  * Mensagens prontas no WhatsApp: o botão da ficha abre um menu com os modelos
- * do tipo WhatsApp (primeiro contacto, follow-up, lembrete de reunião) e abre
+ * do tipo WhatsApp (primeiro contacto, follow-up) e abre
  * o wa.me com o texto já escrito. Desliga-se em Definições → Funcionalidades.
  */
 const run = Date.now().toString(36);
@@ -19,10 +19,10 @@ async function openMessage(page: Page, name: RegExp): Promise<string> {
   return url.searchParams.get('text') ?? '';
 }
 
-test('WhatsApp: mensagens prontas, lembrete de reunião e ligar/desligar', async ({ page }) => {
+test('WhatsApp: mensagens prontas e ligar/desligar', async ({ page }) => {
   // Não sai para a internet: o wa.me responde com uma página vazia.
   await page.context().route('https://wa.me/**', (route) => route.fulfill({ contentType: 'text/html', body: '<p>wa</p>' }));
-  await page.request.patch('/api/v1/settings', { data: { features: { whatsapp_templates: true, meetings: true } } });
+  await page.request.patch('/api/v1/settings', { data: { features: { whatsapp_templates: true } } });
   const res = await page.request.post('/api/v1/leads?force=true', {
     data: { company_name: `Florista WA ${run}`, contact_name: 'Rita', phone: '912 345 678', status: 'identificado' },
   });
@@ -34,8 +34,8 @@ test('WhatsApp: mensagens prontas, lembrete de reunião e ligar/desligar', async
   await contact.getByRole('button', { name: /WhatsApp/ }).click();
   await expect(page.getByRole('menuitem', { name: /Primeiro contacto/ })).toBeVisible();
   await expect(page.getByRole('menuitem', { name: /Follow-up/ })).toBeVisible();
-  // Sem reunião marcada, o lembrete fica desativado.
-  await expect(page.getByRole('menuitem', { name: /Lembrete de reunião/ })).toHaveAttribute('aria-disabled', 'true');
+  // O lembrete de reunião já não existe.
+  await expect(page.getByRole('menuitem', { name: /Lembrete de reunião/ })).toHaveCount(0);
 
   const first = await openMessage(page, /Primeiro contacto/);
   expect(first).toContain('Olá Rita!');
@@ -48,17 +48,6 @@ test('WhatsApp: mensagens prontas, lembrete de reunião e ligar/desligar', async
   const after = (await (await page.request.get(`/api/v1/leads/${lead.id}`)).json()).data;
   expect(after.channel).toBe('whatsapp');
   await expect(page.getByText('WhatsApp · Modelo: WhatsApp — primeiro contacto')).toBeVisible();
-
-  // Com uma reunião marcada, o lembrete leva o dia, a hora e o local.
-  const meeting = await page.request.post(`/api/v1/leads/${lead.id}/meetings`, {
-    data: { starts_at: new Date(Date.now() + 3 * 86_400_000).toISOString(), duration_min: 30, location: 'Google Meet', send_invite: false },
-  });
-  expect(meeting.status(), await meeting.text()).toBe(201);
-  await page.reload();
-  await contact.getByRole('button', { name: /WhatsApp/ }).click();
-  const reminder = await openMessage(page, /Lembrete de reunião/);
-  expect(reminder).toMatch(/reunião de \S+-feira|reunião de (sábado|domingo), \d{2}\/\d{2}, às \d{2}:\d{2}/);
-  expect(reminder).toContain('Google Meet');
 
   // Desligado: volta a ser só a ligação para a conversa.
   await page.request.patch('/api/v1/settings', { data: { features: { whatsapp_templates: false } } });

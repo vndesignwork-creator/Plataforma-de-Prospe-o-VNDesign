@@ -16,7 +16,7 @@ describe('valores da folha com emoji', () => {
     ['🔍 Identificado', 'identificado'],
     ['📧 Contactado', 'contactado'],
     ['💬 Respondeu', 'respondeu'],
-    ['📞 Reunião', 'reuniao'],
+    ['📞 Reunião', 'respondeu'],
     ['📄 Proposta Enviada', 'proposta_enviada'],
     ['🤝 Cliente', 'cliente'],
     ['❌ Sem interesse', 'sem_interesse'],

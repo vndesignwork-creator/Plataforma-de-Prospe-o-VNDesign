@@ -286,7 +286,7 @@ function ContractRow({ lead, contract }: { lead: Lead; contract: LeadContract })
 }
 
 export function ContractsCard({ lead }: { lead: Lead }) {
-  // Antes da reunião/proposta não há contratos: nem se pergunta ao servidor (o cartão não aparece).
+  // Antes da proposta não há contratos: nem se pergunta ao servidor (o cartão não aparece).
   const { data: contracts, isLoading } = useContracts(lead.id, !EARLY_STATUSES.includes(lead.status));
   const [creating, setCreating] = useState(false);
   // A lista pode ficar recolhida; a escolha fica lembrada neste browser.

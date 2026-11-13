@@ -1,6 +1,6 @@
 /**
- * Calendário subscrito: um link secreto por utilizador (.ics) com as reuniões,
- * as entregas dos projetos, os pagamentos previstos, as tarefas com prazo e os
+ * Calendário subscrito: um link secreto por utilizador (.ics) com as entregas
+ * dos projetos, os pagamentos previstos, as tarefas com prazo e os
  * follow-ups (a próxima ação dos leads, como no Hoje).
  * O Google Calendar / iPhone vão buscá-lo de tempos a tempos (sem sessão).
  */
@@ -48,16 +48,7 @@ export async function calendarFeedIcs(token: string, appUrl: string): Promise<st
   const from = addDays(today, -30);
   const to = addDays(today, 183);
 
-  const [meetings, dues, payments, tasks, followups] = await Promise.all([
-    features.meetings
-      ? admin
-          .from('lead_meetings')
-          .select(`id, starts_at, duration_min, location, notes, ${LEAD}`)
-          .eq('workspace_id', ws)
-          .is('canceled_at', null)
-          .gte('starts_at', `${from}T00:00:00Z`)
-          .lte('starts_at', `${to}T23:59:59Z`)
-      : Promise.resolve({ data: [] }),
+  const [dues, payments, tasks, followups] = await Promise.all([
     features.projects
       ? admin
           .from('lead_projects')
@@ -99,10 +90,6 @@ export async function calendarFeedIcs(token: string, appUrl: string): Promise<st
   const live = (l: LeadRef) => !l.archived_at && !l.anonymized_at;
   const link = (l: LeadRef) => `${appUrl}${leadPath(l)}`;
   const events: FeedEvent[] = [];
-  for (const m of (meetings.data ?? []) as unknown as { id: string; starts_at: string; duration_min: number; location: string | null; notes: string | null; lead: LeadRef }[]) {
-    if (!live(m.lead)) continue;
-    events.push({ uid: `meeting-${m.id}@vndesign-leads`, title: `Reunião · ${m.lead.company_name}`, startsAt: m.starts_at, durationMin: m.duration_min, location: m.location, description: m.notes, url: link(m.lead) });
-  }
   for (const d of (dues.data ?? []) as unknown as { lead_id: string; due_on: string; lead: LeadRef }[]) {
     if (!live(d.lead)) continue;
     events.push({ uid: `due-${d.lead_id}@vndesign-leads`, title: `📦 Entrega · ${d.lead.company_name}`, date: d.due_on, url: link(d.lead) });
@@ -120,12 +107,7 @@ export async function calendarFeedIcs(token: string, appUrl: string): Promise<st
     if (!live(t.lead)) continue;
     events.push({ uid: `task-${t.id}@vndesign-leads`, title: `☐ ${t.title} · ${t.lead.company_name}`, date: t.due_on, url: link(t.lead) });
   }
-  // A reunião já está no calendário: a próxima ação desse lead nesse dia ("Reunião às …") não se repete.
-  const meetingDays = new Set(
-    ((meetings.data ?? []) as unknown as { starts_at: string; lead: LeadRef }[]).map((m) => `${m.lead.id}|${todayIso(new Date(m.starts_at))}`),
-  );
   for (const l of (followups.data ?? []) as unknown as (LeadRef & { next_action_text: string | null; next_action_on: string })[]) {
-    if (meetingDays.has(`${l.id}|${l.next_action_on}`)) continue;
     events.push({
       uid: `followup-${l.id}@vndesign-leads`,
       title: `🔔 ${l.next_action_text?.trim() || 'Follow-up'} · ${l.company_name}`,

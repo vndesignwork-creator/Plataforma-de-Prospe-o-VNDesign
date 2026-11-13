@@ -1,6 +1,6 @@
 /**
- * Ações pedidas pela pesquisa rápida ao abrir a ficha (ex.: ?acao=reuniao abre
- * "Marcar reunião"). Lê o parâmetro uma vez e tira-o do endereço (recarregar a
+ * Ações pedidas pela pesquisa rápida ao abrir a ficha (ex.: ?acao=resumo abre
+ * o resumo com IA). Lê o parâmetro uma vez e tira-o do endereço (recarregar a
  * página não volta a abrir).
  */
 export function consumeLeadAction(name: string): boolean {
