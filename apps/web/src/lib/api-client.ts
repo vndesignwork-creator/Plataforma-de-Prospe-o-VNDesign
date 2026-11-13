@@ -2,7 +2,7 @@
  * Cliente da API /api/v1 para o browser. A web usa a mesma API que a app
  * móvel e as integrações vão usar.
  */
-import type { Problem } from '@vndesign/core';
+import { AI_BUDGET_ERROR, AI_BUDGET_HEADER, type Problem } from '@vndesign/core';
 
 export class ApiClientError extends Error {
   constructor(
@@ -41,13 +41,16 @@ function notifyApiFailure() {
 
 export async function api<T>(
   path: string,
-  options: { method?: string; body?: unknown; query?: Record<string, QueryValue>; signal?: AbortSignal } = {},
+  options: { method?: string; body?: unknown; query?: Record<string, QueryValue>; signal?: AbortSignal; aiBudgetOk?: boolean } = {},
 ): Promise<T> {
   let res: Response;
+  const headers: Record<string, string> = {};
+  if (options.body !== undefined) headers['Content-Type'] = 'application/json';
+  if (options.aiBudgetOk) headers[AI_BUDGET_HEADER] = '1';
   try {
     res = await fetch(`/api/v1${path}${toQueryString(options.query)}`, {
       method: options.method ?? 'GET',
-      headers: options.body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+      headers: Object.keys(headers).length ? headers : undefined,
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
       credentials: 'same-origin',
       signal: options.signal,
@@ -61,6 +64,12 @@ export async function api<T>(
   if (res.status === 204) return undefined as T;
   const payload = await res.json().catch(() => null);
   if (!res.ok) {
+    // Limite de gasto da IA do mês atingido: pergunta se continua (e repete o pedido).
+    const problem = payload as { code?: string; detail?: string } | null;
+    if (res.status === 409 && problem?.code === AI_BUDGET_ERROR && !options.aiBudgetOk && typeof window !== 'undefined') {
+      if (window.confirm(problem.detail ?? 'Chegaste ao limite de gasto da IA deste mês. Continuar mesmo assim?')) return api<T>(path, { ...options, aiBudgetOk: true });
+      throw new ApiClientError(409, { type: 'about:blank', title: 'Cancelado', status: 409, detail: 'Cancelado: chegaste ao limite de gasto da IA deste mês.', code: AI_BUDGET_ERROR });
+    }
     if (res.status === 401 && typeof window !== 'undefined') {
       // Sessão expirada (ou falta o código da verificação em dois passos): recarregamento
       // completo para limpar o estado da aplicação.

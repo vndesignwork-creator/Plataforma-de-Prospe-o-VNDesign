@@ -26,7 +26,8 @@ import {
 } from './enums';
 import { ensureUrlProtocol } from './normalize';
 import { AiSettingsSchema, AiSettingsUpdateSchema, SERVER_AI_PROVIDER } from './ai-providers';
-import { AiCreditSchema, AiCreditsSchema, DEFAULT_AI_CREDIT } from './ai-usage';
+import { AiBudgetSchema, AiCreditSchema, AiCreditsSchema, DEFAULT_AI_BUDGET, DEFAULT_AI_CREDIT } from './ai-usage';
+import { DEFAULT_WEEKLY_REPORT, WeeklyReportSettingsSchema } from './weekly-report';
 import { ServiceCategoryKeySchema, ServiceKeyListSchema, ServiceKeySchema } from './services';
 import { TodayOpenedEmailSchema } from './mail';
 import { DEFAULT_POMODORO_SETTINGS, PomodoroSettingsSchema } from './pomodoro';
@@ -745,6 +746,10 @@ export const WorkspaceSettingsSchema = z
       .object({ provider_nif: z.string().default(''), clauses: z.string().default(DEFAULT_CONTRACT_CLAUSES) })
       .default({ provider_nif: '', clauses: DEFAULT_CONTRACT_CLAUSES }),
     weekly_backup: WeeklyBackupSchema.default(DEFAULT_WEEKLY_BACKUP),
+    /** Resumo da semana por email (à segunda-feira, ao dono e aos administradores). */
+    weekly_report: WeeklyReportSettingsSchema.default(DEFAULT_WEEKLY_REPORT),
+    /** Limite de gasto mensal da IA. */
+    ai_budget: AiBudgetSchema.default(DEFAULT_AI_BUDGET),
     /** Calculadora de orçamento: objetivo por hora e os extras. */
     quote: QuoteSettingsSchema.default(DEFAULT_QUOTE_SETTINGS),
     pomodoro: PomodoroSettingsSchema.default(DEFAULT_POMODORO_SETTINGS),
@@ -770,6 +775,10 @@ export const WorkspaceSettingsSchema = z
       email: { provider: SERVER_AI_PROVIDER, model: null },
       lead_generation: { provider: SERVER_AI_PROVIDER, model: null },
       visibility: { provider: SERVER_AI_PROVIDER, model: null },
+      summary: null,
+      objections: null,
+      card_scan: null,
+      geo: null,
     }),
   })
   .meta({ id: 'WorkspaceSettings' });
@@ -822,6 +831,7 @@ export const WorkspaceSettingsUpdateSchema = z
       recipient: nullableEmail,
       weekday: z.int().min(1).max(7),
     }),
+    weekly_report: z.object({ enabled: z.boolean() }),
     quote: QuoteSettingsSchema,
     pomodoro: PomodoroSettingsSchema,
     team: TeamSettingsSchema,

@@ -67,6 +67,44 @@ export function estimateAiCost(model: string, usage: AiTokenUsage): number | nul
   return Math.round(cost * 1_000_000) / 1_000_000;
 }
 
+/**
+ * O modelo mais barato do mesmo fornecedor, para mostrar quanto se poupava (Definições → IA → Onde usar).
+ * null: já é o mais barato, ou o fornecedor não tem um conhecido.
+ */
+export function cheaperAiModel(model: string): string | null {
+  const id = model.trim().toLowerCase();
+  const prefix = /^(anthropic|openai)\//.exec(id)?.[0] ?? '';
+  const bare = id.slice(prefix.length);
+  const cheap = bare.startsWith('claude') ? 'claude-haiku-5-5' : /^(gpt|o\d)/.test(bare) ? 'gpt-5-mini' : null;
+  if (!cheap || bare.startsWith(cheap)) return null;
+  const now = aiPrice(bare);
+  const next = aiPrice(cheap);
+  if (!now || !next || next.input >= now.input) return null;
+  return `${prefix}${cheap}`;
+}
+
+/** Limite de gasto mensal da IA (todos os fornecedores juntos). */
+export const AiBudgetSchema = z
+  .object({
+    /** Máximo por mês (USD); null = sem limite. */
+    monthly_usd: z.number().min(0).max(100_000).nullable().default(null),
+    /** Mês (AAAA-MM) do último aviso dos 80% e do limite atingido (um por mês). */
+    alerted_80: z.string().nullable().default(null),
+    alerted_100: z.string().nullable().default(null),
+  })
+  .meta({ id: 'AiBudget' });
+export type AiBudget = z.infer<typeof AiBudgetSchema>;
+export const DEFAULT_AI_BUDGET: AiBudget = { monthly_usd: null, alerted_80: null, alerted_100: null };
+export const AiBudgetUpdateSchema = z
+  .object({ monthly_usd: z.number({ error: 'Indica um valor.' }).min(1, { error: 'Mínimo 1 $.' }).max(100_000).nullable() })
+  .meta({ id: 'AiBudgetUpdate' });
+/** O aviso antes do limite (80%). */
+export const AI_BUDGET_WARN = 0.8;
+/** Código do erro quando o limite foi atingido (a web pergunta se continua). */
+export const AI_BUDGET_ERROR = 'ai_budget';
+/** Cabeçalho para continuar mesmo depois do limite (só o que se faz à mão). */
+export const AI_BUDGET_HEADER = 'x-ai-budget-ok';
+
 /** Para que serviu cada chamada (pelo nome do formato pedido à IA). */
 export const AI_FEATURE_LABELS: Record<string, string> = {
   email: 'Emails com IA',
@@ -158,6 +196,18 @@ export const AiUsageSummarySchema = z
     by_model: z.array(Row),
     /** Um saldo por fornecedor com chave ligada (cada um é uma conta separada: não se somam). */
     credits: z.array(CreditRow),
+    /** Por função (Onde usar): gasto do mês e quanto seria com o modelo mais barato do mesmo fornecedor. */
+    by_function: z.array(
+      z.object({
+        key: z.string(),
+        calls: z.int(),
+        cost_usd: z.number(),
+        model: z.string().nullable().meta({ description: 'O modelo mais usado no mês' }),
+        cheaper: z.object({ model: z.string(), cost_usd: z.number() }).nullable(),
+      }),
+    ),
+    /** Limite de gasto deste mês (todos os fornecedores juntos). */
+    budget: z.object({ monthly_usd: z.number().nullable(), spent_usd: z.number() }),
   })
   .meta({ id: 'AiUsageSummary' });
 export type AiUsageSummary = z.infer<typeof AiUsageSummarySchema>;

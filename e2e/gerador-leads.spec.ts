@@ -54,7 +54,9 @@ test('pesquisar com IA, rever a lista e adicionar os leads escolhidos', async ({
   expect(leads[0].social_links).toEqual([`https://www.facebook.com/cafecentral${run}`]);
   expect(leads[0].phone).toBe('214 000 001');
   expect(leads[0].services).toEqual(['site_institucional']);
-  expect(leads[0].notes).toContain('Encontrado pelo gerador de leads');
+  // Porque foi sugerido: um registo automático na linha do tempo.
+  const activities = (await (await page.request.get(`/api/v1/leads/${leads[0].id}/activities`)).json()).data as { type: string; body: string | null }[];
+  expect(activities.some((a) => a.type === 'note' && a.body?.includes('Encontrado pelo gerador de leads'))).toBe(true);
   expect(leads[0].approach_angle).toBe('Propor um site simples com a carta e o horário.');
 
   const oficinaLead = (await (await page.request.get('/api/v1/leads', { params: { q: `Oficina Rápida ${run}` } })).json()).data[0];

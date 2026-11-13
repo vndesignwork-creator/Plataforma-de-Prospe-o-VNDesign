@@ -8,7 +8,7 @@
  * `workspaceId` e só as rotas que o declaram (apiRoute({ token })) os aceitam.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { ApiTokenScope } from '@vndesign/core';
+import { AI_BUDGET_HEADER, type ApiTokenScope } from '@vndesign/core';
 import { MFA_REQUIRED, needsMfaCode } from '@/lib/mfa';
 import { ApiError } from './http';
 import { createSupabaseBearerClient, createSupabaseServerClient } from './supabase';
@@ -26,6 +26,8 @@ export interface ApiContext {
   authMethod: 'session' | 'bearer' | 'token' | 'system';
   /** Só em pedidos com token de integração. */
   token?: { id: string; scopes: ApiTokenScope[] };
+  /** A pessoa confirmou que quer usar a IA depois do limite de gasto do mês. */
+  aiBudgetOk?: boolean;
 }
 
 const UNAUTHORIZED = () =>
@@ -126,6 +128,7 @@ export async function getApiContext(req: Request): Promise<ApiContext> {
     workspaceId: membership.workspace_id,
     role: membership.role as MemberRole,
     authMethod,
+    aiBudgetOk: req.headers.get(AI_BUDGET_HEADER) === '1',
   };
 }
 
@@ -173,6 +176,7 @@ async function getTokenContext(req: Request, token: string): Promise<ApiContext>
     role: member.role as MemberRole,
     authMethod: 'token',
     token: { id: row.id as string, scopes: row.scopes as ApiTokenScope[] },
+    aiBudgetOk: req.headers.get(AI_BUDGET_HEADER) === '1',
   };
 }
 

@@ -25,6 +25,7 @@ import {
   type GoogleConfirm,
   type GoogleProfile,
   type LeadGeo,
+  aiFunctionSetting,
 } from '@vndesign/core';
 import { aiModel } from '../ai/claude';
 import { generateJson, searchStructured, type AiUsage } from '../ai/generate';
@@ -107,7 +108,7 @@ export async function updateLeadGeo(
 export async function generateFaq(ctx: ApiContext, leadId: string): Promise<LeadGeo> {
   const geo = await getLeadGeo(ctx, leadId);
   const settings = await getSettings(ctx);
-  const { provider, model } = await resolveAiFeature(ctx, settings.ai.email, { anthropicModel: aiModel() });
+  const { provider, model } = await resolveAiFeature(ctx, aiFunctionSetting(settings.ai, 'geo'), { anthropicModel: aiModel() });
   const b = geo.business;
   const { data } = await generateJson(provider, model, {
     system: GEO_FAQ_SYSTEM_PROMPT,

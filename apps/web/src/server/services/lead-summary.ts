@@ -3,7 +3,7 @@
  * da linha do tempo, as tarefas e as propostas. Não grava nada.
  * Usa o fornecedor do "Email com IA".
  */
-import { ACTIVITY_TYPE_LABELS, LEAD_STATUS_META, LEAD_SUMMARY_SYSTEM_PROMPT, LeadSummaryDraftSchema, buildLeadSummaryPrompt, leadSummaryResult, todayIso, type ActivityType, type LeadSummary } from '@vndesign/core';
+import { ACTIVITY_TYPE_LABELS, aiFunctionSetting, LEAD_STATUS_META, LEAD_SUMMARY_SYSTEM_PROMPT, LeadSummaryDraftSchema, buildLeadSummaryPrompt, leadSummaryResult, todayIso, type ActivityType, type LeadSummary } from '@vndesign/core';
 import { aiModel } from '../ai/claude';
 import { generateJson } from '../ai/generate';
 import { resolveAiFeature } from '../ai/providers';
@@ -31,7 +31,7 @@ export async function summarizeLead(ctx: ApiContext, leadId: string): Promise<Le
     ctx.supabase.from('proposals').select('status, total, created_at').eq('workspace_id', ws).eq('lead_id', leadId).order('created_at', { ascending: false }).limit(5),
   ]);
   const settings = await getSettings(ctx);
-  const { provider, model } = await resolveAiFeature(ctx, settings.ai.email, { anthropicModel: aiModel() });
+  const { provider, model } = await resolveAiFeature(ctx, aiFunctionSetting(settings.ai, 'summary'), { anthropicModel: aiModel() });
   const prompt = buildLeadSummaryPrompt({
     today: todayIso(),
     lead: {

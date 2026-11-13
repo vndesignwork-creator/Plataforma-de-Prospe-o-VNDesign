@@ -127,6 +127,84 @@ function CreditTile({ c }: { c: CreditRow }) {
   );
 }
 
+/** Limite de gasto mensal (todos os fornecedores juntos): aviso aos 80%; depois dele, o automático pára e o resto pergunta. */
+function BudgetTile({ budget }: { budget: AiUsageSummary['budget'] }) {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState('');
+  const [saving, setSaving] = useState(false);
+  const limit = budget.monthly_usd;
+  const pct = limit ? Math.min(100, Math.round((budget.spent_usd / limit) * 100)) : 0;
+  const tone = !limit ? 'bg-surface-2' : pct >= 100 ? 'bg-danger-soft' : pct >= 80 ? 'bg-warning-soft' : 'bg-surface-2';
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    const n = value.trim() ? Number(value.replace(',', '.')) : null;
+    if (n !== null && (!Number.isFinite(n) || n < 1)) {
+      toast.error('Escreve um valor a partir de 1 (ex.: 10).');
+      return;
+    }
+    setSaving(true);
+    try {
+      await api('/ai/budget', { method: 'PUT', body: { monthly_usd: n } });
+      await qc.invalidateQueries({ queryKey: ['ai-usage'] });
+      toast.success(n === null ? 'Limite de gasto retirado.' : `Limite de gasto: ${usd(n)} por mês.`);
+      setEditing(false);
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section aria-label="Limite de gasto mensal" className={cn('flex flex-col gap-1.5 rounded-lg p-3', tone)}>
+      <span className="text-xs text-muted">Limite de gasto mensal (todos os fornecedores)</span>
+      <span className="text-xl font-semibold tabular" data-testid="ai-budget">
+        {limit === null ? 'Sem limite' : `${usd(budget.spent_usd)} de ${usd(limit)}`}
+      </span>
+      {limit !== null ? (
+        <span className="h-2 overflow-hidden rounded-full bg-surface-3" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label="Gasto do limite deste mês">
+          <span className={cn('block h-full rounded-full', pct >= 100 ? 'bg-danger' : pct >= 80 ? 'bg-warning' : 'bg-accent')} style={{ width: `${pct}%` }} />
+        </span>
+      ) : null}
+      <span className="text-xs text-muted">
+        {limit === null
+          ? 'Escolhe um máximo por mês para evitar surpresas.'
+          : pct >= 100
+            ? 'Limite atingido: as tarefas automáticas com IA estão paradas até ao próximo mês; o que fazes à mão pede confirmação.'
+            : 'Aviso no sino aos 80%. Ao chegar ao limite, as tarefas automáticas com IA (pesquisas automáticas do gerador, regras…) param e o que fazes à mão pede confirmação.'}
+      </span>
+      {editing ? (
+        <form onSubmit={save} className="mt-1 flex flex-wrap items-end gap-2 text-sm">
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium">Máximo por mês (USD)</span>
+            <Input inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} placeholder="ex.: 10 (vazio = sem limite)" className="w-48" aria-label="Limite de gasto mensal em dólares" autoFocus />
+          </label>
+          <Button type="submit" size="sm" loading={saving}>
+            Guardar
+          </Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
+            Cancelar
+          </Button>
+        </form>
+      ) : (
+        <Button
+          size="sm"
+          variant="outline"
+          className="mt-1 self-start"
+          onClick={() => {
+            setValue(limit !== null ? String(limit).replace('.', ',') : '');
+            setEditing(true);
+          }}
+        >
+          {limit === null ? 'Pôr um limite' : 'Mudar o limite'}
+        </Button>
+      )}
+    </section>
+  );
+}
+
 export function AiUsageCard() {
   const months = recentMonths(todayIso(), 12);
   const [month, setMonth] = useState(months[0]!);
@@ -156,6 +234,7 @@ export function AiUsageCard() {
           <p className="text-sm text-danger">{errorMessage(error)}</p>
         ) : (
           <>
+            <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-lg bg-surface-2 p-3">
               <span className="block text-xs text-muted">Gasto em {monthLabel(month)} (todos os fornecedores)</span>
               <span className="block text-xl font-semibold tabular" data-testid="ai-spent-month">
@@ -165,6 +244,8 @@ export function AiUsageCard() {
                 {data.calls} {data.calls === 1 ? 'pedido' : 'pedidos'} · mês anterior {usd(data.previous_month_usd)}
                 {data.credits.length > 1 ? ` · ${data.credits.map((c) => `${c.label.split(' (')[0]} ${usd(c.spent_month_usd)}`).join(' · ')}` : ''}
               </span>
+            </div>
+            <BudgetTile budget={data.budget} />
             </div>
 
             <div className="flex flex-col gap-1.5">

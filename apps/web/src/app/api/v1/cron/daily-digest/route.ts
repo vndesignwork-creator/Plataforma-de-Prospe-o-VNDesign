@@ -15,6 +15,7 @@ import { runRenewalReminders } from '@/server/services/renewals';
 import { syncProspectWatch } from '@/server/services/site-monitors';
 import { runTimedRules } from '@/server/services/automation';
 import { runFreeAuditFollowUps } from '@/server/services/free-audit';
+import { runWeeklyReports } from '@/server/services/weekly-report';
 import { cronHeartbeat } from '@/server/services/platform';
 
 export const dynamic = 'force-dynamic';
@@ -39,7 +40,7 @@ async function handler(req: Request) {
     const archived = await autoArchiveLeads(createSupabaseAdminClient(), dryRun);
     // Os leads "agora não" com a data de voltar a tentar chegada voltam à prospeção (e ao resumo de hoje).
     const retried = await retryLostLeads(createSupabaseAdminClient(), dryRun);
-    const [results, push, alerts, leadGeneration, backups, trashPurged, notificationEmails, activitiesPurged, cooling, monthlyUpdates, renewals, rules, prospectWatch, freeAuditFollowUps] = await Promise.all([
+    const [results, push, alerts, leadGeneration, backups, trashPurged, notificationEmails, activitiesPurged, cooling, monthlyUpdates, renewals, rules, prospectWatch, freeAuditFollowUps, weeklyReports] = await Promise.all([
       sendDailyDigests({ appUrl: publicOrigin(req), dryRun }),
       sendDailyPushes({ dryRun }),
       // O mesmo resumo (atrasados e para hoje) no sino do dono e dos administradores.
@@ -66,9 +67,11 @@ async function handler(req: Request) {
       syncProspectWatch({ dryRun }).catch((e: unknown) => ({ error: e instanceof Error ? e.message : String(e) })),
       // Análise grátis: follow-up a quem recebeu o PDF há N dias e não respondeu (uma vez).
       dryRun ? Promise.resolve({ sent: 0, skipped: 0 }) : runFreeAuditFollowUps().catch((e: unknown) => ({ error: e instanceof Error ? e.message : String(e) })),
+      // Segunda-feira: o resumo da semana por email ao dono e aos administradores.
+      runWeeklyReports({ appUrl: publicOrigin(req), dryRun }).catch((e: unknown) => ({ error: e instanceof Error ? e.message : String(e) })),
     ]);
     if (!dryRun) await cronHeartbeat('digest');
-    return json({ data: results, push, alerts, archived, retried, lead_generation: leadGeneration, backups, trash_purged: trashPurged, notification_emails: notificationEmails, activities_purged: activitiesPurged, cooling, monthly_updates: monthlyUpdates, renewals, automation_rules: rules, prospect_watch: prospectWatch, free_audit_follow_ups: freeAuditFollowUps });
+    return json({ data: results, push, alerts, archived, retried, lead_generation: leadGeneration, backups, trash_purged: trashPurged, notification_emails: notificationEmails, activities_purged: activitiesPurged, cooling, monthly_updates: monthlyUpdates, renewals, automation_rules: rules, prospect_watch: prospectWatch, free_audit_follow_ups: freeAuditFollowUps, weekly_reports: weeklyReports });
   } catch (e) {
     return handleError(e);
   }

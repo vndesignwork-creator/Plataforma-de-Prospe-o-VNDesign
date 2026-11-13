@@ -3,11 +3,12 @@
 /**
  * Definições → Funcionalidades: ligar/desligar o relatório de diagnóstico, os
  * pagamentos, a página Projetos (e as partes dela), as mensagens
- * prontas do WhatsApp, o link de avaliação no Google e a cópia de segurança.
+ * prontas do WhatsApp, o link de avaliação no Google, a cópia de segurança e o
+ * resumo da semana.
  */
 import { useQueryClient } from '@tanstack/react-query';
 import { WEEKDAY_LABELS, formatDateTime, type Features } from '@vndesign/core';
-import { DatabaseBackup, Star } from 'lucide-react';
+import { DatabaseBackup, Mail, Star } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -236,6 +237,59 @@ export function FeaturesSettings() {
           </div>
         </form>
       </Card>
+      <WeeklyReportCard settings={settings} onPatch={patch} />
     </div>
+  );
+}
+
+/** Resumo da semana por email: à segunda-feira, ao dono e aos administradores. */
+function WeeklyReportCard({ settings, onPatch }: { settings: SettingsWithMail; onPatch: (body: Record<string, unknown>) => Promise<unknown> }) {
+  const [sending, setSending] = useState(false);
+  const last = settings.weekly_report.last_sent_at;
+
+  async function toggle(on: boolean) {
+    try {
+      await onPatch({ weekly_report: { enabled: on } });
+      toast.success(on ? 'Resumo da semana ligado.' : 'Resumo da semana desligado.');
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
+
+  async function sendNow() {
+    setSending(true);
+    try {
+      const { data } = await api<{ data: { sent_to: string } }>('/reports/weekly', { method: 'POST' });
+      toast.success(`Resumo enviado para ${data.sent_to}.`);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader
+        title="Resumo da semana"
+        description="À segunda-feira de manhã, um email ao dono e aos administradores: leads novos e de onde vieram, respostas e clientes novos, sites dos clientes que caíram ou ficaram lentos, o gasto da IA e os problemas da plataforma por resolver."
+        actions={
+          <Switch
+            checked={settings.weekly_report.enabled}
+            onCheckedChange={(on) => void toggle(on)}
+            label={settings.weekly_report.enabled ? 'Desligar o resumo da semana' : 'Ligar o resumo da semana'}
+          />
+        }
+      />
+      <div className="flex flex-wrap items-center gap-3 p-4">
+        <p className="flex min-w-0 flex-1 items-center gap-2 text-sm text-muted">
+          <Mail className="h-4 w-4 shrink-0" aria-hidden />
+          {last ? `Último enviado: ${formatDateTime(last)}.` : 'Ainda não foi enviado nenhum.'}
+        </p>
+        <Button type="button" variant="outline" onClick={sendNow} loading={sending}>
+          Enviar-me agora (últimos 7 dias)
+        </Button>
+      </div>
+    </Card>
   );
 }

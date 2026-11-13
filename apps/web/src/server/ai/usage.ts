@@ -5,6 +5,7 @@
  */
 import { AI_CREDIT_META, creditsOf, estimateAiCost, type AiCredit, type AiCreditKind, type AiCredits, type AiTokenUsage } from '@vndesign/core';
 import { createSupabaseAdminClient } from '../supabase-admin';
+import { checkAiBudgetAlert } from './budget';
 import type { ResolvedProvider } from './providers';
 
 export async function recordAiUsage(provider: ResolvedProvider, feature: string, model: string, usage: AiTokenUsage): Promise<void> {
@@ -27,7 +28,10 @@ export async function recordAiUsage(provider: ResolvedProvider, feature: string,
         cost_usd: cost,
       });
     if (error && !['42P01', 'PGRST205'].includes(error.code ?? '')) console.warn('[ia] consumo', error.message);
-    if (cost) void checkCreditAlert(owner.workspaceId, provider.kind);
+    if (cost) {
+      void checkCreditAlert(owner.workspaceId, provider.kind);
+      void checkAiBudgetAlert(owner.workspaceId).catch(() => undefined);
+    }
   } catch (e) {
     console.warn('[ia] consumo', e instanceof Error ? e.message : e);
   }

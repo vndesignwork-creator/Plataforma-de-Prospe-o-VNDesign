@@ -1,6 +1,6 @@
 /**
  * Respostas a objeções ("É caro", "Já tenho site"…): com IA, escrita para este lead e canal
- * (usa a IA dos emails, em Definições → Inteligência artificial); sem IA, a resposta-base.
+ * (Definições → Inteligência artificial → Respostas a objeções); sem IA, a resposta-base.
  */
 import {
   OBJECTION_SYSTEM_PROMPT,
@@ -9,6 +9,7 @@ import {
   buildObjectionPrompt,
   type ObjectionReply,
   type ObjectionRequest,
+  aiFunctionSetting,
 } from '@vndesign/core';
 import { aiModel } from '../ai/claude';
 import { generateJson } from '../ai/generate';
@@ -27,7 +28,7 @@ export async function replyToObjection(ctx: ApiContext, leadId: string, input: O
   if (!input.ai || !(await hasAiProvider(ctx))) return fallback;
 
   const settings = await getSettings(ctx);
-  const { provider, model } = await resolveAiFeature(ctx, settings.ai.email, { anthropicModel: aiModel() });
+  const { provider, model } = await resolveAiFeature(ctx, aiFunctionSetting(settings.ai, 'objections'), { anthropicModel: aiModel() });
   const [signature, sectors, audit] = await Promise.all([
     getSignature(ctx),
     lead.sector_id ? listSectors(ctx, true) : Promise.resolve([]),

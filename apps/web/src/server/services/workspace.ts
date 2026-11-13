@@ -74,6 +74,7 @@ export async function updateSettings(
     quote?: QuoteSettings;
     pomodoro?: PomodoroSettings;
     weekly_backup?: { enabled: boolean; recipient: string | null; weekday: number };
+    weekly_report?: { enabled: boolean };
     prospecting_sequence?: WorkspaceSettings['prospecting_sequence'];
     call_avoid?: WorkspaceSettings['call_avoid'];
     goals?: WorkspaceSettings['goals'];
@@ -81,7 +82,7 @@ export async function updateSettings(
 ): Promise<WorkspaceSettings> {
   if (ctx.role === 'member') throw new ApiError(403, 'Sem permissão', 'Só o dono ou um administrador pode alterar as definições.');
   const current = await getSettings(ctx);
-  for (const feature of [patch.ai?.email, patch.ai?.lead_generation]) {
+  for (const feature of Object.values(patch.ai ?? {})) {
     if (feature) await assertAiProviderExists(ctx, feature.provider);
   }
   const next = {
@@ -91,6 +92,7 @@ export async function updateSettings(
     features: { ...current.features, ...patch.features },
     // last_sent_at é só do servidor (cópia de segurança semanal).
     weekly_backup: { ...current.weekly_backup, ...patch.weekly_backup },
+    weekly_report: { ...current.weekly_report, ...patch.weekly_report },
   };
   const { error } = await ctx.supabase.from('workspaces').update({ settings: next }).eq('id', ctx.workspaceId);
   if (error) throw fromPostgrest(error);

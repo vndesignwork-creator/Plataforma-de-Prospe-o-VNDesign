@@ -51,6 +51,8 @@ import {
   PlatformStatusSchema,
   AiUsageSummarySchema,
   AiCreditUpdateSchema,
+  AiBudgetSchema,
+  AiBudgetUpdateSchema,
   AiCreditSchema,
   ClientErrorReportSchema,
   AuditEventSchema,
@@ -578,6 +580,17 @@ export function getOpenApiDocument() {
           requestParams: { query: z.object({ month: z.string().optional() }) },
           responses: { '200': ok(data(AiUsageSummarySchema)), ...common },
         }),
+      },
+      '/ai/budget': {
+        put: op({
+          tags: ['Definições'],
+          summary: 'Limite de gasto mensal da IA (null = sem limite): aviso aos 80% e no limite; depois dele as tarefas automáticas com IA param e o resto pede confirmação (cabeçalho X-AI-Budget-Ok: 1); dono e administradores',
+          requestBody: body(AiBudgetUpdateSchema),
+          responses: { '200': ok(data(AiBudgetSchema)), ...common },
+        }),
+      },
+      '/reports/weekly': {
+        post: op({ tags: ['Definições'], summary: 'Enviar já o resumo da semana por email (os últimos 7 dias) a quem pede; dono e administradores', responses: { '200': { description: '{ data: { sent_to } }' }, ...common } }),
       },
       '/ai/credit': {
         put: op({ tags: ['Definições'], summary: 'O valor carregado no fornecedor de IA e o limite do aviso "créditos a acabar"', requestBody: body(AiCreditUpdateSchema), responses: { '200': ok(data(AiCreditSchema)), ...common } }),

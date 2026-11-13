@@ -96,6 +96,13 @@ export const AUDIT_RULES: Rule[] = [
   },
   {
     method: 'PUT',
+    path: /^\/ai\/budget$/,
+    action: 'ai_budget',
+    body: true,
+    summary: (b) => (typeof b?.monthly_usd === 'number' ? `Pôs o limite de gasto da IA em ${b.monthly_usd} $ por mês` : 'Tirou o limite de gasto da IA'),
+  },
+  {
+    method: 'PUT',
     path: /^\/ai\/credit$/,
     action: 'ai_credit',
     body: true,

@@ -2,7 +2,25 @@
  * Definições → Inteligência artificial → Consumo e créditos: quanto se gastou no mês (por
  * função, pessoa e modelo) e, com o valor carregado, quanto resta (estimativa).
  */
-import { AI_CREDIT_KINDS, AI_CREDIT_META, DEFAULT_AI_CREDIT, creditsOf, aiFeatureLabel, todayIso, type AiCredit, type AiCreditKind, type AiCredits, type AiUsageSummary } from '@vndesign/core';
+import {
+  AI_CREDIT_KINDS,
+  AI_CREDIT_META,
+  AI_FUNCTIONS,
+  AI_FUNCTION_META,
+  AiBudgetSchema,
+  DEFAULT_AI_CREDIT,
+  aiFeatureLabel,
+  cheaperAiModel,
+  creditsOf,
+  estimateAiCost,
+  todayIso,
+  type AiBudget,
+  type AiCredit,
+  type AiCreditKind,
+  type AiCredits,
+  type AiUsageSummary,
+} from '@vndesign/core';
+import { forgetAiBudget, spentThisMonth } from '../ai/budget';
 import { listAiProviders } from '../ai/providers';
 import { spentSince } from '../ai/usage';
 import type { ApiContext } from '../context';
@@ -11,7 +29,7 @@ import { createSupabaseAdminClient } from '../supabase-admin';
 import { teamNames } from './team';
 import { getSettings } from './workspace';
 
-type Row = { user_id: string | null; feature: string; provider_kind: string; model: string; input_tokens: number; output_tokens: number; cost_usd: number | string | null };
+type Row = { user_id: string | null; feature: string; provider_kind: string; model: string; input_tokens: number; output_tokens: number; searches: number | null; cost_usd: number | string | null };
 
 const staffOnly = (ctx: ApiContext) => {
   if (ctx.role !== 'owner' && ctx.role !== 'admin') throw new ApiError(403, 'Sem acesso', 'Só o dono e os administradores veem o consumo da IA.');
@@ -28,7 +46,7 @@ async function rowsBetween(ctx: ApiContext, from: string, to: string): Promise<R
   for (let page = 0; page < 200; page++) {
     const { data, error } = await ctx.supabase
       .from('ai_usage')
-      .select('user_id, feature, provider_kind, model, input_tokens, output_tokens, cost_usd')
+      .select('user_id, feature, provider_kind, model, input_tokens, output_tokens, searches, cost_usd')
       .eq('workspace_id', ctx.workspaceId)
       .gte('at', from)
       .lt('at', to)
@@ -93,8 +111,32 @@ export async function aiUsageSummary(ctx: ApiContext, month?: string): Promise<A
       };
     }),
   );
+  // Por função (Onde usar): o gasto e quanto seria com o modelo mais barato do mesmo fornecedor.
+  const byFunction = AI_FUNCTIONS.map((key) => {
+    const own = rows.filter((r) => AI_FUNCTION_META[key].usage.includes(r.feature));
+    const cost = own.reduce((sum, r) => sum + Number(r.cost_usd ?? 0), 0);
+    const counts = new Map<string, number>();
+    for (const r of own) counts.set(r.model, (counts.get(r.model) ?? 0) + 1);
+    const model = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+    const target = model ? cheaperAiModel(model) : null;
+    let cheaper: { model: string; cost_usd: number } | null = null;
+    if (target && cost > 0) {
+      const estimate = own.reduce(
+        (sum, r) => sum + (estimateAiCost(target, { input_tokens: r.input_tokens, output_tokens: r.output_tokens, searches: r.searches ?? 0 }) ?? Number(r.cost_usd ?? 0)),
+        0,
+      );
+      // Só vale a pena mostrar uma poupança a sério (pelo menos 20%).
+      if (estimate < cost * 0.8) cheaper = { model: target, cost_usd: round(estimate) };
+    }
+    return { key, calls: own.length, cost_usd: round(cost), model, cheaper };
+  });
+  const budget = AiBudgetSchema.parse(settings.ai_budget ?? {});
+  const thisMonth = todayIso().slice(0, 7);
+  const monthSpent = m === thisMonth ? rows.reduce((sum, r) => sum + Number(r.cost_usd ?? 0), 0) : await spentThisMonth(ctx.workspaceId);
   return {
     month: m,
+    by_function: byFunction,
+    budget: { monthly_usd: budget.monthly_usd, spent_usd: round(monthSpent) },
     total_usd: round(rows.reduce((s, r) => s + Number(r.cost_usd ?? 0), 0)),
     previous_month_usd: round(prev.reduce((s, r) => s + Number(r.cost_usd ?? 0), 0)),
     calls: rows.length,
@@ -133,5 +175,19 @@ export async function updateAiCredit(
     .update({ settings: { ...settings, ai_credit: { ...DEFAULT_AI_CREDIT }, ai_credits: { ...credits, [kind]: next } } })
     .eq('id', ctx.workspaceId);
   if (saveError) throw fromPostgrest(saveError);
+  return next;
+}
+
+/** O limite de gasto mensal da IA (null = sem limite). Um limite novo pode voltar a avisar. */
+export async function updateAiBudget(ctx: ApiContext, input: { monthly_usd: number | null }): Promise<AiBudget> {
+  staffOnly(ctx);
+  const admin = createSupabaseAdminClient();
+  const { data: ws, error } = await admin.from('workspaces').select('settings').eq('id', ctx.workspaceId).single();
+  if (error) throw fromPostgrest(error);
+  const settings = (ws.settings ?? {}) as Record<string, unknown>;
+  const next: AiBudget = { monthly_usd: input.monthly_usd, alerted_80: null, alerted_100: null };
+  const { error: saveError } = await admin.from('workspaces').update({ settings: { ...settings, ai_budget: next } }).eq('id', ctx.workspaceId);
+  if (saveError) throw fromPostgrest(saveError);
+  forgetAiBudget(ctx.workspaceId);
   return next;
 }

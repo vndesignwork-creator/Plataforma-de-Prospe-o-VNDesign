@@ -23,6 +23,11 @@ describe('fornecedores de IA', () => {
       email: { provider: 'server', model: null },
       lead_generation: { provider: 'server', model: null },
       visibility: { provider: 'server', model: null },
+      // As outras funções seguem o "Email com IA".
+      summary: null,
+      objections: null,
+      card_scan: null,
+      geo: null,
     });
   });
 });

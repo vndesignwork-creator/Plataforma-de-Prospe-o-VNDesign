@@ -17,6 +17,7 @@ import {
 import { isPrivateAddress } from '../audit/safe-request';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
+import { assertAiBudget } from './budget';
 import { aiApiKey, aiKeyHint } from './claude';
 import { keyHint, openSecret, sealSecret } from './secret-box';
 
@@ -245,6 +246,8 @@ export async function resolveAiFeature(
   setting: AiFeatureSetting,
   defaults: { anthropicModel: string },
 ): Promise<{ provider: ResolvedProvider; model: string }> {
+  // Limite de gasto do mês (Definições → IA): o automático pára; à mão, pede confirmação.
+  await assertAiBudget(ctx);
   const provider = await resolveAiProvider(ctx, setting.provider);
   const model = setting.model?.trim() || (provider.kind === 'anthropic' ? defaults.anthropicModel : null);
   if (!model) {

@@ -6,9 +6,16 @@
  */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  AI_FOLLOWS_EMAIL,
+  AI_FUNCTIONS,
+  AI_FUNCTION_META,
   AI_PROVIDER_KINDS,
   AI_PROVIDER_META,
+  recentMonths,
+  todayIso,
   type AiFeatureSetting,
+  type AiFunction,
+  type AiUsageSummary,
   type AiProvider,
   type AiProviderKind,
   type AiProviderTestResult,
@@ -26,9 +33,19 @@ import { Input, Select } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useMe, useRole, useSettings } from '@/lib/queries';
-import { AiUsageCard } from './ai-usage-card';
+import { AiUsageCard, usd } from './ai-usage-card';
 
-const DEFAULT_MODELS = { email: 'claude-opus-5-5', lead_generation: 'claude-sonnet-5-5', visibility: 'claude-sonnet-5-5' } as const;
+const DEFAULT_MODELS: Record<AiFunction, string> = {
+  email: 'claude-opus-5-5',
+  summary: 'claude-opus-5-5',
+  objections: 'claude-opus-5-5',
+  card_scan: 'claude-opus-5-5',
+  geo: 'claude-opus-5-5',
+  lead_generation: 'claude-sonnet-5-5',
+  visibility: 'claude-sonnet-5-5',
+};
+/** No seletor do fornecedor: a função usa a mesma escolha do "Email com IA". */
+const SAME_AS_EMAIL = '__email__';
 
 function useAiProviders() {
   return useQuery({ queryKey: ['ai-providers'], queryFn: () => api<{ data: AiProvider[] }>('/ai-providers').then((r) => r.data) });
@@ -258,39 +275,46 @@ const optionClass = (active: boolean) =>
   `flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-left text-sm hover:bg-surface-3 focus-visible:bg-surface-3 focus-visible:outline-none ${active ? 'font-medium text-accent-text' : ''}`;
 
 function FeatureRow({
-  title,
-  description,
   feature,
   setting,
+  email,
+  usage,
   providers,
   models,
   onLoadModels,
   canEdit,
 }: {
-  title: string;
-  description: string;
-  feature: 'email' | 'lead_generation' | 'visibility';
-  setting: AiFeatureSetting;
+  feature: AiFunction;
+  /** null: segue o "Email com IA". */
+  setting: AiFeatureSetting | null;
+  email: AiFeatureSetting;
+  /** O gasto do mês desta função (só para o dono e os administradores). */
+  usage?: AiUsageSummary['by_function'][number];
   providers: AiProvider[];
   models: Record<string, string[]>;
   onLoadModels: (id: string) => Promise<void>;
   canEdit: boolean;
 }) {
   const qc = useQueryClient();
-  const [provider, setProvider] = useState(setting.provider);
-  const [model, setModel] = useState(setting.model ?? '');
+  const { label: title, description } = AI_FUNCTION_META[feature];
+  const follows = AI_FOLLOWS_EMAIL.includes(feature);
+  const [provider, setProvider] = useState(setting ? setting.provider : SAME_AS_EMAIL);
+  const [model, setModel] = useState(setting?.model ?? '');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
-  const usable = providers.filter((p) => feature === 'email' || p.web_search);
+  const sameAsEmail = provider === SAME_AS_EMAIL;
+  const usable = providers.filter((p) => !['lead_generation', 'visibility'].includes(feature) || p.web_search);
   const current = providers.find((p) => p.id === provider);
-  const dirty = provider !== setting.provider || (model.trim() || null) !== (setting.model ?? null);
+  const dirty = setting
+    ? provider !== setting.provider || (model.trim() || null) !== (setting.model ?? null)
+    : !sameAsEmail;
 
   async function save() {
     setSaving(true);
     try {
-      await api('/settings', { method: 'PATCH', body: { ai: { [feature]: { provider, model: model.trim() || null } } } });
+      await api('/settings', { method: 'PATCH', body: { ai: { [feature]: sameAsEmail ? null : { provider, model: model.trim() || null } } } });
       await qc.invalidateQueries({ queryKey: ['settings'] });
-      toast.success(`${title}: ${current?.label ?? 'fornecedor'} guardado.`);
+      toast.success(sameAsEmail ? `${title}: igual ao Email com IA.` : `${title}: ${current?.label ?? 'fornecedor'} guardado.`);
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
@@ -313,7 +337,8 @@ function FeatureRow({
             setModel('');
           }}
         >
-          {!usable.some((p) => p.id === provider) ? <option value={provider}>(fornecedor apagado)</option> : null}
+          {follows ? <option value={SAME_AS_EMAIL}>Igual ao Email com IA</option> : null}
+          {!sameAsEmail && !usable.some((p) => p.id === provider) ? <option value={provider}>(fornecedor apagado)</option> : null}
           {usable.map((p) => (
             <option key={p.id} value={p.id}>
               {p.label}
@@ -321,26 +346,58 @@ function FeatureRow({
           ))}
         </Select>
       </Field>
-      <Field
-        label="Modelo"
-        hint={current?.kind === 'anthropic' ? 'A lista vem do fornecedor; podes também escrever outro nome.' : 'A lista vem do fornecedor; escreve para pesquisar.'}
-      >
-        <ModelPicker
-          value={model}
-          onChange={setModel}
-          models={models[provider]}
-          loading={loading}
-          onOpen={async () => {
-            if (models[provider] || loading) return;
-            setLoading(true);
-            await onLoadModels(provider);
-            setLoading(false);
-          }}
-          defaultModel={current?.kind === 'anthropic' ? DEFAULT_MODELS[feature] : null}
-          example={current ? AI_PROVIDER_META[current.kind].modelExample : ''}
-          disabled={!canEdit}
-        />
-      </Field>
+      {sameAsEmail ? (
+        <p className="self-end pb-2 text-sm text-muted">
+          Usa {providers.find((p) => p.id === email.provider)?.label ?? 'o fornecedor do email'}
+          {email.model ? ` · ${email.model}` : ''}.
+        </p>
+      ) : (
+        <Field
+          label="Modelo"
+          hint={current?.kind === 'anthropic' ? 'A lista vem do fornecedor; podes também escrever outro nome.' : 'A lista vem do fornecedor; escreve para pesquisar.'}
+        >
+          <ModelPicker
+            value={model}
+            onChange={setModel}
+            models={models[provider]}
+            loading={loading}
+            onOpen={async () => {
+              if (models[provider] || loading) return;
+              setLoading(true);
+              await onLoadModels(provider);
+              setLoading(false);
+            }}
+            defaultModel={current?.kind === 'anthropic' ? DEFAULT_MODELS[feature] : null}
+            example={current ? AI_PROVIDER_META[current.kind].modelExample : ''}
+            disabled={!canEdit}
+          />
+        </Field>
+      )}
+      {usage && usage.calls ? (
+        <p className="text-sm text-muted md:col-span-2" data-testid={`ai-usage-${feature}`}>
+          Este mês: {usd(usage.cost_usd)} em {usage.calls} {usage.calls === 1 ? 'pedido' : 'pedidos'}
+          {usage.model ? ` (${usage.model})` : ''}.
+          {usage.cheaper ? (
+            <>
+              {' '}
+              Com <strong className="font-medium text-fg">{usage.cheaper.model}</strong> seria cerca de {usd(usage.cheaper.cost_usd)}.{' '}
+              {canEdit ? (
+                <button
+                  type="button"
+                  className="font-medium text-accent-text underline underline-offset-2"
+                  onClick={() => {
+                    const base = sameAsEmail ? email : { provider, model };
+                    setProvider(base.provider);
+                    setModel(usage.cheaper!.model);
+                  }}
+                >
+                  Usar este modelo
+                </button>
+              ) : null}
+            </>
+          ) : null}
+        </p>
+      ) : null}
       {canEdit ? (
         <div className="flex justify-end md:col-span-2">
           <Button size="sm" onClick={save} loading={saving} disabled={!dirty}>
@@ -365,6 +422,13 @@ export function AiSettings() {
   const [tests, setTests] = useState<Record<string, AiProviderTestResult>>({});
   const [testing, setTesting] = useState<string | null>(null);
   const models = Object.fromEntries(Object.entries(tests).map(([id, t]) => [id, t.models]));
+  // O gasto do mês por função (o mesmo pedido do cartão "Consumo e créditos").
+  const month = recentMonths(todayIso(), 1)[0]!;
+  const { data: usage } = useQuery({
+    queryKey: ['ai-usage', month],
+    queryFn: () => api<{ data: AiUsageSummary }>('/ai/usage', { query: { month } }).then((r) => r.data),
+    enabled: staff,
+  });
 
   async function test(id: string, quiet = false) {
     setTesting(id);
@@ -476,40 +540,26 @@ export function AiSettings() {
 
       {providers.length ? (
         <Card>
-          <CardHeader title="Onde usar" description="Escolhe o fornecedor e o modelo de cada função." />
-          <FeatureRow
-            key={`email-${settings.ai.email.provider}-${settings.ai.email.model}`}
-            title="Email com IA"
-            description="Rascunhos de email na ficha do lead."
-            feature="email"
-            setting={settings.ai.email}
-            providers={providers}
-            models={models}
-            onLoadModels={(id) => test(id, true)}
-            canEdit={canEdit}
+          <CardHeader
+            title="Onde usar"
+            description="Escolhe o fornecedor e o modelo de cada função. Um modelo mais pequeno (ex.: Claude Haiku) custa muito menos e chega bem para resumos e cartões."
           />
-          <FeatureRow
-            key={`lead-${settings.ai.lead_generation.provider}-${settings.ai.lead_generation.model}`}
-            title="Gerador de leads"
-            description="Precisa de pesquisa na internet: Claude, OpenAI ou OpenRouter."
-            feature="lead_generation"
-            setting={settings.ai.lead_generation}
-            providers={providers}
-            models={models}
-            onLoadModels={(id) => test(id, true)}
-            canEdit={canEdit}
-          />
-          <FeatureRow
-            key={`visibility-${settings.ai.visibility.provider}-${settings.ai.visibility.model}`}
-            title="Aparece nas IAs? (GEO)"
-            description="Na ficha do lead: pergunta a esta IA o que um cliente perguntaria e vê se o lead aparece. Precisa de pesquisa na internet."
-            feature="visibility"
-            setting={settings.ai.visibility}
-            providers={providers}
-            models={models}
-            onLoadModels={(id) => test(id, true)}
-            canEdit={canEdit}
-          />
+          {AI_FUNCTIONS.map((fn) => {
+            const own = settings.ai[fn];
+            return (
+              <FeatureRow
+                key={`${fn}-${own?.provider ?? 'email'}-${own?.model ?? ''}`}
+                feature={fn}
+                setting={own}
+                email={settings.ai.email}
+                usage={usage?.by_function.find((u) => u.key === fn)}
+                providers={providers}
+                models={models}
+                onLoadModels={(id) => test(id, true)}
+                canEdit={canEdit}
+              />
+            );
+          })}
         </Card>
       ) : null}
 
