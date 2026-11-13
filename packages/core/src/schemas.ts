@@ -26,7 +26,7 @@ import {
 } from './enums';
 import { ensureUrlProtocol } from './normalize';
 import { AiSettingsSchema, AiSettingsUpdateSchema, SERVER_AI_PROVIDER } from './ai-providers';
-import { AiCreditSchema, DEFAULT_AI_CREDIT } from './ai-usage';
+import { AiCreditSchema, AiCreditsSchema, DEFAULT_AI_CREDIT } from './ai-usage';
 import { ServiceCategoryKeySchema, ServiceKeyListSchema, ServiceKeySchema } from './services';
 import { TodayOpenedEmailSchema } from './mail';
 import { DEFAULT_POMODORO_SETTINGS, PomodoroSettingsSchema } from './pomodoro';
@@ -763,6 +763,8 @@ export const WorkspaceSettingsSchema = z
     /** Fornecedor e modelo de IA de cada função (Definições → Inteligência artificial). */
     /** Créditos da IA: o valor carregado no fornecedor (para estimar quanto resta). */
     ai_credit: AiCreditSchema.default(DEFAULT_AI_CREDIT),
+    /** Um saldo por fornecedor de IA (Claude, ChatGPT, OpenRouter…). */
+    ai_credits: AiCreditsSchema.default({}),
     /** Etiquetas criadas em Definições → Etiquetas (ainda sem leads; aparecem nas sugestões). */
     saved_tags: z.array(z.string()).max(200).default([]),
     ai: AiSettingsSchema.default({

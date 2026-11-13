@@ -5,7 +5,7 @@
  */
 import { z } from 'zod';
 
-/** Preço de tabela da Anthropic (USD por milhão de tokens), em 3/11/2026. */
+/** Preço de tabela (USD por milhão de tokens): Anthropic em 3/11/2026 e OpenAI (os conhecidos). */
 export const AI_PRICES: Record<string, { input: number; output: number }> = {
   'claude-fable-5-2': { input: 8, output: 40 },
   'claude-mythos-5-2': { input: 8, output: 40 },
@@ -22,6 +22,17 @@ export const AI_PRICES: Record<string, { input: number; output: number }> = {
   'claude-sonnet-4-6': { input: 3, output: 15 },
   'claude-haiku-5-5': { input: 0.1, output: 0.5 },
   'claude-haiku-4-5': { input: 1, output: 5 },
+  // OpenAI (preço de tabela conhecido; os modelos mais novos contam pelo da família, ex.: "gpt-5.1" como "gpt-5").
+  'gpt-5': { input: 1.25, output: 10 },
+  'gpt-5-mini': { input: 0.25, output: 2 },
+  'gpt-5-nano': { input: 0.05, output: 0.4 },
+  'gpt-4.1': { input: 2, output: 8 },
+  'gpt-4.1-mini': { input: 0.4, output: 1.6 },
+  'gpt-4.1-nano': { input: 0.1, output: 0.4 },
+  'gpt-4o': { input: 2.5, output: 10 },
+  'gpt-4o-mini': { input: 0.15, output: 0.6 },
+  'o3': { input: 2, output: 8 },
+  'o4-mini': { input: 1.1, output: 4.4 },
 };
 /** Pesquisa na internet (ferramenta da Anthropic): 10 USD por 1000 pesquisas. */
 export const WEB_SEARCH_PRICE_USD = 10 / 1000;
@@ -38,7 +49,8 @@ export interface AiTokenUsage {
 
 /** O preço de um modelo (o nome exato, ou o mais comprido que encaixe: "claude-opus-5-5-…"). */
 export function aiPrice(model: string): { input: number; output: number } | null {
-  const id = model.trim().toLowerCase().replace(/^anthropic\//, '');
+  // OpenRouter: "anthropic/claude-…", "openai/gpt-…".
+  const id = model.trim().toLowerCase().replace(/^(anthropic|openai)\//, '');
   if (AI_PRICES[id]) return AI_PRICES[id];
   const match = Object.keys(AI_PRICES)
     .filter((k) => id.startsWith(k))
@@ -87,14 +99,50 @@ export const AiCreditSchema = z
 export type AiCredit = z.infer<typeof AiCreditSchema>;
 export const DEFAULT_AI_CREDIT: AiCredit = { amount_usd: null, since: null, alert_below_usd: null, alerted_at: null };
 
+/** Os fornecedores que têm saldo próprio (cada chave é uma conta separada). */
+export const AI_CREDIT_KINDS = ['anthropic', 'openai', 'openrouter', 'custom'] as const;
+export type AiCreditKind = (typeof AI_CREDIT_KINDS)[number];
+export const AiCreditsSchema = z.partialRecord(z.enum(AI_CREDIT_KINDS), AiCreditSchema).meta({ id: 'AiCredits' });
+export type AiCredits = z.infer<typeof AiCreditsSchema>;
+
+export const AI_CREDIT_META: Record<AiCreditKind, { label: string; console: string | null }> = {
+  anthropic: { label: 'Claude (Anthropic)', console: 'https://platform.claude.com/settings/billing' },
+  openai: { label: 'ChatGPT (OpenAI)', console: 'https://platform.openai.com/settings/organization/billing/overview' },
+  openrouter: { label: 'OpenRouter', console: 'https://openrouter.ai/settings/credits' },
+  custom: { label: 'Outro fornecedor', console: null },
+};
+
+/** Os saldos de cada fornecedor (o valor antigo, de antes de haver um por fornecedor, conta como o da Anthropic). */
+export function creditsOf(settings: { ai_credit?: AiCredit | null; ai_credits?: AiCredits | null }): AiCredits {
+  const credits: AiCredits = { ...(settings.ai_credits ?? {}) };
+  if (!credits.anthropic && settings.ai_credit && settings.ai_credit.amount_usd !== null) credits.anthropic = settings.ai_credit;
+  return credits;
+}
+
 export const AiCreditUpdateSchema = z
   .object({
+    /** De que fornecedor é o saldo (por omissão, a Anthropic). */
+    provider: z.enum(AI_CREDIT_KINDS).default('anthropic'),
     amount_usd: z.number({ error: 'Indica um valor.' }).min(0).max(100_000).nullable(),
     alert_below_usd: z.number().min(0).max(100_000).nullable().optional(),
     /** true: começa a contar o gasto a partir de agora (acabaste de carregar). */
     reset: z.boolean().optional(),
   })
   .meta({ id: 'AiCreditUpdate' });
+
+const CreditRow = z.object({
+  kind: z.enum(AI_CREDIT_KINDS),
+  label: z.string(),
+  amount_usd: z.number().nullable(),
+  since: z.string().nullable(),
+  spent_since_usd: z.number(),
+  remaining_usd: z.number().nullable(),
+  alert_below_usd: z.number().nullable(),
+  /** Gasto deste fornecedor no mês escolhido. */
+  spent_month_usd: z.number(),
+  /** Onde ver o saldo exato (null: sem consola conhecida). */
+  console_url: z.string().nullable(),
+});
 
 const Row = z.object({ key: z.string(), label: z.string(), calls: z.int(), cost_usd: z.number(), tokens: z.int() });
 export const AiUsageSummarySchema = z
@@ -108,15 +156,8 @@ export const AiUsageSummarySchema = z
     by_feature: z.array(Row),
     by_user: z.array(Row),
     by_model: z.array(Row),
-    credit: z.object({
-      amount_usd: z.number().nullable(),
-      since: z.string().nullable(),
-      spent_since_usd: z.number(),
-      remaining_usd: z.number().nullable(),
-      alert_below_usd: z.number().nullable(),
-    }),
-    /** Onde ver o saldo exato de cada fornecedor usado. */
-    consoles: z.array(z.object({ label: z.string(), url: z.string() })),
+    /** Um saldo por fornecedor com chave ligada (cada um é uma conta separada: não se somam). */
+    credits: z.array(CreditRow),
   })
   .meta({ id: 'AiUsageSummary' });
 export type AiUsageSummary = z.infer<typeof AiUsageSummarySchema>;

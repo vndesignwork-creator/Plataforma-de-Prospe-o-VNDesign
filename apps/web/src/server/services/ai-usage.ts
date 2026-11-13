@@ -2,7 +2,8 @@
  * Definições → Inteligência artificial → Consumo e créditos: quanto se gastou no mês (por
  * função, pessoa e modelo) e, com o valor carregado, quanto resta (estimativa).
  */
-import { AiCreditSchema, DEFAULT_AI_CREDIT, aiFeatureLabel, todayIso, type AiCredit, type AiUsageSummary } from '@vndesign/core';
+import { AI_CREDIT_KINDS, AI_CREDIT_META, DEFAULT_AI_CREDIT, creditsOf, aiFeatureLabel, todayIso, type AiCredit, type AiCreditKind, type AiCredits, type AiUsageSummary } from '@vndesign/core';
+import { listAiProviders } from '../ai/providers';
 import { spentSince } from '../ai/usage';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
@@ -11,12 +12,6 @@ import { teamNames } from './team';
 import { getSettings } from './workspace';
 
 type Row = { user_id: string | null; feature: string; provider_kind: string; model: string; input_tokens: number; output_tokens: number; cost_usd: number | string | null };
-
-const CONSOLES: Record<string, { label: string; url: string }> = {
-  anthropic: { label: 'Anthropic (Claude)', url: 'https://platform.claude.com/settings/billing' },
-  openai: { label: 'OpenAI', url: 'https://platform.openai.com/settings/organization/billing/overview' },
-  openrouter: { label: 'OpenRouter', url: 'https://openrouter.ai/settings/credits' },
-};
 
 const staffOnly = (ctx: ApiContext) => {
   if (ctx.role !== 'owner' && ctx.role !== 'admin') throw new ApiError(403, 'Sem acesso', 'Só o dono e os administradores veem o consumo da IA.');
@@ -55,7 +50,13 @@ export async function aiUsageSummary(ctx: ApiContext, month?: string): Promise<A
   staffOnly(ctx);
   const m = month && /^\d{4}-\d{2}$/.test(month) ? month : todayIso().slice(0, 7);
   const { from, to, prevFrom } = monthBounds(m);
-  const [rows, prev, settings, names] = await Promise.all([rowsBetween(ctx, from, to), rowsBetween(ctx, prevFrom, from), getSettings(ctx), teamNames(ctx)]);
+  const [rows, prev, settings, names, providers] = await Promise.all([
+    rowsBetween(ctx, from, to),
+    rowsBetween(ctx, prevFrom, from),
+    getSettings(ctx),
+    teamNames(ctx),
+    listAiProviders(ctx).catch(() => []),
+  ]);
   const nameOf = new Map(names.map((n) => [n.user_id, n.name]));
   const group = (keyOf: (r: Row) => string, labelOf: (key: string) => string) => {
     const map = new Map<string, { calls: number; cost: number; tokens: number }>();
@@ -71,9 +72,27 @@ export async function aiUsageSummary(ctx: ApiContext, month?: string): Promise<A
       .map(([key, g]) => ({ key, label: labelOf(key), calls: g.calls, cost_usd: round(g.cost), tokens: g.tokens }))
       .sort((a, b) => b.cost_usd - a.cost_usd || b.calls - a.calls);
   };
-  const credit = settings.ai_credit;
-  const spent = credit.amount_usd !== null ? await spentSince(ctx.workspaceId, credit.since) : 0;
-  const kinds = [...new Set(rows.map((r) => r.provider_kind))];
+  // Um saldo por fornecedor com chave ligada (e os que já foram usados ou têm saldo indicado).
+  const credits = creditsOf(settings);
+  const used = new Set<string>([...providers.map((p) => p.kind), ...rows.map((r) => r.provider_kind), ...Object.keys(credits)]);
+  const kinds = AI_CREDIT_KINDS.filter((k) => used.has(k));
+  const creditRows = await Promise.all(
+    (kinds.length ? kinds : (['anthropic'] as AiCreditKind[])).map(async (kind) => {
+      const c = credits[kind];
+      const spent = c && c.amount_usd !== null ? await spentSince(ctx.workspaceId, c.since, kind) : 0;
+      return {
+        kind,
+        label: AI_CREDIT_META[kind].label,
+        amount_usd: c?.amount_usd ?? null,
+        since: c?.since ?? null,
+        spent_since_usd: spent,
+        remaining_usd: c && c.amount_usd !== null ? round(c.amount_usd - spent) : null,
+        alert_below_usd: c?.alert_below_usd ?? null,
+        spent_month_usd: round(rows.filter((r) => r.provider_kind === kind).reduce((s, r) => s + Number(r.cost_usd ?? 0), 0)),
+        console_url: AI_CREDIT_META[kind].console,
+      };
+    }),
+  );
   return {
     month: m,
     total_usd: round(rows.reduce((s, r) => s + Number(r.cost_usd ?? 0), 0)),
@@ -83,25 +102,23 @@ export async function aiUsageSummary(ctx: ApiContext, month?: string): Promise<A
     by_feature: group((r) => r.feature, aiFeatureLabel),
     by_user: group((r) => r.user_id ?? 'sistema', (k) => (k === 'sistema' ? 'Automático (cron)' : (nameOf.get(k) ?? 'Antigo membro'))),
     by_model: group((r) => r.model, (k) => k),
-    credit: {
-      amount_usd: credit.amount_usd,
-      since: credit.since,
-      spent_since_usd: spent,
-      remaining_usd: credit.amount_usd === null ? null : round(credit.amount_usd - spent),
-      alert_below_usd: credit.alert_below_usd,
-    },
-    consoles: (kinds.length ? kinds : ['anthropic']).filter((k) => CONSOLES[k]).map((k) => CONSOLES[k]!),
+    credits: creditRows,
   };
 }
 
 /** O valor carregado (e o limite do aviso). reset: começa a contar o gasto a partir de agora. */
-export async function updateAiCredit(ctx: ApiContext, input: { amount_usd: number | null; alert_below_usd?: number | null; reset?: boolean }): Promise<AiCredit> {
+export async function updateAiCredit(
+  ctx: ApiContext,
+  input: { provider?: AiCreditKind; amount_usd: number | null; alert_below_usd?: number | null; reset?: boolean },
+): Promise<AiCredit> {
   staffOnly(ctx);
   const admin = createSupabaseAdminClient();
   const { data: ws, error } = await admin.from('workspaces').select('settings').eq('id', ctx.workspaceId).single();
   if (error) throw fromPostgrest(error);
   const settings = (ws.settings ?? {}) as Record<string, unknown>;
-  const current = AiCreditSchema.parse(settings.ai_credit ?? DEFAULT_AI_CREDIT);
+  const kind = input.provider ?? 'anthropic';
+  const credits = creditsOf(settings as { ai_credit?: AiCredit; ai_credits?: AiCredits });
+  const current: AiCredit = credits[kind] ?? { amount_usd: null, since: null, alert_below_usd: null, alerted_at: null };
   const restart = input.reset || current.since === null || input.amount_usd !== current.amount_usd;
   const next: AiCredit = {
     amount_usd: input.amount_usd,
@@ -110,7 +127,11 @@ export async function updateAiCredit(ctx: ApiContext, input: { amount_usd: numbe
     // Novo carregamento (ou novo limite): pode voltar a avisar.
     alerted_at: null,
   };
-  const { error: saveError } = await admin.from('workspaces').update({ settings: { ...settings, ai_credit: next } }).eq('id', ctx.workspaceId);
+  // O valor antigo (um só saldo) passa para o da Anthropic; daqui em diante, um por fornecedor.
+  const { error: saveError } = await admin
+    .from('workspaces')
+    .update({ settings: { ...settings, ai_credit: { ...DEFAULT_AI_CREDIT }, ai_credits: { ...credits, [kind]: next } } })
+    .eq('id', ctx.workspaceId);
   if (saveError) throw fromPostgrest(saveError);
   return next;
 }
