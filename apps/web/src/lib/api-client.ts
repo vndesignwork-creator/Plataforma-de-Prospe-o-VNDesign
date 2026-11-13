@@ -3,6 +3,7 @@
  * móvel e as integrações vão usar.
  */
 import { AI_BUDGET_ERROR, AI_BUDGET_HEADER, type Problem } from '@vndesign/core';
+import { QueuedOffline, enqueue, isNetworkFailure, isQueuedOffline } from './outbox';
 
 export class ApiClientError extends Error {
   constructor(
@@ -41,7 +42,15 @@ function notifyApiFailure() {
 
 export async function api<T>(
   path: string,
-  options: { method?: string; body?: unknown; query?: Record<string, QueryValue>; signal?: AbortSignal; aiBudgetOk?: boolean } = {},
+  options: {
+    method?: string;
+    body?: unknown;
+    query?: Record<string, QueryValue>;
+    signal?: AbortSignal;
+    aiBudgetOk?: boolean;
+    /** Sem rede: guardar e enviar quando a rede voltar (o texto diz o que foi feito). Lança QueuedOffline. */
+    offline?: string;
+  } = {},
 ): Promise<T> {
   let res: Response;
   const headers: Record<string, string> = {};
@@ -56,6 +65,9 @@ export async function api<T>(
       signal: options.signal,
     });
   } catch (error) {
+    if (options.offline && options.method && options.method !== 'GET' && isNetworkFailure(error)) {
+      throw new QueuedOffline(enqueue({ path: `${path}${toQueryString(options.query)}`, method: options.method, body: options.body, label: options.offline }));
+    }
     if (!(error instanceof Error && error.name === 'AbortError')) notifyApiFailure();
     throw error;
   }
@@ -87,6 +99,7 @@ export async function api<T>(
 
 /** Mensagem legível para mostrar ao utilizador. */
 export function errorMessage(error: unknown): string {
+  if (isQueuedOffline(error)) return error.message;
   if (error instanceof ApiClientError) return error.problem.detail ?? error.problem.title;
   if (error instanceof Error && error.name !== 'AbortError') return 'Sem ligação ao servidor. Tenta novamente.';
   return 'Ocorreu um erro inesperado.';

@@ -45,6 +45,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { DictateButton } from '@/components/ui/dictate-button';
 import { Input, Select, Textarea } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
+import { announceQueued, isQueuedOffline } from '@/lib/outbox';
 import { useInvalidateTasks, useLeadTasks, useMe, useTaskTemplates, useTeamNames } from '@/lib/queries';
 import { Linkified } from '@/lib/linkify';
 import { formatReminder, isoToLocalInput, localInputToIso } from '@/lib/local-datetime';
@@ -681,9 +682,15 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
       await api(`/leads/${lead.id}/tasks`, {
         method: 'POST',
         body: { title: value, due_on: dueValue || null, remind_at: localInputToIso(remindValue), ...(phrase.repeat ? { repeat: phrase.repeat } : {}) },
+        offline: `Tarefa “${value}” · #${lead.number} ${lead.company_name}`,
       });
       if (remindValue) toast.success(`Lembrete marcado para ${formatReminder(localInputToIso(remindValue)!)}.`);
     } catch (error) {
+      // Sem rede: ficou guardada e é criada quando a rede voltar.
+      if (isQueuedOffline(error)) {
+        announceQueued();
+        return;
+      }
       toast.error(errorMessage(error));
       setTitle(typed);
       setDue(due);
@@ -698,7 +705,15 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
   async function toggle(task: LeadTask, isDone: boolean): Promise<boolean> {
     const move = () => setLocal((list) => list.map((t) => (t.id === task.id ? { ...t, done_at: isDone ? new Date().toISOString() : null } : t)));
     if (!isDone) move();
-    const request = api(`/tasks/${task.id}`, { method: 'PATCH', body: { done: isDone } });
+    const request = api(`/tasks/${task.id}`, {
+      method: 'PATCH',
+      body: { done: isDone },
+      offline: `${isDone ? 'Tarefa concluída' : 'Tarefa reaberta'} “${task.title}” · #${lead.number} ${lead.company_name}`,
+    }).catch((error: unknown) => {
+      // Sem rede: conta como feito (vai quando a rede voltar).
+      if (!isQueuedOffline(error)) throw error;
+      announceQueued();
+    });
     try {
       if (isDone) {
         await Promise.all([request, new Promise((r) => setTimeout(r, 450))]);

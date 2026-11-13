@@ -234,7 +234,8 @@ export function ProspectingSession() {
     setEmailsSent((n) => n + 1);
   }
 
-  function recorded(item: ProspectingItem, outcome: ProspectingOutcome, result: ProspectingResult) {
+  /** result null: sem rede (ficou guardado e vai quando a rede voltar). */
+  function recorded(item: ProspectingItem, outcome: ProspectingOutcome, result: ProspectingResult | null) {
     const before = item.attempts ?? NO_ATTEMPTS;
     const attempts: ProspectingAttempts = {
       no_answer: before.no_answer + (outcome === 'no_answer' ? 1 : 0),
@@ -244,7 +245,7 @@ export function ProspectingSession() {
     // Depois de "Contactado"/"Interessado" a sequência já avançou: o passo antigo deixa de valer.
     const next: ProspectingItem = {
       ...item,
-      lead: result.lead,
+      lead: result?.lead ?? item.lead,
       attempts,
       sequence: outcome === 'no_answer' ? item.sequence : null,
     };
@@ -252,11 +253,11 @@ export function ProspectingSession() {
       ...l,
       [item.lead.id]: {
         item: next,
-        done: doneLabel(outcome, result.lead, attempts),
+        done: doneLabel(outcome, result?.lead ?? item.lead, attempts),
       },
     }));
     setDoneIds((ids) => [item.lead.id, ...ids.filter((id) => id !== item.lead.id)]);
-    setDoneToday(result.done_today);
+    setDoneToday((d) => (result ? result.done_today : (d ?? data?.done_today ?? 0) + 1));
   }
 
   const helpText =
@@ -497,7 +498,7 @@ function LeadRow({
   badTime?: CallAvoidWindow | null;
   onSaved: (lead: Lead) => void;
   onEmailed: (result: LeadEmailSendResult) => void;
-  onRecorded: (outcome: ProspectingOutcome, result: ProspectingResult) => void;
+  onRecorded: (outcome: ProspectingOutcome, result: ProspectingResult | null) => void;
 }) {
   const lead = item.lead;
   const { data: settings } = useSettings();
@@ -529,7 +530,15 @@ function LeadRow({
         ...(lostReason ? { lost_reason: lostReason } : {}),
         ...(retryOn ? { retry_on: retryOn } : {}),
         ...((channel ?? (mode === 'phone' ? 'phone' : null)) ? { channel: channel ?? 'phone' } : {}),
+        label: `#${lead.number} ${lead.company_name}`,
       });
+      if (!result) {
+        // Sem rede: ficou guardado (o aviso já apareceu); passa ao seguinte.
+        setNote('');
+        setNoteOpen(false);
+        onRecorded(value, null);
+        return;
+      }
       const next = result.lead.next_action_on ? ` Próxima ação a ${formatDate(result.lead.next_action_on)}.` : '';
       const times =
         value === 'no_answer'

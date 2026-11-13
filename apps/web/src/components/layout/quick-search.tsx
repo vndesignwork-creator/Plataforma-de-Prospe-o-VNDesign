@@ -53,6 +53,7 @@ import { useLeadTags } from '@/components/leads/tags';
 import { useSavedViews } from '@/components/leads/saved-views';
 import { DictateButton } from '@/components/ui/dictate-button';
 import { api, errorMessage } from '@/lib/api-client';
+import { announceQueued, isQueuedOffline } from '@/lib/outbox';
 import { useSectors, useSettings } from '@/lib/queries';
 import { readRecentLeads } from '@/lib/recent-leads';
 import { PROSPECTOR_SETTINGS } from '@/lib/role-access';
@@ -369,7 +370,11 @@ function SearchBody({
       toast.success(`Pomodoro a contar em ${lead.company_name}.`);
       onClose();
     } catch (error) {
-      toast.error(errorMessage(error));
+      // Sem rede: ficou guardado e vai quando a rede voltar.
+      if (isQueuedOffline(error)) {
+        announceQueued();
+        onClose();
+      } else toast.error(errorMessage(error));
     } finally {
       setBusy(false);
     }
@@ -382,7 +387,7 @@ function SearchBody({
     setBusy(true);
     try {
       if (compose.kind === 'task') {
-        await api(`/leads/${compose.lead.id}/tasks`, { method: 'POST', body: { title: value } });
+        await api(`/leads/${compose.lead.id}/tasks`, { method: 'POST', body: { title: value }, offline: `Tarefa · #${compose.lead.number} ${compose.lead.company_name}` });
         void qc.invalidateQueries({ queryKey: ['tasks', compose.lead.id] });
         void qc.invalidateQueries({ queryKey: ['today'] });
         toast.success(`Tarefa criada em ${compose.lead.company_name}.`);
@@ -390,6 +395,7 @@ function SearchBody({
         await api(`/leads/${compose.lead.id}/activities`, {
           method: 'POST',
           body: { type: 'call_logged', body: value || undefined },
+          offline: `Chamada · #${compose.lead.number} ${compose.lead.company_name}`,
         });
         toast.success(`Chamada registada em ${compose.lead.company_name}.`);
       }

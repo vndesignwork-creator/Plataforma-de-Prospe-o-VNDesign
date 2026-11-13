@@ -110,7 +110,9 @@ import type {
   PomodoroStats,
 } from '@vndesign/core';
 import { chunkReschedule,
+  ACTIVITY_TYPE_LABELS,
   TEAM_ACTIVITY_PAGE,
+  type ActivityType,
   type LeadCityCount,
   type LeadTagCount,
   type CustomField,
@@ -118,6 +120,7 @@ import { chunkReschedule,
   type DashboardPeriodNumbers,
 } from '@vndesign/core';
 import { api } from './api-client';
+import { announceQueued, isQueuedOffline } from './outbox';
 
 export const qk = {
   me: ['me'] as const,
@@ -360,12 +363,33 @@ export function useInvalidateSectors() {
   };
 }
 
+/** O que se pode mudar sem rede (fica guardado e vai quando a rede voltar). */
+const OFFLINE_LEAD_FIELDS = new Set(['status', 'lost_reason', 'retry_on', 'channel']);
+
 export function useUpdateLead(id: string) {
   const invalidate = useInvalidateLead();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (patch: Partial<LeadCreateInput>) =>
-      api<{ data: Lead }>(`/leads/${id}`, { method: 'PATCH', body: patch }).then((r) => r.data),
+    // Corre mesmo sem rede (por omissão ficava em pausa): sem rede, vai para a fila do aparelho.
+    networkMode: 'always',
+    mutationFn: async (patch: Partial<LeadCreateInput>) => {
+      const cached = qc.getQueryData<Lead>(qk.lead(id));
+      const offlineOk = !!cached && Object.keys(patch).every((k) => OFFLINE_LEAD_FIELDS.has(k));
+      try {
+        return (
+          await api<{ data: Lead }>(`/leads/${id}`, {
+            method: 'PATCH',
+            body: patch,
+            ...(offlineOk ? { offline: `Estado · #${cached!.number} ${cached!.company_name}` } : {}),
+          })
+        ).data;
+      } catch (error) {
+        if (!isQueuedOffline(error) || !cached) throw error;
+        announceQueued();
+        // Sem rede: a ficha mostra já o estado novo (o servidor acerta o resto quando receber).
+        return { ...cached, ...patch } as Lead;
+      }
+    },
     onSuccess: (lead) => {
       qc.setQueryData(qk.lead(id), lead);
       // A lista da Prospeção não se recarrega a meio da sessão (a ordem fica), mas os dados
@@ -381,8 +405,20 @@ export function useUpdateLead(id: string) {
 export function useLogActivity(id: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { type: string; body?: string; payload?: Record<string, unknown> }) =>
-      api<{ data: Activity }>(`/leads/${id}/activities`, { method: 'POST', body }).then((r) => r.data),
+    // Corre mesmo sem rede (por omissão ficava em pausa): sem rede, vai para a fila do aparelho.
+    networkMode: 'always',
+    /** null: sem rede, ficou guardado para enviar depois. */
+    mutationFn: async (body: { type: string; body?: string; payload?: Record<string, unknown> }): Promise<Activity | null> => {
+      const lead = qc.getQueryData<Lead>(qk.lead(id));
+      const what = ACTIVITY_TYPE_LABELS[body.type as ActivityType] ?? 'Registo';
+      try {
+        return (await api<{ data: Activity }>(`/leads/${id}/activities`, { method: 'POST', body, offline: lead ? `${what} · #${lead.number} ${lead.company_name}` : what })).data;
+      } catch (error) {
+        if (!isQueuedOffline(error)) throw error;
+        announceQueued();
+        return null;
+      }
+    },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: qk.activities(id) });
       void qc.invalidateQueries({ queryKey: ['reconnect'] });
@@ -666,7 +702,9 @@ export function useProspectingOutcome() {
   const invalidate = useInvalidateLead();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
+    // Corre mesmo sem rede (por omissão ficava em pausa): sem rede, vai para a fila do aparelho.
+    networkMode: 'always',
+    mutationFn: async ({
       leadId,
       ...body
     }: {
@@ -677,8 +715,21 @@ export function useProspectingOutcome() {
       lost_reason?: LostReason | null;
       retry_on?: string | null;
       channel?: 'phone' | 'whatsapp' | 'email';
-    }) => api<{ data: ProspectingResult }>(`/leads/${leadId}/prospecting`, { method: 'POST', body }).then((r) => r.data),
+      /** Para a fila sem rede ("#12 Café Central"). */
+      label?: string;
+    }): Promise<ProspectingResult | null> => {
+      const { label, ...payload } = body;
+      try {
+        return (await api<{ data: ProspectingResult }>(`/leads/${leadId}/prospecting`, { method: 'POST', body: payload, offline: `Prospeção · ${label ?? 'lead'}` })).data;
+      } catch (error) {
+        if (!isQueuedOffline(error)) throw error;
+        announceQueued();
+        // null: sem rede, ficou guardado (o servidor regista quando a rede voltar).
+        return null;
+      }
+    },
     onSuccess: (result) => {
+      if (!result) return;
       invalidate(result.lead.id);
       void qc.invalidateQueries({ queryKey: ['goals'] });
     },

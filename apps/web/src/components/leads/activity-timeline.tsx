@@ -371,9 +371,10 @@ export function ActivityTimeline({
         toast.success(mentions.length ? `Comentário guardado; ${mentions.length === 1 ? 'a pessoa mencionada foi avisada' : `${mentions.length} pessoas avisadas`}.` : 'Comentário guardado.');
         return;
       }
-      await log.mutateAsync({ type, body: body.trim() || undefined });
+      const saved = await log.mutateAsync({ type, body: body.trim() || undefined });
       close();
-      toast.success('Registado na linha do tempo.');
+      // null: sem rede (ficou guardado; o aviso já apareceu).
+      if (saved) toast.success('Registado na linha do tempo.');
     } catch (error) {
       toast.error(errorMessage(error));
     }

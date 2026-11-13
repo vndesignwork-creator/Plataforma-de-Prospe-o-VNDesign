@@ -11,6 +11,7 @@ import { RunningTimer } from '@/components/projects/running-timer';
 import { ReminderWatcher } from '@/components/tasks/reminder-watcher';
 import { NavigationTracker } from './back-link';
 import { UpdateWatcher } from './update-watcher';
+import { OfflineOutbox } from './offline-outbox';
 import { Avatar } from '@/components/ui/avatar';
 import { startAppBootstrap, useMe, useRole, useSettings } from '@/lib/queries';
 import { prospectorPageAllowed } from '@/lib/role-access';
@@ -230,6 +231,7 @@ export function AppShell({ email, children }: { email: string | null; children: 
       </header>
 
       <main id="conteudo" className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+        <OfflineOutbox />
         {blocked ? null : children}
       </main>
       <QuickSearch

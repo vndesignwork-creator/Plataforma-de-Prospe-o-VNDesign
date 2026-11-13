@@ -108,6 +108,10 @@ Em qualquer página, **Ctrl+K** (⌘K no Mac), o botão **Pesquisar…** na barr
 
 Fora dos campos de texto: **N** novo lead, **/** pesquisar, **?** a lista de atalhos, e **G** seguido de outra tecla para ir a uma página: **G D** Dashboard, **G T** Tarefas, **G L** Leads, **G K** Kanban, **G P** Projetos, **G R** Prospeção, **G M** Mapa, **G E** Estatísticas, **G S** Scripts (só as páginas a que tens acesso). A lista também está no Ctrl+K → *Atalhos de teclado*.
 
+## Sem rede (telemóvel)
+
+Numa visita ou numa zona sem rede, na página que já está aberta (ficha, Prospeção, pesquisa rápida), o que registares fica **guardado neste aparelho**: resultado da Prospeção, chamada ou email registado, mudança de estado, tarefa nova ou concluída. Uma faixa no topo diz "Sem rede" e quantos registos estão por enviar. Quando a rede volta, a plataforma envia-os sozinha, pela ordem em que foram feitos (ou **Enviar agora**), e avisa o que o servidor não aceitou (ex.: um lead que entretanto foi apagado). Mudar de página continua a precisar de rede: os dados dos leads não ficam guardados no telemóvel.
+
 ## Ditar por voz
 
 O botão 🎤 **Ditar** (Registar na linha do tempo, novo lead, gerar leads…) usa o reconhecimento de voz do próprio browser, em português de Portugal: falas e o texto aparece. Sem custos nem IA. Funciona no Chrome, Edge e Safari (computador, Android e iPhone); no Firefox o botão não aparece. Da primeira vez, o browser pede para usar o microfone.
