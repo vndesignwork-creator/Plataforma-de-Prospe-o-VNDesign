@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { StatusIcon } from '@/components/icons/lead-icons';
 import { Card, CardHeader, Skeleton } from '@/components/ui/card';
+import { statsPart } from '@/lib/queries';
 import { api, errorMessage } from '@/lib/api-client';
 import { rovingKeyDown, rovingTabIndex } from '@/lib/roving';
 import { cn } from '@/lib/utils';
@@ -24,7 +25,7 @@ export function CohortFunnelCard({ className }: { className?: string }) {
   const [days, setDays] = useState<FunnelWindow>('90');
   const { data, isLoading, error } = useQuery({
     queryKey: ['stats', 'funnel', days],
-    queryFn: () => api<{ data: CohortFunnel }>('/stats/funnel', { query: { days } }).then((r) => r.data),
+    queryFn: statsPart(`funnel:${days}`, (b) => (String(days) === '90' ? (b.funnel as CohortFunnel | null) : null), () => api<{ data: CohortFunnel }>('/stats/funnel', { query: { days } }).then((r) => r.data)),
   });
   const first = data?.stages[0]?.reached ?? 0;
 

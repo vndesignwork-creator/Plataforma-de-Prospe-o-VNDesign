@@ -4,20 +4,28 @@
  * Definições → Repor a partir de uma cópia: carrega o Excel da cópia de segurança semanal, vê o
  * que falta agora (leads que já não existem e tarefas em falta) e repõe só isso.
  */
-import type { BackupRestorePreview, BackupRestoreResult } from '@vndesign/core';
-import { useQueryClient } from '@tanstack/react-query';
-import { FileUp } from 'lucide-react';
+import { formatDateTime, type BackupRestorePreview, type BackupRestoreResult } from '@vndesign/core';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { FileUp, Save } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
-import { errorMessage } from '@/lib/api-client';
+import { api, errorMessage } from '@/lib/api-client';
 
-async function send<T>(path: string, file: File): Promise<T> {
-  const form = new FormData();
-  form.append('file', file);
-  const res = await fetch(`/api/v1${path}`, { method: 'POST', body: form, credentials: 'same-origin' });
+type Source = { file: File } | { snapshot: string; label: string };
+
+async function send<T>(path: string, source: Source): Promise<T> {
+  let init: RequestInit;
+  if ('file' in source) {
+    const form = new FormData();
+    form.append('file', source.file);
+    init = { method: 'POST', body: form, credentials: 'same-origin' };
+  } else {
+    init = { method: 'POST', body: JSON.stringify({ snapshot: source.snapshot }), headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' };
+  }
+  const res = await fetch(`/api/v1${path}`, init);
   const body = (await res.json().catch(() => null)) as { data?: T; title?: string; detail?: string } | null;
   if (!res.ok) throw Object.assign(new Error(body?.detail ?? body?.title ?? 'Não foi possível ler a cópia.'), { status: res.status });
   return body!.data as T;
@@ -32,19 +40,36 @@ const list = (items: { number: number; company_name: string }[], max = 15) =>
 export function BackupRestore() {
   const qc = useQueryClient();
   const input = useRef<HTMLInputElement>(null);
-  const [file, setFile] = useState<File | null>(null);
+  const [source, setSource] = useState<Source | null>(null);
+  const snapshots = useQuery({
+    queryKey: ['backup-snapshots'],
+    queryFn: () => api<{ data: { id: string; created_at: string; size: number | null }[] }>('/backup/snapshots').then((r) => r.data),
+  });
+  const [saving, setSaving] = useState(false);
+  async function saveNow() {
+    setSaving(true);
+    try {
+      const r = await api<{ data: { leads: number; tasks: number } }>('/backup/snapshots', { method: 'POST' });
+      await qc.invalidateQueries({ queryKey: ['backup-snapshots'] });
+      toast.success(`Cópia feita: ${r.data.leads} leads e ${r.data.tasks} tarefas.`);
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setSaving(false);
+    }
+  }
   const [preview, setPreview] = useState<BackupRestorePreview | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<BackupRestoreResult | null>(null);
 
-  async function choose(f: File | null) {
-    setFile(f);
+  async function choose(next: Source | null) {
+    setSource(next);
     setPreview(null);
     setDone(null);
-    if (!f) return;
+    if (!next) return;
     setBusy(true);
     try {
-      setPreview(await send<BackupRestorePreview>('/backup/restore/preview', f));
+      setPreview(await send<BackupRestorePreview>('/backup/restore/preview', next));
     } catch (e) {
       toast.error(errorMessage(e));
     } finally {
@@ -53,10 +78,10 @@ export function BackupRestore() {
   }
 
   async function restore() {
-    if (!file) return;
+    if (!source) return;
     setBusy(true);
     try {
-      const result = await send<BackupRestoreResult>('/backup/restore', file);
+      const result = await send<BackupRestoreResult>('/backup/restore', source);
       setDone(result);
       setPreview(null);
       for (const key of ['leads', 'board', 'dashboard', 'tasks', 'today']) void qc.invalidateQueries({ queryKey: [key] });
@@ -73,14 +98,53 @@ export function BackupRestore() {
     <Card>
       <CardHeader
         title="Repor a partir de uma cópia"
-        description="Carrega o Excel da cópia de segurança semanal (vem por email). Mostramos o que falta agora e repomos só isso: nada do que existe é alterado ou apagado."
+        description="Escolhe uma das cópias guardadas (as últimas 8) ou carrega o Excel que veio por email. Mostramos o que falta agora e repomos só isso: nada do que existe é alterado ou apagado."
       />
       <div className="flex flex-col gap-3 px-4 pb-4 text-sm">
-        <input ref={input} type="file" accept=".xlsx" className="sr-only" aria-label="Ficheiro da cópia de segurança" onChange={(e) => void choose(e.target.files?.[0] ?? null)} />
-        <Button variant="outline" className="self-start" onClick={() => input.current?.click()} loading={busy && !preview}>
-          <FileUp className="h-4 w-4" aria-hidden /> {file ? 'Escolher outra cópia' : 'Escolher a cópia (.xlsx)'}
+        <section aria-label="Cópias guardadas" className="flex flex-col gap-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="font-medium">Cópias guardadas</h3>
+            <Button size="sm" variant="outline" onClick={() => void saveNow()} loading={saving}>
+              <Save className="h-3.5 w-3.5" aria-hidden /> Fazer uma cópia agora
+            </Button>
+          </div>
+          {snapshots.data?.length ? (
+            <ul className="flex flex-col" aria-label="Cópias guardadas na plataforma">
+              {snapshots.data.map((c) => {
+                const label = formatDateTime(c.created_at);
+                const chosen = source && 'snapshot' in source && source.snapshot === c.id;
+                return (
+                  <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-border py-1.5 first:border-t-0">
+                    <span>
+                      {label}
+                      {c.size ? <span className="text-xs text-muted"> · {Math.max(1, Math.round(c.size / 1024))} KB</span> : null}
+                    </span>
+                    <Button size="sm" variant={chosen ? 'primary' : 'ghost'} onClick={() => void choose({ snapshot: c.id, label })} loading={busy && !!chosen && !preview}>
+                      Ver o que falta
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-xs text-muted">{snapshots.isLoading ? 'A carregar…' : 'Ainda não há cópias guardadas: a cópia semanal passa a ficar aqui, ou faz uma agora.'}</p>
+          )}
+        </section>
+        <input
+          ref={input}
+          type="file"
+          accept=".xlsx"
+          className="sr-only"
+          aria-label="Ficheiro da cópia de segurança"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            void choose(f ? { file: f } : null);
+          }}
+        />
+        <Button variant="outline" className="self-start" onClick={() => input.current?.click()} loading={busy && !!source && 'file' in source && !preview}>
+          <FileUp className="h-4 w-4" aria-hidden /> Carregar o Excel do email (.xlsx)
         </Button>
-        {file ? <p className="text-xs text-muted">{file.name}</p> : null}
+        {source ? <p className="text-xs text-muted">{'file' in source ? source.file.name : `Cópia de ${source.label}`}</p> : null}
 
         {preview ? (
           <div className="flex flex-col gap-2 rounded-lg bg-surface-2 px-3 py-2" role="status">

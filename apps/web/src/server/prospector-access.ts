@@ -11,6 +11,8 @@ type Rule = [methods: string, path: RegExp];
 const ID = '[0-9a-fA-F-]{36}';
 const RULES: Rule[] = [
   ['GET', /^\/me$/],
+  // O que todas as páginas pedem ao abrir (cada parte respeita estas mesmas regras).
+  ['GET', /^\/app\/bootstrap$/],
   ['GET', /^\/me\/sessions$/],
   ['GET PATCH', /^\/me\/profile$/],
   ['GET', /^\/email-check$/],

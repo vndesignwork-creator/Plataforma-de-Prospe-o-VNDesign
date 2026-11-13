@@ -12,7 +12,7 @@ import { ReminderWatcher } from '@/components/tasks/reminder-watcher';
 import { NavigationTracker } from './back-link';
 import { UpdateWatcher } from './update-watcher';
 import { Avatar } from '@/components/ui/avatar';
-import { useMe, useRole, useSettings } from '@/lib/queries';
+import { startAppBootstrap, useMe, useRole, useSettings } from '@/lib/queries';
 import { prospectorPageAllowed } from '@/lib/role-access';
 import { cn } from '@/lib/utils';
 import { Logo } from './logo';
@@ -145,6 +145,8 @@ function SidebarFooter({ email }: { email: string | null }) {
 }
 
 export function AppShell({ email, children }: { email: string | null; children: ReactNode }) {
+  // Um só pedido com o que todas as páginas pedem ao abrir (começa já, antes delas).
+  useState(() => startAppBootstrap());
   const [open, setOpen] = useState(false);
   const role = useRole();
   const pathname = usePathname();

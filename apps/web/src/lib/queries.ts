@@ -115,6 +115,8 @@ import type {
 import { chunkReschedule,
   TEAM_ACTIVITY_PAGE,
   type LeadCityCount,
+  type LeadTagCount,
+  type CustomField,
   type DashboardPeriod,
   type DashboardPeriodNumbers,
 } from '@vndesign/core';
@@ -137,14 +139,17 @@ export interface LeadListResponse {
 }
 
 export function useMe() {
-  return useQuery({ queryKey: qk.me, queryFn: () => api<{ data: Me }>('/me').then((r) => r.data), staleTime: 300_000 });
+  return useQuery({ queryKey: qk.me, queryFn: boot('me', (b) => b.me, () => api<{ data: Me }>('/me').then((r) => r.data)), staleTime: 300_000 });
 }
 
 export function useSectors(includeArchived = false) {
   return useQuery({
     queryKey: qk.sectors(includeArchived),
-    queryFn: () =>
-      api<{ data: Sector[] }>('/sectors', { query: { include_archived: includeArchived || undefined } }).then((r) => r.data),
+    queryFn: boot(
+      `sectors:${includeArchived}`,
+      (b) => (includeArchived ? b.sectors_all : b.sectors),
+      () => api<{ data: Sector[] }>('/sectors', { query: { include_archived: includeArchived || undefined } }).then((r) => r.data),
+    ),
     staleTime: 60_000,
   });
 }
@@ -153,8 +158,11 @@ export function useSectors(includeArchived = false) {
 export function useServices(includeArchived = false) {
   return useQuery({
     queryKey: qk.services(includeArchived),
-    queryFn: () =>
-      api<{ data: Service[] }>('/services', { query: { include_archived: includeArchived || undefined } }).then((r) => r.data),
+    queryFn: boot(
+      `services:${includeArchived}`,
+      (b) => (includeArchived ? b.services_all : b.services),
+      () => api<{ data: Service[] }>('/services', { query: { include_archived: includeArchived || undefined } }).then((r) => r.data),
+    ),
     staleTime: 5 * 60_000,
   });
 }
@@ -163,7 +171,7 @@ export function useServices(includeArchived = false) {
 export function useServiceCategories() {
   return useQuery({
     queryKey: ['service-categories'],
-    queryFn: () => api<{ data: ServiceCategoryItem[] }>('/service-categories').then((r) => r.data),
+    queryFn: boot('service-categories', (b) => b.service_categories, () => api<{ data: ServiceCategoryItem[] }>('/service-categories').then((r) => r.data)),
     staleTime: 5 * 60_000,
   });
 }
@@ -399,50 +407,104 @@ type DashboardBundle = {
   billing: BillingSummary | null;
   site_monitors: SiteMonitorListItem[] | null;
   reconnect: unknown[] | null;
-  preferences: Record<string, unknown>;
 };
-let dashboardBundle: { at: number; promise: Promise<DashboardBundle | null>; used: Set<string> } | null = null;
-/** Só serve aos cartões que se abrem logo a seguir (depois cada um pede o seu, como sempre). */
-const BUNDLE_FRESH_MS = 5000;
-
-/** Começa o pedido único do Dashboard (chamado ao desenhar o Dashboard, antes dos cartões). */
-export function startDashboardBundle() {
-  if (typeof window === 'undefined') return;
-  if (dashboardBundle && Date.now() - dashboardBundle.at < BUNDLE_FRESH_MS) return;
-  dashboardBundle = {
-    at: Date.now(),
-    used: new Set(),
-    promise: api<{ data: DashboardBundle }>('/dashboard/bundle')
-      .then((r) => r.data)
-      .catch(() => null),
+/**
+ * Pedido único (o inicial da aplicação ou o do Dashboard): começa ao desenhar a página, antes
+ * de os cartões se abrirem; cada parte usa-o UMA vez (ao abrir) e só nos primeiros segundos —
+ * depois de uma mudança, cada uma pede os seus dados frescos, como sempre.
+ */
+function makeBundle<B>(path: string, freshMs = 5000) {
+  let current: { at: number; promise: Promise<B | null>; used: Set<string> } | null = null;
+  return {
+    start() {
+      if (typeof window === 'undefined') return;
+      if (current && Date.now() - current.at < freshMs) return;
+      current = {
+        at: Date.now(),
+        used: new Set(),
+        promise: api<{ data: B }>(path)
+          .then((r) => r.data)
+          .catch(() => null),
+      };
+    },
+    async take<T>(key: string, pick: (b: B) => T | null | undefined): Promise<T | undefined> {
+      const c = current;
+      if (!c || Date.now() - c.at > freshMs || c.used.has(key)) return undefined;
+      c.used.add(key);
+      const b = await c.promise;
+      const v = b ? pick(b) : undefined;
+      return v === null ? undefined : v;
+    },
   };
 }
 
-/**
- * A parte do pedido único (se houver um acabado de começar), ou undefined. Cada cartão usa-a
- * UMA vez (ao abrir): depois de uma mudança, o cartão pede outra vez os seus dados, frescos.
- */
-async function fromBundle<T>(key: string, pick: (b: DashboardBundle) => T | null | undefined): Promise<T | undefined> {
-  const current = dashboardBundle;
-  if (!current || Date.now() - current.at > BUNDLE_FRESH_MS || current.used.has(key)) return undefined;
-  current.used.add(key);
-  const b = await current.promise;
-  const v = b ? pick(b) : undefined;
-  return v === null ? undefined : v;
+const dashboardBundle = makeBundle<DashboardBundle>('/dashboard/bundle');
+
+/** Começa o pedido único do Dashboard (chamado ao desenhar o Dashboard, antes dos cartões). */
+export function startDashboardBundle() {
+  dashboardBundle.start();
 }
+
+const fromBundle = <T>(key: string, pick: (b: DashboardBundle) => T | null | undefined) => dashboardBundle.take(key, pick);
 
 /** Os cartões do Dashboard que vêm no pedido único (para o cartão "Clientes antigos"). */
 export function bundled<T>(key: string, pick: (b: DashboardBundle) => T | null | undefined, fallback: () => Promise<T>): () => Promise<T> {
   return async () => (await fromBundle(key, pick)) ?? fallback();
 }
 
+// O pedido único das Estatísticas (as secções que se veem ao abrir).
+type StatsBundle = Record<string, unknown> & { dashboard: Dashboard | null; accounting: { month: string; report: unknown } | null };
+const statsBundle = makeBundle<StatsBundle>('/stats/bundle');
+
+/** Começa o pedido único das Estatísticas (antes de as secções se abrirem). */
+export function startStatsBundle() {
+  statsBundle.start();
+}
+
+/** Uma secção das Estatísticas: a sua parte do pedido único, ou o pedido de sempre. */
+export function statsPart<T>(key: string, pick: (b: StatsBundle) => T | null | undefined, fallback: () => Promise<T>): () => Promise<T> {
+  return async () => (await statsBundle.take(key, pick)) ?? fallback();
+}
+
+// O pedido inicial da aplicação: o que todas as páginas pedem ao abrir.
+type AppBootstrap = {
+  me: Me | null;
+  settings: SettingsWithMail | null;
+  time_running: RunningTimer | null;
+  pomodoro: Pomodoro | null;
+  team_names: { user_id: string; name: string; role: MemberRole; avatar_url: string | null }[] | null;
+  services: Service[] | null;
+  services_all: Service[] | null;
+  service_categories: ServiceCategoryItem[] | null;
+  sectors: Sector[] | null;
+  sectors_all: Sector[] | null;
+  lead_tags: LeadTagCount[] | null;
+  custom_fields: CustomField[] | null;
+  mail_account: { value: MailAccount | null } | null;
+  signature: Signature | null;
+  templates: ContactTemplate[] | null;
+  task_templates: TaskTemplate[] | null;
+  preferences: Record<string, unknown> | null;
+};
+const appBootstrap = makeBundle<AppBootstrap>('/app/bootstrap', 8000);
+
+/** Começa o pedido inicial (chamado pela moldura da aplicação, antes das páginas). */
+export function startAppBootstrap() {
+  appBootstrap.start();
+}
+
+/** Uma parte do pedido inicial (ou o pedido de sempre, se não vier). */
+export function boot<T>(key: string, pick: (b: AppBootstrap) => T | null | undefined, fallback: () => Promise<T>): () => Promise<T> {
+  return async () => (await appBootstrap.take(key, pick)) ?? fallback();
+}
+
 export function usePreference<T>(key: string) {
   return useQuery({
     queryKey: qk.pref(key),
     queryFn: async () => {
-      // As preferências do Dashboard vêm no pedido único (null = ainda não escolhida).
-      const fromDashboard = await fromBundle(`pref:${key}`, (b) => (key in b.preferences ? { value: (b.preferences[key] ?? null) as T | null } : null));
-      if (fromDashboard) return fromDashboard.value;
+      // As preferências vêm no pedido inicial (todas: a que não está lá ainda não foi escolhida).
+      const fromBoot = await appBootstrap.take(`pref:${key}`, (b) => (b.preferences ? { value: (b.preferences[key] ?? null) as T | null } : null));
+      if (fromBoot) return fromBoot.value;
       return api<{ data: { value: T | null } }>(`/preferences/${key}`).then((r) => r.data.value);
     },
     staleTime: Infinity,
@@ -473,7 +535,11 @@ export function useBoard(query: Record<string, string | string[] | undefined>) {
 }
 
 export function useDashboard(enabled = true) {
-  return useQuery({ queryKey: ['dashboard'], queryFn: bundled('dashboard', (b) => b.dashboard, () => api<{ data: Dashboard }>('/dashboard').then((r) => r.data)), enabled });
+  return useQuery({
+    queryKey: ['dashboard'],
+    queryFn: bundled('dashboard', (b) => b.dashboard, statsPart('dashboard', (b) => b.dashboard, () => api<{ data: Dashboard }>('/dashboard').then((r) => r.data))),
+    enabled,
+  });
 }
 
 /** Dashboard: os números de um período com o anterior (para comparar). */
@@ -505,17 +571,17 @@ export type SettingsWithMail = WorkspaceSettings & { mail_configured: boolean; a
 export function useTemplates() {
   return useQuery({
     queryKey: ['templates'],
-    queryFn: () => api<{ data: ContactTemplate[] }>('/templates').then((r) => r.data),
+    queryFn: boot('templates', (b) => b.templates, () => api<{ data: ContactTemplate[] }>('/templates').then((r) => r.data)),
     staleTime: 60_000,
   });
 }
 
 export function useSignature() {
-  return useQuery({ queryKey: ['signature'], queryFn: () => api<{ data: Signature }>('/signature').then((r) => r.data) });
+  return useQuery({ queryKey: ['signature'], queryFn: boot('signature', (b) => b.signature, () => api<{ data: Signature }>('/signature').then((r) => r.data)) });
 }
 
 export function useSettings() {
-  return useQuery({ queryKey: ['settings'], queryFn: () => api<{ data: SettingsWithMail }>('/settings').then((r) => r.data) });
+  return useQuery({ queryKey: ['settings'], queryFn: boot('settings', (b) => b.settings, () => api<{ data: SettingsWithMail }>('/settings').then((r) => r.data)) });
 }
 
 export function useFollowUp(id: string) {
@@ -734,7 +800,7 @@ export function useLeadTasks(leadId: string, enabled = true) {
 export function useTaskTemplates() {
   return useQuery({
     queryKey: ['task-templates'],
-    queryFn: () => api<{ data: TaskTemplate[] }>('/task-templates').then((r) => r.data),
+    queryFn: boot('task-templates', (b) => b.task_templates, () => api<{ data: TaskTemplate[] }>('/task-templates').then((r) => r.data)),
     staleTime: 60_000,
   });
 }
@@ -870,7 +936,10 @@ export function useMarkRepliesHandled() {
 export function useMailAccount() {
   return useQuery({
     queryKey: ['mail-account'],
-    queryFn: () => api<{ data: MailAccount | null }>('/mail-account').then((r) => r.data),
+    queryFn: async () => {
+      const fromBoot = await appBootstrap.take('mail-account', (b) => b.mail_account);
+      return fromBoot ? fromBoot.value : api<{ data: MailAccount | null }>('/mail-account').then((r) => r.data);
+    },
   });
 }
 
@@ -1066,7 +1135,7 @@ export function useProjectTime(leadId: string, enabled = true) {
 export function useRunningTimer(enabled = true) {
   return useQuery({
     queryKey: ['time', 'running'],
-    queryFn: () => api<{ data: RunningTimer }>('/time/running').then((r) => r.data),
+    queryFn: boot('time-running', (b) => b.time_running, () => api<{ data: RunningTimer }>('/time/running').then((r) => r.data)),
     enabled,
     staleTime: 30_000,
   });
@@ -1253,7 +1322,11 @@ export function useRenewals(leadId: string, enabled = true) {
 }
 
 export function useRecurringSummary(enabled = true) {
-  return useQuery({ queryKey: ['renewals', 'summary'], queryFn: () => api<{ data: RecurringSummary }>('/renewals/summary').then((r) => r.data), enabled });
+  return useQuery({
+    queryKey: ['renewals', 'summary'],
+    queryFn: statsPart('recurring', (b) => b.recurring as RecurringSummary | null, () => api<{ data: RecurringSummary }>('/renewals/summary').then((r) => r.data)),
+    enabled,
+  });
 }
 
 export function useSaveRenewal(leadId: string) {
@@ -1554,7 +1627,7 @@ export function useSetCalendarFeed() {
 export function useProfitability(enabled = true) {
   return useQuery({
     queryKey: ['profitability'],
-    queryFn: () => api<{ data: Profitability }>('/stats/profitability').then((r) => r.data),
+    queryFn: statsPart('profitability', (b) => b.profitability as Profitability | null, () => api<{ data: Profitability }>('/stats/profitability').then((r) => r.data)),
     enabled,
   });
 }
@@ -1609,7 +1682,7 @@ export function useCancelMeeting(leadId: string) {
 export function usePomodoro(enabled = true) {
   return useQuery({
     queryKey: ['pomodoro'],
-    queryFn: () => api<{ data: Pomodoro }>('/pomodoro').then((r) => r.data),
+    queryFn: boot('pomodoro', (b) => b.pomodoro, () => api<{ data: Pomodoro }>('/pomodoro').then((r) => r.data)),
     enabled,
     staleTime: 30_000,
   });
@@ -1636,7 +1709,7 @@ export function usePomodoroAction() {
 export function usePomodoroStats(enabled = true) {
   return useQuery({
     queryKey: ['pomodoro-stats'],
-    queryFn: () => api<{ data: PomodoroStats }>('/stats/pomodoros').then((r) => r.data),
+    queryFn: statsPart('pomodoros', (b) => b.pomodoros as PomodoroStats | null, () => api<{ data: PomodoroStats }>('/stats/pomodoros').then((r) => r.data)),
     enabled,
   });
 }
@@ -1652,7 +1725,7 @@ export function useTeam(enabled = true) {
 export function useTeamNames(enabled = true) {
   return useQuery({
     queryKey: ['team', 'names'],
-    queryFn: () => api<{ data: { user_id: string; name: string; role: MemberRole; avatar_url: string | null }[] }>('/team/names').then((r) => r.data),
+    queryFn: boot('team-names', (b) => b.team_names, () => api<{ data: { user_id: string; name: string; role: MemberRole; avatar_url: string | null }[] }>('/team/names').then((r) => r.data)),
     enabled,
     staleTime: 300_000,
   });

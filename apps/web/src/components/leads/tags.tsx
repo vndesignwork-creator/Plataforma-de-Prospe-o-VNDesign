@@ -12,14 +12,14 @@ import Link from 'next/link';
 import { useId, useState } from 'react';
 import { toast } from 'sonner';
 import { api, errorMessage } from '@/lib/api-client';
-import { useUpdateLead } from '@/lib/queries';
+import { boot, useUpdateLead } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
 /** Etiquetas usadas no workspace (mais usadas primeiro). */
 export function useLeadTags(enabled = true) {
   return useQuery({
     queryKey: ['lead-tags'],
-    queryFn: () => api<{ data: LeadTagCount[] }>('/leads/tags').then((r) => r.data),
+    queryFn: boot('lead-tags', (b) => b.lead_tags, () => api<{ data: LeadTagCount[] }>('/leads/tags').then((r) => r.data)),
     enabled,
     staleTime: 60_000,
   });

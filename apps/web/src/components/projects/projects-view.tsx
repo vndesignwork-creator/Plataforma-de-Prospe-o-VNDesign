@@ -99,6 +99,9 @@ const PROJECT_KPI_BOARD: Board<ProjectKpi> = {
   description: 'A ordem dos números do topo dos Projetos e os que queres ver.',
 };
 
+
+/** Projetos desenhados de cada vez (os restantes com "Mostrar mais"). */
+const PROJECTS_PAGE = 30;
 export function ProjectsView() {
   const [view, setView] = useState<View>('list');
   const [state, setState] = useState<'active' | 'completed'>('active');
@@ -194,6 +197,9 @@ export function ProjectsView() {
     onDragEnd: ({ active, over }) => (over ? `${nameOf(active.id)} largado na posição ${position(over.id)}.` : 'Movimento cancelado.'),
     onDragCancel: () => 'Movimento cancelado.',
   };
+
+  const [limit, setLimit] = useState(PROJECTS_PAGE);
+  const rendered = (shown ?? []).slice(0, limit);
 
   /** Arrastar um projeto: passa a "A minha ordem" (a partir da ordem que se estava a ver). */
   function onDragEnd({ active, over }: DragEndEvent) {
@@ -410,14 +416,24 @@ export function ProjectsView() {
           {/* Cada projeto no seu cartão, com espaço entre eles (separa bem um projeto do seguinte). */}
           {/* Pega ⠿ em cada projeto: arrastar muda a ordem (Ordenar por → A minha ordem). */}
           <DndContext sensors={sensors} modifiers={[verticalOnly]} collisionDetection={closestCenter} onDragEnd={onDragEnd} accessibility={{ announcements }}>
-            <SortableContext items={(shown ?? []).map((p) => p.lead.id)} strategy={verticalListSortingStrategy}>
+            <SortableContext items={rendered.map((p) => p.lead.id)} strategy={verticalListSortingStrategy}>
               <ul className="flex flex-col gap-5" aria-label={state === 'active' ? 'Projetos em curso' : 'Projetos concluídos'}>
-                {(shown ?? []).map((p) => (
+                {rendered.map((p) => (
                   <ProjectRow key={p.lead.id} project={p} today={today} features={features} onWrapUp={setWrapUp} sortable={(shown?.length ?? 0) > 1} />
                 ))}
               </ul>
             </SortableContext>
           </DndContext>
+          {/* Com muitos projetos, desenhar todos deixa a página lenta: os primeiros e "Mostrar mais". */}
+          {(shown?.length ?? 0) > rendered.length ? (
+            <button
+              type="button"
+              onClick={() => setLimit((n) => n + PROJECTS_PAGE)}
+              className="self-center rounded-lg border border-dashed border-border px-4 py-2 text-sm font-medium text-accent-text hover:bg-surface-3"
+            >
+              Mostrar mais {Math.min(PROJECTS_PAGE, (shown?.length ?? 0) - rendered.length)} projetos (faltam {(shown?.length ?? 0) - rendered.length})
+            </button>
+          ) : null}
         </>
       )}
       {wrapUp ? <WrapUpDialog lead={wrapUp} onClose={() => setWrapUp(null)} /> : null}

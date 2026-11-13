@@ -28,10 +28,11 @@ export async function sendBackup(ctx: ApiContext): Promise<{ sent_to: string; le
   const settings = await getSettings(ctx);
   const recipient = settings.weekly_backup.recipient || ctx.user.email;
   if (!recipient) throw new ApiError(422, 'Falta o destinatário', 'Indica para que email vai a cópia em Definições → Funcionalidades.');
-  const [leads, services] = await Promise.all([listAllLeads(ctx, { archived: 'include' }), loadServiceCatalog(ctx)]);
+  const { filename, content, leads, tasks } = await buildBackup(ctx);
+  // Fica também guardada na plataforma (mesmo que o email falhe).
+  await storeBackup(ctx.workspaceId, filename, content).catch((e) => console.warn('[cópia] guardar', e instanceof Error ? e.message : e));
+  const attachment = { filename, content, contentType: XLSX };
   const today = todayIso();
-  const tasks = await backupTasks(ctx, leads);
-  const attachment = { filename: `copia-leads-vndesign-${today}.xlsx`, content: await leadsToXlsx(leads, services, [], tasks), contentType: XLSX };
   const text = [
     'Olá!',
     '',
@@ -55,6 +56,55 @@ export async function sendBackup(ctx: ApiContext): Promise<{ sent_to: string; le
 
   await saveLastSent(ctx.workspaceId, settings);
   return { sent_to: recipient, leads: leads.length };
+}
+
+/** O Excel da cópia: todos os leads (também os arquivados) e, na folha "Tarefas", as tarefas. */
+async function buildBackup(ctx: ApiContext): Promise<{ filename: string; content: Buffer; leads: { length: number }; tasks: BackupTask[] }> {
+  const [leads, services] = await Promise.all([listAllLeads(ctx, { archived: 'include' }), loadServiceCatalog(ctx)]);
+  const tasks = await backupTasks(ctx, leads);
+  return { filename: `copia-leads-vndesign-${todayIso()}.xlsx`, content: await leadsToXlsx(leads, services, [], tasks), leads, tasks };
+}
+
+// ---------------------------------------------------------------------------
+// Cópias guardadas na plataforma (as últimas 8), para repor sem procurar o email.
+// ---------------------------------------------------------------------------
+const BUCKET = 'backups';
+export const KEEP_BACKUPS = 8;
+
+async function storeBackup(workspaceId: string, filename: string, content: Buffer): Promise<string> {
+  const storage = createSupabaseAdminClient().storage.from(BUCKET);
+  const name = `${new Date().toISOString().replace(/[:.]/g, '-')}__${filename}`;
+  const { error } = await storage.upload(`${workspaceId}/${name}`, content, { contentType: XLSX, upsert: false });
+  if (error) throw new Error(error.message);
+  // Só as últimas 8.
+  const { data } = await storage.list(workspaceId, { limit: 100, sortBy: { column: 'name', order: 'desc' } });
+  const old = (data ?? []).filter((f) => f.name.endsWith('.xlsx')).slice(KEEP_BACKUPS);
+  if (old.length) await storage.remove(old.map((f) => `${workspaceId}/${f.name}`));
+  return name;
+}
+
+/** Guarda já uma cópia (sem email): "Fazer uma cópia agora". */
+export async function saveBackupNow(ctx: ApiContext): Promise<{ id: string; leads: number; tasks: number }> {
+  const { filename, content, leads, tasks } = await buildBackup(ctx);
+  const id = await storeBackup(ctx.workspaceId, filename, content);
+  return { id, leads: leads.length, tasks: tasks.length };
+}
+
+/** As cópias guardadas (a mais recente primeiro). */
+export async function listStoredBackups(ctx: ApiContext): Promise<{ id: string; created_at: string; size: number | null }[]> {
+  const { data, error } = await createSupabaseAdminClient().storage.from(BUCKET).list(ctx.workspaceId, { limit: 100, sortBy: { column: 'name', order: 'desc' } });
+  if (error) return [];
+  return (data ?? [])
+    .filter((f) => f.name.endsWith('.xlsx'))
+    .map((f) => ({ id: f.name, created_at: f.created_at ?? new Date().toISOString(), size: (f.metadata as { size?: number } | null)?.size ?? null }));
+}
+
+/** Uma cópia guardada, como ficheiro (para a reposição). */
+export async function storedBackupFile(ctx: ApiContext, id: string): Promise<File> {
+  if (!/^[\w.-]+\.xlsx$/.test(id)) throw new ApiError(400, 'Cópia inválida');
+  const { data, error } = await createSupabaseAdminClient().storage.from(BUCKET).download(`${ctx.workspaceId}/${id}`);
+  if (error || !data) throw new ApiError(404, 'Cópia não encontrada', 'Esta cópia já não está guardada (ficam as últimas 8).');
+  return new File([await data.arrayBuffer()], id.split('__').pop() ?? id, { type: XLSX });
 }
 
 async function saveLastSent(workspaceId: string, settings: WorkspaceSettings) {

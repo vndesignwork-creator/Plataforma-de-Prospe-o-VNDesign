@@ -15,7 +15,7 @@ import { ServiceIcon, useServiceCatalog } from '@/components/services/services';
 import { Card, CardHeader, EmptyState, Skeleton } from '@/components/ui/card';
 import { api, errorMessage } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
-import { useDashboard, useRole, useSectors, useSettings, useTeamNames } from '@/lib/queries';
+import { useDashboard, useRole, useSectors, useSettings, useTeamNames, startStatsBundle, statsPart } from '@/lib/queries';
 import { EmailStatsSection } from './email-stats';
 import { LostReasonsCard } from './lost-reasons';
 import { CohortFunnelCard } from './cohort-funnel';
@@ -32,7 +32,7 @@ const euros = (v: number) => formatCurrency(v, { decimals: false });
 function OriginsCard() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard', 'origins'],
-    queryFn: () => api<{ data: OriginStats }>('/dashboard/origins').then((r) => r.data),
+    queryFn: statsPart('origins', (b) => b.origins as OriginStats | null, () => api<{ data: OriginStats }>('/dashboard/origins').then((r) => r.data)),
   });
   const rows = (data ?? []).filter((r) => r.leads > 0).sort((a, b) => Number(!a.origin) - Number(!b.origin) || b.leads - a.leads);
   return (
@@ -189,6 +189,8 @@ function AllTimeCard({ items }: { items: { label: string; value: ReactNode; hint
 }
 
 function OwnerStats() {
+  // Um só pedido para as secções todas (começa já, antes de as secções se abrirem).
+  useState(() => startStatsBundle());
   const { data: team } = useTeamNames();
   const catalog = useServiceCatalog();
   const { data, isLoading, error } = useDashboard();

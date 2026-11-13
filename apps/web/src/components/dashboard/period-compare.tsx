@@ -8,6 +8,7 @@ import { COMPARE_METRIC_LABELS, compareDelta, formatCurrency, formatDate, type C
 import { useQuery } from '@tanstack/react-query';
 import { ArrowDown, ArrowUp, Minus } from 'lucide-react';
 import { Card, CardHeader, Skeleton } from '@/components/ui/card';
+import { statsPart } from '@/lib/queries';
 import { api, errorMessage } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 
@@ -35,7 +36,7 @@ export function ComparePeriodSwitch({ period, onChange }: { period: ComparePerio
 export function PeriodCompareCard({ period }: { period: ComparePeriod }) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['stats-compare', period],
-    queryFn: () => api<{ data: PeriodCompare }>('/stats/compare', { query: { period } }).then((r) => r.data),
+    queryFn: statsPart(`compare:${period}`, (b) => (period === 'month' ? (b.compare as PeriodCompare | null) : null), () => api<{ data: PeriodCompare }>('/stats/compare', { query: { period } }).then((r) => r.data)),
   });
   return (
     <Card>

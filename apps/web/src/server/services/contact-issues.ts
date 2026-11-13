@@ -2,7 +2,7 @@
  * Leads → Contactos a corrigir: emails que voltaram para trás ou de domínios que não recebem
  * emails, telefones mal escritos e o mesmo telefone em leads diferentes.
  */
-import { isGenericEmailDomain, phoneKey, phoneProblem, splitPhones, type ContactIssue, type ContactIssues } from '@vndesign/core';
+import { isGenericEmailDomain, phoneKey, phoneProblem, splitPhones, tidyEmail, tidyPhoneField, type ContactFormatChange, type ContactIssue, type ContactIssues } from '@vndesign/core';
 import type { ApiContext } from '../context';
 import { checkEmailDomain } from '../email-check';
 import { fromPostgrest } from '../http';
@@ -96,4 +96,55 @@ export async function contactIssues(ctx: ApiContext): Promise<ContactIssues> {
     domains_checked: toCheck.length,
     domains_pending: Math.max(0, domains.length - toCheck.length),
   };
+}
+
+/** "Arrumar formatos": o que mudaria (telefones como +351 912 345 678, emails em minúsculas). */
+export async function contactFormatChanges(ctx: ApiContext): Promise<ContactFormatChange[]> {
+  const out: ContactFormatChange[] = [];
+  for (let from = 0; from < 20_000; from += 1000) {
+    const { data, error } = await ctx.supabase
+      .from('leads')
+      .select('id, number, company_name, email, phone')
+      .eq('workspace_id', ctx.workspaceId)
+      .is('anonymized_at', null)
+      .or('email.not.is.null,phone.not.is.null')
+      .order('number')
+      .range(from, from + 999);
+    if (error) throw fromPostgrest(error);
+    for (const r of (data ?? []) as Pick<Row, 'id' | 'number' | 'company_name' | 'email' | 'phone'>[]) {
+      const phone = tidyPhoneField(r.phone);
+      if (phone) out.push({ id: r.id, number: r.number, company_name: r.company_name, field: 'phone', from: r.phone!, to: phone });
+      const email = tidyEmail(r.email);
+      if (email) out.push({ id: r.id, number: r.number, company_name: r.company_name, field: 'email', from: r.email!, to: email });
+    }
+    if ((data?.length ?? 0) < 1000) break;
+  }
+  return out;
+}
+
+/** Grava os telefones e emails indicados (o "Arrumar formatos" e o "Anular"). */
+export async function applyContactFormat(ctx: ApiContext, items: { id: string; phone?: string | null; email?: string | null }[]): Promise<number> {
+  let changed = 0;
+  for (let i = 0; i < items.length; i += 20) {
+    const results = await Promise.all(
+      items.slice(i, i + 20).map((item) => {
+        const patch: Record<string, string | null> = {};
+        if (item.phone !== undefined) patch.phone = item.phone || null;
+        if (item.email !== undefined) patch.email = item.email || null;
+        if (!Object.keys(patch).length) return Promise.resolve(0);
+        return ctx.supabase
+          .from('leads')
+          .update(patch)
+          .eq('workspace_id', ctx.workspaceId)
+          .eq('id', item.id)
+          .select('id')
+          .then(({ data, error }) => {
+            if (error) throw fromPostgrest(error);
+            return data?.length ?? 0;
+          });
+      }),
+    );
+    changed += results.reduce((a, b) => a + b, 0);
+  }
+  return changed;
 }

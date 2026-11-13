@@ -48,7 +48,7 @@ test('Contactos a corrigir: telefone com dígitos a menos e o mesmo telefone em 
 
 test('Dashboard: os cartões vêm num só pedido', async ({ page }) => {
   const bundle = (await (await page.request.get('/api/v1/dashboard/bundle')).json()).data as Record<string, unknown>;
-  for (const key of ['dashboard', 'today', 'period', 'goals', 'replies', 'preferences']) expect(bundle).toHaveProperty(key);
+  for (const key of ['dashboard', 'today', 'period', 'goals', 'replies']) expect(bundle).toHaveProperty(key);
   const asked: string[] = [];
   page.on('request', (r) => {
     const path = new URL(r.url()).pathname;
@@ -108,5 +108,68 @@ test('Repor a partir de uma cópia: só o lead que falta (com o mesmo número) e
   expect(back[0]).toMatchObject({ number: lead.number, city: 'Braga' });
   const restoredTasks = (await (await page.request.get(`/api/v1/leads/${back[0]!.id}/tasks`)).json()).data as { title: string }[];
   expect(restoredTasks.map((t) => t.title).sort()).toEqual([`Enviar proposta ${run}`, `Ligar ${run}`]);
+  await page.request.delete(`/api/v1/leads/${back[0]!.id}`);
+});
+
+test('Ao abrir: o que todas as páginas pedem vem num só pedido; Estatísticas num só pedido', async ({ page }) => {
+  const asked: string[] = [];
+  page.on('request', (r) => {
+    const u = new URL(r.url());
+    if (u.pathname.startsWith('/api/v1/')) asked.push(u.pathname);
+  });
+  await page.goto('/estatisticas');
+  await expect(page.getByRole('heading', { name: 'Estatísticas', level: 1 })).toBeVisible();
+  await page.waitForLoadState('networkidle');
+  expect(asked).toContain('/api/v1/app/bootstrap');
+  expect(asked).toContain('/api/v1/stats/bundle');
+  for (const path of ['/api/v1/me', '/api/v1/settings', '/api/v1/services', '/api/v1/sectors', '/api/v1/team/names', '/api/v1/stats/compare', '/api/v1/stats/funnel', '/api/v1/dashboard/origins', '/api/v1/stats/lost-reasons']) {
+    expect(asked, path).not.toContain(path);
+  }
+  // Os dados aparecem (vindos do pedido único).
+  await expect(page.getByRole('table', { name: 'Leads por origem' })).toBeVisible();
+});
+
+test('Arrumar formatos: telefones como +351 912 345 678 e emails em minúsculas, com Anular', async ({ page }) => {
+  const phone = `91${String(Date.now()).slice(-7)}`;
+  const lead = (await (await page.request.post('/api/v1/leads?force=true', { data: { company_name: `Formato ${run}`, phone } })).json()).data as { id: string; number: number };
+  try {
+    const changes = (await (await page.request.get('/api/v1/leads/contact-format')).json()).data as { id: string; field: string; to: string }[];
+    const pretty = `+351 ${phone.slice(0, 3)} ${phone.slice(3, 6)} ${phone.slice(6)}`;
+    expect(changes.find((c) => c.id === lead.id && c.field === 'phone')?.to).toBe(pretty);
+    await page.goto('/leads/contactos');
+    await page.getByRole('button', { name: 'Ver o que muda' }).click();
+    await expect(page.getByRole('list', { name: 'O que muda' }).getByText(`#${lead.number} Formato ${run}`)).toBeVisible();
+    await page.getByRole('button', { name: 'Arrumar formatos' }).click();
+    await expect(page.getByText(/Arrumados os contactos de \d+ leads?\./)).toBeVisible();
+    expect(((await (await page.request.get(`/api/v1/leads/${lead.id}`)).json()).data as { phone: string }).phone).toBe(pretty);
+    await page.getByRole('button', { name: 'Anular' }).click();
+    await expect.poll(async () => ((await (await page.request.get(`/api/v1/leads/${lead.id}`)).json()).data as { phone: string }).phone).toBe(phone);
+  } finally {
+    await page.request.delete(`/api/v1/leads/${lead.id}`);
+  }
+});
+
+test('Cópias guardadas: fazer uma agora e repor a partir dela (sem ficheiros)', async ({ page }) => {
+  const name = `Guardada ${run}`;
+  const lead = (await (await page.request.post('/api/v1/leads?force=true', { data: { company_name: name } })).json()).data as { id: string; number: number };
+  await page.request.post(`/api/v1/leads/${lead.id}/tasks`, { data: { title: `Tarefa guardada ${run}` } });
+  await page.goto('/definicoes/repor');
+  await page.getByRole('button', { name: 'Fazer uma cópia agora' }).click();
+  await expect(page.getByText(/^Cópia feita: \d+ leads e \d+ tarefas\.$/)).toBeVisible();
+  const copies = page.getByRole('list', { name: 'Cópias guardadas na plataforma' });
+  await expect(copies.getByRole('listitem').first()).toBeVisible();
+
+  // Apagado de vez: a cópia guardada repõe-no (com a tarefa).
+  await page.request.delete(`/api/v1/leads/${lead.id}`);
+  const trash = (await (await page.request.get('/api/v1/leads/trash')).json()).data as { id: string; number: number }[];
+  await page.request.delete('/api/v1/leads/trash', { data: { ids: [trash.find((t) => t.number === lead.number)!.id] } });
+  await copies.getByRole('button', { name: 'Ver o que falta' }).first().click();
+  await expect(page.getByRole('status').filter({ hasText: `#${lead.number} ${name}` })).toBeVisible();
+  await page.getByRole('button', { name: 'Repor o que falta' }).click();
+  await expect(page.getByText(/^Pronto: 1 lead reposto e \d+ tarefas? reposta/)).toBeVisible();
+  const back = (await (await page.request.get(`/api/v1/leads?q=${encodeURIComponent(name)}`)).json()).data as { id: string; number: number }[];
+  expect(back[0]?.number).toBe(lead.number);
+  const tasks = (await (await page.request.get(`/api/v1/leads/${back[0]!.id}/tasks`)).json()).data as { title: string }[];
+  expect(tasks.map((t) => t.title)).toContain(`Tarefa guardada ${run}`);
   await page.request.delete(`/api/v1/leads/${back[0]!.id}`);
 });

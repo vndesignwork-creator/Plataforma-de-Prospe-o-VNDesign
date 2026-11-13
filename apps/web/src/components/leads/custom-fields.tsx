@@ -14,12 +14,12 @@ import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { api, errorMessage } from '@/lib/api-client';
-import { useUpdateLead } from '@/lib/queries';
+import { boot, useUpdateLead } from '@/lib/queries';
 
 export function useCustomFields() {
   return useQuery({
     queryKey: ['custom-fields'],
-    queryFn: () => api<{ data: CustomField[] }>('/custom-fields').then((r) => r.data),
+    queryFn: boot('custom-fields', (b) => b.custom_fields, () => api<{ data: CustomField[] }>('/custom-fields').then((r) => r.data)),
     staleTime: 5 * 60_000,
   });
 }

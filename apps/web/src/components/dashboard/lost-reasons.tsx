@@ -6,12 +6,13 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { BarList } from '@/components/charts/bar-list';
 import { Card, CardHeader, Skeleton } from '@/components/ui/card';
+import { statsPart } from '@/lib/queries';
 import { api } from '@/lib/api-client';
 
 export function LostReasonsCard() {
   const { data, isLoading } = useQuery({
     queryKey: ['stats-lost-reasons'],
-    queryFn: () => api<{ data: LostReasonCount[] }>('/stats/lost-reasons').then((r) => r.data),
+    queryFn: statsPart('lost-reasons', (b) => b.lost_reasons as LostReasonCount[] | null, () => api<{ data: LostReasonCount[] }>('/stats/lost-reasons').then((r) => r.data)),
   });
   const withReason = (data ?? []).filter((r) => r.reason).reduce((s, r) => s + r.count, 0);
   return (

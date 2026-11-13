@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Select } from '@/components/ui/input';
+import { statsPart } from '@/lib/queries';
 import { api } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 
@@ -21,7 +22,7 @@ export function EmailStatsSection() {
   const [days, setDays] = useState(90);
   const { data, isLoading } = useQuery({
     queryKey: ['stats-emails', days],
-    queryFn: () => api<{ data: EmailStats }>('/stats/emails', { query: { days } }).then((r) => r.data),
+    queryFn: statsPart(`emails:${days}`, (b) => (days === 90 ? (b.emails as EmailStats | null) : null), () => api<{ data: EmailStats }>('/stats/emails', { query: { days } }).then((r) => r.data)),
   });
   const period = (
     <Select value={String(days)} onChange={(e) => setDays(Number(e.target.value))} aria-label="Período dos emails" className="h-8 w-auto py-0 text-sm">

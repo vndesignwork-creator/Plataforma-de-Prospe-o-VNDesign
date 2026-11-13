@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { buttonClasses } from '@/components/ui/button';
 import { Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Select } from '@/components/ui/input';
+import { statsPart } from '@/lib/queries';
 import { api, errorMessage } from '@/lib/api-client';
 
 export function AccountingSection() {
@@ -16,7 +17,7 @@ export function AccountingSection() {
   const [month, setMonth] = useState(months[1]!);
   const { data, isLoading, error } = useQuery({
     queryKey: ['accounting', month],
-    queryFn: () => api<{ data: AccountingReport }>(`/reports/accounting?month=${month}`).then((r) => r.data),
+    queryFn: statsPart(`accounting:${month}`, (b) => (b.accounting?.month === month ? (b.accounting.report as AccountingReport) : null), () => api<{ data: AccountingReport }>(`/reports/accounting?month=${month}`).then((r) => r.data)),
   });
   const base = `/api/v1/reports/accounting?month=${month}`;
   const items = data

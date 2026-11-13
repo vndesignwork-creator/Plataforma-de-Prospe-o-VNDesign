@@ -52,6 +52,8 @@ import {
   ClientErrorReportSchema,
   AuditEventSchema,
   ContactIssuesSchema,
+  ContactFormatChangeSchema,
+  ContactFormatApplySchema,
   BackupRestorePreviewSchema,
   BackupRestoreResultSchema,
   FreeAuditFormStatsSchema,
@@ -452,6 +454,10 @@ export function getOpenApiDocument() {
           responses: { '200': ok(data(ContactIssuesSchema)), ...common },
         }),
       },
+      '/leads/contact-format': {
+        get: op({ tags: ['Leads'], summary: 'Arrumar formatos: o que mudaria (telefones como +351 912 345 678, emails em minúsculas e sem espaços). Não muda nada.', responses: { '200': ok(data(z.array(ContactFormatChangeSchema))), ...common } }),
+        post: op({ tags: ['Leads'], summary: 'Grava os telefones e emails indicados (o "Arrumar formatos" e o "Anular")', requestBody: body(ContactFormatApplySchema), responses: { '200': { description: '{ data: { changed } }' }, ...common } }),
+      },
       '/leads/cities': {
         get: op({
           tags: ['Leads'],
@@ -575,11 +581,22 @@ export function getOpenApiDocument() {
           responses: { '200': ok(data(PlatformStatusSchema)), ...common },
         }),
       },
+      '/backup/snapshots': {
+        get: op({ tags: ['Definições'], summary: 'As cópias de segurança guardadas na plataforma (as últimas 8)', responses: { '200': { description: '{ data: [{ id, created_at, size }] }' }, ...common } }),
+        post: op({ tags: ['Definições'], summary: 'Fazer já uma cópia de segurança (fica guardada na plataforma; sem email)', responses: { '201': { description: '{ data: { id, leads, tasks } }' }, ...common } }),
+      },
+      '/stats/bundle': {
+        get: op({
+          tags: ['Dashboard'],
+          summary: 'O que a página Estatísticas mostra ao abrir, num só pedido (dashboard, comparação do mês, funil, origens, motivos, emails, rentabilidade, recorrente, contabilidade do mês passado e pomodoros); as partes que falhem vêm a null',
+          responses: { '200': { description: '{ data: { dashboard, compare, funnel, origins, lost_reasons, emails, profitability, recurring, accounting: { month, report }, pomodoros } }' }, ...common },
+        }),
+      },
       '/backup/restore/preview': {
         post: op({
           tags: ['Definições'],
-          summary: 'Repor a partir de uma cópia: o que o Excel da cópia tem e falta agora (leads pelo número e tarefas). Não altera nada.',
-          requestBody: { content: { 'multipart/form-data': { schema: z.object({ file: z.string().meta({ format: 'binary' }) }) } } },
+          summary: 'Repor a partir de uma cópia: o que o Excel da cópia (ficheiro, ou { snapshot } de uma cópia guardada) tem e falta agora. Não altera nada.',
+          requestBody: { content: { 'multipart/form-data': { schema: z.object({ file: z.string().meta({ format: 'binary' }) }) }, 'application/json': { schema: z.object({ snapshot: z.string() }) } } },
           responses: { '200': ok(data(BackupRestorePreviewSchema)), ...common },
         }),
       },
@@ -587,7 +604,7 @@ export function getOpenApiDocument() {
         post: op({
           tags: ['Definições'],
           summary: 'Repor a partir de uma cópia: repõe só o que falta (leads com o mesmo número e as suas tarefas); nada do que existe muda',
-          requestBody: { content: { 'multipart/form-data': { schema: z.object({ file: z.string().meta({ format: 'binary' }) }) } } },
+          requestBody: { content: { 'multipart/form-data': { schema: z.object({ file: z.string().meta({ format: 'binary' }) }) }, 'application/json': { schema: z.object({ snapshot: z.string() }) } } },
           responses: { '200': ok(data(BackupRestoreResultSchema)), ...common },
         }),
       },
@@ -600,11 +617,18 @@ export function getOpenApiDocument() {
       '/platform/problems/{id}/resolve': {
         post: op({ tags: ['Definições'], summary: 'Marcar um problema como resolvido', requestParams: { path: idParam }, responses: { '204': { description: 'Resolvido' }, ...withNotFound } }),
       },
+      '/app/bootstrap': {
+        get: op({
+          tags: ['Conta'],
+          summary: 'O que todas as páginas pedem ao abrir, num só pedido: perfil, definições, serviços, setores, etiquetas, campos, equipa, modelos, email de envio, assinatura, temporizador, pomodoro e todas as preferências; as partes que falhem (ou que o papel não deixa ver) vêm a null',
+          responses: { '200': { description: '{ data: { me, settings, time_running, pomodoro, team_names, services, services_all, service_categories, sectors, sectors_all, lead_tags, custom_fields, mail_account: { value }, signature, templates, task_templates, preferences } }' }, ...common },
+        }),
+      },
       '/dashboard/bundle': {
         get: op({
           tags: ['Dashboard'],
-          summary: 'Tudo o que o Dashboard mostra num só pedido (dashboard, hoje, mês, metas, respostas, projetos, faturação, sites, clientes antigos e preferências); as partes que falhem vêm a null',
-          responses: { '200': { description: '{ data: { dashboard, today, period, goals, replies, projects, billing, site_monitors, reconnect, preferences } }' }, ...common },
+          summary: 'Tudo o que o Dashboard mostra num só pedido (dashboard, hoje, mês, metas, respostas, projetos, faturação, sites, clientes antigos); as partes que falhem vêm a null',
+          responses: { '200': { description: '{ data: { dashboard, today, period, goals, replies, projects, billing, site_monitors, reconnect } }' }, ...common },
         }),
       },
       '/dashboard/origins': {
