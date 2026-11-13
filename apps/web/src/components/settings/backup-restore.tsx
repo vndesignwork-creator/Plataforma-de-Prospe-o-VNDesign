@@ -12,7 +12,7 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
-import { api, errorMessage } from '@/lib/api-client';
+import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 
 type Source = { file: File } | { snapshot: string; label: string };
 
@@ -26,8 +26,8 @@ async function send<T>(path: string, source: Source): Promise<T> {
     init = { method: 'POST', body: JSON.stringify({ snapshot: source.snapshot }), headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' };
   }
   const res = await fetch(`/api/v1${path}`, init);
-  const body = (await res.json().catch(() => null)) as { data?: T; title?: string; detail?: string } | null;
-  if (!res.ok) throw Object.assign(new Error(body?.detail ?? body?.title ?? 'Não foi possível ler a cópia.'), { status: res.status });
+  const body = (await res.json().catch(() => null)) as ({ data?: T; title?: string; detail?: string } & Record<string, unknown>) | null;
+  if (!res.ok) throw new ApiClientError(res.status, { title: body?.title ?? 'Não foi possível ler a cópia.', detail: body?.detail, ...(body ?? {}) } as never);
   return body!.data as T;
 }
 

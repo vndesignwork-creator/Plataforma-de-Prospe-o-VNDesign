@@ -72,7 +72,8 @@ test('follow-up feito e adiado a partir da ficha e do dashboard', async ({ page 
 });
 
 test('assinatura nas definições aparece nos modelos', async ({ page }) => {
-  const phone = `+351 91${run.slice(-7).replace(/\D/g, '0').padEnd(7, '0')}`;
+  // Só dígitos (do relógio): um número igual ao da corrida anterior não deixaria guardar.
+  const phone = `+351 91${String(Date.now()).slice(-7)}`;
   await page.goto('/definicoes/assinatura');
   await page.getByLabel('Telefone').fill(phone);
   await expect(page.getByText(phone).last()).toBeVisible(); // pré-visualização

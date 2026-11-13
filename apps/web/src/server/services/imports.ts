@@ -187,6 +187,8 @@ async function emailWarnings(emails: (string | null)[]): Promise<(string | null)
 export async function previewImport(
   ctx: ApiContext,
   input: { rows: string[][]; mapping: ImportTarget[] },
+  /** checkEmails: ver na internet se o domínio de cada email recebe emails (a reposição de cópias não precisa). */
+  options: { checkEmails?: boolean } = {},
 ): Promise<ImportPreview> {
   const [sectors, services] = await Promise.all([listSectors(ctx, true), loadServiceCatalog(ctx)]);
   const mapped = input.rows.map((row) => (isEmptyRow(row) ? null : mapImportRow(row, input.mapping, sectors, services)));
@@ -195,7 +197,10 @@ export async function previewImport(
   const probes = leads.map((l) =>
     l ? { company_name: l.company_name, website: l.website ?? null, email: l.email ?? null, social_links: l.social_links?.length ? l.social_links : null } : {},
   );
-  const [{ dups, dnc }, mailWarnings] = await Promise.all([lookupConflicts(ctx, probes), emailWarnings(leads.map((l) => l?.email ?? null))]);
+  const [{ dups, dnc }, mailWarnings] = await Promise.all([
+    lookupConflicts(ctx, probes),
+    options.checkEmails === false ? Promise.resolve(leads.map(() => null)) : emailWarnings(leads.map((l) => l?.email ?? null)),
+  ]);
 
   const rows: ImportPreviewRow[] = mapped.map((m, index) => {
     const duplicates = dups

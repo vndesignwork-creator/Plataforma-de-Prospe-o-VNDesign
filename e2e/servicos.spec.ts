@@ -54,7 +54,7 @@ test('definições: pacotes agrupados por Web Design e Design Gráfico', async (
 test('estatísticas mostram os leads por serviço', async ({ page }) => {
   await page.request.post('/api/v1/leads', { data: { company_name: `Loja Estampas ${run}`, services: ['estampas'] } });
   await page.goto('/estatisticas');
-  await expect(page.getByRole('heading', { name: 'Por serviço' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Por serviço', exact: true })).toBeVisible();
   await expect(page.getByRole('table', { name: 'Leads por serviço de interesse' })).toBeAttached();
 });
 
