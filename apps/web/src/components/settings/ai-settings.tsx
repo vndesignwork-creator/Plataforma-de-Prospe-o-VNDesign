@@ -25,7 +25,8 @@ import { Field } from '@/components/ui/field';
 import { Input, Select } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
-import { useMe, useSettings } from '@/lib/queries';
+import { useMe, useRole, useSettings } from '@/lib/queries';
+import { AiUsageCard } from './ai-usage-card';
 
 const DEFAULT_MODELS = { email: 'claude-opus-5-5', lead_generation: 'claude-sonnet-5-5', visibility: 'claude-sonnet-5-5' } as const;
 
@@ -352,6 +353,8 @@ function FeatureRow({
 }
 
 export function AiSettings() {
+  const role = useRole();
+  const staff = role === 'owner' || role === 'admin';
   const qc = useQueryClient();
   const { data: providers, isLoading } = useAiProviders();
   const { data: settings } = useSettings();
@@ -394,6 +397,8 @@ export function AiSettings() {
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Consumo e créditos: só o dono e os administradores. */}
+      {staff ? <AiUsageCard /> : null}
       <Card>
         <CardHeader
           title="Chaves de IA"

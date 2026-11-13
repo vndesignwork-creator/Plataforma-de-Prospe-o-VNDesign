@@ -49,6 +49,9 @@ import {
   SiteMonitorHistorySchema,
   OriginStatsSchema,
   PlatformStatusSchema,
+  AiUsageSummarySchema,
+  AiCreditUpdateSchema,
+  AiCreditSchema,
   ClientErrorReportSchema,
   AuditEventSchema,
   ContactIssuesSchema,
@@ -573,6 +576,17 @@ export function getOpenApiDocument() {
           requestParams: { query: DashboardPeriodQuerySchema },
           responses: { '200': ok(data(DashboardPeriodSchema)), ...common },
         }),
+      },
+      '/ai/usage': {
+        get: op({
+          tags: ['Definições'],
+          summary: 'Consumo da IA no mês (custo estimado pelo preço de tabela, por função, pessoa e modelo) e os créditos que restam (estimativa); dono e administradores',
+          requestParams: { query: z.object({ month: z.string().optional() }) },
+          responses: { '200': ok(data(AiUsageSummarySchema)), ...common },
+        }),
+      },
+      '/ai/credit': {
+        put: op({ tags: ['Definições'], summary: 'O valor carregado no fornecedor de IA e o limite do aviso "créditos a acabar"', requestBody: body(AiCreditUpdateSchema), responses: { '200': ok(data(AiCreditSchema)), ...common } }),
       },
       '/platform/status': {
         get: op({

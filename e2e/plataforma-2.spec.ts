@@ -1,11 +1,19 @@
+import { readFileSync } from 'node:fs';
 import ExcelJS from 'exceljs';
-import { expect, test } from '@playwright/test';
+import { expect, request as playwrightRequest, test } from '@playwright/test';
 
 /*
  * Erros do ecrã no Estado da plataforma, Registo de alterações, Contactos a corrigir,
  * Dashboard num só pedido e Repor a partir de uma cópia.
  */
 const run = Date.now().toString(36);
+
+function localEnv(name: string): string {
+  const line = readFileSync('apps/web/.env.local', 'utf8')
+    .split(/\r?\n/)
+    .find((l) => l.startsWith(`${name}=`));
+  return line?.slice(name.length + 1).trim() ?? '';
+}
 
 test('Erros do ecrã ficam no Estado da plataforma (os iguais juntam-se)', async ({ page }) => {
   const report = () => page.request.post('/api/v1/platform/client-error', { data: { message: `Falhou o cartão ${run}`, page: '/leads/123-padaria' } });
@@ -172,4 +180,47 @@ test('Cópias guardadas: fazer uma agora e repor a partir dela (sem ficheiros)',
   const tasks = (await (await page.request.get(`/api/v1/leads/${back[0]!.id}/tasks`)).json()).data as { title: string }[];
   expect(tasks.map((t) => t.title)).toContain(`Tarefa guardada ${run}`);
   await page.request.delete(`/api/v1/leads/${back[0]!.id}`);
+});
+
+test('Consumo da IA e créditos: gasto do mês, por função e o que resta; aviso quando está a acabar', async ({ page }) => {
+  const supabase = localEnv('NEXT_PUBLIC_SUPABASE_URL');
+  const key = localEnv('SUPABASE_SECRET_KEY');
+  const admin = await playwrightRequest.newContext({ extraHTTPHeaders: { apikey: key, Authorization: `Bearer ${key}` } });
+  const me = (await (await page.request.get('/api/v1/me')).json()).data as { user: { id: string }; workspace: { id: string } };
+  try {
+    // Carregou 5 $ e quer aviso abaixo de 2 $.
+    expect((await page.request.put('/api/v1/ai/credit', { data: { amount_usd: 5, alert_below_usd: 2, reset: true } })).status()).toBe(200);
+    const before = (await (await page.request.get('/api/v1/ai/usage')).json()).data as { total_usd: number; credit: { remaining_usd: number } };
+    expect(before.credit.remaining_usd).toBe(5);
+    // Dois pedidos registados (como os da IA): 1,25 $ em emails e 2,50 $ no gerador.
+    const rows = [
+      { feature: 'email', cost_usd: 1.25 },
+      { feature: 'empresas', cost_usd: 2.5 },
+    ].map((r) => ({ ...r, workspace_id: me.workspace.id, user_id: me.user.id, provider_kind: 'anthropic', model: 'claude-opus-5-5', input_tokens: 1000, output_tokens: 100 }));
+    expect((await admin.post(`${supabase}/rest/v1/ai_usage`, { data: rows })).status()).toBe(201);
+    const after = (await (await page.request.get('/api/v1/ai/usage')).json()).data as {
+      total_usd: number;
+      credit: { remaining_usd: number; spent_since_usd: number };
+      by_feature: { label: string; cost_usd: number }[];
+    };
+    expect(after.total_usd - before.total_usd).toBeCloseTo(3.75, 4);
+    expect(after.credit.remaining_usd).toBeCloseTo(1.25, 4);
+    expect(after.by_feature.find((f) => f.label === 'Gerador de leads')?.cost_usd).toBeGreaterThanOrEqual(2.5);
+
+    await page.goto('/definicoes/ia');
+    await expect(page.getByRole('heading', { name: 'Consumo e créditos' })).toBeVisible();
+    await expect(page.getByTestId('ai-remaining')).toHaveText('≈ 1,25 $');
+    await expect(page.getByRole('table', { name: 'Em quê' }).getByRole('rowheader', { name: 'Gerador de leads' })).toBeVisible();
+
+    // Novo carregamento no ecrã: conta a partir de agora.
+    await page.getByRole('button', { name: 'Atualizar o saldo' }).click();
+    await page.getByLabel('Valor carregado em dólares').fill('20');
+    await page.getByRole('button', { name: 'Guardar (conta a partir de agora)' }).click();
+    await expect(page.getByText('Créditos: 20,00 $ a contar de agora.')).toBeVisible();
+    await expect(page.getByTestId('ai-remaining')).toHaveText('≈ 20,00 $');
+  } finally {
+    await page.request.put('/api/v1/ai/credit', { data: { amount_usd: null, alert_below_usd: null } });
+    await admin.delete(`${supabase}/rest/v1/ai_usage?workspace_id=eq.${me.workspace.id}&model=eq.claude-opus-5-5&input_tokens=eq.1000&output_tokens=eq.100`);
+    await admin.dispose();
+  }
 });

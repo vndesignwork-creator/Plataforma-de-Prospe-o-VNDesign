@@ -94,6 +94,13 @@ export const AUDIT_RULES: Rule[] = [
     body: true,
     summary: (b) => `Arrumou o formato de ${Array.isArray(b?.items) ? b.items.length : 'vários'} contactos (telefones e emails)`,
   },
+  {
+    method: 'PUT',
+    path: /^\/ai\/credit$/,
+    action: 'ai_credit',
+    body: true,
+    summary: (b) => (typeof b?.amount_usd === 'number' ? `Indicou os créditos da IA: ${b.amount_usd} $` : 'Tirou o valor dos créditos da IA'),
+  },
   { method: 'DELETE', path: /^\/collaborators\/[^/]+$/, action: 'collaborator_remove', summary: () => 'Removeu o acesso de um colaborador' },
   { method: 'DELETE', path: /^\/custom-fields\/[^/]+$/, action: 'custom_field_delete', summary: () => 'Apagou um campo personalizado' },
   { method: 'DELETE', path: /^\/automation-rules\/[^/]+$/, action: 'rule_delete', summary: () => 'Apagou uma regra automática' },

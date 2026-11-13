@@ -4,6 +4,7 @@
  * para rever. Só entram como leads as que o utilizador escolher.
  */
 import { z } from 'zod';
+import { estimateAiCost } from './ai-usage';
 import { TIME_ZONE } from './format';
 import { nullableText } from './schemas';
 import { ServiceKeyListSchema, type ServiceInfo } from './services';
@@ -378,17 +379,8 @@ export function buildLeadGenerationPrompt(input: {
   return lines.filter((l) => l !== null).join('\n');
 }
 
-/** Preço de tabela (USD) para estimar o custo de uma pesquisa. */
-const PRICES: Record<string, { input: number; output: number }> = {
-  'claude-sonnet-5-5': { input: 2, output: 10 },
-  'claude-opus-5-5': { input: 4, output: 20 },
-  'claude-haiku-5-5': { input: 0.1, output: 0.5 },
-};
-const WEB_SEARCH_PRICE = 10 / 1000;
-
+/** Custo estimado (USD) de uma pesquisa, pelo preço de tabela (ver ai-usage.ts). */
 export function estimateLeadGenerationCost(model: string, usage: { input_tokens: number; output_tokens: number; searches: number }): number | null {
-  const price = PRICES[model];
-  if (!price) return null;
-  const cost = (usage.input_tokens * price.input + usage.output_tokens * price.output) / 1_000_000 + usage.searches * WEB_SEARCH_PRICE;
-  return Math.round(cost * 10_000) / 10_000;
+  const cost = estimateAiCost(model, usage);
+  return cost === null ? null : Math.round(cost * 10_000) / 10_000;
 }

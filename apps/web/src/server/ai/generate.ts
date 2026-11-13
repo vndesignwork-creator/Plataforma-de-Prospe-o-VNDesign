@@ -15,6 +15,7 @@ import { z } from 'zod';
 import { ApiError } from '../http';
 import { anthropicClientFor, anthropicErrorMessage } from './claude';
 import type { ResolvedProvider } from './providers';
+import { recordAiUsage } from './usage';
 
 export interface AiUsage {
   input_tokens: number;
@@ -205,6 +206,13 @@ export async function generateJson<T>(
     } catch (error) {
       throw anthropicError(error, provider);
     }
+    // Consumo (Definições → Inteligência artificial): a chamada conta mesmo que a resposta não sirva.
+    void recordAiUsage(provider, input.schemaName, response.model ?? model, {
+      input_tokens: response.usage?.input_tokens ?? 0,
+      cache_write_tokens: response.usage?.cache_creation_input_tokens ?? 0,
+      cache_read_tokens: response.usage?.cache_read_input_tokens ?? 0,
+      output_tokens: response.usage?.output_tokens ?? 0,
+    });
     if (response.stop_reason === 'refusal') {
       throw new ApiError(422, 'Pedido recusado pela IA', 'Reformula as indicações e tenta outra vez.');
     }
@@ -242,6 +250,7 @@ export async function generateJson<T>(
   } catch (error) {
     throw httpError(error, provider);
   }
+  void recordAiUsage(provider, input.schemaName, typeof body.model === 'string' ? body.model : model, chatUsage(body));
   const parsed = input.schema.safeParse(extractJson(chatText(body)));
   if (!parsed.success) throw new ApiError(502, 'Resposta incompleta da IA', 'O modelo não devolveu o formato pedido. Tenta outra vez ou escolhe outro modelo.');
   return { data: parsed.data, model: typeof body.model === 'string' ? body.model : model };
@@ -281,9 +290,21 @@ export async function searchStructured(
   input: StructuredSearchInput,
   usage: AiUsage,
 ): Promise<{ data: unknown; model: string }> {
-  if (provider.kind === 'anthropic') return searchWithClaude(provider, model, input, usage);
-  if (provider.kind === 'openai') return searchWithOpenAi(provider, model, input, usage);
-  if (provider.kind === 'openrouter') return searchWithOpenRouter(provider, model, input, usage);
+  // Consumo: o que esta pesquisa somou (mesmo que falhe a meio).
+  const before = { ...usage };
+  const record = () =>
+    void recordAiUsage(provider, input.schemaName, model, {
+      input_tokens: usage.input_tokens - before.input_tokens,
+      output_tokens: usage.output_tokens - before.output_tokens,
+      searches: usage.searches - before.searches,
+    });
+  try {
+    if (provider.kind === 'anthropic') return await searchWithClaude(provider, model, input, usage);
+    if (provider.kind === 'openai') return await searchWithOpenAi(provider, model, input, usage);
+    if (provider.kind === 'openrouter') return await searchWithOpenRouter(provider, model, input, usage);
+  } finally {
+    if (usage.input_tokens !== before.input_tokens || usage.output_tokens !== before.output_tokens) record();
+  }
   throw new ApiError(
     422,
     'Este fornecedor não pesquisa na internet',

@@ -78,3 +78,4 @@ export * from './objections';
 export * from './free-audit';
 export * from './platform';
 export * from './contact-issues';
+export * from './ai-usage';

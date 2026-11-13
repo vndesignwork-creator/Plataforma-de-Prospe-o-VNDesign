@@ -25,6 +25,8 @@ const TABELAS: [string, string][] = [
   ['automation_rules', 'created_at'],
   ['do_not_contact', 'created_at'],
   ['platform_problems', 'first_at'],
+  ['ai_usage', 'at'],
+  ['audit_events', 'at'],
   ['lead_trash', 'deleted_at'],
 ];
 

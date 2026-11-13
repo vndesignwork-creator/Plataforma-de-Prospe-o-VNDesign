@@ -27,6 +27,8 @@ export interface ResolvedProvider {
   apiKey: string;
   /** Endereço base da API (OpenAI e compatíveis: termina em /v1). */
   baseUrl: string;
+  /** De quem é a chamada (para o consumo da IA). */
+  owner?: { workspaceId: string; userId: string | null };
 }
 
 type Row = {
@@ -215,7 +217,7 @@ export async function resolveAiProvider(ctx: ApiContext, id: string): Promise<Re
         'Junta uma chave em Definições → Inteligência artificial (ou define ANTHROPIC_API_KEY no servidor).',
       );
     }
-    return { id, kind: 'anthropic', label: SERVER_LABEL, apiKey: key, baseUrl: baseUrlFor('anthropic', null) };
+    return { id, kind: 'anthropic', label: SERVER_LABEL, apiKey: key, baseUrl: baseUrlFor('anthropic', null), owner: ownerOf(ctx) };
   }
   let row: Row;
   try {
@@ -231,8 +233,11 @@ export async function resolveAiProvider(ctx: ApiContext, id: string): Promise<Re
       `Não foi possível abrir a chave de “${row.label}” (a chave de cifra do servidor mudou?). Cola-a outra vez em Definições → Inteligência artificial.`,
     );
   }
-  return { id: row.id, kind: row.kind, label: row.label, apiKey: key, baseUrl: baseUrlFor(row.kind, row.base_url) };
+  return { id: row.id, kind: row.kind, label: row.label, apiKey: key, baseUrl: baseUrlFor(row.kind, row.base_url), owner: ownerOf(ctx) };
 }
+
+/** Trabalho do cron em nome do workspace (sem pessoa): fica sem user_id. */
+const ownerOf = (ctx: ApiContext) => ({ workspaceId: ctx.workspaceId, userId: ctx.user.id || null });
 
 /** Fornecedor e modelo escolhidos para uma função, já resolvidos. */
 export async function resolveAiFeature(
