@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { addDays, daysBetween } from './format';
 import { LeadSchema, nullableDate, nullableUrl } from './schemas';
 import { PaymentSummarySchema, icsDate, icsFold, icsText } from './projects';
+import { LeadTaskSchema } from './tasks';
 
 // -----------------------------------------------------------------------------
 // Fases e prazo
@@ -351,6 +352,8 @@ export const ProjectSchema = z
     deliverables: z.object({ total: z.int(), approved: z.int() }),
     value: z.number().nullable().meta({ description: 'Valor do projeto' }),
     expenses: z.number().meta({ description: 'Total das despesas' }),
+    /** As tarefas do projeto (as mesmas de GET /leads/{id}/tasks): a página não as pede uma a uma. */
+    task_items: z.array(LeadTaskSchema).optional(),
   })
   .meta({ id: 'Project' });
 export type Project = z.infer<typeof ProjectSchema>;

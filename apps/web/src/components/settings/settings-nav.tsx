@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  Activity,
   CircleHelp,
   Ban,
   BellRing,
@@ -75,6 +76,7 @@ export const SETTINGS_SECTIONS = [
   { slug: 'funcionalidades', label: 'Funcionalidades', group: 'plataforma', icon: ToggleRight, description: 'Ligar ou desligar partes da plataforma.' },
   { slug: 'ia', label: 'Inteligência artificial', group: 'plataforma', icon: Sparkles, description: 'Fornecedores e chaves da IA.' },
   { slug: 'api', label: 'Acesso externo (API)', group: 'plataforma', icon: KeyRound, description: 'Chaves para outras apps usarem a plataforma.' },
+  { slug: 'estado', label: 'Estado da plataforma', group: 'plataforma', icon: Activity, description: 'Tarefas automáticas e problemas em segundo plano.' },
 ] as const satisfies readonly { slug: string; label: string; group: SettingsGroup; icon: LucideIcon; description: string }[];
 
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
@@ -97,6 +99,7 @@ export const SETTINGS_KEYWORDS: Partial<Record<SettingsSection['slug'], string>>
   'nao-contactar': 'rgpd bloquear lista negra opt-out',
   formulario: 'site bricks webhook contacto',
   api: 'token integração acesso externo',
+  estado: 'cron tarefas automáticas erros problemas falhas lembretes parados saúde',
   conta: 'palavra-passe password 2fa sessões segurança apagar fotografia avatar dois passos',
 };
 

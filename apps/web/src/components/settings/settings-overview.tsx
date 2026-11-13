@@ -21,8 +21,9 @@ import {
   useTestimonials,
 } from '@/lib/queries';
 import { SETTINGS_GROUPS, useSettingsSections, type SettingsSection } from './settings-nav';
+import { platformBadge, usePlatformStatus } from './platform-status';
 
-type Tone = 'neutral' | 'success' | 'warning';
+type Tone = 'neutral' | 'success' | 'warning' | 'danger';
 type Status = { text: string; tone?: Tone } | null;
 
 const count = (n: number | undefined, one: string, many: string): Status =>
@@ -130,6 +131,11 @@ function TestimonialsStatus() {
   );
 }
 
+function PlatformStatusBadge() {
+  const { data } = usePlatformStatus();
+  return <StatusBadge status={platformBadge(data)} />;
+}
+
 function RulesStatus() {
   const { data } = useAutomationRules();
   const on = data?.filter((r) => r.enabled).length;
@@ -155,6 +161,7 @@ const STATUS: Record<SettingsSection['slug'], () => ReactNode> = {
   funcionalidades: FeaturesStatus,
   ia: AiStatus,
   api: ApiStatus,
+  estado: PlatformStatusBadge,
 };
 
 function StatusBadge({ status }: { status: Status }) {

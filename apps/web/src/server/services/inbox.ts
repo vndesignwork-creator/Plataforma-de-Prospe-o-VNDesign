@@ -34,6 +34,7 @@ import { loadImapAccount, saveImapState } from './mail-account';
 import { forgetOpensBeforeBounce } from './email-tracking';
 import { alertUser } from './push';
 import { getSettings } from './workspace';
+import { reportProblem, resolveProblem } from './platform';
 
 /** Na primeira leitura, olha só para os últimos dias. */
 const FIRST_READ_DAYS = 14;
@@ -311,8 +312,18 @@ export async function checkAllInboxes(options: { dryRun?: boolean; now?: Date } 
     try {
       const checked = await checkReplies(ctx);
       results.push({ ...row, status: 'checked', replies: checked.replies.length });
+      await resolveProblem(row.workspace_id, 'mailbox', row.user_id);
     } catch (e) {
-      results.push({ ...row, status: 'error', error: e instanceof ApiError ? (e.detail ?? e.title) : 'Erro inesperado.' });
+      const message = e instanceof ApiError ? (e.detail ?? e.title) : 'Erro inesperado.';
+      results.push({ ...row, status: 'error', error: message });
+      // Estado da plataforma: as respostas dos leads deixam de ser lidas até se resolver.
+      await reportProblem(row.workspace_id, {
+        area: 'mailbox',
+        key: row.user_id,
+        title: `A caixa de email${ctx.user.email ? ` de ${ctx.user.email}` : ''} não liga: as respostas dos leads não estão a ser lidas`,
+        detail: `${message} Confirma a palavra-passe em Definições → Email de envio.`,
+        notify: true,
+      });
     }
   }
   return results;

@@ -9,7 +9,7 @@ import { fromPostgrest } from '../http';
 import { selectInBatches } from '../batch';
 import { LEAD_SELECT, getLead } from './leads';
 import { expenseTotals, projectInfoMap, projectValues } from './project-tools';
-import { createTask } from './tasks';
+import { createTask, listTasksForLeads } from './tasks';
 
 export async function listProjects(ctx: ApiContext, state: 'active' | 'completed'): Promise<Project[]> {
   let q = ctx.supabase
@@ -32,9 +32,8 @@ export async function listProjects(ctx: ApiContext, state: 'active' | 'completed
   const now = new Date().toISOString();
   const ws = ctx.workspaceId;
   const [tasks, payments, meetings, revisions, time, deliverables, infos, values, expenses] = await Promise.all([
-    selectInBatches<{ id: string; lead_id: string; title: string; due_on: string | null; done_at: string | null }>(ids, (batch) =>
-      ctx.supabase.from('lead_tasks').select('id, lead_id, title, due_on, done_at, position').eq('workspace_id', ws).in('lead_id', batch).order('position', { ascending: true }),
-    ),
+    // Completas (como GET /leads/{id}/tasks): a página Projetos não as pede uma a uma.
+    listTasksForLeads(ctx, ids),
     selectInBatches<{ lead_id: string; amount: number | string; due_on: string | null; paid_on: string | null }>(ids, (batch) =>
       ctx.supabase.from('lead_payments').select('lead_id, amount, due_on, paid_on').eq('workspace_id', ws).in('lead_id', batch),
     ),
@@ -64,7 +63,7 @@ export async function listProjects(ctx: ApiContext, state: 'active' | 'completed
   const byLead = <T extends { lead_id: string }>(rows: T[], id: string) => rows.filter((r) => r.lead_id === id);
 
   const projects = leads.map((lead): Project => {
-    const own = byLead(tasks, lead.id);
+    const own = tasks.get(lead.id) ?? [];
     const open = own.filter((t) => !t.done_at);
     // Próxima tarefa: a com prazo mais próximo; sem prazos, a primeira da lista.
     const next = [...open].sort((a, b) => (a.due_on ?? '9999').localeCompare(b.due_on ?? '9999'))[0] ?? null;
@@ -93,6 +92,7 @@ export async function listProjects(ctx: ApiContext, state: 'active' | 'completed
       deliverables: { total: delivered.length, approved: delivered.filter((d) => d.status === 'aprovada').length },
       value: values.get(lead.id) ?? null,
       expenses: expenses.get(lead.id) ?? 0,
+      task_items: own,
     };
   });
   // Em curso: primeiro os com prazo mais próximo (os sem prazo no fim).

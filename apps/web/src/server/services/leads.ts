@@ -539,8 +539,12 @@ export async function createLeadTag(ctx: ApiContext, tag: string): Promise<LeadT
 
 /** Cidades dos leads (sem os anonimizados), mais usadas primeiro; a grafia mais comum de cada uma. */
 export async function leadCityCounts(ctx: ApiContext): Promise<LeadCityCount[]> {
+  // Contadas na base de dados (uma linha por grafia), em vez de trazer todos os leads.
+  const counted = await ctx.supabase.rpc('lead_city_counts', { p_workspace_id: ctx.workspaceId });
+  if (!counted.error) return mergeCitySpellings(((counted.data ?? []) as { city: string; count: number }[]).map((r) => [r.city, Number(r.count)] as const));
+  if (counted.error.code !== 'PGRST202' && counted.error.code !== '42883') throw fromPostgrest(counted.error);
+  // Antes da migração 20261113004500: lê os leads em páginas de 1000, até 10 000.
   const cities: string[] = [];
-  // Em páginas de 1000 (o máximo de linhas por pedido da API), até 10 000 leads.
   for (let from = 0; from < 10_000; from += 1000) {
     const { data, error } = await ctx.supabase
       .from('leads')
@@ -553,11 +557,16 @@ export async function leadCityCounts(ctx: ApiContext): Promise<LeadCityCount[]> 
     cities.push(...((data ?? []) as { city: string }[]).map((r) => r.city.trim()).filter(Boolean));
     if ((data?.length ?? 0) < 1000) break;
   }
+  return mergeCitySpellings(cities.map((c) => [c, 1] as const));
+}
+
+/** Junta as grafias da mesma cidade ("lisboa", "Lisboa"): fica a mais usada, com a soma. */
+function mergeCitySpellings(rows: (readonly [string, number])[]): LeadCityCount[] {
   const groups = new Map<string, Map<string, number>>();
-  for (const c of cities) {
+  for (const [c, n] of rows) {
     const key = c.toLocaleLowerCase('pt-PT');
     const spellings = groups.get(key) ?? new Map<string, number>();
-    spellings.set(c, (spellings.get(c) ?? 0) + 1);
+    spellings.set(c, (spellings.get(c) ?? 0) + n);
     groups.set(key, spellings);
   }
   return [...groups.values()]

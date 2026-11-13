@@ -76,3 +76,4 @@ export * from './site-monitor';
 export * from './deliverability';
 export * from './objections';
 export * from './free-audit';
+export * from './platform';

@@ -48,6 +48,7 @@ import {
   SiteMonitorSchema,
   SiteMonitorHistorySchema,
   OriginStatsSchema,
+  PlatformStatusSchema,
   FreeAuditFormStatsSchema,
   SiteMonitorCreateSchema,
   SiteMonitorUpdateSchema,
@@ -554,6 +555,16 @@ export function getOpenApiDocument() {
           requestParams: { query: DashboardPeriodQuerySchema },
           responses: { '200': ok(data(DashboardPeriodSchema)), ...common },
         }),
+      },
+      '/platform/status': {
+        get: op({
+          tags: ['Definições'],
+          summary: 'Estado da plataforma: quando correram as tarefas automáticas e os problemas em segundo plano (últimos 30 dias)',
+          responses: { '200': ok(data(PlatformStatusSchema)), ...common },
+        }),
+      },
+      '/platform/problems/{id}/resolve': {
+        post: op({ tags: ['Definições'], summary: 'Marcar um problema como resolvido', requestParams: { path: idParam }, responses: { '204': { description: 'Resolvido' }, ...withNotFound } }),
       },
       '/dashboard/origins': {
         get: op({

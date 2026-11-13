@@ -211,6 +211,9 @@ function SortableCard({ lead, today, statuses, onMove }: { lead: Lead; today: st
   );
 }
 
+/** Cartões desenhados de cada vez em cada coluna. */
+const COLUMN_PAGE = 40;
+
 function Column({
   status,
   leads,
@@ -227,6 +230,9 @@ function Column({
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const meta = LEAD_STATUS_META[status];
   const value = leads.reduce((s, l) => s + (l.estimated_value ?? 0), 0);
+  // Com muitos leads, desenhar todos os cartões deixa o quadro lento: os primeiros e "Mostrar mais".
+  const [limit, setLimit] = useState(COLUMN_PAGE);
+  const visible = leads.length > limit ? leads.slice(0, limit) : leads;
   return (
     <section
       aria-labelledby={`col-${status}`}
@@ -245,7 +251,7 @@ function Column({
         </h2>
         {value > 0 ? <span className="text-xs text-muted tabular">{formatCurrency(value, { decimals: false })}</span> : null}
       </header>
-      <SortableContext id={status} items={leads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+      <SortableContext id={status} items={visible.map((l) => l.id)} strategy={verticalListSortingStrategy}>
         {/* No telemóvel a coluna cresce e faz-se scroll à página (um só scroll vertical); a partir de md cada coluna tem o seu.
             "relative": os textos só para leitores de ecrã (posição absoluta) ficam dentro da coluna em vez de esticarem o quadro. */}
         <ul
@@ -253,9 +259,20 @@ function Column({
           className="relative flex min-h-24 flex-1 flex-col gap-2 p-2 scroll-thin md:overflow-y-auto md:overscroll-contain"
           aria-label={`Leads em ${meta.label}`}
         >
-          {leads.map((lead) => (
+          {visible.map((lead) => (
             <SortableCard key={lead.id} lead={lead} today={today} statuses={statuses} onMove={onMove} />
           ))}
+          {leads.length > visible.length ? (
+            <li>
+              <button
+                type="button"
+                onClick={() => setLimit((n) => n + COLUMN_PAGE)}
+                className="w-full rounded-lg border border-dashed border-border px-3 py-2 text-xs font-medium text-accent-text hover:bg-surface-3"
+              >
+                Mostrar mais {Math.min(COLUMN_PAGE, leads.length - visible.length)} (faltam {leads.length - visible.length})
+              </button>
+            </li>
+          ) : null}
           {leads.length === 0 ? (
             <li className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs text-muted">
               Arrasta um lead para aqui

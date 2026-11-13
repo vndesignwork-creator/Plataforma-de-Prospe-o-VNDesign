@@ -15,6 +15,7 @@ import { listAllLeads } from './leads';
 import { loadSmtpAccount } from './mail-account';
 import { loadServiceCatalog } from './service-catalog';
 import { getSettings } from './workspace';
+import { reportProblem, resolveProblem } from './platform';
 
 const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const isoWeekday = (iso: string) => {
@@ -92,8 +93,11 @@ export async function runWeeklyBackups(options: { dryRun?: boolean; now?: Date }
     try {
       const sent = await sendBackup(ctx);
       results.push({ workspace_id: row.id, status: 'sent', leads: sent.leads });
+      await resolveProblem(row.id, 'backup', 'weekly');
     } catch (e) {
-      results.push({ workspace_id: row.id, status: 'error', error: e instanceof ApiError ? (e.detail ?? e.title) : 'Erro inesperado.' });
+      const message = e instanceof ApiError ? (e.detail ?? e.title) : 'Erro inesperado.';
+      results.push({ workspace_id: row.id, status: 'error', error: message });
+      await reportProblem(row.id, { area: 'backup', key: 'weekly', title: 'A cópia de segurança semanal não foi enviada', detail: message, notify: true });
     }
   }
   return results;

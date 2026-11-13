@@ -22,6 +22,7 @@ import { systemContext } from '../system-context';
 import { detachedContext, startLeadGeneration } from './lead-generation';
 import { loadSmtpAccount } from './mail-account';
 import { alertUser } from './push';
+import { reportProblem } from './platform';
 
 const SELECT =
   'id, enabled, query, city, sector_id, services, max_results, weekday, hour, auto_add, audit, next_run_at, last_run_at, last_run_id, last_error, checked_at, created_at';
@@ -277,6 +278,7 @@ export async function runDueSchedules(options: { appUrl: string; dryRun?: boolea
       if (!(error instanceof ApiError)) console.error('[gerador] pesquisa automática', error);
       await admin.from('lead_generation_schedules').update({ last_error: message, last_run_at: now.toISOString() }).eq('id', schedule.id);
       results.push({ schedule_id: schedule.id, workspace_id: workspaceId, status: 'error', error: message });
+      await reportProblem(workspaceId, { area: 'lead_generation', key: schedule.id, title: 'Uma pesquisa automática do gerador de leads falhou', detail: message });
     }
   }
   return results;

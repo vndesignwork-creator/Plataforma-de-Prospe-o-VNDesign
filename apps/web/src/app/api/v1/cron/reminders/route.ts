@@ -7,6 +7,7 @@ import { checkAllInboxes } from '@/server/services/inbox';
 import { sendMeetingReminders } from '@/server/services/meetings';
 import { advancePomodoros } from '@/server/services/pomodoro';
 import { runSiteMonitors } from '@/server/services/site-monitors';
+import { cronHeartbeat } from '@/server/services/platform';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +34,8 @@ async function handler(req: Request) {
       // Um problema nos sites nunca pode parar os lembretes.
       runSiteMonitors({ dryRun }).catch((e: unknown) => ({ due: 0, checked: 0, skipped: e instanceof Error ? e.message : 'erro' })),
     ]);
+    // Estado da plataforma: as tarefas automáticas correram (se pararem, a plataforma avisa).
+    if (!dryRun) await cronHeartbeat('reminders');
     return json({ data, lead_generation: leadGeneration, replies, meetings, pomodoros, sites });
   } catch (e) {
     return handleError(e);

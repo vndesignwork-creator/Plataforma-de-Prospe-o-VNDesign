@@ -873,9 +873,15 @@ export function useBilling(enabled = true) {
 }
 
 export function useProjects(state: 'active' | 'completed', enabled = true) {
+  const qc = useQueryClient();
   return useQuery({
     queryKey: ['projects', state],
-    queryFn: () => api<{ data: Project[] }>('/projects', { query: { state } }).then((r) => r.data),
+    queryFn: async () => {
+      const projects = (await api<{ data: Project[] }>('/projects', { query: { state } })).data;
+      // As tarefas de cada projeto já vêm aqui: ficam na cache e a lista não as pede uma a uma.
+      for (const p of projects) if (p.task_items) qc.setQueryData(['tasks', p.lead.id], p.task_items);
+      return projects;
+    },
     enabled,
   });
 }

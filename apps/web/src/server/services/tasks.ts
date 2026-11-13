@@ -81,6 +81,39 @@ export async function listTasks(ctx: ApiContext, leadId: string): Promise<LeadTa
   return ((data ?? []) as unknown as LeadTask[]).map((t) => (seconds.get(t.id) ? { ...t, time_seconds: seconds.get(t.id) } : t));
 }
 
+/** As tarefas de vários leads de uma vez (página Projetos), como em listTasks. */
+export async function listTasksForLeads(ctx: ApiContext, leadIds: string[]): Promise<Map<string, LeadTask[]>> {
+  const out = new Map<string, LeadTask[]>();
+  if (!leadIds.length) return out;
+  const select = await taskSelect();
+  const rows: (LeadTask & { lead_id: string })[] = [];
+  const seconds = new Map<string, number>();
+  for (let i = 0; i < leadIds.length; i += 100) {
+    const batch = leadIds.slice(i, i + 100);
+    const [tasks, time] = await Promise.all([
+      ctx.supabase.from('lead_tasks').select(select).eq('workspace_id', ctx.workspaceId).in('lead_id', batch).order('position').order('created_at'),
+      ctx.supabase
+        .from('project_time_entries')
+        .select('task_id, started_at, ended_at')
+        .eq('workspace_id', ctx.workspaceId)
+        .in('lead_id', batch)
+        .not('task_id', 'is', null)
+        .not('ended_at', 'is', null),
+    ]);
+    if (tasks.error) throw fromPostgrest(tasks.error);
+    rows.push(...((tasks.data ?? []) as unknown as (LeadTask & { lead_id: string })[]));
+    for (const e of (time.data ?? []) as { task_id: string; started_at: string; ended_at: string }[]) {
+      seconds.set(e.task_id, (seconds.get(e.task_id) ?? 0) + entrySeconds(e));
+    }
+  }
+  for (const t of rows) {
+    const list = out.get(t.lead_id) ?? [];
+    list.push(seconds.get(t.id) ? { ...t, time_seconds: seconds.get(t.id) } : t);
+    out.set(t.lead_id, list);
+  }
+  return out;
+}
+
 /** Pesquisa rápida: tarefas de todos os leads (as por fazer primeiro; sem arquivados nem anonimizados). */
 export async function searchTasks(ctx: ApiContext, query: TaskSearchQuery): Promise<TaskSearchResult[]> {
   const { data, error } = await ctx.supabase

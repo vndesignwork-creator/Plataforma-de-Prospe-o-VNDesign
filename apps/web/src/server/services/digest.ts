@@ -20,6 +20,7 @@ import {
 import { isMailConfigured, sendMail } from '../mailer';
 import { createSupabaseAdminClient } from '../supabase-admin';
 import { fetchToday } from './dashboard';
+import { reportProblem, resolveProblem } from './platform';
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
@@ -271,8 +272,11 @@ export async function sendDailyDigests(options: { appUrl: string; dryRun?: boole
     try {
       await sendMail({ to: ws.recipient, ...buildDigestEmail({ workspaceName: ws.workspace_name, today, appUrl: options.appUrl, projects }) });
       results.push({ ...base, status: 'sent' });
+      await resolveProblem(ws.workspace_id, 'digest', 'send');
     } catch (e) {
-      results.push({ ...base, status: 'error', error: e instanceof Error ? e.message : String(e) });
+      const message = e instanceof Error ? e.message : String(e);
+      results.push({ ...base, status: 'error', error: message });
+      await reportProblem(ws.workspace_id, { area: 'digest', key: 'send', title: `O resumo diário não saiu para ${ws.recipient}`, detail: message, notify: true });
     }
   }
   return results;

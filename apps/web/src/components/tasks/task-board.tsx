@@ -109,6 +109,8 @@ type BoardCard = {
   done: TaskListItem[];
 };
 
+/** Cartões desenhados de cada vez (os restantes com "Mostrar mais"). */
+const CARDS_PAGE = 60;
 /** Sem acentos e em minúsculas (pesquisa nos arquivados). */
 const fold = (text: string) => text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
 const keyOf = (t: Pick<TaskListItem, "lead_id" | "list_id">) =>
@@ -1301,6 +1303,7 @@ export function TaskBoard({
     hasTeam,
   };
   const [showArchive, setShowArchive] = useState(false);
+  const [cardLimit, setCardLimit] = useState(CARDS_PAGE);
   const searchText = fold(query.trim());
   const archive = useQuery({
     queryKey: ["task-lists", "archived"],
@@ -1316,7 +1319,10 @@ export function TaskBoard({
   );
   const archiveCount = archivedCards.length + archivedLists.length;
 
-  const renderCards = (group: BoardCard[]) => (
+  const renderCards = (all: BoardCard[], limit = Infinity) => {
+    const group = all.length > limit ? all.slice(0, limit) : all;
+    return (
+    <>
     <div className="columns-1 gap-4 md:columns-2 2xl:columns-3">
       {group.map((card, i) => (
         <BoardCardView
@@ -1327,7 +1333,7 @@ export function TaskBoard({
           assigneeName={assigneeName}
           assignTo={assignTo}
           index={i}
-          count={group.length}
+          count={all.length}
           onMoveCard={(move) => moveCard(card.key, move)}
           color={colorOf(card.key)}
           pinned={pinnedKeys.has(card.key)}
@@ -1340,7 +1346,19 @@ export function TaskBoard({
         />
       ))}
     </div>
-  );
+    {/* Com muitos cartões, desenhar todos deixa a página lenta: os primeiros e "Mostrar mais". */}
+    {all.length > group.length ? (
+      <button
+        type="button"
+        onClick={() => setCardLimit((n) => n + CARDS_PAGE)}
+        className="self-center rounded-lg border border-dashed border-border px-4 py-2 text-sm font-medium text-accent-text hover:bg-surface-3"
+      >
+        Mostrar mais {Math.min(CARDS_PAGE, all.length - group.length)} cartões (faltam {all.length - group.length})
+      </button>
+    ) : null}
+    </>
+    );
+  };
 
   if (loading || listsLoading) return <Skeleton className="h-40" />;
   return (
@@ -1411,10 +1429,10 @@ export function TaskBoard({
                   <h2 className="text-xs font-semibold tracking-wide text-muted uppercase">
                     Outros
                   </h2>
-                  {renderCards(otherCards)}
+                  {renderCards(otherCards, cardLimit)}
                 </div>
               ) : (
-                renderCards(otherCards)
+                <div className="flex flex-col gap-2">{renderCards(otherCards, cardLimit)}</div>
               )
             ) : null}
           </SortableContext>

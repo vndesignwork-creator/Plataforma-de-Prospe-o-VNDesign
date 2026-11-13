@@ -45,6 +45,7 @@ import { RepliesCard } from './replies-card';
 import { CardLayoutButton, DASHBOARD_BOARD, useCardLayout, visibleCards } from '@/components/leads/card-layout';
 import { GoalsCard } from './goals-card';
 import { SitesCard } from './sites-card';
+import { PlatformHealthBanner } from '@/components/settings/platform-status';
 import { cn, telUrl } from '@/lib/utils';
 import { DueBadge, StageLabel } from '@/components/projects/project-bits';
 import { meetingLabel } from '@/components/meetings/meetings-card';
@@ -824,7 +825,13 @@ function OwnerDashboard() {
   const layout = useCardLayout(DASHBOARD_CARDS_PREFERENCE);
   const available = DASHBOARD_CARDS.filter((k) => projectsOn || (k !== 'projects' && k !== 'reconnect' && k !== 'sites'));
   // "Organizar cartões" no topo (antes estava no fundo da página).
-  const header = <DashboardHeader organize={<CardLayoutButton board={DASHBOARD_BOARD} available={available} className="self-center" />} />;
+  const header = (
+    <>
+      <DashboardHeader organize={<CardLayoutButton board={DASHBOARD_BOARD} available={available} className="self-center" />} />
+      {/* As tarefas automáticas (cron) pararam: só para o dono e os administradores. */}
+      <PlatformHealthBanner />
+    </>
+  );
 
   if (error) {
     return (

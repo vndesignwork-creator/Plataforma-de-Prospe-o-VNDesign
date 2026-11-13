@@ -1,6 +1,7 @@
 import { wordpressPluginCaller } from '@vndesign/core';
 import { NextResponse } from 'next/server';
 import { freeAuditPage, recordPluginCaller, submitFreeAudit, type FreeAuditResult } from '@/server/services/free-audit';
+import { checkCronStaleness } from '@/server/services/platform';
 import { WP_PLUGIN_VERSION } from '@/server/wp-plugin/plugin-files.generated';
 
 export const runtime = 'nodejs';
@@ -48,6 +49,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
   // O plugin de WordPress (o WordPress diz o site no User-Agent): guarda o site e a versão do plugin.
   const caller = wordpressPluginCaller(req.headers.get('user-agent'), req.headers.get('x-vnd-plugin-version'));
   if (caller) await recordPluginCaller(token, caller);
+  // Sem o cron, os pedidos do plugin (de hora a hora) ainda chegam: vê se as tarefas automáticas pararam.
+  void checkCronStaleness();
   return NextResponse.json(
     // plugin_version: a versão atual (o plugin 1.9.0+ avisa nas suas definições quando há uma nova).
     { ok: true, company: info.company, turnstile_site_key: info.turnstile_site_key, plugin_version: WP_PLUGIN_VERSION },

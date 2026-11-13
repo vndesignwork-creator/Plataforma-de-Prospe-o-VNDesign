@@ -148,8 +148,9 @@ export function assertTokenScope(ctx: ApiContext, scope: ApiTokenScope | undefin
  */
 export function apiRoute<P extends RouteParams = RouteParams>(handler: Handler<P>, options: ApiRouteOptions = {}) {
   return async (req: Request, segment: { params: Promise<P> }): Promise<Response> => {
+    let ctx: ApiContext | null = null;
     try {
-      const ctx = await getApiContext(req);
+      ctx = await getApiContext(req);
       assertTokenScope(ctx, options.token);
       const params = await segment.params;
       if (ctx.role !== 'prospector') return await compressJson(req, await handler(req, ctx, params));
@@ -163,9 +164,19 @@ export function apiRoute<P extends RouteParams = RouteParams>(handler: Handler<P
       const body = scrubForProspector(await res.json());
       return await compressJson(req, NextResponse.json(body, { status: res.status, headers: res.headers }));
     } catch (error) {
+      // Erro inesperado (um defeito, não um "dados inválidos"): fica em Definições → Estado da plataforma.
+      if (ctx && !(error instanceof ApiError)) void reportUnexpected(ctx.workspaceId, req, error);
       return handleError(error);
     }
   };
+}
+
+async function reportUnexpected(workspaceId: string, req: Request, error: unknown) {
+  // Sem os ids no caminho: o mesmo erro em leads diferentes junta-se.
+  const path = new URL(req.url).pathname.replace(/^\/api\/v1/, '').replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, ':id');
+  const message = error instanceof Error ? error.message : String(error);
+  const { reportProblem } = await import('./services/platform');
+  await reportProblem(workspaceId, { area: 'error', key: `${req.method} ${path} ${message.slice(0, 80)}`, title: `Erro inesperado (${req.method} ${path})`, detail: message.slice(0, 500) });
 }
 
 /**

@@ -15,6 +15,7 @@ import { runRenewalReminders } from '@/server/services/renewals';
 import { syncProspectWatch } from '@/server/services/site-monitors';
 import { runTimedRules } from '@/server/services/automation';
 import { runFreeAuditFollowUps } from '@/server/services/free-audit';
+import { cronHeartbeat } from '@/server/services/platform';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,6 +67,7 @@ async function handler(req: Request) {
       // Análise grátis: follow-up a quem recebeu o PDF há N dias e não respondeu (uma vez).
       dryRun ? Promise.resolve({ sent: 0, skipped: 0 }) : runFreeAuditFollowUps().catch((e: unknown) => ({ error: e instanceof Error ? e.message : String(e) })),
     ]);
+    if (!dryRun) await cronHeartbeat('digest');
     return json({ data: results, push, alerts, archived, retried, lead_generation: leadGeneration, backups, trash_purged: trashPurged, notification_emails: notificationEmails, activities_purged: activitiesPurged, cooling, monthly_updates: monthlyUpdates, renewals, automation_rules: rules, prospect_watch: prospectWatch, free_audit_follow_ups: freeAuditFollowUps });
   } catch (e) {
     return handleError(e);

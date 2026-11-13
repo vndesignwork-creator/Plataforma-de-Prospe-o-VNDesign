@@ -46,6 +46,7 @@ import { createLead, updateLead } from './leads';
 import { alertUser } from './push';
 import { loadServiceCatalog } from './service-catalog';
 import { getSettings, getSignature } from './workspace';
+import { reportProblem } from './platform';
 
 const NEXT_ACTION = 'Ligar: pediu a análise grátis do site';
 const EMAIL_TEMPLATE = 'Análise grátis do site';
@@ -258,6 +259,7 @@ async function finishFreeAudit(ctx: ApiContext, leadId: string, website: string,
       sent = true;
     } catch (error) {
       problem = error instanceof ApiError ? (error.detail ?? error.title) : error instanceof Error ? error.message : 'erro ao enviar';
+      await reportProblem(ctx.workspaceId, { area: 'site_form', key: 'free-audit-email', title: 'A análise grátis não seguiu por email', detail: `Para ${to}: ${problem}` });
     }
   }
   const { data: lead } = await createSupabaseAdminClient().from('leads').select('id, number, company_name').eq('id', leadId).maybeSingle();
@@ -497,6 +499,12 @@ export async function runFreeAuditFollowUps(): Promise<{ sent: number; skipped: 
       } catch (error) {
         skipped += 1;
         console.error('[análise grátis] follow-up', error instanceof Error ? error.message : error);
+        await reportProblem(ctx.workspaceId, {
+          area: 'email',
+          key: 'free-audit-follow-up',
+          title: 'O follow-up da análise grátis não saiu',
+          detail: error instanceof ApiError ? (error.detail ?? error.title) : error instanceof Error ? error.message : null,
+        });
       }
     }
   }
