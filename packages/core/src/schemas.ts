@@ -351,6 +351,13 @@ export const LeadListQuerySchema = z
     cf: csvList(z.string().regex(/^f[a-z0-9]{6,12}:.{1,100}$/))
       .optional()
       .meta({ description: 'Campos personalizados: "chave:valor" (vários valores do mesmo campo = qualquer um)' }),
+    clientes: z
+      .enum(['todos', 'excluir', 'so'])
+      .optional()
+      .meta({
+        description:
+          'Clientes na lista: "excluir" deixa de fora os clientes e os projetos deles, "so" mostra só esses, "todos" (por omissão) mostra tudo',
+      }),
     include_anonymized: z.enum(['true', 'false']).optional(),
     archived: z
       .enum(LEAD_ARCHIVE_FILTERS)

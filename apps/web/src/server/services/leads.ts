@@ -66,7 +66,7 @@ type LeadQueryBuilder = ReturnType<typeof baseLeadQuery>;
 export type LeadFilters = Partial<
   Pick<
     LeadListQuery,
-    'q' | 'sector' | 'status' | 'channel' | 'origin' | 'city' | 'suggested_from' | 'suggested_to' | 'due' | 'include_anonymized' | 'archived' | 'service' | 'tag' | 'cf' | 'lost' | 'stale'
+    'q' | 'sector' | 'status' | 'channel' | 'origin' | 'city' | 'suggested_from' | 'suggested_to' | 'due' | 'include_anonymized' | 'archived' | 'service' | 'tag' | 'cf' | 'lost' | 'stale' | 'clientes'
   >
 > & {
   /** Responsável já resolvido ("me" → o id de quem pede). */
@@ -92,6 +92,10 @@ function applyLeadFilters(q: LeadQueryBuilder, query: LeadFilters): LeadQueryBui
     q = q.or(parts.join(','));
   }
   if (query.status?.length) q = q.in('status', query.status);
+  // Clientes: a lista de Leads deixa-os de fora (vivem no separador Clientes), mas é a mesma ficha.
+  // Um projeto novo de um cliente (client_of) conta como cliente.
+  if (query.clientes === 'excluir') q = q.neq('status', 'cliente').is('client_of', null);
+  else if (query.clientes === 'so') q = q.eq('status', 'cliente');
   if (query.channel?.length) {
     const channels = query.channel.filter((c) => c !== 'none');
     const parts = [

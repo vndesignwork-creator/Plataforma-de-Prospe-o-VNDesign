@@ -161,6 +161,7 @@ import {
   BrandKitUpdateSchema,
   BrandKitSchema,
   ClientProjectsSchema,
+  ClientSchema,
   ClientProjectCreateSchema,
   DeleteFirstProjectSchema,
   CollabTimeActionSchema,
@@ -1661,6 +1662,13 @@ export function getOpenApiDocument() {
           summary: 'Clientes com o projeto em curso (ou concluídos), com tarefas, pagamentos e entregas',
           requestParams: { query: ProjectsQuerySchema },
           responses: { '200': ok(data(z.array(ProjectSchema))), ...common },
+        }),
+      },
+      '/clients': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Clientes, um por empresa: projetos, pagamentos, próxima tarefa e renovações (separador Clientes)',
+          responses: { '200': ok(data(z.array(ClientSchema))), ...common },
         }),
       },
       '/leads/{id}/project': {

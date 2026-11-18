@@ -152,7 +152,10 @@ export function BulkStatusMenu({ rows, onDone }: { rows: Lead[]; onDone: () => v
     try {
       const result = await bulk.mutateAsync({ action: 'status', ids: rows.map((l) => l.id), status, ...(lostReason ? { lost_reason: lostReason } : {}), ...(retryOn ? { retry_on: retryOn } : {}) });
       onDone();
-      toast.success(`${bulkResultMessage(result).replace(/\.$/, '')} para “${LEAD_STATUS_META[status].label}”.`);
+      // Passar a Cliente tira-os desta lista: diz-se para onde foram (a ficha é a mesma).
+      toast.success(
+        `${bulkResultMessage(result).replace(/\.$/, '')} para “${LEAD_STATUS_META[status].label}”.${status === 'cliente' ? ' Estão agora em Projetos → Clientes.' : ''}`,
+      );
     } catch (error) {
       toast.error(errorMessage(error));
     }

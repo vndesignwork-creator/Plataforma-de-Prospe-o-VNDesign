@@ -36,7 +36,7 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/page-header';
 import { CardLayoutButton, useCardLayout, visibleCards, type Board } from '@/components/leads/card-layout';
@@ -102,7 +102,7 @@ const PROJECT_KPI_BOARD: Board<ProjectKpi> = {
 
 /** Projetos desenhados de cada vez (os restantes com "Mostrar mais"). */
 const PROJECTS_PAGE = 30;
-export function ProjectsView() {
+export function ProjectsView({ tabs }: { tabs?: ReactNode } = {}) {
   const [view, setView] = useState<View>('list');
   const [state, setState] = useState<'active' | 'completed'>('active');
   // Na vista por fases e no calendário, só os projetos em curso.
@@ -275,6 +275,7 @@ export function ProjectsView() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Projetos" description={<ProjectsSummary projects={view === 'list' && state === 'completed' ? undefined : projects} today={today} />} />
+      {tabs}
 
       {/* Números do mês numa faixa baixa; os que levam a projetos filtram a lista. Organizam-se como no Dashboard. */}
       {showPayments && billing ? (

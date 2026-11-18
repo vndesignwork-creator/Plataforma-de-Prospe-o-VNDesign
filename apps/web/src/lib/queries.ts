@@ -12,6 +12,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import type {
+  Client,
   GoalProgress,
   SiteMonitor,
   SiteMonitorListItem,
@@ -1060,6 +1061,15 @@ export function useProjects(state: 'active' | 'completed', enabled = true) {
       for (const p of projects) if (p.task_items) qc.setQueryData(['tasks', p.lead.id], p.task_items);
       return projects;
     },
+    enabled,
+  });
+}
+
+/** Separador "Clientes" (página Projetos): cada cliente uma vez só. */
+export function useClients(enabled = true) {
+  return useQuery({
+    queryKey: ['clients'],
+    queryFn: () => api<{ data: Client[] }>('/clients').then((r) => r.data),
     enabled,
   });
 }

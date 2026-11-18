@@ -273,11 +273,31 @@ const MOBILE_SORTS = [
   { value: 'number:asc', label: 'Mais antigos' },
 ];
 
+/** Clientes na lista de Leads: ficam de fora (vivem no separador Clientes dos Projetos). */
+export const LEAD_CLIENT_FILTERS = ['excluir', 'todos', 'so'] as const;
+export type LeadsClientFilter = (typeof LEAD_CLIENT_FILTERS)[number];
+export const LEAD_CLIENT_FILTER_LABELS: Record<LeadsClientFilter, string> = {
+  excluir: 'Sem clientes',
+  todos: 'Com clientes',
+  so: 'Só clientes',
+};
+
+/**
+ * Clientes na lista: por omissão ficam de fora. Quem filtra pelo estado "Cliente"
+ * (ou abre uma vista guardada antiga que o faz) vê-os, senão a lista saía vazia.
+ */
+export function clientFilterFromParams(params: { get(name: string): string | null }): LeadsClientFilter {
+  const chosen = params.get('clientes') as LeadsClientFilter | null;
+  if (chosen && LEAD_CLIENT_FILTERS.includes(chosen)) return chosen;
+  return (params.get('status') ?? '').split(',').includes('cliente') ? 'todos' : 'excluir';
+}
+
 /** Os filtros da lista a partir do endereço (?status=…&city=…); também para exportar. */
 export function leadFiltersFromParams(params: { get(name: string): string | null }) {
   const get = (k: string) => params.get(k) ?? '';
   const getList = (k: string) => get(k).split(',').filter(Boolean);
   return {
+    clientes: clientFilterFromParams(params),
     q: get('q') || undefined,
     sector: getList('sector'),
     status: getList('status'),
@@ -299,7 +319,8 @@ export function leadFiltersFromParams(params: { get(name: string): string | null
 
 /** Topo da página: quantos leads há e quantos estão por contactar. */
 export function LeadsSummary() {
-  const { data: all } = useLeads({ limit: 1 });
+  // Os clientes estão no separador Clientes (Projetos): ficam fora da contagem, como da lista.
+  const { data: all } = useLeads({ limit: 1, clientes: 'excluir' });
   const { data: fresh } = useLeads({ status: ['identificado'], limit: 1 });
   if (!all) return <>Os teus leads de prospeção.</>;
   const n = all.meta.total;
@@ -318,7 +339,8 @@ export function LeadsPageActions() {
   const prospector = useRole() === 'prospector';
   if (prospector) return null;
   const filters = leadFiltersFromParams(searchParams);
-  const filtered = Object.values(filters).some((v) => (Array.isArray(v) ? v.length : v));
+  const { clientes, ...chosenFilters } = filters;
+  const filtered = clientes !== 'excluir' || Object.values(chosenFilters).some((v) => (Array.isArray(v) ? v.length : v));
   /** Descarrega o ficheiro com os filtros atuais (a API devolve-o como anexo). */
   function download(format: 'csv' | 'xlsx') {
     const a = document.createElement('a');
@@ -480,7 +502,7 @@ function LeadsTableView() {
   });
 
   const activeFilters =
-    query.sector.length + query.status.length + query.channel.length + query.origin.length + query.service.length + query.tag.length + query.cf.length + query.lost.length +
+    (query.clientes === 'excluir' ? 0 : 1) + query.sector.length + query.status.length + query.channel.length + query.origin.length + query.service.length + query.tag.length + query.cf.length + query.lost.length +
     [query.q, query.city, query.due, query.stale, query.suggested_from, query.suggested_to, query.archived, query.assigned].filter(Boolean).length;
   const [showFilters, setShowFilters] = useState(false);
   // Mais filtros: aberto quando um deles está ativo (ex.: ao abrir uma vista guardada).
@@ -511,6 +533,17 @@ function LeadsTableView() {
               setSearch('');
               setParams({ q: null });
             },
+          },
+        ]
+      : []),
+    ...(query.clientes !== 'excluir'
+      ? [
+          {
+            key: 'clientes',
+            name: 'Clientes',
+            value: LEAD_CLIENT_FILTER_LABELS[query.clientes],
+            // Tirar a etiqueta volta ao normal (e larga o estado "Cliente", que os obrigava a aparecer).
+            remove: () => setParams({ clientes: null, status: query.status.filter((x) => x !== 'cliente') }),
           },
         ]
       : []),
@@ -739,6 +772,13 @@ function LeadsTableView() {
           value={query.status}
           onChange={(v) => setParams({ status: v })}
           options={LEAD_STATUSES.map((s) => ({ value: s, label: LEAD_STATUS_META[s].label, icon: <StatusIcon status={s} /> }))}
+        />
+        {/* Os clientes vivem no separador Clientes (Projetos): aqui ficam de fora, mas é a mesma ficha. */}
+        <SingleSelectFilter
+          label="Clientes"
+          value={query.clientes}
+          onChange={(v) => setParams({ clientes: v })}
+          options={LEAD_CLIENT_FILTERS.map((f) => ({ value: f, label: LEAD_CLIENT_FILTER_LABELS[f] }))}
         />
         <MultiSelectFilter label="Serviço" value={query.service} onChange={(v) => setParams({ servico: v })} options={serviceOptions} />
         {tagOptions.length || query.tag.length ? (

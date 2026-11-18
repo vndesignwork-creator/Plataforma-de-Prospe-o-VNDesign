@@ -31,6 +31,7 @@ export * from './launch';
 export * from './account';
 export * from './collaborators';
 export * from './client-projects';
+export * from './clients';
 export * from './brand-kit';
 export * from './quote';
 export * from './pomodoro';
