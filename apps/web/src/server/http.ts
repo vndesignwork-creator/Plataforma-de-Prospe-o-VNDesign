@@ -2,7 +2,6 @@
  * Utilitários HTTP da API /api/v1: erros no formato problem+json (RFC 9457),
  * validação com Zod e um "wrapper" que trata autenticação e erros.
  */
-import { gzipSync } from 'node:zlib';
 import type { PostgrestError } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import type { ApiTokenScope } from '@vndesign/core';
@@ -188,23 +187,12 @@ async function reportUnexpected(workspaceId: string, req: Request, error: unknow
 }
 
 /**
- * Respostas JSON com mais de 1 KB vão comprimidas (gzip) quando o browser aceita: o
- * servidor do Next não comprime as respostas da API e as listas (leads, modelos, linha
- * do tempo) ficam 5–10× mais pequenas. Se o alojamento também comprimir, vê o
- * Content-Encoding e não volta a comprimir.
+ * Compressão das respostas da API: desde o Next 16.4.6 é o próprio servidor do Next que comprime
+ * (gzip) as respostas das rotas. Comprimir também aqui fazia-as chegar comprimidas duas vezes
+ * (o browser só desfaz uma e a plataforma deixava de ler as respostas): aqui já não se comprime.
  */
-const COMPRESS_MIN_BYTES = 1024;
-
-async function compressJson(req: Request, res: Response): Promise<Response> {
-  if (!res.body || res.headers.has('content-encoding') || !res.headers.get('content-type')?.includes('json')) return res;
-  if (!/\bgzip\b/i.test(req.headers.get('accept-encoding') ?? '')) return res;
-  const raw = Buffer.from(await res.arrayBuffer());
-  const headers = new Headers(res.headers);
-  headers.append('vary', 'Accept-Encoding');
-  if (raw.length < COMPRESS_MIN_BYTES) return new Response(raw, { status: res.status, statusText: res.statusText, headers });
-  headers.set('content-encoding', 'gzip');
-  headers.delete('content-length');
-  return new Response(gzipSync(raw), { status: res.status, statusText: res.statusText, headers });
+async function compressJson(_req: Request, res: Response): Promise<Response> {
+  return res;
 }
 
 export function handleError(error: unknown): Response {
