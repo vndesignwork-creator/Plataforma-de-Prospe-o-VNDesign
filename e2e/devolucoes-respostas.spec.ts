@@ -343,7 +343,8 @@ test('lista Respostas no Dashboard: por responder, Responder na conversa, Já tr
   expect(d.id).toBeTruthy();
 
   // Responder na mesma conversa (Re: e In-Reply-To): deixa de estar por responder.
-  await rowA.getByRole('button', { name: 'Responder' }).click();
+  // (há também "Responder com IA" ao lado: aqui é o botão de responder à mão)
+  await rowA.getByRole('button', { name: 'Responder', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: new RegExp(`Responder a Resposta A ${run}`) });
   await expect(dialog.getByLabel('Assunto')).toHaveValue(`Re: Proposta ${run}`);
   await dialog.getByLabel('Mensagem').fill('Olá Ana,\n\nSegue em anexo o preço.\n\nCumprimentos');
