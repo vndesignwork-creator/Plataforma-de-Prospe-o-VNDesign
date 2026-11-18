@@ -21,7 +21,7 @@ import {
   leadPath,
 } from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowDown, ArrowUp, Download, FileText, Mail, Plus, Send, Trash2, Wand2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Copy, Download, FileText, Mail, Plus, Send, Trash2, Wand2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -39,6 +39,7 @@ import { cn } from '@/lib/utils';
 import { useAudits, useInvalidateLead, useLead, useLogActivity, usePackages, useProposal, useSignature } from '@/lib/queries';
 import { SendEmailButton } from '@/components/email/send-email-dialog';
 import { PROPOSAL_TONES } from './proposals-card';
+import { CopyProposalDialog } from './copy-proposal';
 
 /** Item em edição (números como texto para o utilizador poder escrever "1.200,50"). */
 interface DraftItem {
@@ -109,6 +110,7 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [copyingFrom, setCopyingFrom] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
 
   // Novo rascunho: começa com o pacote recomendado.
@@ -245,7 +247,12 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
         }
         title={proposal ? `Proposta ${proposal.code}` : 'Nova proposta'}
         actions={
-          proposal ? (
+          !proposal ? (
+            // Em vez de escrever tudo de novo: copiar uma proposta já feita (deste ou de outro cliente).
+            <Button variant="outline" size="sm" onClick={() => setCopyingFrom(true)}>
+              <Copy className="h-3.5 w-3.5" aria-hidden /> Partir de outra proposta
+            </Button>
+          ) : (
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={PROPOSAL_TONES[proposal.status]}>{PROPOSAL_STATUS_LABELS[proposal.status]}</Badge>
               <a href={pdfUrl!} target="_blank" rel="noopener" className={buttonClasses('outline', 'sm')}>
@@ -255,9 +262,10 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
                 <Download className="h-3.5 w-3.5" aria-hidden /> Descarregar
               </a>
             </div>
-          ) : null
+          )
         }
       />
+      {copyingFrom ? <CopyProposalDialog lead={lead} onClose={() => setCopyingFrom(false)} /> : null}
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(16rem,1fr)]">
         <div className="flex flex-col gap-5">

@@ -24,6 +24,7 @@ import type {
   AiEmailResult,
   MapData,
   Proposal,
+  ProposalPick,
   ServicePackage,
   Service,
   ServiceCategoryItem,
@@ -807,6 +808,17 @@ export function useProposals(leadId: string) {
   return useQuery({
     queryKey: ['proposals', leadId],
     queryFn: () => api<{ data: Proposal[] }>(`/leads/${leadId}/proposals`).then((r) => r.data),
+  });
+}
+
+/** Propostas recentes de todos os leads (diálogo "partir de outra proposta"). */
+export function useRecentProposals(q: string, enabled = true) {
+  const term = q.trim();
+  return useQuery({
+    queryKey: ['proposals-recentes', term],
+    queryFn: () => api<{ data: ProposalPick[] }>('/proposals', { query: term ? { q: term } : {} }).then((r) => r.data),
+    placeholderData: keepPreviousData,
+    enabled,
   });
 }
 

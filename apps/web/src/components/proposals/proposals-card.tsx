@@ -1,7 +1,7 @@
 'use client';
 
 import { PROPOSAL_STATUS_LABELS, formatCurrency, formatDate, type Lead, type ProposalStatus, leadPath } from '@vndesign/core';
-import { Calculator, FileText, Plus } from 'lucide-react';
+import { Calculator, Copy, FileText, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { Button, buttonClasses } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { useProposals, useSettings } from '@/lib/queries';
 import { QuoteCalculatorDialog } from './quote-calculator';
+import { CopyProposalDialog, useCopyProposal } from './copy-proposal';
 
 export const PROPOSAL_TONES: Record<ProposalStatus, 'neutral' | 'accent' | 'success' | 'danger'> = {
   rascunho: 'neutral',
@@ -21,6 +22,8 @@ export function ProposalsCard({ lead }: { lead: Lead }) {
   const { data, isLoading } = useProposals(lead.id);
   const { data: settings } = useSettings();
   const [calculating, setCalculating] = useState(false);
+  const [copyingFrom, setCopyingFrom] = useState(false);
+  const { copy, copying } = useCopyProposal(lead);
   // A lista pode ficar recolhida; a escolha fica lembrada neste browser.
   const [collapsed, setCollapsed] = useCollapsed('propostas');
   if (lead.anonymized_at && !data?.length) return null;
@@ -41,9 +44,15 @@ export function ProposalsCard({ lead }: { lead: Lead }) {
                 </Button>
               ) : null}
               {!lead.anonymized_at ? (
-                <Link href={leadPath(lead, '/propostas/nova')} className={buttonClasses('outline', 'sm')}>
-                  <Plus className="h-3.5 w-3.5" aria-hidden /> Nova proposta
-                </Link>
+                <>
+                  {/* Partir de uma proposta já feita (deste ou de outro cliente): poupa escrever tudo de novo. */}
+                  <Button size="sm" variant="ghost" onClick={() => setCopyingFrom(true)}>
+                    <Copy className="h-3.5 w-3.5" aria-hidden /> Partir de outra
+                  </Button>
+                  <Link href={leadPath(lead, '/propostas/nova')} className={buttonClasses('outline', 'sm')}>
+                    <Plus className="h-3.5 w-3.5" aria-hidden /> Nova proposta
+                  </Link>
+                </>
               ) : null}
               {data?.length ? (
                 <CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label={`Propostas (${data.length})`} />
@@ -71,15 +80,24 @@ export function ProposalsCard({ lead }: { lead: Lead }) {
                   {p.valid_until ? <span>· válida até {formatDate(p.valid_until)}</span> : null}
                 </p>
               </div>
-              <a
-                href={`/api/v1/proposals/${p.id}/pdf`}
-                target="_blank"
-                rel="noopener"
-                className={buttonClasses('ghost', 'sm', 'shrink-0')}
-              >
-                <FileText className="h-3.5 w-3.5" aria-hidden /> Ver PDF
-                <span className="sr-only">(abre num novo separador)</span>
-              </a>
+              <div className="flex shrink-0 items-center gap-1">
+                {!lead.anonymized_at ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void copy(p.id)}
+                    disabled={!!copying}
+                    aria-label={`Duplicar a proposta ${p.code}`}
+                    title="Duplicar: rascunho novo igual a esta"
+                  >
+                    <Copy className="h-3.5 w-3.5" aria-hidden /> Duplicar
+                  </Button>
+                ) : null}
+                <a href={`/api/v1/proposals/${p.id}/pdf`} target="_blank" rel="noopener" className={buttonClasses('ghost', 'sm')}>
+                  <FileText className="h-3.5 w-3.5" aria-hidden /> Ver PDF
+                  <span className="sr-only">(abre num novo separador)</span>
+                </a>
+              </div>
             </li>
           ))}
         </ul>
@@ -87,6 +105,7 @@ export function ProposalsCard({ lead }: { lead: Lead }) {
         <p className="p-4 text-sm text-muted">Ainda não há propostas para este lead.</p>
       )}
       {calculating && settings ? <QuoteCalculatorDialog lead={lead} settings={settings} onClose={() => setCalculating(false)} /> : null}
+      {copyingFrom ? <CopyProposalDialog lead={lead} onClose={() => setCopyingFrom(false)} /> : null}
     </Card>
   );
 }

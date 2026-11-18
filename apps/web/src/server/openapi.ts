@@ -130,6 +130,9 @@ import {
   ProposalCreateSchema,
   ProposalSchema,
   ProposalUpdateSchema,
+  ProposalPickSchema,
+  ProposalPickQuerySchema,
+  ProposalDuplicateSchema,
   ServicePackageCreateSchema,
   ServicePackageSchema,
   ServicePackageUpdateSchema,
@@ -1195,6 +1198,23 @@ export function getOpenApiDocument() {
           summary: 'Nova proposta (validade e pagamento por omissão vêm das definições)',
           requestParams: { path: leadId },
           requestBody: body(ProposalCreateSchema),
+          responses: { '201': ok(data(ProposalSchema), 'Criada'), ...withNotFound },
+        }),
+      },
+      '/proposals': {
+        get: op({
+          tags: ['Propostas'],
+          summary: 'Propostas recentes de todos os leads (para fazer uma a partir de outra)',
+          requestParams: { query: ProposalPickQuerySchema },
+          responses: { '200': ok(data(z.array(ProposalPickSchema))), ...common },
+        }),
+      },
+      '/proposals/{id}/duplicate': {
+        post: op({
+          tags: ['Propostas'],
+          summary: 'Copiar a proposta para um rascunho novo (mesmo lead ou outro)',
+          requestParams: { path: idParam },
+          requestBody: body(ProposalDuplicateSchema),
           responses: { '201': ok(data(ProposalSchema), 'Criada'), ...withNotFound },
         }),
       },

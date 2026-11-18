@@ -5,12 +5,15 @@ import {
   LEAD_STATUSES,
   addDays,
   formatCurrency,
+  copyTitle,
   proposalCode,
   proposalTotals,
   todayIso,
   type Lead,
   type Proposal,
+  type ProposalDuplicateInput,
   type ProposalItem,
+  type ProposalPick,
   type ServicePackage,
 } from '@vndesign/core';
 import type { ApiContext } from '../context';
@@ -115,6 +118,50 @@ export async function getProposal(ctx: ApiContext, id: string): Promise<Proposal
   return toProposal(unwrap(result, 'Proposta não encontrada') as Record<string, unknown>);
 }
 
+/**
+ * Propostas recentes de todos os leads, para "partir de outra" (as mais recentes
+ * primeiro). Procura pelo título, pelo número da proposta ou pela empresa.
+ */
+export async function listRecentProposals(ctx: ApiContext, query: { q?: string; limit: number }): Promise<ProposalPick[]> {
+  const { data, error } = await ctx.supabase
+    .from('proposals')
+    .select('id, lead_id, number, title, items, total, status, created_at, lead:leads(id, number, company_name, anonymized_at)')
+    .eq('workspace_id', ctx.workspaceId)
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (error) throw fromPostgrest(error);
+  type Row = {
+    id: string;
+    number: number;
+    title: string;
+    items: ProposalItem[] | null;
+    total: number | string;
+    status: Proposal['status'];
+    created_at: string;
+    lead: { id: string; number: number; company_name: string; anonymized_at: string | null } | null;
+  };
+  const term = (query.q ?? '').trim().toLowerCase();
+  const matches = (r: Row) => {
+    if (!term) return true;
+    const code = proposalCode(r.number, r.created_at);
+    return [r.title, code, r.lead?.company_name ?? ''].some((t) => t.toLowerCase().includes(term));
+  };
+  return ((data ?? []) as unknown as Row[])
+    .filter((r) => r.lead && !r.lead.anonymized_at)
+    .filter(matches)
+    .slice(0, query.limit)
+    .map((r) => ({
+      id: r.id,
+      code: proposalCode(r.number, r.created_at),
+      title: r.title,
+      total: Number(r.total),
+      status: r.status,
+      created_at: r.created_at,
+      items: (r.items ?? []).length,
+      lead: { id: r.lead!.id, number: r.lead!.number, company_name: r.lead!.company_name },
+    }));
+}
+
 export interface ProposalInput {
   title?: string;
   intro?: string | null;
@@ -149,6 +196,26 @@ export async function createProposal(ctx: ApiContext, leadId: string, input: Pro
     .select(PROPOSAL_SELECT)
     .single();
   return toProposal(unwrap(result) as Record<string, unknown>);
+}
+
+/**
+ * Copiar uma proposta: tudo igual (itens, textos, desconto) num rascunho novo,
+ * para o mesmo lead ou para outro. A validade e o número são novos.
+ */
+export async function duplicateProposal(ctx: ApiContext, id: string, input: ProposalDuplicateInput): Promise<Proposal> {
+  const source = await getProposal(ctx, id);
+  const leadId = input.lead_id ?? source.lead_id;
+  const existing = await listProposals(ctx, leadId);
+  // Para o mesmo lead, o título leva "(cópia)"; para outro cliente, fica o mesmo.
+  const title = leadId === source.lead_id ? copyTitle(source.title, existing.map((p) => p.title)) : source.title;
+  return createProposal(ctx, leadId, {
+    title,
+    intro: source.intro,
+    items: source.items,
+    discount: source.discount,
+    payment_terms: source.payment_terms,
+    notes: source.notes,
+  });
 }
 
 export async function updateProposal(ctx: ApiContext, id: string, patch: ProposalInput): Promise<Proposal> {

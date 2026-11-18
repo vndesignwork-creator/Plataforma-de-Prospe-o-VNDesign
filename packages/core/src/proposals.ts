@@ -162,6 +162,50 @@ export const ProposalSchema = z
   .meta({ id: 'Proposal' });
 export type Proposal = z.infer<typeof ProposalSchema>;
 
+// -----------------------------------------------------------------------------
+// Fazer uma proposta a partir de outra
+// -----------------------------------------------------------------------------
+
+/** Uma proposta na lista "partir de outra" (de qualquer lead). */
+export const ProposalPickSchema = z
+  .object({
+    id: z.uuid(),
+    code: z.string(),
+    title: z.string(),
+    total: z.number(),
+    status: z.enum(PROPOSAL_STATUSES),
+    created_at: z.string(),
+    items: z.int().meta({ description: 'Quantos itens tem' }),
+    lead: z.object({ id: z.uuid(), number: z.int(), company_name: z.string() }),
+  })
+  .meta({ id: 'ProposalPick' });
+export type ProposalPick = z.infer<typeof ProposalPickSchema>;
+
+export const ProposalPickQuerySchema = z
+  .object({
+    q: z.string().trim().max(200).optional().meta({ description: 'Procurar no título, no número ou na empresa' }),
+    limit: z.coerce.number().int().min(1).max(50).default(20),
+  })
+  .meta({ id: 'ProposalPickQuery' });
+
+/** Copiar uma proposta (para o mesmo lead ou para outro). */
+export const ProposalDuplicateSchema = z
+  .object({
+    lead_id: z.uuid().optional().meta({ description: 'Lead da cópia (por omissão, o mesmo da proposta)' }),
+  })
+  .meta({ id: 'ProposalDuplicate' });
+export type ProposalDuplicateInput = z.infer<typeof ProposalDuplicateSchema>;
+
+/** Título da cópia: "Proposta X (cópia)", "(cópia 2)"… quando já existe. */
+export function copyTitle(title: string, existing: readonly string[] = []): string {
+  const base = title.replace(/\s*\(cópia(?: \d+)?\)$/u, '').trim() || title.trim();
+  for (let n = 1; n < 50; n++) {
+    const candidate = n === 1 ? `${base} (cópia)` : `${base} (cópia ${n})`;
+    if (!existing.includes(candidate)) return candidate;
+  }
+  return `${base} (cópia)`;
+}
+
 export interface ProposalTotals {
   /** Soma dos itens únicos (sem os mensais). */
   subtotal: number;
