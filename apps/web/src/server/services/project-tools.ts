@@ -664,7 +664,7 @@ export async function getSharedProject(token: string): Promise<SharedProject | n
     admin.from('workspaces').select('settings').eq('id', ws).maybeSingle(),
     admin
       .from('leads')
-      .select('company_name, contact_name, status, project_completed_at, archived_at, anonymized_at, created_by, updated_at')
+      .select('company_name, contact_name, status, client_of, project_completed_at, archived_at, anonymized_at, created_by, updated_at')
       .eq('workspace_id', ws)
       .eq('id', leadId)
       .maybeSingle(),
@@ -715,6 +715,17 @@ export async function getSharedProject(token: string): Promise<SharedProject | n
   }));
   const sum = pays?.length ? summarizePayments(pays, todayIso()) : null;
   const nextPay = pays?.find((p) => !p.paid_on) ?? null;
+  // Kit da marca (do registo principal do cliente): "Descarregar o kit" na página.
+  let brandKit = false;
+  if (features.brand_kit) {
+    const { data: kit } = await admin
+      .from('lead_brand_kits')
+      .select('files, colors')
+      .eq('workspace_id', ws)
+      .eq('lead_id', (lead.client_of as string | null) ?? leadId)
+      .maybeSingle();
+    brandKit = !!kit && ((kit.files as unknown[] | null)?.length ?? 0) + ((kit.colors as unknown[] | null)?.length ?? 0) > 0;
+  }
 
   return {
     company_name: lead.company_name as string,
@@ -727,6 +738,7 @@ export async function getSharedProject(token: string): Promise<SharedProject | n
       (deliverables.data ?? []) as { id: string; title: string; url: string | null; status: SharedProject['deliverables'][number]['status']; sent_at: string | null; approved_at: string | null }[]
     ).map((d) => ({ id: d.id, title: d.title, url: d.url, status: d.status, date: d.approved_at ?? d.sent_at })),
     approvals: features.deliverables && features.client_approvals && !lead.project_completed_at,
+    brand_kit: brandKit,
     contract: ((contracts.data ?? []) as SharedProject['contract'][])[0] ?? null,
     payments: sum
       ? { total: sum.total, paid: sum.paid, outstanding: sum.outstanding, next: nextPay ? { description: nextPay.description, amount: nextPay.amount, due_on: nextPay.due_on } : null }

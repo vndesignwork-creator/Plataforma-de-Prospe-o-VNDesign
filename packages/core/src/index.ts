@@ -79,3 +79,4 @@ export * from './platform';
 export * from './contact-issues';
 export * from './ai-usage';
 export * from './weekly-report';
+export * from './brand-assets';

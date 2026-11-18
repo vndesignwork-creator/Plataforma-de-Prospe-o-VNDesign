@@ -18,6 +18,7 @@ import { Input, Textarea } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useAccessAction, useAccesses, useBrandKit, useBrandKitAction } from '@/lib/queries';
+import { BrandToolsBar } from './brand-tools';
 
 async function copy(text: string, what: string) {
   try {
@@ -59,7 +60,10 @@ export function BrandKitCard({ lead }: { lead: Lead }) {
       ) : editing ? (
         <KitEditor lead={lead} kit={kit} onDone={() => setEditing(false)} />
       ) : (
-        <KitView lead={lead} kit={kit} />
+        <>
+          <KitView lead={lead} kit={kit} />
+          <BrandToolsBar lead={lead} kit={kit} />
+        </>
       )}
       {collapsed ? null : (
         <>

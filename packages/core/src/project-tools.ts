@@ -441,6 +441,8 @@ export interface SharedProject {
   deliverables: { id: string; title: string; url: string | null; status: DeliverableStatus; date: string | null }[];
   /** O cliente pode aprovar entregas ou pedir alterações nesta página. */
   approvals: boolean;
+  /** Há kit da marca para descarregar (ZIP com o manual de marca). */
+  brand_kit: boolean;
   /** Último contrato enviado (link /c/<token>). */
   contract: { token: string; status: 'enviado' | 'aceite'; title: string } | null;
   payments: { total: number; paid: number; outstanding: number; next: { description: string; amount: number; due_on: string | null } | null } | null;

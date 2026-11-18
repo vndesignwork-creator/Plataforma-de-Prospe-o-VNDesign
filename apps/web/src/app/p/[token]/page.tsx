@@ -8,7 +8,7 @@ import {
   formatDateTime,
   type SharedProject,
 } from '@vndesign/core';
-import { CheckCircle2, ClipboardList, ExternalLink, FileSignature, FolderOpen, Globe, ListChecks, Mail, PackageCheck, Phone, RefreshCcw, Wallet } from 'lucide-react';
+import { CheckCircle2, ClipboardList, Download, ExternalLink, FileSignature, FolderOpen, Globe, ListChecks, Mail, PackageCheck, Phone, RefreshCcw, Wallet } from 'lucide-react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { StageSteps } from '@/components/projects/project-bits';
@@ -198,6 +198,17 @@ export default async function SharedProjectPage({ params }: Props) {
                 </li>
               ))}
             </ul>
+          </Box>
+        ) : null}
+        {project.brand_kit ? (
+          <Box icon={Download} title="Kit da marca" className="sm:col-span-2">
+            <p className="text-sm text-muted">Os logótipos, as cores, os tipos de letra e o manual de marca, num só ficheiro.</p>
+            <a
+              href={`/api/v1/public/projects/${token}/kit`}
+              className="mt-3 inline-flex items-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-accent-fg hover:opacity-90"
+            >
+              <Download className="h-4 w-4" aria-hidden /> Descarregar tudo (ZIP)
+            </a>
           </Box>
         ) : null}
         {project.contract ? (

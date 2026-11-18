@@ -60,3 +60,17 @@ export function createZip(entries: ZipEntry[]): Buffer {
   end.writeUInt32LE(offset, 16);
   return Buffer.concat([...locals, ...centrals, end]);
 }
+
+/** Nomes repetidos levam " (2)", " (3)"… antes da extensão (o mesmo nome duas vezes estraga o zip). */
+export function uniqueNames(names: string[]): string[] {
+  const seen = new Map<string, number>();
+  return names.map((name) => {
+    const key = name.toLowerCase();
+    const n = (seen.get(key) ?? 0) + 1;
+    seen.set(key, n);
+    if (n === 1) return name;
+    const dot = name.lastIndexOf('.');
+    const slash = name.lastIndexOf('/');
+    return dot > slash + 1 ? `${name.slice(0, dot)} (${n})${name.slice(dot)}` : `${name} (${n})`;
+  });
+}

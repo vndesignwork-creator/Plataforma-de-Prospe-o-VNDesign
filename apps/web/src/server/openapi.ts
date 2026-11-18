@@ -2078,6 +2078,38 @@ export function getOpenApiDocument() {
           responses: { '201': ok(data(BrandKitSchema)), '422': problem('Sem ficheiros, demasiados ou demasiado grandes'), ...withNotFound },
         }),
       },
+      '/leads/{id}/brand-kit/manual': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Manual de marca em PDF, gerado a partir do kit (logótipos, cores HEX/RGB/CMYK, tipos de letra e regras de uso); ?download=1 para descarregar',
+          requestParams: { path: idParam },
+          responses: { '200': { description: 'PDF' }, '422': problem('Kit vazio'), ...withNotFound },
+        }),
+      },
+      '/leads/{id}/brand-kit/zip': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Descarregar tudo (ZIP): ficheiros do kit, manual de marca e um resumo com cores, tipos de letra, links e entregas aprovadas',
+          requestParams: { path: idParam },
+          responses: { '200': { description: 'ZIP' }, '413': problem('Kit com mais de 200 MB'), '422': problem('Kit vazio'), ...withNotFound },
+        }),
+      },
+      '/leads/{id}/brand-kit/files/{index}/content': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'O ficheiro do kit em si, no endereço da plataforma (para ler as cores do logótipo ou pô-lo num código QR)',
+          requestParams: { path: z.object({ id: z.uuid(), index: z.string() }) },
+          responses: { '200': { description: 'O ficheiro' }, ...withNotFound },
+        }),
+      },
+      '/public/projects/{token}/kit': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Página do cliente (sem sessão): o kit da marca em ZIP, com o manual de marca',
+          requestParams: { path: z.object({ token: z.string() }) },
+          responses: { '200': { description: 'ZIP' }, '404': { description: 'Página inexistente ou desligada' } },
+        }),
+      },
       '/leads/{id}/brand-kit/files/{index}': {
         get: op({
           tags: ['Projetos'],

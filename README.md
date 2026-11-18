@@ -759,6 +759,10 @@ Cada funcionalidade liga-se e desliga-se em **Definições → Funcionalidades**
   - **Editar**: cores (com o código, copia-se com um toque), tipos de letra e links (Drive, Figma, Canva…) e notas;
   - **Juntar ficheiros**: logótipos e outros ficheiros (até 30, de 25 MB cada), privados no Supabase Storage;
   - **Acessos**: domínio, alojamento, redes sociais… com o endereço, o utilizador e a palavra-passe. A palavra-passe fica **cifrada** no servidor e só aparece quando carregas em 👁 (ou copias).
+  - **Cores do logótipo**: escolhe uma imagem do kit (ou do computador) e a plataforma lê as cores principais no teu browser, sem IA; marcas as que queres e **Juntar ao kit**.
+  - **Manual de marca (PDF)**: capa, logótipos, cores (HEX, RGB e CMYK), tipos de letra e regras de uso, com a cor principal do cliente. Os logótipos entram se forem PNG ou JPEG.
+  - **Descarregar tudo (ZIP)**: os ficheiros do kit, o manual de marca e um *Leia-me* com as cores, os tipos de letra, os links e as entregas aprovadas (até 200 MB). A **página do cliente** tem o mesmo botão.
+  - **Código QR**: para o site, a avaliação no Google, o WhatsApp (com mensagem), a rede Wi-Fi ou um texto, com a cor da marca e o logótipo ao centro (opcional); descarrega em PNG ou SVG ou **Guardar no kit**.
 - Marca **Partilhar com os colaboradores** num acesso para o colaborador o ver no portal dele. O kit (cores, tipos de letra, links e ficheiros) aparece sempre aos colaboradores dos projetos do cliente; os acessos não partilhados nunca.
 
 **Calculadora de orçamento**
