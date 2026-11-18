@@ -26,6 +26,7 @@ describe('fornecedores de IA', () => {
       // As outras funções seguem o "Email com IA".
       summary: null,
       objections: null,
+      reply: null,
       card_scan: null,
       geo: null,
     });

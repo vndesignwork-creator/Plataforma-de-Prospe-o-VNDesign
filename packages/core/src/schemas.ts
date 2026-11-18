@@ -784,6 +784,7 @@ export const WorkspaceSettingsSchema = z
       visibility: { provider: SERVER_AI_PROVIDER, model: null },
       summary: null,
       objections: null,
+      reply: null,
       card_scan: null,
       geo: null,
     }),

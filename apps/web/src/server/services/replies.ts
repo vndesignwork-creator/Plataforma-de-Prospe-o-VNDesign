@@ -19,7 +19,7 @@ type ReceivedRow = {
   lead_id: string;
   created_at: string;
   body: string | null;
-  payload: { from?: string; from_name?: string | null; subject?: string; message_id?: string; auto?: boolean; intent?: string; return_on?: string } | null;
+  payload: { from?: string; from_name?: string | null; subject?: string; message_id?: string; auto?: boolean; intent?: string; return_on?: string; text?: string } | null;
 };
 
 export async function getReplies(ctx: ApiContext, days: number): Promise<Replies> {
@@ -84,6 +84,7 @@ export async function getReplies(ctx: ApiContext, days: number): Promise<Replies
       message_id: p.message_id ?? null,
       kind: replyKind(p),
       return_on: p.return_on ?? null,
+      text: p.text ?? null,
       handled: (!!answeredAt && answeredAt > r.created_at) || (!!handledAt && handledAt >= r.created_at),
     });
   }

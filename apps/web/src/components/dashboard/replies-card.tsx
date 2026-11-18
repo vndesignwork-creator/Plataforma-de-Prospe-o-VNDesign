@@ -14,11 +14,12 @@ import {
   type ReplyItem,
 } from '@vndesign/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { Check, ChevronDown, ExternalLink, MailOpen, RefreshCw } from 'lucide-react';
+import { Check, ChevronDown, ExternalLink, MailOpen, RefreshCw, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { SendEmailButton } from '@/components/email/send-email-dialog';
+import { AiReplyDialog } from '@/components/email/ai-reply-dialog';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
@@ -56,6 +57,7 @@ function ReplyRow({
   const handled = useMarkRepliesHandled();
   const open = webmailLink(account, webmail, item.message_id);
   const pending = needsAnswer(item);
+  const [aiReply, setAiReply] = useState(false);
   const who = item.from_name || item.from || 'Lead';
   return (
     <li
@@ -77,6 +79,22 @@ function ReplyRow({
         </p>
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+        {pending && !item.lead.anonymized_at ? (
+          // A IA escreve a resposta a partir do que o lead enviou (nada é enviado sozinho).
+          <Button size="sm" variant="soft" onClick={() => setAiReply(true)}>
+            <Sparkles className="h-3.5 w-3.5" aria-hidden /> Responder com IA
+          </Button>
+        ) : null}
+        {aiReply ? (
+          <AiReplyDialog
+            lead={item.lead}
+            subject={item.subject}
+            text={item.text}
+            inReplyTo={item.message_id?.includes('@') ? item.message_id : null}
+            onClose={() => setAiReply(false)}
+            onSent={() => void qc.invalidateQueries({ queryKey: ['replies'] })}
+          />
+        ) : null}
         {pending ? (
           <SendEmailButton
             lead={item.lead}
@@ -86,7 +104,7 @@ function ReplyRow({
             inReplyTo={item.message_id?.includes('@') ? item.message_id : null}
             title={`Responder a ${item.lead.company_name}`}
             label="Responder"
-            variant="soft"
+            variant="outline"
             onSent={() => void qc.invalidateQueries({ queryKey: ['replies'] })}
           />
         ) : null}

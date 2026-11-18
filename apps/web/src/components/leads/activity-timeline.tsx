@@ -3,10 +3,12 @@
 import {
   ACTIVITY_TYPE_LABELS,
   AI_EMAIL_KIND_LABELS,
+  REPLY_GOAL_LABELS,
   PROPOSAL_STATUS_LABELS,
   PROJECT_STAGE_LABELS,
   describeProjectStart,
   type AiEmailKind,
+  type ReplyGoal,
   type ProjectStage,
   type ProposalStatus,
   LEAD_FIELD_LABELS,
@@ -70,8 +72,9 @@ import { useActivities, useEmailTracking, useLead, useLogActivity, useTeamNames 
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { DictateButton } from '@/components/ui/dictate-button';
-import { findMentions } from '@vndesign/core';
+import { findMentions, type Lead as LeadRecord } from '@vndesign/core';
 import { Avatar } from '@/components/ui/avatar';
+import { AiReplyDialog } from '@/components/email/ai-reply-dialog';
 import { LeadChanges, changeLabel } from './lead-changes';
 import { MentionText, MentionTextarea } from './mention-textarea';
 
@@ -94,6 +97,7 @@ export const ICONS: Partial<Record<Activity["type"], LucideIcon>> = {
   audit_run: Gauge,
   proposal_generated: FileText,
   ai_email_generated: Sparkles,
+  ai_reply_generated: Sparkles,
   task_completed: SquareCheck,
   tasks_added: ListPlus,
   email_received: MailOpen,
@@ -244,6 +248,8 @@ export function describe(a: Activity): string | null {
         .join(' · ');
     case 'ai_email_generated':
       return p.kind ? AI_EMAIL_KIND_LABELS[p.kind as AiEmailKind] ?? null : null;
+    case 'ai_reply_generated':
+      return p.goal ? REPLY_GOAL_LABELS[p.goal as ReplyGoal] ?? null : null;
     case 'archived':
       return p.auto ? 'Automático: em "Sem interesse" há mais tempo do que o definido' : null;
     case 'task_completed':
@@ -310,6 +316,28 @@ const LOG_TYPES = [
   { value: 'email_sent', label: 'Email enviado' },
   { value: 'call_logged', label: 'Chamada' },
 ];
+/** "Responder com IA" numa resposta do lead, na linha do tempo. */
+function ReplyWithAi({ lead, payload, subject }: { lead: LeadRecord; payload: Record<string, unknown>; subject: string | null }) {
+  const [open, setOpen] = useState(false);
+  const messageId = typeof payload.message_id === 'string' ? payload.message_id : null;
+  return (
+    <>
+      <Button size="sm" variant="ghost" className="mt-1 -ml-2" onClick={() => setOpen(true)}>
+        <Sparkles className="h-3.5 w-3.5" aria-hidden /> Responder com IA
+      </Button>
+      {open ? (
+        <AiReplyDialog
+          lead={lead}
+          subject={typeof payload.subject === 'string' ? payload.subject : (subject ?? '')}
+          text={typeof payload.text === 'string' ? payload.text : null}
+          inReplyTo={messageId?.includes('@') ? messageId : null}
+          onClose={() => setOpen(false)}
+        />
+      ) : null}
+    </>
+  );
+}
+
 /** Com equipa: comentário interno (o cliente não vê), com @menções. */
 const COMMENT_TYPE = { value: 'comment', label: 'Comentário para a equipa' };
 
@@ -562,6 +590,10 @@ export function ActivityTimeline({
                         <p className="mt-1 text-sm break-words whitespace-pre-line">{a.body}</p>
                       ) : null}
                       {a.type === 'email_sent' ? <OpenStatus tracking={opened.get(String((a.payload as Record<string, unknown>).tracking_id))} /> : null}
+                      {/* Resposta do lead (não automática): a IA escreve a resposta a partir do que ele escreveu. */}
+                      {a.type === 'email_received' && !(a.payload as Record<string, unknown>).auto && lead && !lead.anonymized_at ? (
+                        <ReplyWithAi lead={lead!} payload={a.payload as Record<string, unknown>} subject={a.body} />
+                      ) : null}
                       <p className="mt-0.5 text-xs text-muted tabular">
                         <time dateTime={a.created_at}>{formatDateTime(a.created_at)}</time>
                         {a.actor_token_id ? ' · via API' : hasTeam && a.actor_user_id && names.get(a.actor_user_id) ? ` · ${names.get(a.actor_user_id)}` : null}

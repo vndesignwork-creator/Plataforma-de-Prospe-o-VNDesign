@@ -13,6 +13,8 @@ import {
   TaskTemplateSchema,
   TaskTemplateUpdateSchema,
   AiEmailRequestSchema,
+  ReplyDraftRequestSchema,
+  ReplyDraftSchema,
   AiEmailResultSchema,
   LeadEmailSendResultSchema,
   LeadEmailSendSchema,
@@ -1602,6 +1604,20 @@ export function getOpenApiDocument() {
           responses: {
             '200': ok(data(AiEmailResultSchema)),
             '503': problem('ANTHROPIC_API_KEY em falta ou inválida'),
+            ...withNotFound,
+          },
+        }),
+      },
+      '/leads/{id}/ai-reply': {
+        post: op({
+          tags: ['Email com IA'],
+          summary: 'Resposta ao email que o lead enviou, escrita pela IA (não envia nada)',
+          description: 'Usa o texto da resposta do lead, a ficha, a última análise do site e a proposta mais recente. Pode demorar até 30 s.',
+          requestParams: { path: leadId },
+          requestBody: body(ReplyDraftRequestSchema),
+          responses: {
+            '200': ok(data(ReplyDraftSchema)),
+            '409': problem('Sem IA configurada ou limite de gasto atingido'),
             ...withNotFound,
           },
         }),

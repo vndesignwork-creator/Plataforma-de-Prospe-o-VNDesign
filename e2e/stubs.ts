@@ -288,6 +288,21 @@ export async function startStubs() {
         });
         return;
       }
+      // Responder com IA à resposta de um lead.
+      if (JSON.stringify(body.system ?? '').includes('lead respondeu a um email')) {
+        const asked = JSON.stringify(body.messages ?? '');
+        const resposta = {
+          body: 'Olá,\n\nObrigado pela resposta.\n\nCumprimentos,',
+          summary: asked.includes('agenda') ? 'Perguntou pela agenda.' : 'Perguntou o preço.',
+          tip: 'Liga-lhe se não responder em 2 dias.',
+        };
+        sendJson(res, 200, {
+          id: 'msg_stub_resposta', type: 'message', role: 'assistant', model: body.model ?? 'claude-opus-5-5',
+          content: [{ type: 'text', text: JSON.stringify(resposta) }],
+          stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 1_200, output_tokens: 200 },
+        });
+        return;
+      }
       const prompt = JSON.stringify(body.messages ?? '');
       const company = /<dados_do_lead>\\nEmpresa: ([^\\]+?)\\n/.exec(prompt)?.[1] ?? 'empresa';
       const draft = {

@@ -17,6 +17,8 @@ import {
   leadPath,
   matchReplyToLead,
   outOfOfficeReturn,
+  REPLY_TEXT_MAX,
+  replyBody,
   replyIntent,
   todayIso,
   workingDay,
@@ -192,6 +194,8 @@ export async function checkReplies(ctx: ApiContext): Promise<ReplyCheckResult> {
     if (recorded.has(key)) continue;
     recorded.add(key);
     const intent = !message.auto && message.text ? replyIntent(message.text) : null;
+    // O texto novo da resposta (sem a mensagem citada) fica guardado para o "Responder com IA".
+    const text = !message.auto && message.text ? replyBody(message.text).slice(0, REPLY_TEXT_MAX) : '';
     const returnOn = message.auto && message.text ? outOfOfficeReturn(message.text, today) : null;
     const { error } = await ctx.supabase.from('lead_activities').insert({
       workspace_id: ctx.workspaceId,
@@ -205,6 +209,7 @@ export async function checkReplies(ctx: ApiContext): Promise<ReplyCheckResult> {
         subject: message.subject,
         message_id: key,
         received_at: message.date,
+        ...(text ? { text } : {}),
         ...(message.auto ? { auto: true } : {}),
         ...(intent ? { intent } : {}),
         ...(returnOn ? { return_on: returnOn } : {}),

@@ -39,6 +39,7 @@ export * from './contact-finder';
 export * from './team';
 export * from './profile';
 export * from './reply-analysis';
+export * from './reply-draft';
 export * from './email-stats';
 export * from './ai-visibility';
 export * from './geo-assets';

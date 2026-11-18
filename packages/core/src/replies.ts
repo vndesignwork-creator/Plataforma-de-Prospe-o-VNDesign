@@ -31,6 +31,8 @@ export const ReplyItemSchema = z
     kind: z.enum(REPLY_KINDS),
     /** Resposta automática: até quando a pessoa está fora. */
     return_on: z.string().nullable(),
+    /** O que o lead escreveu (sem a mensagem citada), para o "Responder com IA". */
+    text: z.string().nullable(),
     /** Já respondido (email, chamada) ou marcado como tratado depois de chegar. */
     handled: z.boolean(),
   })

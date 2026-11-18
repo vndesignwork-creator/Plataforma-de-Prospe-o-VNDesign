@@ -39,6 +39,7 @@ const DEFAULT_MODELS: Record<AiFunction, string> = {
   email: 'claude-opus-5-5',
   summary: 'claude-opus-5-5',
   objections: 'claude-opus-5-5',
+  reply: 'claude-opus-5-5',
   card_scan: 'claude-opus-5-5',
   geo: 'claude-opus-5-5',
   lead_generation: 'claude-sonnet-5-5',
