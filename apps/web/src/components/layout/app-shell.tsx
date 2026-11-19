@@ -1,7 +1,7 @@
 'use client';
 
 import * as RadixDialog from '@radix-ui/react-dialog';
-import { BarChart3, BriefcaseBusiness, CircleHelp, Columns3, LayoutDashboard, ListChecks, LogOut, Menu, MessageSquareText, Moon, Search, Settings, Sparkles, Sun, Target, Users, UsersRound, X } from 'lucide-react';
+import { BarChart3, BriefcaseBusiness, CircleHelp, LayoutDashboard, ListChecks, LogOut, Menu, MessageSquareText, Moon, Search, Settings, Sparkles, Sun, Target, Users, UsersRound, X } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -30,10 +30,11 @@ const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, match: (p: string) => p.startsWith('/dashboard') },
   { href: '/tarefas', label: 'Tarefas', icon: ListChecks, match: (p: string) => p.startsWith('/tarefas') },
   // O mapa abre-se a partir dos Leads ("Ver no mapa"), por isso conta como Leads.
-  { href: '/leads', label: 'Leads', icon: Users, match: (p: string) => p === '/leads' || p.startsWith('/leads/') || p.startsWith('/mapa') || p.startsWith('/importar') },
+  // O Kanban e o Mapa são a mesma lista vista de outra forma: mudam-se nos
+  // Leads (Lista | Kanban | Mapa), por isso não ocupam lugar no menu.
+  { href: '/leads', label: 'Leads', icon: Users, match: (p: string) => p === '/leads' || p.startsWith('/leads/') || p.startsWith('/mapa') || p.startsWith('/importar') || p.startsWith('/kanban') },
   { href: '/prospecao', label: 'Prospeção', icon: Target, match: (p: string) => p.startsWith('/prospecao'), feature: 'prospecting_session' as const },
   { href: '/gerar-leads', label: 'Gerar leads', icon: Sparkles, match: (p: string) => p.startsWith('/gerar-leads') },
-  { href: '/kanban', label: 'Kanban', icon: Columns3, match: (p: string) => p.startsWith('/kanban') },
   { href: '/projetos', label: 'Clientes/Projetos', icon: BriefcaseBusiness, match: (p: string) => p.startsWith('/projetos'), feature: 'projects' as const },
   // Equipa de prospeção e colaboradores dos projetos, numa só página (separadores).
   { href: '/equipa', label: 'Equipa', icon: UsersRound, match: (p: string) => p === '/equipa' || p.startsWith('/colaboradores') },

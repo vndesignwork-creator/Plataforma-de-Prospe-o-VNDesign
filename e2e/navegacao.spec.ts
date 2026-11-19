@@ -175,3 +175,33 @@ test('ficha: "Contactado" num lead por contactar e "Anular" volta ao estado inic
   const after = (await (await page.request.get(`/api/v1/leads/${lead.id}`)).json()).data;
   expect(after).toMatchObject({ status: 'identificado', next_action_text: 'Primeiro contacto', next_action_on: '2026-10-26', first_contact_on: null, last_follow_up_on: null });
 });
+
+test('Kanban sai do menu (muda-se nos Leads) e tem os mesmos filtros da Lista', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto('/leads');
+  const menu = page.getByRole('navigation', { name: 'Principal' }).first();
+  await expect(menu.getByRole('link', { name: 'Leads', exact: true })).toBeVisible();
+  await expect(menu.getByRole('link', { name: 'Kanban' })).toHaveCount(0);
+
+  // Muda-se de vista nos próprios Leads e o menu continua a marcar "Leads".
+  await page.getByRole('link', { name: 'Ver os leads em Kanban' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Kanban' })).toBeVisible();
+  await expect(menu.getByRole('link', { name: 'Leads', exact: true })).toHaveAttribute('aria-current', 'page');
+
+  // Os filtros são os da Lista: Clientes, Serviço, Responsável e "Mais filtros"
+  // (setor, canal, origem e cidade lá dentro).
+  const filtros = page.getByRole('group', { name: 'Filtros' });
+  await expect(filtros.getByRole('button', { name: /^Clientes/ })).toBeVisible();
+  await expect(filtros.getByRole('button', { name: /^Serviço/ })).toBeVisible();
+  await filtros.getByRole('button', { name: /^Mais filtros/ }).click();
+  const mais = page.getByRole('group', { name: 'Mais filtros' });
+  for (const label of [/^Setor/, /^Canal/, /^Origem/]) {
+    await expect(mais.getByRole('button', { name: label })).toBeVisible();
+  }
+  await expect(mais.getByLabel('Filtrar por cidade')).toBeVisible();
+
+  // Um filtro fica no endereço e deixa etiqueta para se tirar.
+  await mais.getByLabel('Filtrar por cidade').fill('Amadora');
+  await expect(page).toHaveURL(/city=Amadora/);
+  await expect(page.getByRole('button', { name: 'Tirar o filtro Cidade: Amadora' })).toBeVisible();
+});

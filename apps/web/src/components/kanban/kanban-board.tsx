@@ -21,6 +21,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   LEAD_CHANNEL_META,
   LEAD_CHANNELS,
+  LEAD_ORIGIN_META,
+  LEAD_ORIGINS,
   LEAD_STATUS_META,
   formatCurrency,
   formatDate,
@@ -37,6 +39,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { MultiSelectFilter, SingleSelectFilter } from '@/components/leads/multi-select';
+import { LEAD_CLIENT_FILTERS, LEAD_CLIENT_FILTER_LABELS, type LeadsClientFilter } from '@/components/leads/leads-table';
 import { ViewSwitch } from '@/components/leads/view-switch';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button, HoverHint, buttonClasses } from '@/components/ui/button';
@@ -48,7 +51,7 @@ import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownTri
 import { Input } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
 import { useDebouncedValue } from '@/lib/hooks';
-import { usePreference, useBoard, useInvalidateLead, useRole, useSectors, useSetPreference, useTeamNames } from '@/lib/queries';
+import { usePreference, useBoard, useInvalidateLead, useLeadCities, useRole, useSectors, useSetPreference, useTeamNames } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 import { ChannelIcon, SectorIconView } from '@/components/icons/lead-icons';
 import { ServiceIcons, useServiceFilterOptions } from '@/components/services/services';
@@ -392,10 +395,22 @@ export function KanbanBoard() {
   }
   const sector = getList('sector');
   const channel = getList('channel');
+  const origin = getList('origem');
   const service = getList('servico');
   const tag = getList('etiqueta');
   const assigned = searchParams.get('resp') ?? '';
+  // No Kanban os clientes têm coluna própria, por isso entram por omissão
+  // ("todos"); o filtro é o mesmo da Lista para quem os quiser tirar.
+  const clientesParam = searchParams.get('clientes');
+  const clientes: LeadsClientFilter = LEAD_CLIENT_FILTERS.includes(clientesParam as LeadsClientFilter) ? (clientesParam as LeadsClientFilter) : 'todos';
   const [search, setSearch] = useState(searchParams.get('q') ?? '');
+  const [city, setCity] = useState(searchParams.get('city') ?? '');
+  const debouncedCity = useDebouncedValue(city.trim());
+  const { data: cities } = useLeadCities();
+  // Mais filtros (como na Lista): aberto se algum deles estiver a ser usado.
+  const advancedActive = sector.length + channel.length + origin.length + (city.trim() ? 1 : 0);
+  const [showMore, setShowMore] = useState<boolean | null>(null);
+  const moreOpen = showMore ?? advancedActive > 0;
   // Telemóvel: os filtros recolhidos num botão.
   const [filtersOpen, setFiltersOpen] = useState(false);
   const q = useDebouncedValue(search.trim());
@@ -403,8 +418,24 @@ export function KanbanBoard() {
     if (q !== (searchParams.get('q') ?? '')) setParams({ q: q || null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
+  useEffect(() => {
+    if (debouncedCity !== (searchParams.get('city') ?? '')) setParams({ city: debouncedCity || null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedCity]);
   const tagOptions = useTagFilterOptions();
-  const query = { q: q || undefined, sector, channel, service, tag, assigned: assigned || undefined };
+  // Nomes da API (q, sector, channel, origin, service, city, tag, assigned…);
+  // no endereço ficam em português (servico, etiqueta, resp, origem), como na Lista.
+  const query = {
+    q: q || undefined,
+    sector,
+    channel,
+    origin,
+    service,
+    tag,
+    city: debouncedCity || undefined,
+    clientes,
+    assigned: assigned || undefined,
+  };
   const prospector = useRole() === 'prospector';
   const { data: team } = useTeamNames();
   const assignedOptions = [
@@ -651,6 +682,14 @@ export function KanbanBoard() {
       value: v === 'none' ? 'Sem canal' : (LEAD_CHANNEL_META[v as keyof typeof LEAD_CHANNEL_META]?.label ?? v),
       remove: () => setParams({ channel: without(channel, v) }),
     })),
+    ...origin.map((v) => ({
+      key: `or-${v}`,
+      name: 'Origem',
+      value: v === 'none' ? 'Sem registo' : (LEAD_ORIGIN_META[v as keyof typeof LEAD_ORIGIN_META]?.label ?? v),
+      remove: () => setParams({ origem: without(origin, v) }),
+    })),
+    ...(debouncedCity ? [{ key: 'city', name: 'Cidade', value: debouncedCity, remove: () => setCity('') }] : []),
+    ...(clientes !== 'todos' ? [{ key: 'clientes', name: 'Clientes', value: LEAD_CLIENT_FILTER_LABELS[clientes], remove: () => setParams({ clientes: null }) }] : []),
     ...tag.map((v) => ({ key: `tag-${v}`, name: 'Etiqueta', value: v, remove: () => setParams({ etiqueta: without(tag, v) }) })),
     ...(assigned
       ? [{ key: 'resp', name: 'Responsável', value: assignedOptions.find((o) => o.value === assigned)?.label ?? assigned, remove: () => setParams({ resp: null }) }]
@@ -711,24 +750,73 @@ export function KanbanBoard() {
           !filtersOpen && 'max-sm:hidden',
         )}
       >
-        <MultiSelectFilter
-          label="Setor"
-          value={sector}
-          onChange={(v) => setParams({ sector: v })}
-          options={[...(sectors ?? []).map((s) => ({ value: s.id, label: s.name, icon: <SectorIconView sector={s} className="text-muted" /> })), { value: 'none', label: 'Sem setor' }]}
+        {/* Os mesmos filtros da Lista (o Estado aqui são as colunas). */}
+        <SingleSelectFilter
+          label="Clientes"
+          value={clientes}
+          onChange={(v) => setParams({ clientes: v === 'todos' ? null : v })}
+          options={LEAD_CLIENT_FILTERS.map((f) => ({ value: f, label: LEAD_CLIENT_FILTER_LABELS[f] }))}
         />
         <MultiSelectFilter label="Serviço" value={service} onChange={(v) => setParams({ servico: v })} options={serviceOptions} />
-        <MultiSelectFilter
-          label="Canal"
-          value={channel}
-          onChange={(v) => setParams({ channel: v })}
-          options={[...LEAD_CHANNELS.map((c) => ({ value: c, label: LEAD_CHANNEL_META[c].label, icon: <ChannelIcon channel={c} className="text-muted" /> })), { value: 'none', label: 'Sem canal' }]}
-        />
         {tagOptions.length || tag.length ? <MultiSelectFilter label="Etiqueta" value={tag} onChange={(v) => setParams({ etiqueta: v })} options={tagOptions} /> : null}
         {(team?.length ?? 0) > 1 ? (
           <SingleSelectFilter label="Responsável" value={assigned} onChange={(v) => setParams({ resp: v || null })} options={assignedOptions} />
         ) : null}
+        <Button
+          variant="outline"
+          onClick={() => setShowMore((v) => !v)}
+          aria-expanded={moreOpen}
+          aria-controls="kanban-mais-filtros"
+          className={cn('max-sm:hidden', advancedActive && 'border-accent/60 bg-accent-soft text-fg')}
+        >
+          <SlidersHorizontal className="h-4 w-4" aria-hidden />
+          Mais filtros{advancedActive ? ` (${advancedActive})` : ''}
+        </Button>
       </div>
+      {/* Mais filtros: setor, canal, origem e cidade (como na Lista). */}
+      {moreOpen || filtersOpen ? (
+        <div
+          id="kanban-mais-filtros"
+          role="group"
+          aria-label="Mais filtros"
+          className={cn('grid gap-2 rounded-xl border border-border bg-surface p-3 sm:grid-cols-4', !moreOpen && 'sm:hidden')}
+        >
+          <MultiSelectFilter
+            label="Setor"
+            value={sector}
+            onChange={(v) => setParams({ sector: v })}
+            options={[...(sectors ?? []).map((s) => ({ value: s.id, label: s.name, icon: <SectorIconView sector={s} className="text-muted" /> })), { value: 'none', label: 'Sem setor' }]}
+            className="w-full"
+          />
+          <MultiSelectFilter
+            label="Canal"
+            value={channel}
+            onChange={(v) => setParams({ channel: v })}
+            options={[...LEAD_CHANNELS.map((c) => ({ value: c, label: LEAD_CHANNEL_META[c].label, icon: <ChannelIcon channel={c} className="text-muted" /> })), { value: 'none', label: 'Sem canal' }]}
+            className="w-full"
+          />
+          <MultiSelectFilter
+            label="Origem"
+            value={origin}
+            onChange={(v) => setParams({ origem: v })}
+            options={[...LEAD_ORIGINS.map((o) => ({ value: o, label: LEAD_ORIGIN_META[o].label })), { value: 'none', label: 'Sem registo (antigos)' }]}
+            className="w-full"
+          />
+          <Input
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            placeholder="Cidade"
+            aria-label="Filtrar por cidade"
+            list="cidades-kanban"
+            className={cn(city && 'border-accent/60 bg-accent-soft')}
+          />
+          <datalist id="cidades-kanban">
+            {(cities ?? []).map((c) => (
+              <option key={c.city} value={c.city}>{`${c.count} lead${c.count === 1 ? '' : 's'}`}</option>
+            ))}
+          </datalist>
+        </div>
+      ) : null}
       {chips.length ? (
         <div className="flex flex-wrap items-center gap-1.5 text-sm">
           {chips.map((c) => (
@@ -751,6 +839,7 @@ export function KanbanBoard() {
             size="sm"
             onClick={() => {
               setSearch('');
+              setCity('');
               router.replace(pathname, { scroll: false });
             }}
           >
