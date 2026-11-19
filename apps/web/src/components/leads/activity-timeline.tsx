@@ -98,6 +98,7 @@ export const ICONS: Partial<Record<Activity["type"], LucideIcon>> = {
   proposal_generated: FileText,
   ai_email_generated: Sparkles,
   ai_reply_generated: Sparkles,
+  site_visit: MousePointerClick,
   task_completed: SquareCheck,
   tasks_added: ListPlus,
   email_received: MailOpen,
@@ -224,6 +225,10 @@ export function describe(a: Activity): string | null {
         .join(' · ');
     case 'testimonial_received':
       return `${'★'.repeat(Number(p.rating ?? 0))} · ${p.can_publish ? 'pode ser publicado' : 'só para ti (sem autorização para publicar)'}`;
+    case 'site_visit':
+      return [p.page ? `Viu ${String(p.page)}` : null, p.site ? `em ${String(p.site)}` : null, p.from_email ? `· veio do email “${String(p.from_email)}”` : null]
+        .filter(Boolean)
+        .join(' ') || null;
     case 'email_received':
       return [p.from ? `De ${String(p.from)}` : null, p.subject ? `“${String(p.subject)}”` : null, p.auto ? 'resposta automática' : null]
         .filter(Boolean)

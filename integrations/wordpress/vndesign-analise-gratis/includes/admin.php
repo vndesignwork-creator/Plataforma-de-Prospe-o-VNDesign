@@ -34,7 +34,7 @@ function vnd_fa_sanitize($input) {
 	$input = is_array($input) ? $input : array();
 	$defaults = vnd_fa_defaults();
 	$choices = vnd_fa_choices();
-	$checkboxes = array('show_title', 'show_intro', 'show_name', 'show_company', 'privacy_link', 'card', 'animate', 'promo', 'promo_image_show', 'show_example', 'promo_hide_form_title');
+	$checkboxes = array('show_title', 'show_intro', 'show_name', 'show_company', 'privacy_link', 'card', 'animate', 'promo', 'promo_image_show', 'show_example', 'promo_hide_form_title', 'visits');
 	$textareas = array('intro', 'consent', 'success', 'promo_text', 'promo_points', 'promo_note');
 	$out = array();
 	foreach ($defaults as $key => $default) {
@@ -172,6 +172,10 @@ function vnd_fa_settings_page() {
 			<h2>Ligação à plataforma</h2>
 			<table class="form-table" role="presentation">
 				<?php $text('page_url', 'Endereço da página', 'Na plataforma: <strong>Definições → Formulário do site → Analisar o meu site grátis</strong> → Copiar o “Endereço da página”.'); ?>
+				<tr><th scope="row">Visitas</th><td>
+					<?php $check_box('visits', 'Avisar a plataforma quando um lead volta ao site'); ?>
+					<p class="description">Só de quem chegou por um link de um email enviado pela plataforma. De mais ninguém se guarda ou envia o que quer que seja.</p>
+				</td></tr>
 				<tr><th scope="row">Estado</th><td>
 					<?php if (!$check) : ?>
 						<span>Ainda não ligado.</span>

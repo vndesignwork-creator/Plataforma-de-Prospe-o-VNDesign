@@ -14,7 +14,8 @@
  */
 import { randomBytes } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { addEmailTracking, type EmailTracking, type TodayOpenedEmail } from '@vndesign/core';
+import {
+  WorkspaceSettingsSchema, addEmailTracking, type EmailTracking, type TodayOpenedEmail } from '@vndesign/core';
 import type { ApiContext } from '../context';
 import { fromPostgrest } from '../http';
 import { requestOrigin } from '../request-origin';
@@ -80,6 +81,7 @@ export async function prepareTracking(
 
 type TrackingRow = {
   id: string;
+  token: string;
   workspace_id: string;
   lead_id: string;
   subject: string;
@@ -97,7 +99,7 @@ async function loadByToken(token: string): Promise<TrackingRow | null> {
   if (!/^[A-Za-z0-9_-]{16,64}$/.test(token)) return null;
   const { data } = await createSupabaseAdminClient()
     .from('email_tracking')
-    .select('id, workspace_id, lead_id, subject, links, sent_at, opens, first_opened_at, clicks, first_clicked_at, notified_at, created_by')
+    .select('id, token, workspace_id, lead_id, subject, links, sent_at, opens, first_opened_at, clicks, first_clicked_at, notified_at, created_by')
     .eq('token', token)
     .maybeSingle();
   return (data as TrackingRow | null) ?? null;
@@ -183,8 +185,10 @@ export async function recordClick(
   const row = await loadByToken(token);
   const url = row?.links[index];
   if (!row || typeof url !== 'string' || !/^https?:\/\//i.test(url)) return null;
-  if ((userAgent && SCANNER_UA.test(userAgent)) || now.getTime() - new Date(row.sent_at).getTime() < graceMs()) return url;
-  if (await notFromLead(row, viewerId)) return url;
+  // Link para um site com o plugin: leva o código, para o site avisar quando o lead lá voltar.
+  const destination = await withVisitCode(row, url);
+  if ((userAgent && SCANNER_UA.test(userAgent)) || now.getTime() - new Date(row.sent_at).getTime() < graceMs()) return destination;
+  if (await notFromLead(row, viewerId)) return destination;
   // Um clique também prova que o email foi aberto (mesmo com as imagens bloqueadas).
   await createSupabaseAdminClient()
     .from('email_tracking')
@@ -196,7 +200,36 @@ export async function recordClick(
     })
     .eq('id', row.id);
   await announce(row, 'clicked', now, url);
-  return url;
+  return destination;
+}
+
+/**
+ * Se o link for para um site onde o plugin de WordPress está instalado (desta
+ * conta), junta `vnd=<código>`: o plugin guarda-o e avisa quando o lead voltar
+ * ao site. Qualquer falha devolve o endereço tal como estava.
+ */
+async function withVisitCode(row: TrackingRow, url: string): Promise<string> {
+  try {
+    const admin = createSupabaseAdminClient();
+    const { data: workspace } = await admin.from('workspaces').select('settings').eq('id', row.workspace_id).maybeSingle();
+    if (!WorkspaceSettingsSchema.parse(workspace?.settings ?? {}).features.site_visits) return url;
+    const target = new URL(url);
+    if (target.searchParams.has('vnd')) return url;
+    const host = target.hostname.replace(/^www\./, '').toLowerCase();
+    const { data: sites } = await admin.from('free_audit_plugin_sites').select('site').eq('workspace_id', row.workspace_id);
+    const known = ((sites ?? []) as { site: string }[]).some((s) => {
+      try {
+        return new URL(s.site).hostname.replace(/^www\./, '').toLowerCase() === host;
+      } catch {
+        return s.site.replace(/^www\./, '').toLowerCase() === host;
+      }
+    });
+    if (!known) return url;
+    target.searchParams.set('vnd', row.token);
+    return target.toString();
+  } catch {
+    return url;
+  }
 }
 
 /**

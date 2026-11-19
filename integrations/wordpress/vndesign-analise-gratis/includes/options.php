@@ -14,6 +14,8 @@ function vnd_fa_defaults() {
 	return array(
 		// Ligação
 		'page_url'            => '',
+		// Avisar a plataforma quando um lead (que clicou num email) volta ao site.
+		'visits'              => '1',
 		// Textos
 		'title'               => 'Analisar o meu site grátis',
 		'title_tag'           => 'h2',

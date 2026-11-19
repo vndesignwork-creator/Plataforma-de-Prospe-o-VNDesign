@@ -208,6 +208,7 @@ export const HELP_GUIDES: HelpGuide[] = [
       'As respostas chegam sozinhas: o lead passa a "Respondeu" e aparece em "Respostas" no Dashboard.',
       '"Responder com IA" (em "Respostas" e na linha do tempo do lead): a IA lê o que o lead escreveu e escreve a resposta, com o objetivo e o tom que escolheres. Lês, mudas o que quiseres e só depois envias — nada sai sozinho.',
       'Emails devolvidos ficam assinalados no lead, para procurar outro contacto.',
+      'Com o plugin de WordPress no teu site: quando um lead que clicou num email teu volta lá, aparece "Visitou o teu site" na linha do tempo e recebes um aviso — está morno, é boa altura para ligar. Só identifica quem já clicou num email teu; desliga-se em Definições → Funcionalidades (e no plugin).',
       '"Verificar o domínio" (em Definições → Email de envio) confirma o SPF, DKIM e DMARC do teu domínio: se faltar algum, os emails podem ir para o spam. Mostra o registo a acrescentar no DNS.',
     ],
   },

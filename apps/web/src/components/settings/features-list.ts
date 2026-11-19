@@ -4,6 +4,7 @@
  */
 import type { Features } from '@vndesign/core';
 import {
+  MousePointerClick,
   Tags,
   Cake,
   ListChecks,
@@ -171,6 +172,12 @@ export const FEATURES: { key: keyof Features; label: string; description: string
     sub: true,
   },
   {
+    key: 'site_visits',
+    label: 'Leads que voltam ao teu site',
+    description: 'Com o plugin de WordPress no teu site: quando um lead que clicou num email teu volta lá, ficas a saber (linha do tempo e aviso). Só de quem já clicou num email.',
+    icon: MousePointerClick,
+  },
+  {
     key: 'audit_tags',
     label: 'Etiquetas da análise do site',
     description: 'Depois de analisar o site, o lead fica com etiquetas como "site muito lento" ou "sem telemóvel" — para filtrar e fazer campanhas certeiras.',
@@ -256,7 +263,7 @@ export const FEATURE_GROUPS: { title: string; description: string; master?: keyo
   {
     title: 'Leads e prospeção',
     description: 'Encontrar, analisar e contactar leads.',
-    parts: [{ keys: ['prospecting_session', 'monthly_goals', 'prospect_watch', 'email_tracking', 'whatsapp_templates', 'diagnosis_report', 'site_screenshots', 'audit_tags'] }],
+    parts: [{ keys: ['prospecting_session', 'monthly_goals', 'prospect_watch', 'email_tracking', 'whatsapp_templates', 'diagnosis_report', 'site_screenshots', 'audit_tags', 'site_visits'] }],
   },
   {
     title: 'Vendas e faturação',

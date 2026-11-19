@@ -2282,6 +2282,17 @@ export function getOpenApiDocument() {
           responses: { '200': { description: 'Respondido' }, '404': problem('Página ou entrega inexistente'), '409': problem('Já respondida') },
         }),
       },
+      '/public/visits/{token}': {
+        post: op({
+          tags: ['Leads'],
+          summary: 'O plugin de WordPress avisa que um lead (que clicou num email) está no site',
+          description: 'Sem sessão. Responde sempre 204. Só regista quando o código do email existe e a funcionalidade está ligada.',
+          security: [],
+          requestParams: { path: z.object({ token: z.string() }) },
+          requestBody: body(z.object({ lead: z.string(), page: z.string(), referrer: z.string().nullish() })),
+          responses: { '204': { description: 'Recebido' } },
+        }),
+      },
       '/public/projects/{token}/deliverables/{id}/image': {
         get: op({
           tags: ['Projetos'],
