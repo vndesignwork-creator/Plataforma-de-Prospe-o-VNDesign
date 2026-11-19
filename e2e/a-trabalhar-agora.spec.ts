@@ -1,14 +1,14 @@
 import { expect, test } from '@playwright/test';
 
 /*
- * Dashboard: dois cartões com os projetos em curso. A ordem é a do
+ * Dashboard: três cartões com os projetos em curso. A ordem é a do
  * `workingOnPicks`: o que fixaste em "A trabalhar nisto" primeiro, depois o do
  * temporizador, depois o que mexeste há menos tempo e, por fim, o de entrega
  * mais próxima. O cartão leva à página Projetos, ao projeto certo.
  */
 const run = Date.now().toString(36);
 
-test('dois cartões "A trabalhar agora", fixar à mão e o link para o projeto', async ({ page }) => {
+test('três cartões "A trabalhar agora", fixar à mão e o link para o projeto', async ({ page }) => {
   test.setTimeout(150_000);
   await page.request.patch('/api/v1/settings', { data: { features: { projects: true } } });
   const perto = `Entrega Perto ${run}`;
@@ -28,7 +28,7 @@ test('dois cartões "A trabalhar agora", fixar à mão e o link para o projeto',
   try {
     await page.goto('/dashboard');
     await expect(page.getByText(/^A trabalhar agora/).first()).toBeVisible();
-    // Dois cartões: o primeiro "A trabalhar agora", o segundo "Também em curso".
+    // Três cartões: o primeiro "A trabalhar agora", os outros "Também em curso".
     const primeiro = page.getByRole('link').filter({ hasText: /^A trabalhar agora/ }).first();
     const segundo = page.getByRole('link').filter({ hasText: /^Também em curso/ }).first();
     await expect(segundo).toBeVisible();

@@ -25,12 +25,12 @@ export interface WorkingPick {
   reason: WorkingReason;
 }
 
-/** Os projetos a mostrar no topo do Dashboard, por ordem (no máximo `count`). */
+/** Os projetos a mostrar no topo do Dashboard, por ordem (no máximo `count`, três). */
 export function workingOnPicks(
   projects: Project[],
   opts: { pinned?: string | null; runningLeadId?: string | null; now?: number; count?: number } = {},
 ): WorkingPick[] {
-  const { pinned = null, runningLeadId = null, now = Date.now(), count = 2 } = opts;
+  const { pinned = null, runningLeadId = null, now = Date.now(), count = 3 } = opts;
   const picks: WorkingPick[] = [];
   const seen = new Set<string>();
   const add = (project: Project | undefined, reason: WorkingReason) => {

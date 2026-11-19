@@ -128,7 +128,7 @@ const PERIODS: { value: DashboardPeriod | 'all'; label: string; compare: string 
 ];
 const PERIOD_KEY = 'vnd.dashboard.period';
 
-const KPIS = ['leads', 'contacto', 'trabalho', 'trabalho2'] as const;
+const KPIS = ['leads', 'contacto', 'trabalho', 'trabalho2', 'trabalho3'] as const;
 type Kpi = (typeof KPIS)[number];
 /** Os números do topo do Dashboard: cada pessoa escolhe a ordem e os que quer ver ("dashboard.kpis"). */
 export const DASHBOARD_KPI_BOARD: Board<Kpi> = {
@@ -139,6 +139,7 @@ export const DASHBOARD_KPI_BOARD: Board<Kpi> = {
     contacto: 'Contactados / taxa de conversão',
     trabalho: 'A trabalhar agora',
     trabalho2: 'A trabalhar agora (2.º projeto)',
+    trabalho3: 'A trabalhar agora (3.º projeto)',
   },
   alwaysShown: [],
   description: 'A ordem dos números do topo do Dashboard e os que queres ver.',
@@ -175,12 +176,12 @@ function Tile({ label, value, href, children }: { label: string; value: ReactNod
 }
 
 /**
- * Os projetos em que se está a trabalhar (dois cartões: `rank` 0 e 1). A ordem
+ * Os projetos em que se está a trabalhar (três cartões: `rank` 0, 1 e 2). A ordem
  * vem de `workingOnPicks`: primeiro o que fixaste em "A trabalhar nisto",
  * depois o do temporizador a contar, depois aquele em que mexeste há menos
  * tempo (48 horas) e, por fim, o de entrega mais próxima.
  */
-function WorkingOnTile({ rank }: { rank: 0 | 1 }) {
+function WorkingOnTile({ rank }: { rank: 0 | 1 | 2 }) {
   const { data: settings } = useSettings();
   const projectsOn = settings?.features.projects !== false;
   const timeOn = projectsOn && settings?.features.time_tracking !== false;
@@ -192,7 +193,7 @@ function WorkingOnTile({ rank }: { rank: 0 | 1 }) {
   const picks = workingOnPicks(projects ?? [], {
     pinned: typeof pinned === 'string' ? pinned : null,
     runningLeadId: running?.lead.id ?? null,
-    count: 2,
+    count: 3,
   });
   const pick = picks[rank];
   const project = pick?.project;
@@ -201,8 +202,8 @@ function WorkingOnTile({ rank }: { rank: 0 | 1 }) {
 
   if (!projectsOn) return null;
   if (!lead) {
-    // Só o primeiro cartão explica que ainda não há projetos; o segundo desaparece.
-    if (rank === 1) return null;
+    // Só o primeiro cartão explica que ainda não há projetos; os outros desaparecem.
+    if (rank > 0) return null;
     return (
       <Tile label="A trabalhar agora" value={<span className="text-base font-medium text-muted">Nenhum projeto em curso</span>} href="/projetos">
         <span className="text-xs text-muted">Quando um lead passa a Cliente, o projeto aparece aqui.</span>
@@ -273,12 +274,14 @@ export function SummaryStrip({ totals }: { totals: Dashboard['totals'] }) {
           ),
           trabalho: <WorkingOnTile rank={0} />,
           trabalho2: <WorkingOnTile rank={1} />,
+          trabalho3: <WorkingOnTile rank={2} />,
         }
       : {
           leads: <Tile label="Leads novos" value={c ? c.new_leads : '—'} href="/leads">{c && b ? <Delta now={c.new_leads} before={b.new_leads} compare={compare} /> : null}</Tile>,
           contacto: <Tile label="Contactados" value={c ? c.contacted : '—'} href="/leads?status=contactado">{c && b ? <Delta now={c.contacted} before={b.contacted} compare={compare} /> : null}</Tile>,
           trabalho: <WorkingOnTile rank={0} />,
           trabalho2: <WorkingOnTile rank={1} />,
+          trabalho3: <WorkingOnTile rank={2} />,
         };
 
   return (

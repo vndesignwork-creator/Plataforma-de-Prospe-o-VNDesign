@@ -27,14 +27,19 @@ describe('a trabalhar agora', () => {
 
   it('o fixado à mão vem primeiro e o do temporizador a seguir', () => {
     const picks = workingOnPicks([a, b, c], { pinned: 'b', runningLeadId: 'c', now: NOW });
-    expect(picks.map((p) => p.project.lead.id)).toEqual(['b', 'c']);
-    expect(picks.map((p) => p.reason)).toEqual(['fixado', 'temporizador']);
+    expect(picks.map((p) => p.project.lead.id)).toEqual(['b', 'c', 'a']);
+    expect(picks.map((p) => p.reason)).toEqual(['fixado', 'temporizador', 'recente']);
+  });
+
+  it('são três cartões no máximo, pela ordem', () => {
+    const d = project('d', { due: '2026-11-25' });
+    expect(workingOnPicks([a, b, c, d], { now: NOW })).toHaveLength(3);
   });
 
   it('sem fixado nem temporizador, manda aquele em que se mexeu há menos tempo', () => {
     const picks = workingOnPicks([a, b, c], { now: NOW });
-    expect(picks.map((p) => p.project.lead.id)).toEqual(['a', 'c']);
-    expect(picks[0]!.reason).toBe('recente');
+    expect(picks.map((p) => p.project.lead.id)).toEqual(['a', 'c', 'b']);
+    expect(picks.map((p) => p.reason)).toEqual(['recente', 'recente', 'prazo']);
   });
 
   it('sem nada mexido há pouco, volta ao prazo mais próximo', () => {
@@ -45,7 +50,7 @@ describe('a trabalhar agora', () => {
   });
 
   it('nunca repete o mesmo projeto nem devolve mais do que o pedido', () => {
-    const picks = workingOnPicks([a, b], { pinned: 'a', runningLeadId: 'a', now: NOW, count: 2 });
+    const picks = workingOnPicks([a, b], { pinned: 'a', runningLeadId: 'a', now: NOW });
     expect(picks.map((p) => p.project.lead.id)).toEqual(['a', 'b']);
     expect(workingOnPicks([a, b, c], { now: NOW, count: 1 })).toHaveLength(1);
   });
