@@ -671,6 +671,28 @@ export function projectProfit(value: number | null | undefined, expenses: number
 export const BriefingFileSchema = z.object({ name: z.string(), path: z.string(), size: z.int(), type: z.string() });
 export type BriefingFile = z.infer<typeof BriefingFileSchema>;
 
+/**
+ * Referências do briefing: sites de que o cliente gosta e imagens que envia,
+ * com uma nota em cada ("gosto destas cores", "o menu assim").
+ */
+export const BriefingReferenceSchema = z
+  .object({
+    kind: z.enum(['link', 'image']),
+    /** Endereço do site (kind "link"). */
+    url: z.string().nullable(),
+    /** Ficheiro no armazenamento (kind "image"); interno, não vai para o cliente. */
+    path: z.string().nullable(),
+    name: z.string(),
+    note: z.string(),
+  })
+  .meta({ id: 'BriefingReference' });
+export type BriefingReference = z.infer<typeof BriefingReferenceSchema>;
+
+export const BRIEFING_MAX_REFERENCES = 12;
+export const BRIEFING_REFERENCE_NOTE_MAX = 300;
+/** Imagens que o cliente pode mandar como referência. */
+export const BRIEFING_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'] as const;
+
 export const ProjectBriefingSchema = z
   .object({
     id: z.uuid(),
@@ -679,6 +701,7 @@ export const ProjectBriefingSchema = z
     questions: z.array(z.string()),
     answers: z.array(z.string()),
     files: z.array(BriefingFileSchema),
+    references: z.array(BriefingReferenceSchema).meta({ description: 'Sites e imagens de referência, com uma nota em cada' }),
     status: z.enum(['pendente', 'respondido']),
     submitted_at: z.string().nullable(),
     created_at: z.string(),

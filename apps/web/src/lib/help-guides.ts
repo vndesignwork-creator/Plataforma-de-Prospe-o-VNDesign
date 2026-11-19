@@ -142,6 +142,7 @@ export const HELP_GUIDES: HelpGuide[] = [
       'Quando um lead passa a Cliente, o projeto arranca: prazo, revisões incluídas, tarefas e plano de pagamentos.',
       'Na ficha do cliente, acompanha a fase (Briefing → Em produção → Revisões → Entrega) e regista pagamentos, horas e despesas.',
       'Pede o briefing online, envia o contrato para aceitar e partilha entregas com o cliente.',
+      'No briefing, o cliente pode juntar referências: sites de que gosta e imagens, cada uma com uma nota ("gosto destas cores"). Aparecem na ficha, ao lado das respostas, com pré-visualização das imagens.',
       'Nas entregas, junta uma imagem (maquete, logótipo, página) e comenta em cima dela: carrega num ponto e escreve o que mudar. O cliente faz o mesmo na página do projeto, por isso acabam os "aquele botão lá em baixo". Cada marca tem um número e podes marcá-la como resolvida.',
       'Cada comentário pode virar tarefa do projeto ("Criar tarefa"): concluir a tarefa resolve o comentário, e resolver o comentário fecha a tarefa. Os comentários do cliente criam a tarefa sozinhos (desliga-se em Definições → Funcionalidades).',
       'Em "O que falta o cliente enviar", pede os textos, as fotos ou os acessos: o cliente envia-os pela página do projeto e recebes um aviso.',

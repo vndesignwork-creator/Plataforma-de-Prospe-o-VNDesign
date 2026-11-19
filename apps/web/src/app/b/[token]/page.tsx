@@ -52,7 +52,32 @@ export default async function BriefingPage({ params }: Props) {
           <Paperclip className="h-4 w-4" aria-hidden /> Já enviados: {briefing.files.map((f) => f.name).join(', ')}
         </p>
       ) : null}
-      <BriefingForm token={token} questions={briefing.questions} answers={briefing.answers} sentFiles={briefing.files.length} />
+      {briefing.references.length ? (
+        <div className="flex flex-col gap-1 text-sm text-muted">
+          <span className="font-medium text-fg">Referências já enviadas</span>
+          <ul className="flex flex-col gap-0.5">
+            {briefing.references.map((r, i) => (
+              <li key={i}>
+                {r.url ? (
+                  <a href={r.url} target="_blank" rel="noreferrer noopener" className="text-accent-text hover:underline">
+                    {r.name}
+                  </a>
+                ) : (
+                  r.name
+                )}
+                {r.note ? ` — ${r.note}` : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      <BriefingForm
+        token={token}
+        questions={briefing.questions}
+        answers={briefing.answers}
+        sentFiles={briefing.files.length}
+        sentReferences={briefing.references.length}
+      />
     </main>
   );
 }

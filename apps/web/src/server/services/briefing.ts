@@ -6,8 +6,12 @@
  */
 import { randomBytes, randomUUID } from 'node:crypto';
 import {
+  BRIEFING_IMAGE_TYPES,
   BRIEFING_MAX_FILE_BYTES,
   BRIEFING_MAX_FILES,
+  BRIEFING_MAX_REFERENCES,
+  BRIEFING_REFERENCE_NOTE_MAX,
+  type BriefingReference,
   WorkspaceSettingsSchema,
   type BriefingFile,
   type ProjectBriefing,
@@ -19,7 +23,7 @@ import { getLead } from './leads';
 import { alertUser } from './push';
 import { getSettings } from './workspace';
 
-const SELECT = 'id, lead_id, token, questions, answers, files, status, submitted_at, created_at';
+const SELECT = 'id, lead_id, token, questions, answers, files, "references", status, submitted_at, created_at';
 const BUCKET = 'project-files';
 
 export async function getBriefing(ctx: ApiContext, leadId: string): Promise<ProjectBriefing | null> {
@@ -57,7 +61,8 @@ export async function requestBriefing(ctx: ApiContext, leadId: string): Promise<
 export async function deleteBriefing(ctx: ApiContext, leadId: string): Promise<void> {
   const briefing = await getBriefing(ctx, leadId);
   if (!briefing) throw new ApiError(404, 'Briefing não encontrado');
-  if (briefing.files.length) await createSupabaseAdminClient().storage.from(BUCKET).remove(briefing.files.map((f) => f.path));
+  const paths = [...briefing.files.map((f) => f.path), ...(briefing.references ?? []).map((r) => r.path).filter((p): p is string => !!p)];
+  if (paths.length) await createSupabaseAdminClient().storage.from(BUCKET).remove(paths);
   const { error } = await ctx.supabase.from('project_briefings').delete().eq('id', briefing.id);
   if (error) throw fromPostgrest(error);
 }
@@ -72,6 +77,16 @@ export async function briefingFileUrl(ctx: ApiContext, leadId: string, index: nu
   return data.signedUrl;
 }
 
+/** Link temporário (10 minutos) para ver uma imagem de referência do briefing. */
+export async function briefingReferenceUrl(ctx: ApiContext, leadId: string, index: number): Promise<string> {
+  const briefing = await getBriefing(ctx, leadId);
+  const reference = briefing?.references?.[index];
+  if (!reference?.path) throw new ApiError(404, 'Imagem não encontrada');
+  const { data, error } = await createSupabaseAdminClient().storage.from(BUCKET).createSignedUrl(reference.path, 600);
+  if (error || !data) throw new ApiError(502, 'Imagem indisponível', 'Não foi possível abrir a imagem. Tenta outra vez.');
+  return data.signedUrl;
+}
+
 // -----------------------------------------------------------------------------
 // Formulário do cliente (sem sessão)
 // -----------------------------------------------------------------------------
@@ -82,6 +97,7 @@ export interface PublicBriefing {
   questions: string[];
   answers: string[];
   files: { name: string; size: number }[];
+  references: { kind: 'link' | 'image'; url: string | null; name: string; note: string }[];
   status: ProjectBriefing['status'];
   submitted_at: string | null;
   brand: string;
@@ -119,10 +135,32 @@ export async function getPublicBriefing(token: string): Promise<PublicBriefing |
     questions: briefing.questions,
     answers: briefing.answers,
     files: briefing.files.map((f) => ({ name: f.name, size: f.size })),
+    references: (briefing.references ?? []).map((r) => ({ kind: r.kind, url: r.url, name: r.name, note: r.note })),
     status: briefing.status,
     submitted_at: briefing.submitted_at,
     brand: sig?.company || sig?.full_name || 'VNDesign',
   };
+}
+
+/** "padaria.pt" → "https://padaria.pt"; null quando não dá um endereço. */
+function normalizeUrl(value: string): string | null {
+  const text = value.trim().slice(0, 2000);
+  if (!text) return null;
+  try {
+    const url = new URL(/^https?:\/\//i.test(text) ? text : `https://${text}`);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** O nome que se mostra de um link ("padaria.pt"). */
+function displayHost(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
 }
 
 const safeName = (name: string) =>
@@ -134,7 +172,7 @@ const safeName = (name: string) =>
     .slice(-80) || 'ficheiro';
 
 /** O cliente envia o briefing (respostas + ficheiros). Pode voltar a enviar enquanto o link existir. */
-export async function submitBriefing(token: string, form: FormData): Promise<{ files: number }> {
+export async function submitBriefing(token: string, form: FormData): Promise<{ files: number; references: number }> {
   const found = await loadPublic(token);
   if (!found) throw new ApiError(404, 'Briefing não encontrado');
   const { briefing, lead } = found;
@@ -159,10 +197,37 @@ export async function submitBriefing(token: string, form: FormData): Promise<{ f
     added.push({ name: file.name.slice(0, 200), path, size: file.size, type: file.type || 'application/octet-stream' });
   }
 
+  // Referências: links de sites e imagens, cada um com uma nota ("gosto destas cores").
+  const current = briefing.references ?? [];
+  const references: BriefingReference[] = [...current];
+  const noteOf = (value: FormDataEntryValue | null) => String(value ?? '').trim().slice(0, BRIEFING_REFERENCE_NOTE_MAX);
+  for (const [key, value] of form.entries()) {
+    const match = /^ref_link_(\d+)$/.exec(key);
+    if (!match || typeof value !== 'string') continue;
+    const url = normalizeUrl(value);
+    if (!url) continue;
+    references.push({ kind: 'link', url, path: null, name: displayHost(url), note: noteOf(form.get(`ref_link_note_${match[1]}`)) });
+  }
+  const refUploads = form.getAll('ref_images').filter((f): f is File => f instanceof File && f.size > 0);
+  for (const [i, file] of refUploads.entries()) {
+    if (references.length >= BRIEFING_MAX_REFERENCES) break;
+    if (!BRIEFING_IMAGE_TYPES.includes(file.type as (typeof BRIEFING_IMAGE_TYPES)[number])) {
+      throw new ApiError(422, 'Imagem inválida', `"${file.name}" não é uma imagem (PNG, JPG, WEBP ou GIF).`);
+    }
+    if (file.size > BRIEFING_MAX_FILE_BYTES) throw new ApiError(422, 'Imagem demasiado grande', `"${file.name}" tem mais de 15 MB.`);
+    const path = `${briefing.workspace_id}/${briefing.lead_id}/ref-${randomUUID()}-${safeName(file.name)}`;
+    const { error: uploadError } = await admin.storage.from(BUCKET).upload(path, Buffer.from(await file.arrayBuffer()), { contentType: file.type, upsert: false });
+    if (uploadError) throw new ApiError(502, 'Falha no envio', `Não foi possível guardar "${file.name}". Tente outra vez.`);
+    references.push({ kind: 'image', url: null, path, name: file.name.slice(0, 200), note: noteOf(form.get(`ref_image_note_${i}`)) });
+  }
+  if (references.length > BRIEFING_MAX_REFERENCES) {
+    throw new ApiError(422, 'Demasiadas referências', `Pode enviar até ${BRIEFING_MAX_REFERENCES} referências.`);
+  }
+
   const now = new Date().toISOString();
   const { error } = await admin
     .from('project_briefings')
-    .update({ answers, files: [...briefing.files, ...added], status: 'respondido', submitted_at: now })
+    .update({ answers, files: [...briefing.files, ...added], references, status: 'respondido', submitted_at: now })
     .eq('id', briefing.id);
   if (error) throw fromPostgrest(error);
 
@@ -175,7 +240,7 @@ export async function submitBriefing(token: string, form: FormData): Promise<{ f
     workspace_id: briefing.workspace_id,
     lead_id: briefing.lead_id,
     type: 'briefing_received',
-    payload: { answers: answers.filter(Boolean).length, files: added.length },
+    payload: { answers: answers.filter(Boolean).length, files: added.length, references: references.length - current.length },
   });
   const notify = (lead.created_by as string | null) ?? briefing.created_by;
   if (notify) {
@@ -183,10 +248,16 @@ export async function submitBriefing(token: string, form: FormData): Promise<{ f
       kind: 'client',
       leadId: briefing.lead_id,
       title: `📝 Briefing recebido · ${lead.company_name}`,
-      body: `${answers.filter(Boolean).length} resposta(s)${added.length ? ` e ${added.length} ficheiro(s)` : ''}.`,
+      body: [
+        `${answers.filter(Boolean).length} resposta(s)`,
+        added.length ? `${added.length} ficheiro(s)` : null,
+        references.length - current.length ? `${references.length - current.length} referência(s)` : null,
+      ]
+        .filter(Boolean)
+        .join(', ') + '.',
       url: `/leads/${briefing.lead_id}#projeto`,
       tag: `briefing-${briefing.id}`,
     }).catch(() => undefined);
   }
-  return { files: added.length };
+  return { files: added.length, references: references.length - current.length };
 }

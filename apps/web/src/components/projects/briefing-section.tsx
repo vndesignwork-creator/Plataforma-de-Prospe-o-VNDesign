@@ -78,7 +78,9 @@ export function BriefingSection({ lead }: { lead: Lead }) {
           <div className="flex flex-wrap gap-2">
             {answered ? (
               <Button size="sm" onClick={() => setShow(true)}>
-                Ver respostas{briefing.files.length ? ` e ${briefing.files.length} ficheiro${briefing.files.length === 1 ? '' : 's'}` : ''}
+                Ver respostas
+                {briefing.files.length ? ` e ${briefing.files.length} ficheiro${briefing.files.length === 1 ? '' : 's'}` : ''}
+                {briefing.references?.length ? ` · ${briefing.references.length} referência${briefing.references.length === 1 ? '' : 's'}` : ''}
               </Button>
             ) : null}
             <Button size="sm" variant="outline" onClick={copy}>
@@ -117,6 +119,33 @@ export function BriefingSection({ lead }: { lead: Lead }) {
                 </div>
               ))}
             </dl>
+            {briefing.references?.length ? (
+              <div>
+                <h3 className="mb-1 text-sm font-semibold">Referências do cliente</h3>
+                <ul className="grid gap-2 sm:grid-cols-2" aria-label="Referências do briefing">
+                  {briefing.references.map((r, i) => (
+                    <li key={i} className="overflow-hidden rounded-lg border border-border">
+                      {r.kind === 'image' ? (
+                        <a href={`/api/v1/leads/${lead.id}/briefing/references/${i}`} target="_blank" rel="noreferrer">
+                          {/* eslint-disable-next-line @next/next/no-img-element -- imagem com link temporário do servidor */}
+                          <img src={`/api/v1/leads/${lead.id}/briefing/references/${i}`} alt={r.name} className="block max-h-40 w-full object-cover" />
+                        </a>
+                      ) : null}
+                      <div className="p-2 text-sm">
+                        {r.url ? (
+                          <a href={r.url} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 font-medium text-accent-text hover:underline">
+                            <ExternalLink className="h-3.5 w-3.5" aria-hidden /> {r.name}
+                          </a>
+                        ) : (
+                          <span className="font-medium break-words">{r.name}</span>
+                        )}
+                        {r.note ? <p className="mt-0.5 text-muted break-words">{r.note}</p> : null}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             {briefing.files.length ? (
               <div>
                 <h3 className="mb-1 text-sm font-semibold">Ficheiros</h3>

@@ -215,7 +215,13 @@ export function describe(a: Activity): string | null {
     case 'email_clicked':
       return [a.body ? `“${a.body}”` : null, p.url ? String(p.url).replace(/^https?:\/\/(www\.)?/, '') : null].filter(Boolean).join(' → ') || null;
     case 'briefing_received':
-      return `${Number(p.answers ?? 0)} resposta(s)${Number(p.files ?? 0) ? ` · ${Number(p.files)} ficheiro(s)` : ''}`;
+      return [
+        `${Number(p.answers ?? 0)} resposta(s)`,
+        Number(p.files ?? 0) ? `${Number(p.files)} ficheiro(s)` : null,
+        Number(p.references ?? 0) ? `${Number(p.references)} referência(s)` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ');
     case 'testimonial_received':
       return `${'★'.repeat(Number(p.rating ?? 0))} · ${p.can_publish ? 'pode ser publicado' : 'só para ti (sem autorização para publicar)'}`;
     case 'email_received':
