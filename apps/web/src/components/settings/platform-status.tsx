@@ -84,13 +84,13 @@ function CronRow({ name, what, schedule, state, at }: { name: string; what: stri
 
 /** Teste do envio de email do sistema (resumo diário, convites, palavra-passe). */
 function SystemMailTest({ configured }: { configured: boolean }) {
-  const [result, setResult] = useState<{ sent: boolean; to: string | null; host: string | null; detail: string | null } | null>(null);
+  const [result, setResult] = useState<{ sent: boolean; to: string | null; host: string | null; detail: string | null; hint: string | null } | null>(null);
   const [testing, setTesting] = useState(false);
 
   async function test() {
     setTesting(true);
     try {
-      const data = (await api<{ data: { sent: boolean; to: string | null; host: string | null; detail: string | null } }>('/platform/mail-test', { method: 'POST' })).data;
+      const data = (await api<{ data: { sent: boolean; to: string | null; host: string | null; detail: string | null; hint: string | null } }>('/platform/mail-test', { method: 'POST' })).data;
       setResult(data);
       if (data.sent) toast.success('Email de teste enviado. Vê a tua caixa de entrada.');
     } catch (e) {
@@ -124,7 +124,8 @@ function SystemMailTest({ configured }: { configured: boolean }) {
           ) : (
             <div className="rounded-lg bg-danger-soft px-3 py-2 text-danger">
               <p className="font-medium">Não foi possível enviar{result.host ? ` por ${result.host}` : ''}.</p>
-              <p className="mt-1 break-words">{result.detail}</p>
+              {result.hint ? <p className="mt-1">{result.hint}</p> : null}
+              <p className="mt-1 text-xs break-words opacity-80">{result.detail}</p>
             </div>
           )
         ) : (

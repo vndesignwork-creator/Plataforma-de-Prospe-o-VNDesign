@@ -110,18 +110,54 @@ export async function getPlatformStatus(ctx: ApiContext): Promise<PlatformStatus
 }
 
 /**
+ * O que o erro do servidor de email quer dizer, em português, com o que falta
+ * corrigir. Os códigos vêm do próprio servidor (nodemailer passa-os à frente).
+ */
+function mailHint(detail: string, hasUser: boolean): string | null {
+  const text = detail.toLowerCase();
+  if (/530|authentication required|must issue a starttls|auth.*required/.test(text)) {
+    return hasUser
+      ? 'O servidor pede autenticação e recusou a ligação: confirma SMTP_USER e SMTP_PASS (e se a porta é 465 com SSL ou 587 com STARTTLS).'
+      : 'O servidor pede autenticação e a plataforma está a ligar-se sem credenciais: falta SMTP_USER (o endereço da caixa de correio) e SMTP_PASS (a palavra-passe dela) nas definições do servidor.';
+  }
+  if (/535|invalid login|authentication failed|eauth/.test(text)) {
+    return 'O utilizador ou a palavra-passe do email não estão certos (no Gmail tem de ser uma palavra-passe de aplicação).';
+  }
+  if (/econnrefused|etimedout|enotfound|connection timeout|connect timeout/.test(text)) {
+    return 'Não se chegou ao servidor de email: confirma SMTP_HOST e SMTP_PORT (465 com SSL ou 587 com STARTTLS) e se o servidor deixa sair ligações.';
+  }
+  if (/550|553|sender|not allowed|relay/.test(text)) {
+    return 'O servidor recusou o remetente: o SMTP_FROM tem de ser uma caixa de correio real desse servidor (a mesma do SMTP_USER, normalmente).';
+  }
+  if (/certificate|self.signed|tls/.test(text)) {
+    return 'Problema no certificado da ligação: confirma a porta e o SMTP_SECURE (465 = ligado, 587 = desligado).';
+  }
+  return null;
+}
+
+/**
  * Testa o envio de email do sistema (o que leva o resumo diário, os convites e
  * o link da palavra-passe). Devolve o motivo exato quando falha, para se saber
  * o que corrigir nas definições do servidor.
  */
-export async function testSystemMail(ctx: ApiContext): Promise<{ sent: boolean; to: string | null; host: string | null; detail: string | null }> {
+export async function testSystemMail(
+  ctx: ApiContext,
+): Promise<{ sent: boolean; to: string | null; host: string | null; detail: string | null; hint: string | null }> {
   if (ctx.role !== 'owner' && ctx.role !== 'admin') {
     throw new ApiError(403, 'Sem permissão', 'Só o dono e os administradores testam o envio de email do sistema.');
   }
   const host = process.env.SMTP_HOST?.trim() || null;
   const to = ctx.user.email ?? null;
-  if (!host) return { sent: false, to, host: null, detail: 'Não há servidor de envio configurado (falta SMTP_HOST nas definições do servidor).' };
-  if (!to) return { sent: false, to: null, host, detail: 'A tua conta não tem email.' };
+  if (!host) {
+    return {
+      sent: false,
+      to,
+      host: null,
+      detail: 'Não há servidor de envio configurado.',
+      hint: 'Falta SMTP_HOST (e SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM) nas definições do servidor.',
+    };
+  }
+  if (!to) return { sent: false, to: null, host, detail: 'A tua conta não tem email.', hint: null };
   try {
     await sendMail({
       to,
@@ -130,16 +166,17 @@ export async function testSystemMail(ctx: ApiContext): Promise<{ sent: boolean; 
       html: '<p>Este email serve só para confirmar que o envio da plataforma está a funcionar. Se o recebeste, está tudo bem.</p>',
     });
     await resolveProblem(ctx.workspaceId, 'email', 'system_mail');
-    return { sent: true, to, host, detail: null };
+    return { sent: true, to, host, detail: null, hint: null };
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
+    const hint = mailHint(detail, Boolean(process.env.SMTP_USER?.trim()));
     await reportProblem(ctx.workspaceId, {
       area: 'email',
       key: 'system_mail',
       title: 'O envio de email da plataforma não está a funcionar',
-      detail,
+      detail: hint ? `${detail} — ${hint}` : detail,
     });
-    return { sent: false, to, host, detail };
+    return { sent: false, to, host, detail, hint };
   }
 }
 
