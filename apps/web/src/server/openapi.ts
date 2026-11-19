@@ -97,6 +97,10 @@ import {
   ClientRequestUpdateSchema,
   ProjectDeliverableCreateSchema,
   ProjectDeliverableUpdateSchema,
+  DeliverablePinSchema,
+  DeliverablePinCreateSchema,
+  DeliverablePinUpdateSchema,
+  PublicPinCreateSchema,
   CalendarEventSchema,
   ProfitabilitySchema,
   CalendarFeedSchema,
@@ -2276,6 +2280,25 @@ export function getOpenApiDocument() {
           responses: { '200': { description: 'Respondido' }, '404': problem('Página ou entrega inexistente'), '409': problem('Já respondida') },
         }),
       },
+      '/public/projects/{token}/deliverables/{id}/image': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Na página do cliente (sem sessão): a imagem da entrega (link temporário)',
+          security: [],
+          requestParams: { path: z.object({ token: z.string(), id: z.uuid() }) },
+          responses: { '307': { description: 'Link temporário' }, '404': problem('Página ou imagem inexistente') },
+        }),
+      },
+      '/public/projects/{token}/deliverables/{id}/pins': {
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Na página do cliente (sem sessão): comentar num ponto da imagem',
+          security: [],
+          requestParams: { path: z.object({ token: z.string(), id: z.uuid() }) },
+          requestBody: body(PublicPinCreateSchema),
+          responses: { '201': ok(data(DeliverablePinSchema), 'Criado'), '404': problem('Página ou imagem inexistente') },
+        }),
+      },
       '/leads/{id}/expenses': {
         get: op({ tags: ['Projetos'], summary: 'Despesas do projeto', requestParams: { path: idParam }, responses: { '200': ok(data(z.array(ProjectExpenseSchema))), ...withNotFound } }),
         post: op({
@@ -2635,6 +2658,51 @@ export function getOpenApiDocument() {
           responses: { '200': ok(data(ProjectDeliverableSchema)), ...withNotFound },
         }),
         delete: op({ tags: ['Projetos'], summary: 'Apagar um ficheiro ou entrega', requestParams: { path: idParam }, responses: { '204': { description: 'Apagado' }, ...withNotFound } }),
+      },
+      '/deliverables/{id}/image': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'A imagem da entrega (link temporário, para comentar em cima dela)',
+          requestParams: { path: idParam },
+          responses: { '307': { description: 'Link temporário' }, ...withNotFound },
+        }),
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Guardar a imagem da entrega (multipart, campo "file"; PNG, JPG, WEBP ou GIF até 15 MB)',
+          requestParams: { path: idParam },
+          responses: { '200': ok(data(ProjectDeliverableSchema)), ...withNotFound },
+        }),
+        delete: op({
+          tags: ['Projetos'],
+          summary: 'Tirar a imagem da entrega (leva os comentários que estavam em cima dela)',
+          requestParams: { path: idParam },
+          responses: { '200': ok(data(ProjectDeliverableSchema)), ...withNotFound },
+        }),
+      },
+      '/deliverables/{id}/pins': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Comentários em cima da imagem da entrega',
+          requestParams: { path: idParam },
+          responses: { '200': ok(data(z.array(DeliverablePinSchema))), ...withNotFound },
+        }),
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Comentar num ponto da imagem (x e y em % da imagem)',
+          requestParams: { path: idParam },
+          requestBody: body(DeliverablePinCreateSchema),
+          responses: { '201': ok(data(DeliverablePinSchema), 'Criado'), ...withNotFound },
+        }),
+      },
+      '/pins/{id}': {
+        patch: op({
+          tags: ['Projetos'],
+          summary: 'Mudar o comentário ou marcá-lo como resolvido',
+          requestParams: { path: idParam },
+          requestBody: body(DeliverablePinUpdateSchema),
+          responses: { '200': ok(data(DeliverablePinSchema)), ...withNotFound },
+        }),
+        delete: op({ tags: ['Projetos'], summary: 'Apagar o comentário', requestParams: { path: idParam }, responses: { '204': { description: 'Apagado' }, ...withNotFound } }),
       },
       '/dashboard/billing': {
         get: op({ tags: ['Projetos'], summary: 'Faturação: recebido este mês, por receber, em atraso', responses: { '200': ok(data(BillingSummarySchema)), ...common } }),

@@ -25,6 +25,9 @@ import type {
   MapData,
   Proposal,
   ProposalPick,
+  DeliverablePin,
+  DeliverablePinCreate,
+  DeliverablePinUpdate,
   ServicePackage,
   Service,
   ServiceCategoryItem,
@@ -1313,6 +1316,51 @@ export function useDeleteDeliverable(leadId: string) {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['deliverables', leadId] });
       invalidate(leadId);
+    },
+  });
+}
+
+/** Comentários em cima da imagem de uma entrega. */
+export function usePins(deliverableId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['pins', deliverableId],
+    queryFn: () => api<{ data: DeliverablePin[] }>(`/deliverables/${deliverableId}/pins`).then((r) => r.data),
+    enabled,
+  });
+}
+
+/** Escrever, mudar, resolver ou apagar um comentário da imagem. */
+export function usePinAction(leadId: string, deliverableId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: DeliverablePinCreate | { id: string; patch: DeliverablePinUpdate } | { remove: string }) => {
+      if ('remove' in input) return api(`/pins/${input.remove}`, { method: 'DELETE' });
+      if ('id' in input) return api<{ data: DeliverablePin }>(`/pins/${input.id}`, { method: 'PATCH', body: input.patch }).then((r) => r.data);
+      return api<{ data: DeliverablePin }>(`/deliverables/${deliverableId}/pins`, { method: 'POST', body: input }).then((r) => r.data);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['pins', deliverableId] });
+      void qc.invalidateQueries({ queryKey: ['deliverables', leadId] });
+    },
+  });
+}
+
+/** Guardar ou tirar a imagem da entrega. */
+export function useDeliverableImage(leadId: string, deliverableId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { file: File } | { remove: true }) => {
+      if ('remove' in input) return api<{ data: ProjectDeliverable }>(`/deliverables/${deliverableId}/image`, { method: 'DELETE' }).then((r) => r.data);
+      const form = new FormData();
+      form.append('file', input.file);
+      const res = await fetch(`/api/v1/deliverables/${deliverableId}/image`, { method: 'POST', body: form });
+      const json = (await res.json().catch(() => null)) as { data?: ProjectDeliverable; detail?: string; title?: string } | null;
+      if (!res.ok || !json?.data) throw new Error(json?.detail ?? json?.title ?? 'Não foi possível guardar a imagem.');
+      return json.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['deliverables', leadId] });
+      void qc.invalidateQueries({ queryKey: ['pins', deliverableId] });
     },
   });
 }

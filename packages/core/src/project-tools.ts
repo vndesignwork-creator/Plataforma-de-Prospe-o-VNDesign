@@ -283,6 +283,11 @@ export const ProjectDeliverableSchema = z
     status: z.enum(DELIVERABLE_STATUSES),
     sent_at: z.string().nullable(),
     approved_at: z.string().nullable(),
+    /** Imagem da entrega (para comentar em cima dela); null = sem imagem. */
+    image_name: z.string().nullable(),
+    /** Marcas com comentários em cima da imagem. */
+    pins: z.int().meta({ description: 'Comentários na imagem' }),
+    open_pins: z.int().meta({ description: 'Comentários por resolver' }),
     created_at: z.string(),
   })
   .meta({ id: 'ProjectDeliverable' });
@@ -304,6 +309,63 @@ export const ProjectDeliverableUpdateSchema = z
   .partial()
   .meta({ id: 'ProjectDeliverableUpdate' });
 export type ProjectDeliverableUpdate = z.output<typeof ProjectDeliverableUpdateSchema>;
+
+// -----------------------------------------------------------------------------
+// Comentários em cima da imagem de uma entrega
+// -----------------------------------------------------------------------------
+
+/** Imagens que a plataforma mostra para comentar (o react não desenha SVG de fontes externas). */
+export const PIN_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'] as const;
+export const PIN_IMAGE_MAX_BYTES = 15 * 1024 * 1024;
+export const PIN_COMMENT_MAX = 1000;
+
+export const DeliverablePinSchema = z
+  .object({
+    id: z.uuid(),
+    deliverable_id: z.uuid(),
+    x: z.number().meta({ description: 'Posição horizontal, em % da largura da imagem' }),
+    y: z.number().meta({ description: 'Posição vertical, em % da altura da imagem' }),
+    comment: z.string(),
+    author: z.enum(['equipa', 'cliente']),
+    author_name: z.string().nullable(),
+    resolved_at: z.string().nullable(),
+    created_at: z.string(),
+  })
+  .meta({ id: 'DeliverablePin' });
+export type DeliverablePin = z.infer<typeof DeliverablePinSchema>;
+
+const pinPosition = z.coerce.number().min(0, { error: 'Fora da imagem.' }).max(100, { error: 'Fora da imagem.' });
+const pinComment = z
+  .string({ error: 'Escreve o comentário.' })
+  .trim()
+  .min(1, { error: 'Escreve o comentário.' })
+  .max(PIN_COMMENT_MAX, { error: `Máximo de ${PIN_COMMENT_MAX} caracteres.` });
+
+export const DeliverablePinCreateSchema = z
+  .object({ x: pinPosition, y: pinPosition, comment: pinComment })
+  .meta({ id: 'DeliverablePinCreate' });
+export type DeliverablePinCreate = z.output<typeof DeliverablePinCreateSchema>;
+
+/** Na página do cliente: o nome vai junto (quem escreveu o comentário). */
+export const PublicPinCreateSchema = DeliverablePinCreateSchema.extend({
+  name: z.string().trim().max(120).optional(),
+}).meta({ id: 'PublicDeliverablePinCreate' });
+
+export const DeliverablePinUpdateSchema = z
+  .object({ comment: pinComment.optional(), resolved: z.boolean().optional() })
+  .meta({ id: 'DeliverablePinUpdate' });
+export type DeliverablePinUpdate = z.output<typeof DeliverablePinUpdateSchema>;
+
+/** Os comentários por resolver, pela ordem em que foram escritos. */
+export function openPins<P extends Pick<DeliverablePin, 'resolved_at' | 'created_at'>>(pins: readonly P[]): P[] {
+  return pins.filter((p) => !p.resolved_at).sort((a, b) => a.created_at.localeCompare(b.created_at));
+}
+
+/** O número de cada marca na imagem (1, 2, 3… pela ordem em que foram escritas). */
+export function pinNumbers<P extends Pick<DeliverablePin, 'id' | 'created_at'>>(pins: readonly P[]): Map<string, number> {
+  const order = [...pins].sort((a, b) => a.created_at.localeCompare(b.created_at));
+  return new Map(order.map((p, i) => [p.id, i + 1]));
+}
 
 // -----------------------------------------------------------------------------
 // Concluir o projeto (com os passos finais)
@@ -438,7 +500,16 @@ export interface SharedProject {
   due_on: string | null;
   completed_at: string | null;
   tasks: { title: string; done: boolean }[];
-  deliverables: { id: string; title: string; url: string | null; status: DeliverableStatus; date: string | null }[];
+  deliverables: {
+    id: string;
+    title: string;
+    url: string | null;
+    status: DeliverableStatus;
+    date: string | null;
+    /** Tem imagem para ver e comentar em cima dela. */
+    image: boolean;
+    pins: DeliverablePin[];
+  }[];
   /** O cliente pode aprovar entregas ou pedir alterações nesta página. */
   approvals: boolean;
   /** Há kit da marca para descarregar (ZIP com o manual de marca). */

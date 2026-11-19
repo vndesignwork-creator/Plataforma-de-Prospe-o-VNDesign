@@ -3,8 +3,13 @@
  * revisão, registo de horas, ficheiros/entregas, calendário e a página de
  * acompanhamento (/p/<código>, sem sessão).
  */
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import {
+  PIN_IMAGE_MAX_BYTES,
+  PIN_IMAGE_TYPES,
+  type DeliverablePin,
+  type DeliverablePinCreate,
+  type DeliverablePinUpdate,
   DEFAULT_PROJECT_INFO,
   PROJECT_STAGE_LABELS,
   WorkspaceSettingsSchema,
@@ -436,8 +441,36 @@ export async function expenseTotals(ctx: ApiContext, leadIds: string[]): Promise
 // Ficheiros e entregas
 // -----------------------------------------------------------------------------
 
-const DELIVERABLE_SELECT = 'id, lead_id, title, url, status, sent_at, approved_at, created_at';
+const DELIVERABLE_SELECT = 'id, lead_id, title, url, status, sent_at, approved_at, image_path, image_name, created_at';
 const DELIVERABLE_NOT_FOUND = 'Entrega não encontrada';
+
+/** Linha da base de dados → entrega da API (sem o caminho do ficheiro, que é interno). */
+type DeliverableRow = Omit<ProjectDeliverable, 'pins' | 'open_pins'> & { image_path: string | null };
+const toDeliverable = (row: DeliverableRow, pins: { total: number; open: number } = { total: 0, open: 0 }): ProjectDeliverable => {
+  // O caminho do ficheiro é interno (a imagem vê-se por /deliverables/{id}/image).
+  const { image_path, ...rest } = row;
+  void image_path;
+  return { ...rest, pins: pins.total, open_pins: pins.open };
+};
+
+/** Quantos comentários (e por resolver) tem cada entrega. */
+async function pinCounts(ctx: ApiContext, ids: string[]): Promise<Map<string, { total: number; open: number }>> {
+  const counts = new Map<string, { total: number; open: number }>();
+  if (!ids.length) return counts;
+  const { data, error } = await ctx.supabase
+    .from('deliverable_pins')
+    .select('deliverable_id, resolved_at')
+    .eq('workspace_id', ctx.workspaceId)
+    .in('deliverable_id', ids);
+  if (error) throw fromPostgrest(error);
+  for (const row of (data ?? []) as { deliverable_id: string; resolved_at: string | null }[]) {
+    const hit = counts.get(row.deliverable_id) ?? { total: 0, open: 0 };
+    hit.total++;
+    if (!row.resolved_at) hit.open++;
+    counts.set(row.deliverable_id, hit);
+  }
+  return counts;
+}
 
 export async function listDeliverables(ctx: ApiContext, leadId: string): Promise<ProjectDeliverable[]> {
   const { data, error } = await ctx.supabase
@@ -447,7 +480,9 @@ export async function listDeliverables(ctx: ApiContext, leadId: string): Promise
     .eq('lead_id', leadId)
     .order('created_at', { ascending: true });
   if (error) throw fromPostgrest(error);
-  return (data ?? []) as ProjectDeliverable[];
+  const rows = (data ?? []) as DeliverableRow[];
+  const counts = await pinCounts(ctx, rows.map((d) => d.id));
+  return rows.map((d) => toDeliverable(d, counts.get(d.id)));
 }
 
 /** Datas de envio/aprovação conforme o estado (e a atividade quando muda). */
@@ -471,7 +506,7 @@ export async function createDeliverable(ctx: ApiContext, leadId: string, input: 
     .select(DELIVERABLE_SELECT)
     .single();
   if (error) throw fromPostgrest(error);
-  const deliverable = data as ProjectDeliverable;
+  const deliverable = toDeliverable(data as DeliverableRow);
   await logDeliverable(ctx, deliverable);
   return deliverable;
 }
@@ -485,7 +520,7 @@ export async function updateDeliverable(ctx: ApiContext, id: string, patch: Proj
     .maybeSingle();
   if (readError) throw fromPostgrest(readError, DELIVERABLE_NOT_FOUND);
   if (!current) throw new ApiError(404, DELIVERABLE_NOT_FOUND);
-  const before = current as ProjectDeliverable;
+  const before = toDeliverable(current as DeliverableRow);
   const { data, error } = await ctx.supabase
     .from('project_deliverables')
     .update({ ...patch, ...(patch.status ? statusDates(patch.status, before) : {}) })
@@ -494,15 +529,163 @@ export async function updateDeliverable(ctx: ApiContext, id: string, patch: Proj
     .select(DELIVERABLE_SELECT)
     .single();
   if (error) throw fromPostgrest(error, DELIVERABLE_NOT_FOUND);
-  const deliverable = data as ProjectDeliverable;
+  const counts = await pinCounts(ctx, [id]);
+  const deliverable = toDeliverable(data as DeliverableRow, counts.get(id));
   await logDeliverable(ctx, deliverable, before);
   return deliverable;
 }
 
 export async function deleteDeliverable(ctx: ApiContext, id: string): Promise<void> {
-  const { data, error } = await ctx.supabase.from('project_deliverables').delete().eq('workspace_id', ctx.workspaceId).eq('id', id).select('id');
+  const { data, error } = await ctx.supabase
+    .from('project_deliverables')
+    .delete()
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('id', id)
+    .select('id, image_path');
   if (error) throw fromPostgrest(error, DELIVERABLE_NOT_FOUND);
   if (!data?.length) throw new ApiError(404, DELIVERABLE_NOT_FOUND);
+  const path = (data[0] as { image_path: string | null }).image_path;
+  if (path) await createSupabaseAdminClient().storage.from(DELIVERABLE_BUCKET).remove([path]).catch(() => undefined);
+}
+
+// -----------------------------------------------------------------------------
+// Imagem da entrega e comentários em cima dela
+// -----------------------------------------------------------------------------
+
+const DELIVERABLE_BUCKET = 'project-files';
+const PIN_SELECT = 'id, deliverable_id, x, y, comment, author, author_name, resolved_at, created_at';
+const PIN_NOT_FOUND = 'Comentário não encontrado';
+
+const toPin = (row: Record<string, unknown>): DeliverablePin => ({
+  ...(row as unknown as DeliverablePin),
+  x: Number(row.x),
+  y: Number(row.y),
+});
+
+async function getDeliverableRow(ctx: ApiContext, id: string): Promise<DeliverableRow> {
+  const { data, error } = await ctx.supabase.from('project_deliverables').select(DELIVERABLE_SELECT).eq('workspace_id', ctx.workspaceId).eq('id', id).maybeSingle();
+  if (error) throw fromPostgrest(error, DELIVERABLE_NOT_FOUND);
+  if (!data) throw new ApiError(404, DELIVERABLE_NOT_FOUND);
+  return data as DeliverableRow;
+}
+
+/** Guarda (ou troca) a imagem da entrega: é sobre ela que se escrevem os comentários. */
+export async function setDeliverableImage(ctx: ApiContext, id: string, file: File): Promise<ProjectDeliverable> {
+  const current = await getDeliverableRow(ctx, id);
+  if (!PIN_IMAGE_TYPES.includes(file.type as (typeof PIN_IMAGE_TYPES)[number])) {
+    throw new ApiError(422, 'Imagem inválida', 'Usa uma imagem PNG, JPG, WEBP ou GIF.');
+  }
+  if (file.size > PIN_IMAGE_MAX_BYTES) {
+    throw new ApiError(422, 'Imagem demasiado grande', `A imagem não pode passar de ${Math.round(PIN_IMAGE_MAX_BYTES / 1024 / 1024)} MB.`);
+  }
+  const admin = createSupabaseAdminClient();
+  const name = file.name.slice(0, 120) || 'imagem';
+  const path = `deliverables/${ctx.workspaceId}/${id}/${randomUUID()}`;
+  const { error: uploadError } = await admin.storage
+    .from(DELIVERABLE_BUCKET)
+    .upload(path, Buffer.from(await file.arrayBuffer()), { contentType: file.type, upsert: false });
+  if (uploadError) throw new ApiError(502, 'Não foi possível guardar a imagem', 'Tenta outra vez.');
+  const { data, error } = await ctx.supabase
+    .from('project_deliverables')
+    .update({ image_path: path, image_name: name })
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('id', id)
+    .select(DELIVERABLE_SELECT)
+    .single();
+  if (error) throw fromPostgrest(error, DELIVERABLE_NOT_FOUND);
+  // A imagem antiga deixa de ser precisa.
+  if (current.image_path) await admin.storage.from(DELIVERABLE_BUCKET).remove([current.image_path]).catch(() => undefined);
+  const counts = await pinCounts(ctx, [id]);
+  return toDeliverable(data as DeliverableRow, counts.get(id));
+}
+
+/** Tira a imagem (os comentários que estavam em cima dela vão com ela). */
+export async function deleteDeliverableImage(ctx: ApiContext, id: string): Promise<ProjectDeliverable> {
+  const current = await getDeliverableRow(ctx, id);
+  if (!current.image_path) throw new ApiError(404, 'Esta entrega não tem imagem');
+  const admin = createSupabaseAdminClient();
+  await admin.storage.from(DELIVERABLE_BUCKET).remove([current.image_path]).catch(() => undefined);
+  const [{ error: pinsError }, { data, error }] = await Promise.all([
+    ctx.supabase.from('deliverable_pins').delete().eq('workspace_id', ctx.workspaceId).eq('deliverable_id', id),
+    ctx.supabase
+      .from('project_deliverables')
+      .update({ image_path: null, image_name: null })
+      .eq('workspace_id', ctx.workspaceId)
+      .eq('id', id)
+      .select(DELIVERABLE_SELECT)
+      .single(),
+  ]);
+  if (pinsError) throw fromPostgrest(pinsError);
+  if (error) throw fromPostgrest(error, DELIVERABLE_NOT_FOUND);
+  return toDeliverable(data as DeliverableRow);
+}
+
+/** Link temporário (10 minutos) para ver a imagem da entrega. */
+export async function deliverableImageUrl(ctx: ApiContext, id: string): Promise<string> {
+  const current = await getDeliverableRow(ctx, id);
+  if (!current.image_path) throw new ApiError(404, 'Esta entrega não tem imagem');
+  return signedImageUrl(current.image_path);
+}
+
+async function signedImageUrl(path: string): Promise<string> {
+  const { data, error } = await createSupabaseAdminClient().storage.from(DELIVERABLE_BUCKET).createSignedUrl(path, 600);
+  if (error || !data) throw new ApiError(502, 'Imagem indisponível', 'Não foi possível abrir a imagem. Tenta outra vez.');
+  return data.signedUrl;
+}
+
+export async function listPins(ctx: ApiContext, deliverableId: string): Promise<DeliverablePin[]> {
+  await getDeliverableRow(ctx, deliverableId);
+  const { data, error } = await ctx.supabase
+    .from('deliverable_pins')
+    .select(PIN_SELECT)
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('deliverable_id', deliverableId)
+    .order('created_at', { ascending: true });
+  if (error) throw fromPostgrest(error);
+  return ((data ?? []) as Record<string, unknown>[]).map(toPin);
+}
+
+export async function createPin(ctx: ApiContext, deliverableId: string, input: DeliverablePinCreate): Promise<DeliverablePin> {
+  const deliverable = await getDeliverableRow(ctx, deliverableId);
+  if (!deliverable.image_path) throw new ApiError(409, 'Esta entrega não tem imagem', 'Junta uma imagem para poderes comentar em cima dela.');
+  const { data, error } = await ctx.supabase
+    .from('deliverable_pins')
+    .insert({
+      workspace_id: ctx.workspaceId,
+      lead_id: deliverable.lead_id,
+      deliverable_id: deliverableId,
+      x: input.x,
+      y: input.y,
+      comment: input.comment,
+      author: 'equipa',
+      created_by: ctx.user.id,
+    })
+    .select(PIN_SELECT)
+    .single();
+  if (error) throw fromPostgrest(error);
+  return toPin(data as Record<string, unknown>);
+}
+
+export async function updatePin(ctx: ApiContext, id: string, patch: DeliverablePinUpdate): Promise<DeliverablePin> {
+  const update: Record<string, unknown> = {};
+  if (patch.comment !== undefined) update.comment = patch.comment;
+  if (patch.resolved !== undefined) update.resolved_at = patch.resolved ? new Date().toISOString() : null;
+  const { data, error } = await ctx.supabase
+    .from('deliverable_pins')
+    .update(update)
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('id', id)
+    .select(PIN_SELECT)
+    .maybeSingle();
+  if (error) throw fromPostgrest(error, PIN_NOT_FOUND);
+  if (!data) throw new ApiError(404, PIN_NOT_FOUND);
+  return toPin(data as Record<string, unknown>);
+}
+
+export async function deletePin(ctx: ApiContext, id: string): Promise<void> {
+  const { data, error } = await ctx.supabase.from('deliverable_pins').delete().eq('workspace_id', ctx.workspaceId).eq('id', id).select('id');
+  if (error) throw fromPostgrest(error, PIN_NOT_FOUND);
+  if (!data?.length) throw new ApiError(404, PIN_NOT_FOUND);
 }
 
 // -----------------------------------------------------------------------------
@@ -648,6 +831,66 @@ export async function clientDeliverableAction(
   return { status: input.action === 'approve' ? 'aprovada' : 'rascunho', revision };
 }
 
+/** A imagem de uma entrega, na página do cliente (link temporário de 10 minutos). */
+export async function sharedDeliverableImageUrl(token: string, deliverableId: string): Promise<string> {
+  const shared = await getSharedProject(token);
+  const target = shared?.deliverables.find((d) => d.id === deliverableId);
+  if (!target?.image) throw new ApiError(404, 'Imagem não encontrada');
+  const { data } = await createSupabaseAdminClient().from('project_deliverables').select('image_path').eq('id', deliverableId).maybeSingle();
+  const path = (data as { image_path: string | null } | null)?.image_path;
+  if (!path) throw new ApiError(404, 'Imagem não encontrada');
+  return signedImageUrl(path);
+}
+
+/**
+ * O cliente escreve um comentário num ponto da imagem (página do projeto).
+ * Fica logo visível para os dois lados e avisa quem criou o lead.
+ */
+export async function createSharedPin(
+  token: string,
+  deliverableId: string,
+  input: DeliverablePinCreate & { name?: string },
+): Promise<DeliverablePin> {
+  const shared = await getSharedProject(token);
+  if (!shared?.approvals) throw new ApiError(404, 'Página não encontrada');
+  const target = shared.deliverables.find((d) => d.id === deliverableId);
+  if (!target?.image) throw new ApiError(404, 'Imagem não encontrada');
+  const admin = createSupabaseAdminClient();
+  const { data: project } = await admin.from('lead_projects').select('lead_id, workspace_id').eq('share_token', token).maybeSingle();
+  if (!project) throw new ApiError(404, 'Página não encontrada');
+  const ws = project.workspace_id as string;
+  const leadId = project.lead_id as string;
+  const name = input.name?.trim().slice(0, 120) || null;
+  const { data, error } = await admin
+    .from('deliverable_pins')
+    .insert({
+      workspace_id: ws,
+      lead_id: leadId,
+      deliverable_id: deliverableId,
+      x: input.x,
+      y: input.y,
+      comment: input.comment,
+      author: 'cliente',
+      author_name: name,
+    })
+    .select(PIN_SELECT)
+    .single();
+  if (error) throw fromPostgrest(error);
+
+  const { data: lead } = await admin.from('leads').select('created_by, company_name').eq('id', leadId).maybeSingle();
+  if (lead?.created_by) {
+    await alertUser(ws, lead.created_by as string, {
+      kind: 'client',
+      leadId,
+      title: `💬 Comentário na imagem · ${lead.company_name}`,
+      body: `${name ? `${name} (cliente)` : 'O cliente'} comentou "${target.title}": ${input.comment}`,
+      url: `/leads/${leadId}#projeto`,
+      tag: `pin-${deliverableId}`,
+    }).catch(() => undefined);
+  }
+  return toPin(data as Record<string, unknown>);
+}
+
 /** O projeto do link /p/<código>, ou null se o link não existir ou estiver desligado. */
 export async function getSharedProject(token: string): Promise<SharedProject | null> {
   if (!/^[A-Za-z0-9_-]{16,64}$/.test(token)) return null;
@@ -678,7 +921,7 @@ export async function getSharedProject(token: string): Promise<SharedProject | n
     features.deliverables
       ? admin
           .from('project_deliverables')
-          .select('id, title, url, status, sent_at, approved_at, created_at')
+          .select('id, title, url, status, sent_at, approved_at, image_path, created_at')
           .eq('workspace_id', ws)
           .eq('lead_id', leadId)
           .neq('status', 'rascunho')
@@ -706,6 +949,13 @@ export async function getSharedProject(token: string): Promise<SharedProject | n
           .limit(1)
       : Promise.resolve({ data: [] }),
   ]);
+
+  // Comentários em cima das imagens (das entregas que o cliente vê).
+  const shownIds = ((deliverables.data ?? []) as { id: string }[]).map((d) => d.id);
+  const { data: pinRows } = shownIds.length
+    ? await admin.from('deliverable_pins').select(PIN_SELECT).eq('workspace_id', ws).in('deliverable_id', shownIds).order('created_at', { ascending: true })
+    : { data: [] };
+  const sharedPins = ((pinRows ?? []) as Record<string, unknown>[]).map(toPin);
 
   const sigs = (signatures.data ?? []) as { full_name: string; company: string | null; email: string | null; phone: string | null; website: string | null; user_id: string }[];
   const sig = sigs.find((s) => s.user_id === lead.created_by) ?? sigs[0];
@@ -735,8 +985,24 @@ export async function getSharedProject(token: string): Promise<SharedProject | n
     completed_at: (lead.project_completed_at as string | null) ?? null,
     tasks: ((tasks.data ?? []) as { title: string; done_at: string | null }[]).map((t) => ({ title: t.title, done: !!t.done_at })),
     deliverables: (
-      (deliverables.data ?? []) as { id: string; title: string; url: string | null; status: SharedProject['deliverables'][number]['status']; sent_at: string | null; approved_at: string | null }[]
-    ).map((d) => ({ id: d.id, title: d.title, url: d.url, status: d.status, date: d.approved_at ?? d.sent_at })),
+      (deliverables.data ?? []) as {
+        id: string;
+        title: string;
+        url: string | null;
+        status: SharedProject['deliverables'][number]['status'];
+        sent_at: string | null;
+        approved_at: string | null;
+        image_path: string | null;
+      }[]
+    ).map((d) => ({
+      id: d.id,
+      title: d.title,
+      url: d.url,
+      status: d.status,
+      date: d.approved_at ?? d.sent_at,
+      image: !!d.image_path,
+      pins: sharedPins.filter((p) => p.deliverable_id === d.id),
+    })),
     approvals: features.deliverables && features.client_approvals && !lead.project_completed_at,
     brand_kit: brandKit,
     contract: ((contracts.data ?? []) as SharedProject['contract'][])[0] ?? null,

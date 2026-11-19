@@ -5,7 +5,7 @@
  * estado "Por enviar" → "Enviada" → "Aprovada pelo cliente".
  */
 import { DELIVERABLE_STATUS_LABELS, DELIVERABLE_STATUSES, formatDate, type DeliverableStatus, type Lead, type ProjectDeliverable } from '@vndesign/core';
-import { CheckCircle2, ExternalLink, FolderOpen, Plus, Send, Trash2 } from 'lucide-react';
+import { CheckCircle2, ExternalLink, FolderOpen, Image as ImageIcon, MessageSquare, Plus, Send, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { ApiClientError, errorMessage } from '@/lib/api-client';
 import { useDeleteDeliverable, useDeliverables, useSaveDeliverable } from '@/lib/queries';
 import { cn, displayHost } from '@/lib/utils';
 import { SectionHeader } from './section-header';
+import { DeliverablePinsDialog } from './deliverable-pins';
 
 const STATUS_STYLE: Record<DeliverableStatus, string> = {
   rascunho: 'text-muted',
@@ -26,6 +27,7 @@ function DeliverableRow({ lead, d }: { lead: Lead; d: ProjectDeliverable }) {
   const save = useSaveDeliverable(lead.id);
   const remove = useDeleteDeliverable(lead.id);
   const date = d.status === 'aprovada' ? d.approved_at : d.status === 'enviada' ? d.sent_at : null;
+  const [commenting, setCommenting] = useState(false);
 
   async function setStatus(status: DeliverableStatus) {
     try {
@@ -70,6 +72,22 @@ function DeliverableRow({ lead, d }: { lead: Lead; d: ProjectDeliverable }) {
           </option>
         ))}
       </Select>
+      {/* Imagem e comentários em cima dela (os teus e os do cliente). */}
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-8"
+        onClick={() => setCommenting(true)}
+        aria-label={d.image_name ? `Ver e comentar a imagem de ${d.title}` : `Juntar imagem a ${d.title}`}
+        title={d.image_name ? 'Ver e comentar em cima da imagem' : 'Juntar uma imagem para comentar'}
+      >
+        {d.image_name ? <MessageSquare className="h-3.5 w-3.5" aria-hidden /> : <ImageIcon className="h-3.5 w-3.5" aria-hidden />}
+        {d.pins ? (
+          <span className={cn('text-xs tabular', d.open_pins ? 'font-semibold text-accent-text' : 'text-muted')}>
+            {d.open_pins ? `${d.open_pins}/${d.pins}` : d.pins}
+          </span>
+        ) : null}
+      </Button>
       <Button
         size="icon"
         variant="ghost"
@@ -79,6 +97,7 @@ function DeliverableRow({ lead, d }: { lead: Lead; d: ProjectDeliverable }) {
       >
         <Trash2 className="h-3.5 w-3.5" aria-hidden />
       </Button>
+      {commenting ? <DeliverablePinsDialog lead={lead} deliverable={d} onClose={() => setCommenting(false)} /> : null}
     </li>
   );
 }
@@ -128,7 +147,9 @@ export function DeliverablesSection({ lead }: { lead: Lead }) {
           ))}
         </ul>
       ) : !adding ? (
-        <p className="mt-2 text-sm text-muted">Guarda aqui os links do Drive, Figma ou Canva e marca o que o cliente já aprovou.</p>
+        <p className="mt-2 text-sm text-muted">
+          Guarda aqui os links do Drive, Figma ou Canva e marca o que o cliente já aprovou. Com uma imagem junta, comentam os dois em cima dela.
+        </p>
       ) : null}
       {adding ? (
         <form onSubmit={add} className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_auto]" noValidate aria-label="Nova entrega">

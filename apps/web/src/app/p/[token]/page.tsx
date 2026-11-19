@@ -16,6 +16,7 @@ import { sharedClientRequests } from '@/server/services/client-requests';
 import { getSharedProject } from '@/server/services/project-tools';
 import { ClientRequestForm } from './client-request-form';
 import { DeliverableResponse } from './deliverable-response';
+import { DeliverableImage } from './deliverable-image';
 
 /*
  * Página de acompanhamento para o cliente (link /p/<código>, sem login): a
@@ -191,6 +192,17 @@ export default async function SharedProjectPage({ params }: Props) {
                     {DELIVERABLE_STATUS_LABELS[d.status]}
                     {d.date ? ` a ${formatDate(d.date)}` : ''}
                   </span>
+                  {/* Imagem da entrega: o cliente comenta em cima dela (em vez de explicar por palavras). */}
+                  {d.image ? (
+                    <DeliverableImage
+                      token={token}
+                      id={d.id}
+                      title={d.title}
+                      name={project.contact_name}
+                      pins={d.pins}
+                      canComment={project.approvals && d.status === 'enviada'}
+                    />
+                  ) : null}
                   {/* Fica montado depois de responder, para a confirmação não desaparecer ao atualizar. */}
                   {project.approvals ? (
                     <DeliverableResponse token={token} id={d.id} title={d.title} name={project.contact_name} pending={d.status === 'enviada'} />
