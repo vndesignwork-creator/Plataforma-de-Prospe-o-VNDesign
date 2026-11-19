@@ -1058,7 +1058,7 @@ export function useSavePayment(leadId: string) {
 export function usePaymentPlan(leadId: string) {
   const invalidate = useInvalidateMoney();
   return useMutation({
-    mutationFn: (body: { total: number; split: number[] }) =>
+    mutationFn: (body: { total: number; split: number[]; first_due_on?: string | null }) =>
       api<{ data: LeadPayment[] }>(`/leads/${leadId}/payments/plan`, { method: 'POST', body }).then((r) => r.data),
     onSuccess: () => invalidate(leadId),
   });

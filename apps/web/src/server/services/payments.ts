@@ -59,7 +59,7 @@ export async function createPayment(ctx: ApiContext, leadId: string, input: Lead
   return payment;
 }
 
-/** Plano pronto (ex.: 50% de sinal hoje + 50% na entrega, sem data). */
+/** Plano pronto (ex.: 50% de sinal + 50% na entrega). Só o sinal leva data. */
 export async function createPaymentPlan(ctx: ApiContext, leadId: string, plan: PaymentPlan): Promise<LeadPayment[]> {
   await getLead(ctx, leadId);
   const today = todayIso();
@@ -67,7 +67,8 @@ export async function createPaymentPlan(ctx: ApiContext, leadId: string, plan: P
     ...item,
     workspace_id: ctx.workspaceId,
     lead_id: leadId,
-    due_on: i === 0 ? today : null,
+    // Sinal: a data que vier no pedido (vazio = sem data); sem campo, hoje.
+    due_on: i === 0 ? (plan.first_due_on === undefined ? today : plan.first_due_on) : null,
     created_by: ctx.user.id,
   }));
   const { error } = await ctx.supabase.from('lead_payments').insert(rows);

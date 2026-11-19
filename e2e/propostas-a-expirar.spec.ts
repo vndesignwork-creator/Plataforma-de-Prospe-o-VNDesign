@@ -46,8 +46,8 @@ test('proposta a expirar: selo na ficha e prolongar a validade', async ({ page }
     const cron = await page.request.get('/api/v1/cron/daily-digest', { headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` } });
     expect(cron.status(), await cron.text()).toBe(200);
     const avisos = async () => {
-      const body = (await (await page.request.get('/api/v1/notifications')).json()) as { data: { title: string }[] };
-      return body.data.filter((n) => n.title.includes(proposal.code));
+      const body = (await (await page.request.get('/api/v1/notifications')).json()) as { data: { title: string | null }[] };
+      return body.data.filter((n) => (n.title ?? '').includes(proposal.code));
     };
     expect(await avisos()).toHaveLength(1);
     await page.request.get('/api/v1/cron/daily-digest', { headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` } });

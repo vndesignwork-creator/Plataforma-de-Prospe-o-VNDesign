@@ -105,11 +105,11 @@ export const ALERT_KINDS = ['reminder', 'daily', 'reply', 'email_open', 'site_fo
 export type AlertKind = (typeof ALERT_KINDS)[number];
 export const ALERT_KIND_LABELS: Record<AlertKind, { label: string; hint: string }> = {
   reminder: { label: 'Lembretes', hint: 'Tarefas com lembrete, à hora marcada' },
-  daily: { label: 'Atrasados e para hoje', hint: 'Um resumo por dia dos follow-ups e tarefas em atraso ou para hoje, e as propostas a perder a validade' },
+  daily: { label: 'Atrasados e para hoje', hint: 'Um resumo por dia dos follow-ups e tarefas em atraso ou para hoje' },
   reply: { label: 'Respostas aos emails', hint: 'Respostas dos leads, ausências e emails devolvidos' },
   email_open: { label: 'Leads quentes', hint: 'Quando um lead abre o email, carrega num link ou o site dele tem um problema (bom momento para contactar)' },
   site_form: { label: 'Pedidos pelo site', hint: 'Formulário do site' },
-  client: { label: 'Clientes e colaboradores', hint: 'Briefings, aprovações, pedidos de alterações e contratos aceites' },
+  client: { label: 'Clientes e colaboradores', hint: 'Briefings, aprovações, pedidos de alterações, contratos aceites e propostas a perder a validade' },
   system: { label: 'Gerador de leads e equipa', hint: 'Pesquisas semanais terminadas e convites aceites' },
 };
 /** Preferência (de cada pessoa): os tipos de aviso desligados. */

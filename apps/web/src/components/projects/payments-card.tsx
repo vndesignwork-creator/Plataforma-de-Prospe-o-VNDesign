@@ -92,8 +92,25 @@ function PaymentRow({ lead, payment, today }: { lead: Lead; payment: LeadPayment
   const remove = useDeletePayment(lead.id);
   // A caixa muda logo ao tocar (a lista atualiza-se quando o servidor responde).
   const [optimistic, setOptimistic] = useState<boolean | null>(null);
+  const [editing, setEditing] = useState(false);
   const paid = optimistic ?? !!payment.paid_on;
   const overdue = !payment.paid_on && !!payment.due_on && payment.due_on < today;
+
+  /** Mudar a data prevista (vazio = sem data). */
+  async function setDue(value: string) {
+    const due = value || null;
+    if (due === payment.due_on) {
+      setEditing(false);
+      return;
+    }
+    try {
+      await save.mutateAsync({ id: payment.id, body: { due_on: due } });
+      toast.success(due ? `Previsto a ${formatDate(due)}.` : 'Pagamento sem data prevista.');
+      setEditing(false);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
 
   async function togglePaid(next: boolean) {
     setOptimistic(next);
@@ -119,13 +136,33 @@ function PaymentRow({ lead, payment, today }: { lead: Lead; payment: LeadPayment
       />
       <span className="min-w-0 flex-1">
         <span className={cn('block text-sm font-medium break-words', payment.paid_on && 'text-muted')}>{payment.description}</span>
-        <span className={cn('block text-xs', overdue ? 'font-medium text-danger' : 'text-muted')}>
-          {payment.paid_on
-            ? `Pago a ${formatDate(payment.paid_on)}${payment.method ? ` · ${payment.method}` : ''}`
-            : payment.due_on
-              ? `${overdue ? 'Em atraso desde' : 'Previsto a'} ${formatDate(payment.due_on)}`
-              : 'Por receber'}
-        </span>
+        {payment.paid_on ? (
+          <span className="block text-xs text-muted">
+            Pago a {formatDate(payment.paid_on)}
+            {payment.method ? ` · ${payment.method}` : ''}
+          </span>
+        ) : editing ? (
+          // Mudar a data prevista (vazio = sem data).
+          <DateInput
+            value={payment.due_on ?? ''}
+            onChange={(v) => void setDue(v)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setEditing(false);
+            }}
+            autoFocus
+            className="mt-1 w-40"
+            aria-label={`Data prevista de ${payment.description}`}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className={cn('-mx-1 block rounded px-1 text-left text-xs hover:bg-surface-2', overdue ? 'font-medium text-danger' : 'text-muted')}
+            aria-label={`Mudar a data prevista de ${payment.description}`}
+          >
+            {payment.due_on ? `${overdue ? 'Em atraso desde' : 'Previsto a'} ${formatDate(payment.due_on)}` : 'Por receber · marcar data'}
+          </button>
+        )}
       </span>
       <span className={cn('text-sm font-semibold tabular', payment.paid_on && 'text-success')}>{euros(payment.amount)}</span>
       <Button
@@ -149,6 +186,8 @@ export function PlanForm({ lead, onDone, className = 'p-4' }: { lead: Lead; onDo
   const suggested = accepted?.total ?? lead.estimated_value ?? null;
   const [total, setTotal] = useState(suggested ? String(suggested).replace('.', ',') : '');
   const [split, setSplit] = useState('0');
+  // Data prevista do sinal: hoje por omissão; em branco fica sem data.
+  const [firstDue, setFirstDue] = useState(todayIso());
 
   async function create() {
     const value = Number(total.replace(/\s|€/g, '').replace(',', '.'));
@@ -157,7 +196,7 @@ export function PlanForm({ lead, onDone, className = 'p-4' }: { lead: Lead; onDo
       return;
     }
     try {
-      await plan.mutateAsync({ total: value, split: [...PAYMENT_PLANS[Number(split)]!.split] });
+      await plan.mutateAsync({ total: value, split: [...PAYMENT_PLANS[Number(split)]!.split], first_due_on: firstDue || null });
       toast.success('Plano de pagamentos criado.');
       onDone?.();
     } catch (error) {
@@ -184,6 +223,13 @@ export function PlanForm({ lead, onDone, className = 'p-4' }: { lead: Lead; onDo
               </option>
             ))}
           </Select>
+        </Field>
+        <Field
+          label={PAYMENT_PLANS[Number(split)]!.split.length === 1 ? 'Previsto a' : 'Sinal previsto a'}
+          hint="Em branco: sem data"
+          className="w-44 shrink-0"
+        >
+          <DateInput value={firstDue} onChange={setFirstDue} />
         </Field>
         <Button onClick={create} loading={plan.isPending} className="ml-auto shrink-0 whitespace-nowrap">
           Criar plano

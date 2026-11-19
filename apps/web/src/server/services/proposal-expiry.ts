@@ -89,7 +89,8 @@ export async function runProposalExpiryAlerts(options: { dryRun?: boolean; now?:
     if (!userId) continue;
     const { title, body } = proposalExpiryAlert(expiry, lead.company_name, proposalCode(row.number, row.created_at));
     const saved = await saveAlert(row.workspace_id, userId, {
-      kind: 'daily',
+      // Não é do tipo "daily": o resumo diário apaga e reescreve esses avisos.
+      kind: 'client',
       leadId: lead.id,
       title,
       body,

@@ -73,6 +73,11 @@ export const PaymentPlanSchema = z
       .min(1)
       .max(6)
       .refine((s) => s.reduce((a, b) => a + b, 0) === 100, { error: 'As percentagens têm de somar 100.' }),
+    /**
+     * Data prevista do sinal (a primeira prestação). Vazio = sem data; se não
+     * vier no pedido, fica a data de hoje (como era antes).
+     */
+    first_due_on: nullableDate.optional(),
   })
   .meta({ id: 'PaymentPlan' });
 export type PaymentPlan = z.output<typeof PaymentPlanSchema>;
