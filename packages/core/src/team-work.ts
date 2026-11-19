@@ -105,7 +105,7 @@ export const ALERT_KINDS = ['reminder', 'daily', 'reply', 'email_open', 'site_fo
 export type AlertKind = (typeof ALERT_KINDS)[number];
 export const ALERT_KIND_LABELS: Record<AlertKind, { label: string; hint: string }> = {
   reminder: { label: 'Lembretes', hint: 'Tarefas com lembrete, à hora marcada' },
-  daily: { label: 'Atrasados e para hoje', hint: 'Um resumo por dia dos follow-ups e tarefas em atraso ou para hoje' },
+  daily: { label: 'Atrasados e para hoje', hint: 'Um resumo por dia dos follow-ups e tarefas em atraso ou para hoje, e as propostas a perder a validade' },
   reply: { label: 'Respostas aos emails', hint: 'Respostas dos leads, ausências e emails devolvidos' },
   email_open: { label: 'Leads quentes', hint: 'Quando um lead abre o email, carrega num link ou o site dele tem um problema (bom momento para contactar)' },
   site_form: { label: 'Pedidos pelo site', hint: 'Formulário do site' },

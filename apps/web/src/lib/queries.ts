@@ -816,6 +816,19 @@ export function useProposals(leadId: string) {
   });
 }
 
+/** Prolongar a validade de uma proposta (botão no cartão "Propostas"). */
+export function useExtendProposal(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, validUntil }: { id: string; validUntil: string }) =>
+      api<{ data: Proposal }>(`/proposals/${id}`, { method: 'PATCH', body: { valid_until: validUntil } }).then((r) => r.data),
+    onSuccess: (proposal) => {
+      void qc.invalidateQueries({ queryKey: ['proposals', leadId] });
+      void qc.invalidateQueries({ queryKey: ['proposal', proposal.id] });
+    },
+  });
+}
+
 /** Propostas recentes de todos os leads (diálogo "partir de outra proposta"). */
 export function useRecentProposals(q: string, enabled = true) {
   const term = q.trim();

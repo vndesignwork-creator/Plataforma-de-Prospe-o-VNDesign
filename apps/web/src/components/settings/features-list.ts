@@ -7,6 +7,7 @@ import {
   MousePointerClick,
   Tags,
   Cake,
+  CalendarClock,
   ListChecks,
   Activity,
   BadgeCheck,
@@ -202,6 +203,12 @@ export const FEATURES: { key: keyof Features; label: string; description: string
     icon: Calculator,
   },
   {
+    key: 'proposal_expiry',
+    label: 'Propostas a perder a validade',
+    description: 'Aviso três dias antes de a proposta enviada deixar de ser válida (e outro quando passa), com um botão para prolongar.',
+    icon: CalendarClock,
+  },
+  {
     key: 'contracts',
     label: 'Contratos',
     description: 'Contrato em PDF gerado a partir da proposta, aceite online pelo cliente.',
@@ -268,7 +275,7 @@ export const FEATURE_GROUPS: { title: string; description: string; master?: keyo
   {
     title: 'Vendas e faturação',
     description: 'Do orçamento ao dinheiro recebido.',
-    parts: [{ keys: ['quote_calculator', 'contracts', 'payments', 'renewals', 'accounting_report'] }],
+    parts: [{ keys: ['quote_calculator', 'proposal_expiry', 'contracts', 'payments', 'renewals', 'accounting_report'] }],
   },
   {
     title: 'Projetos',

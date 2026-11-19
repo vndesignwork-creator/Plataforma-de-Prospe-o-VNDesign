@@ -26,6 +26,7 @@ export * from './score';
 export * from './projects';
 export * from './project-tools';
 export * from './working-on';
+export * from './proposal-expiry';
 export * from './case-study';
 export * from './contracts';
 export * from './lead-path';
