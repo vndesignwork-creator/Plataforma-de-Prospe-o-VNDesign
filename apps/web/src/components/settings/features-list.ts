@@ -4,6 +4,7 @@
  */
 import type { Features } from '@vndesign/core';
 import {
+  Cake,
   ListChecks,
   Activity,
   BadgeCheck,
@@ -169,6 +170,12 @@ export const FEATURES: { key: keyof Features; label: string; description: string
     sub: true,
   },
   {
+    key: 'site_anniversary',
+    label: 'Aniversário do site',
+    description: 'Um ano depois da entrega (e em cada ano a seguir): tarefa, aviso e um email pronto para propor uma revisão.',
+    icon: Cake,
+  },
+  {
     key: 'brand_kit',
     label: 'Kit da marca do cliente',
     description: 'Logótipos, cores, tipos de letra, links e acessos (palavras-passe cifradas), iguais em todos os projetos do cliente.',
@@ -258,7 +265,7 @@ export const FEATURE_GROUPS: { title: string; description: string; master?: keyo
       { title: 'Arranque', keys: ['project_kickoff', 'briefing'] },
       { title: 'Tempo', keys: ['time_tracking', 'time_value', 'pomodoro'] },
       { title: 'Trabalho e entregas', keys: ['revisions', 'deliverables', 'pin_tasks', 'launch_checklist', 'expenses'] },
-      { title: 'Cliente e equipa', keys: ['site_monitoring', 'client_page', 'client_approvals', 'testimonials', 'collaborators', 'brand_kit'] },
+      { title: 'Cliente e equipa', keys: ['site_monitoring', 'client_page', 'client_approvals', 'testimonials', 'site_anniversary', 'collaborators', 'brand_kit'] },
     ],
   },
 ];
