@@ -421,6 +421,8 @@ export const ProjectSchema = z
     deliverables: z.object({ total: z.int(), approved: z.int() }),
     value: z.number().nullable().meta({ description: 'Valor do projeto' }),
     expenses: z.number().meta({ description: 'Total das despesas' }),
+    /** Última vez que mexeste neste projeto (registo, tarefa feita ou tempo registado). */
+    last_touch: z.string().nullable().optional().meta({ description: 'Última atividade tua neste projeto (ISO)' }),
     /** As tarefas do projeto (as mesmas de GET /leads/{id}/tasks): a página não as pede uma a uma. */
     task_items: z.array(LeadTaskSchema).optional(),
   })

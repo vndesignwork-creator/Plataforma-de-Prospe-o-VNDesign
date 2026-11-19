@@ -11,8 +11,8 @@ import {
   formatCurrency,
   formatDate,
   formatPercent,
-  leadPath,
   projectLabel,
+  workingOnPicks,
   type Dashboard,
   type DashboardPeriod,
 } from '@vndesign/core';
@@ -22,7 +22,9 @@ import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import { CardLayoutButton, useCardLayout, visibleCards, type Board } from '@/components/leads/card-layout';
 import { buttonClasses } from '@/components/ui/button';
-import { useDashboardPeriod, useMe, useProjects, useRunningTimer, useSettings, useToday } from '@/lib/queries';
+import { useDashboardPeriod, useMe, usePreference, useProjects, useRunningTimer, useSettings, useToday } from '@/lib/queries';
+import { WORKING_ON_PREFERENCE } from '@/components/projects/working-on-button';
+import { projectAnchor } from '@/components/projects/project-row';
 import { useElapsed } from '@/components/projects/time-section';
 import { cn } from '@/lib/utils';
 
@@ -126,13 +128,18 @@ const PERIODS: { value: DashboardPeriod | 'all'; label: string; compare: string 
 ];
 const PERIOD_KEY = 'vnd.dashboard.period';
 
-const KPIS = ['leads', 'contacto', 'trabalho'] as const;
+const KPIS = ['leads', 'contacto', 'trabalho', 'trabalho2'] as const;
 type Kpi = (typeof KPIS)[number];
 /** Os números do topo do Dashboard: cada pessoa escolhe a ordem e os que quer ver ("dashboard.kpis"). */
 export const DASHBOARD_KPI_BOARD: Board<Kpi> = {
   preference: 'dashboard.kpis',
   defaults: KPIS,
-  labels: { leads: 'Leads (novos ou ativos)', contacto: 'Contactados / taxa de conversão', trabalho: 'A trabalhar agora' },
+  labels: {
+    leads: 'Leads (novos ou ativos)',
+    contacto: 'Contactados / taxa de conversão',
+    trabalho: 'A trabalhar agora',
+    trabalho2: 'A trabalhar agora (2.º projeto)',
+  },
   alwaysShown: [],
   description: 'A ordem dos números do topo do Dashboard e os que queres ver.',
 };
@@ -168,25 +175,34 @@ function Tile({ label, value, href, children }: { label: string; value: ReactNod
 }
 
 /**
- * O projeto em que se está a trabalhar: o do temporizador a contar; sem
- * temporizador, o que entrega mais cedo. Mostra a fase e a próxima tarefa.
+ * Os projetos em que se está a trabalhar (dois cartões: `rank` 0 e 1). A ordem
+ * vem de `workingOnPicks`: primeiro o que fixaste em "A trabalhar nisto",
+ * depois o do temporizador a contar, depois aquele em que mexeste há menos
+ * tempo (48 horas) e, por fim, o de entrega mais próxima.
  */
-function WorkingOnTile() {
+function WorkingOnTile({ rank }: { rank: 0 | 1 }) {
   const { data: settings } = useSettings();
   const projectsOn = settings?.features.projects !== false;
   const timeOn = projectsOn && settings?.features.time_tracking !== false;
   const { data: running } = useRunningTimer(timeOn);
   const { data: projects } = useProjects('active', projectsOn);
+  const { data: pinned } = usePreference<string | null>(WORKING_ON_PREFERENCE);
   const elapsed = useElapsed(running?.entry.started_at ?? null);
 
-  const byTimer = running ? projects?.find((p) => p.lead.id === running.lead.id) : undefined;
-  // Sem temporizador: o que entrega mais cedo (os sem prazo ficam para o fim).
-  const next = [...(projects ?? [])].sort((a, b) => (a.info.due_on ?? '9999-12-31').localeCompare(b.info.due_on ?? '9999-12-31'))[0];
-  const project = byTimer ?? next;
-  const lead = project?.lead ?? running?.lead ?? null;
+  const picks = workingOnPicks(projects ?? [], {
+    pinned: typeof pinned === 'string' ? pinned : null,
+    runningLeadId: running?.lead.id ?? null,
+    count: 2,
+  });
+  const pick = picks[rank];
+  const project = pick?.project;
+  // Sem projetos na lista (ex.: o temporizador num lead que já não está em curso).
+  const lead = project?.lead ?? (rank === 0 ? (running?.lead ?? null) : null);
 
   if (!projectsOn) return null;
   if (!lead) {
+    // Só o primeiro cartão explica que ainda não há projetos; o segundo desaparece.
+    if (rank === 1) return null;
     return (
       <Tile label="A trabalhar agora" value={<span className="text-base font-medium text-muted">Nenhum projeto em curso</span>} href="/projetos">
         <span className="text-xs text-muted">Quando um lead passa a Cliente, o projeto aparece aqui.</span>
@@ -196,11 +212,12 @@ function WorkingOnTile() {
   const counting = !!running && running.lead.id === lead.id;
   const total = counting ? (running.logged_seconds ?? 0) + Math.floor(elapsed) : null;
   const task = project?.next_task?.title ?? null;
+  const base = rank === 0 ? 'A trabalhar agora' : 'Também em curso';
   return (
     <Tile
-      label={counting ? 'A trabalhar agora · a contar' : 'A trabalhar agora'}
+      label={counting ? `${base} · a contar` : pick?.reason === 'fixado' ? `${base} · fixado por ti` : base}
       value={<span className="block truncate text-base font-semibold">{projectLabel(lead)}</span>}
-      href={`${leadPath(lead)}#projeto`}
+      href={`/projetos#${projectAnchor(lead.id)}`}
     >
       {counting ? (
         <span className="inline-flex items-center gap-1 text-xs text-accent-text tabular">
@@ -254,12 +271,14 @@ export function SummaryStrip({ totals }: { totals: Dashboard['totals'] }) {
               <span className="text-xs text-muted">dos leads contactados</span>
             </Tile>
           ),
-          trabalho: <WorkingOnTile />,
+          trabalho: <WorkingOnTile rank={0} />,
+          trabalho2: <WorkingOnTile rank={1} />,
         }
       : {
           leads: <Tile label="Leads novos" value={c ? c.new_leads : '—'} href="/leads">{c && b ? <Delta now={c.new_leads} before={b.new_leads} compare={compare} /> : null}</Tile>,
           contacto: <Tile label="Contactados" value={c ? c.contacted : '—'} href="/leads?status=contactado">{c && b ? <Delta now={c.contacted} before={b.contacted} compare={compare} /> : null}</Tile>,
-          trabalho: <WorkingOnTile />,
+          trabalho: <WorkingOnTile rank={0} />,
+          trabalho2: <WorkingOnTile rank={1} />,
         };
 
   return (

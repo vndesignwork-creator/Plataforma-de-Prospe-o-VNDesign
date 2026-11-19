@@ -35,6 +35,7 @@ import { RevisionsSection } from './revisions-section';
 import { ShareSection } from './share-section';
 import { PomodoroBox } from './pomodoro';
 import { ProjectToggle } from './project-toggle';
+import { WorkingOnItem } from './working-on-button';
 import { ProjectUpdateButton, WelcomeButton } from './project-update';
 import { TimeSection } from './time-section';
 import { rovingKeyDown, rovingTabIndex } from '@/lib/roving';
@@ -197,6 +198,7 @@ export function ProjectCard({ lead }: { lead: Lead }) {
                   <MoreHorizontal className="h-4 w-4" aria-hidden />
                 </DropdownTrigger>
                 <DropdownContent>
+                  {!lead.project_completed_at ? <WorkingOnItem lead={lead} /> : null}
                   <DropdownItem onSelect={() => void prepare()} disabled={start.isPending}>
                     <Zap className="h-4 w-4 text-muted" aria-hidden />
                     <span>

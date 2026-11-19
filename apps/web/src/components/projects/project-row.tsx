@@ -10,7 +10,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { ArrowRight, ChevronDown, Clock, FolderOpen, GripVertical, ListChecks, Receipt, RefreshCcw } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { WhatsAppMenu } from '@/components/leads/whatsapp-menu';
 import { ServiceChips } from '@/components/services/services';
 import { TasksCard } from '@/components/tasks/tasks-card';
@@ -26,6 +26,11 @@ import { ProjectToggle } from './project-toggle';
 import { TimeSection, TimerButton } from './time-section';
 
 const euros = (v: number) => formatCurrency(v, { decimals: false });
+
+/** Âncora de um projeto na página Projetos: /projetos#projeto-<id do lead>. */
+export function projectAnchor(leadId: string): string {
+  return `projeto-${leadId}`;
+}
 
 /**
  * Todas as tarefas do projeto (a mesma lista da ficha): marcar como feitas,
@@ -81,13 +86,26 @@ export function ProjectRow({
   const timeColumn = !completed && features.time_tracking;
   const name = `#${lead.number} ${lead.project_title ? `${lead.project_title} · ${lead.company_name}` : lead.company_name}`;
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: lead.id, disabled: !sortable });
+  // Link de fora (ex.: o cartão "A trabalhar agora" do Dashboard): abre este
+  // projeto e leva o ecrã até ele, mesmo que estivesse recolhido.
+  const row = useRef<HTMLLIElement | null>(null);
+  useEffect(() => {
+    if (window.location.hash !== `#${projectAnchor(lead.id)}`) return;
+    setCollapsed(false);
+    row.current?.scrollIntoView({ block: 'start' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só à chegada (o endereço não muda sem recarregar)
+  }, [lead.id]);
 
   return (
     <li
-      ref={setNodeRef}
+      id={projectAnchor(lead.id)}
+      ref={(node) => {
+        row.current = node;
+        setNodeRef(node);
+      }}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
-        'flex flex-col gap-3 rounded-xl border border-border bg-surface px-4 py-4 shadow-card',
+        'flex flex-col gap-3 scroll-mt-24 rounded-xl border border-border bg-surface px-4 py-4 shadow-card',
         isDragging && 'relative z-10 opacity-90 ring-2 ring-accent',
       )}
     >

@@ -11,6 +11,20 @@ import { LEAD_SELECT, getLead } from './leads';
 import { expenseTotals, projectInfoMap, projectValues } from './project-tools';
 import { createTask, listTasksForLeads } from './tasks';
 
+/** A última vez que mexi neste projeto: registo meu, tarefa feita ou tempo registado por mim. */
+function lastTouch(
+  tasks: { done_at: string | null }[],
+  entries: { started_at: string; ended_at: string | null }[],
+  activity: string | null,
+): string | null {
+  const dates = [
+    activity,
+    ...tasks.map((t) => t.done_at),
+    ...entries.map((e) => e.ended_at ?? e.started_at),
+  ].filter((d): d is string => !!d);
+  return dates.sort((a, b) => Date.parse(b) - Date.parse(a))[0] ?? null;
+}
+
 export async function listProjects(ctx: ApiContext, state: 'active' | 'completed'): Promise<Project[]> {
   let q = ctx.supabase
     .from('leads')
@@ -30,7 +44,7 @@ export async function listProjects(ctx: ApiContext, state: 'active' | 'completed
   const ids = leads.map((l) => l.id);
 
   const ws = ctx.workspaceId;
-  const [tasks, payments, revisions, time, deliverables, infos, values, expenses] = await Promise.all([
+  const [tasks, payments, revisions, time, deliverables, infos, values, expenses, recentActivity] = await Promise.all([
     // Completas (como GET /leads/{id}/tasks): a página Projetos não as pede uma a uma.
     listTasksForLeads(ctx, ids),
     selectInBatches<{ lead_id: string; amount: number | string; due_on: string | null; paid_on: string | null }>(ids, (batch) =>
@@ -46,7 +60,23 @@ export async function listProjects(ctx: ApiContext, state: 'active' | 'completed
     projectInfoMap(ctx, ids),
     projectValues(ctx, leads),
     expenseTotals(ctx, ids),
+    // Em que projetos mexi nos últimos dias (para o cartão "A trabalhar agora").
+    selectInBatches<{ lead_id: string; created_at: string }>(ids, (batch) =>
+      ctx.supabase
+        .from('lead_activities')
+        .select('lead_id, created_at')
+        .eq('workspace_id', ws)
+        .eq('actor_user_id', ctx.user.id)
+        .gte('created_at', new Date(Date.now() - 7 * 86_400_000).toISOString())
+        .in('lead_id', batch),
+    ),
   ]);
+  // A atividade mais recente de cada projeto (só a minha).
+  const lastActivity = new Map<string, string>();
+  for (const row of recentActivity) {
+    const seen = lastActivity.get(row.lead_id);
+    if (!seen || Date.parse(row.created_at) > Date.parse(seen)) lastActivity.set(row.lead_id, row.created_at);
+  }
   const today = todayIso();
   const nowMs = Date.now();
   const byLead = <T extends { lead_id: string }>(rows: T[], id: string) => rows.filter((r) => r.lead_id === id);
@@ -79,6 +109,7 @@ export async function listProjects(ctx: ApiContext, state: 'active' | 'completed
       deliverables: { total: delivered.length, approved: delivered.filter((d) => d.status === 'aprovada').length },
       value: values.get(lead.id) ?? null,
       expenses: expenses.get(lead.id) ?? 0,
+      last_touch: lastTouch(own, entries.filter((e) => e.user_id === ctx.user.id), lastActivity.get(lead.id) ?? null),
       task_items: own,
     };
   });

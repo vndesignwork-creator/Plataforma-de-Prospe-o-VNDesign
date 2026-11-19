@@ -25,6 +25,7 @@ export * from './client-signature';
 export * from './score';
 export * from './projects';
 export * from './project-tools';
+export * from './working-on';
 export * from './case-study';
 export * from './contracts';
 export * from './lead-path';
