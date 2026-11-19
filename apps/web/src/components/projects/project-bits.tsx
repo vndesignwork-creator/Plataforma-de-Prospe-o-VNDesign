@@ -193,7 +193,8 @@ export function SummaryStat({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1.5 rounded-lg border border-border px-3 py-2">
+    // Dentro de um cartão: fundo em vez de moldura, para não parecer outro cartão.
+    <div className="flex min-w-0 flex-col gap-1.5 rounded-lg bg-surface-2 px-3 py-2">
       <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted">
         <Icon className="h-3.5 w-3.5" aria-hidden /> {title}
       </span>

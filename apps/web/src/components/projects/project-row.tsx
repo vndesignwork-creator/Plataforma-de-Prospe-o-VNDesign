@@ -87,11 +87,18 @@ export function ProjectRow({
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
-        'flex flex-col gap-3 rounded-xl border border-border bg-surface px-4 py-4 shadow-card',
+        'flex flex-col gap-3 rounded-xl border border-border-strong bg-surface px-4 py-4 shadow-card',
         isDragging && 'relative z-10 opacity-90 ring-2 ring-accent',
       )}
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start">
+      {/* Aberto: o título acompanha o scroll (sabe-se sempre em que projeto se está).
+          No telemóvel fica por baixo da barra do topo (h-14). */}
+      <div
+        className={cn(
+          'flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start',
+          !collapsed && 'sticky top-14 z-10 -mx-4 -mt-4 rounded-t-xl border-b border-border bg-surface px-4 pt-4 pb-3 lg:top-0',
+        )}
+      >
         <div className="flex min-w-0 flex-col gap-1.5 sm:flex-[1_1_16rem]">
           <div className="flex items-start gap-1">
             {sortable ? (
@@ -204,7 +211,7 @@ export function ProjectRow({
               <div className="flex min-w-0 flex-col gap-1.5" role="group" aria-label="Tempo">
                 <span className="text-xs font-medium text-muted">Tempo</span>
                 {pomodoro ? <PomodoroBox lead={lead} compact /> : null}
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-2 px-3 py-2">
                   <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted">
                     <Clock className="h-3.5 w-3.5" aria-hidden /> Cronómetro
                   </span>
