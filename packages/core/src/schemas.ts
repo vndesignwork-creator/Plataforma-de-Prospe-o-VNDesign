@@ -5,6 +5,7 @@
  * valores em euros com 2 casas decimais.
  */
 import { MonthlyGoalsSchema } from './goals';
+import { CONTRACT_TEMPLATES_MAX, ContractTemplateSchema } from './contracts';
 import { DEFAULT_FREE_AUDIT, FreeAuditSettingsSchema } from './free-audit';
 import { CallAvoidSchema } from './call-windows';
 import { z } from 'zod';
@@ -752,8 +753,13 @@ export const WorkspaceSettingsSchema = z
     briefing: z.object({ questions: z.array(z.string()).default(DEFAULT_BRIEFING_QUESTIONS) }).default({ questions: DEFAULT_BRIEFING_QUESTIONS }),
     /** Contratos: o teu NIF e as condições gerais. */
     contract: z
-      .object({ provider_nif: z.string().default(''), clauses: z.string().default(DEFAULT_CONTRACT_CLAUSES) })
-      .default({ provider_nif: '', clauses: DEFAULT_CONTRACT_CLAUSES }),
+      .object({
+        provider_nif: z.string().default(''),
+        clauses: z.string().default(DEFAULT_CONTRACT_CLAUSES),
+        /** Condições próprias por tipo de serviço (ex.: loja online, manutenção). */
+        templates: z.array(ContractTemplateSchema).max(CONTRACT_TEMPLATES_MAX).default([]),
+      })
+      .default({ provider_nif: '', clauses: DEFAULT_CONTRACT_CLAUSES, templates: [] }),
     weekly_backup: WeeklyBackupSchema.default(DEFAULT_WEEKLY_BACKUP),
     /** Resumo da semana por email (à segunda-feira, ao dono e aos administradores). */
     weekly_report: WeeklyReportSettingsSchema.default(DEFAULT_WEEKLY_REPORT),
@@ -835,6 +841,7 @@ export const WorkspaceSettingsUpdateSchema = z
     contract: z.object({
       provider_nif: z.string().trim().max(20, { error: 'Máximo de 20 caracteres.' }),
       clauses: z.string().trim().max(5000, { error: 'Máximo de 5000 caracteres.' }),
+      templates: z.array(ContractTemplateSchema).max(CONTRACT_TEMPLATES_MAX).optional(),
     }),
     weekly_backup: z.object({
       enabled: z.boolean(),

@@ -8,7 +8,10 @@
 import { useQueryClient } from '@tanstack/react-query';
 import {
   DEFAULT_BRIEFING_QUESTIONS,
+  CONTRACT_TEMPLATES_MAX,
   DEFAULT_CONTRACT_CLAUSES,
+  contractTemplateId,
+  type ContractTemplate,
   DEFAULT_POMODORO_SETTINGS,
   POMODORO_SOUNDS,
   POMODORO_SOUND_LABELS,
@@ -18,7 +21,7 @@ import {
   type PomodoroSound,
   type QuoteExtra,
 } from '@vndesign/core';
-import { CalendarDays, Copy, Link2Off, Plus, RefreshCw, Trash2, Volume2 } from 'lucide-react';
+import { CalendarDays, Copy, FileSignature, Link2Off, Plus, RefreshCw, Trash2, Volume2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -28,6 +31,7 @@ import { Field } from '@/components/ui/field';
 import { Input, Select, Textarea } from '@/components/ui/input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { playChime, unlockSound } from '@/lib/pomodoro-sound';
+import { useServiceCatalog } from '@/components/services/services';
 import { useCalendarFeed, useSetCalendarFeed, type SettingsWithMail } from '@/lib/queries';
 
 const SPLIT_LABELS = ['50% de sinal + 50% na entrega', '30% + 40% + 30%', 'Pagamento único', 'Sem plano de pagamentos'];
@@ -139,12 +143,73 @@ export function BriefingQuestionsCard({ settings }: { settings: SettingsWithMail
   );
 }
 
+type ContractForm = { provider_nif: string; clauses: string; templates: ContractTemplate[] };
+
+/** Um modelo de contrato para certos serviços (ex.: loja online, manutenção). */
+function TemplateRow({
+  template,
+  services,
+  onChange,
+  onRemove,
+}: {
+  template: ContractTemplate;
+  services: { key: string; label: string }[];
+  onChange: (next: ContractTemplate) => void;
+  onRemove: () => void;
+}) {
+  const toggle = (key: string) =>
+    onChange({ ...template, services: template.services.includes(key) ? template.services.filter((s) => s !== key) : [...template.services, key] });
+  return (
+    <li className="flex flex-col gap-2 rounded-lg border border-border p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          value={template.label}
+          maxLength={80}
+          aria-label="Nome do modelo"
+          placeholder="Ex.: Loja online"
+          className="min-w-0 flex-1 sm:max-w-xs"
+          onChange={(e) => onChange({ ...template, label: e.target.value })}
+        />
+        <Button type="button" size="icon" variant="ghost" className="h-9 w-9" aria-label={`Apagar o modelo ${template.label || 'sem nome'}`} onClick={onRemove}>
+          <Trash2 className="h-4 w-4" aria-hidden />
+        </Button>
+      </div>
+      <fieldset>
+        <legend className="mb-1 text-xs text-muted">Serviços a que se aplica</legend>
+        <div className="flex flex-wrap gap-1.5">
+          {services.map((s) => (
+            <button
+              key={s.key}
+              type="button"
+              aria-pressed={template.services.includes(s.key)}
+              onClick={() => toggle(s.key)}
+              className="inline-flex min-h-8 items-center rounded-full border border-border px-3 text-sm text-muted hover:bg-surface-2 aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-accent-text"
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+      <Textarea
+        rows={5}
+        maxLength={5000}
+        aria-label={`Condições do modelo ${template.label || 'sem nome'}`}
+        placeholder="Uma condição por linha."
+        value={template.clauses}
+        onChange={(e) => onChange({ ...template, clauses: e.target.value })}
+      />
+    </li>
+  );
+}
+
 export function ContractSettingsCard({ settings }: { settings: SettingsWithMail }) {
   const patch = usePatchSettings();
-  const [form, setForm] = useState<{ provider_nif: string; clauses: string } | null>(null);
+  const catalog = useServiceCatalog();
+  const [form, setForm] = useState<ContractForm | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const value = form ?? settings.contract;
+  const value: ContractForm = form ?? { ...settings.contract, templates: settings.contract.templates ?? [] };
+  const services = catalog.active.map((s) => ({ key: s.key, label: s.label }));
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -162,7 +227,7 @@ export function ContractSettingsCard({ settings }: { settings: SettingsWithMail 
     }
   }
   return (
-    <Card>
+    <Card role="region" aria-label="Contratos">
       <CardHeader title="Contratos" description="O teu NIF e as condições gerais que entram em cada contrato novo (uma por linha)." />
       <form onSubmit={save} className="flex flex-col gap-3 p-4" noValidate>
         {error ? (
@@ -173,9 +238,52 @@ export function ContractSettingsCard({ settings }: { settings: SettingsWithMail 
         <Field label="O teu NIF" className="max-w-xs">
           <Input inputMode="numeric" maxLength={20} value={value.provider_nif} onChange={(e) => setForm({ ...value, provider_nif: e.target.value })} />
         </Field>
-        <Field label="Condições gerais">
+        <Field label="Condições gerais" hint="Usadas quando nenhum modelo serve os serviços do projeto.">
           <Textarea rows={8} value={value.clauses} maxLength={5000} onChange={(e) => setForm({ ...value, clauses: e.target.value })} />
         </Field>
+
+        {/* Modelos por tipo de serviço: o contrato escolhe sozinho pelo serviço do projeto. */}
+        <fieldset className="flex flex-col gap-2">
+          <legend className="flex items-center gap-2 text-sm font-medium">
+            <FileSignature className="h-4 w-4 text-muted" aria-hidden /> Condições por tipo de serviço
+          </legend>
+          <p className="text-sm text-muted">
+            Um site não precisa das mesmas condições que uma loja online ou uma manutenção. Ao gerar o contrato, entra o primeiro modelo que sirva um dos serviços
+            do projeto.
+          </p>
+          {value.templates.length ? (
+            <ul className="flex flex-col gap-2" aria-label="Modelos de contrato">
+              {value.templates.map((t, i) => (
+                <TemplateRow
+                  key={t.id}
+                  template={t}
+                  services={services}
+                  onChange={(next) => setForm({ ...value, templates: value.templates.map((x, j) => (j === i ? next : x)) })}
+                  onRemove={() => setForm({ ...value, templates: value.templates.filter((_, j) => j !== i) })}
+                />
+              ))}
+            </ul>
+          ) : null}
+          {value.templates.length < CONTRACT_TEMPLATES_MAX ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="self-start"
+              onClick={() =>
+                setForm({
+                  ...value,
+                  templates: [
+                    ...value.templates,
+                    { id: contractTemplateId(`modelo ${value.templates.length + 1}`), label: '', services: [], clauses: value.clauses },
+                  ],
+                })
+              }
+            >
+              <Plus className="h-4 w-4" aria-hidden /> Modelo para um serviço
+            </Button>
+          ) : null}
+        </fieldset>
         <div className="flex flex-wrap justify-end gap-2">
           <Button type="button" variant="ghost" onClick={() => setForm({ ...value, clauses: DEFAULT_CONTRACT_CLAUSES })}>
             Repor as de origem

@@ -4,6 +4,7 @@
  */
 import { randomBytes } from 'node:crypto';
 import {
+  contractClausesFor,
   WorkspaceSettingsSchema,
   buildContractContent,
   serviceTemplateValues,
@@ -87,7 +88,8 @@ export async function createContract(ctx: ApiContext, leadId: string, proposalId
     revisionsIncluded: info.revisions_included,
     payments: payments.map((p) => ({ description: p.description, amount: p.amount, due_on: p.due_on })),
     taxNote: settings.proposal.tax_note,
-    clauses: settings.contract.clauses,
+    // Condições do modelo do serviço (ex.: loja online, manutenção); senão, as gerais.
+    clauses: contractClausesFor(settings.contract, lead.services).clauses,
   });
 
   const { data: last } = await ctx.supabase

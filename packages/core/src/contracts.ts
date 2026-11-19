@@ -77,6 +77,51 @@ export const ContractAcceptSchema = z
   })
   .meta({ id: 'ContractAccept' });
 
+// -----------------------------------------------------------------------------
+// Modelos por tipo de serviço
+// -----------------------------------------------------------------------------
+
+/**
+ * Um modelo de contrato para certos serviços (ex.: "Loja online" ou
+ * "Manutenção"): quando o projeto tem um desses serviços, são estas as
+ * condições que entram no contrato, em vez das gerais.
+ */
+export const ContractTemplateSchema = z.object({
+  id: z.string().trim().min(1).max(40),
+  label: text(80).min(1, { error: 'Dá um nome ao modelo.' }),
+  /** Chaves dos serviços a que este modelo se aplica (vazio = nenhum). */
+  services: z.array(z.string().trim().min(1).max(60)).max(20).default([]),
+  clauses: text(5000),
+});
+export type ContractTemplate = z.infer<typeof ContractTemplateSchema>;
+
+export const CONTRACT_TEMPLATES_MAX = 10;
+
+/**
+ * As condições gerais a usar num contrato: o primeiro modelo que sirva um dos
+ * serviços do projeto; se nenhum servir, as condições gerais.
+ */
+export function contractClausesFor(
+  contract: { clauses: string; templates?: readonly ContractTemplate[] },
+  services: readonly string[] | null | undefined,
+): { clauses: string; template: ContractTemplate | null } {
+  const keys = services ?? [];
+  const match = (contract.templates ?? []).find((t) => t.services.some((s) => keys.includes(s)));
+  return match ? { clauses: match.clauses, template: match } : { clauses: contract.clauses, template: null };
+}
+
+/** Um id simples a partir do nome do modelo ("Loja online" → "loja-online"). */
+export function contractTemplateId(label: string): string {
+  const slug = label
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 30);
+  return slug || `modelo-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 /** O que o contrato precisa para ser montado (tudo opcional, menos as partes). */
 export interface ContractInput {
   provider: ContractParty;
