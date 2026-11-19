@@ -73,6 +73,7 @@ export const HELP_GUIDES: HelpGuide[] = [
       'Abre um lead para ver a ficha: contactos, próxima ação, tarefas, linha do tempo, propostas e diagnóstico do site.',
       'Seleciona vários leads para mudar o estado, o responsável ou as etiquetas de uma vez.',
       'O filtro "Tempo na fase" (em Mais filtros) mostra os leads parados há mais de 7, 14 ou 30 dias.',
+      'Depois de analisar o site, o lead ganha etiquetas sozinho ("site muito lento", "sem telemóvel", "site inseguro"…). Filtra por elas para falar só com quem tem esse problema; desliga-se em Definições → Funcionalidades.',
       'Os clientes não aparecem nesta lista: estão em Projetos → Clientes. É a mesma ficha — no filtro "Clientes" podes escolher "Com clientes" ou "Só clientes" para os ver aqui.',
     ],
     tips: ['A próxima ação de cada lead (ex.: follow-up) vai para a agenda e para o "Hoje" do Dashboard.', 'Leads repetidos: Leads → Duplicados junta-os sem perder dados.'],
