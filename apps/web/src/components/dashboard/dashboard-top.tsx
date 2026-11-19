@@ -5,14 +5,25 @@
  * ações rápidas e os números (este mês, 30 dias ou sempre) com a comparação com
  * o período anterior. Os números organizam-se como os cartões.
  */
-import { formatCurrency, formatPercent, type Dashboard, type DashboardPeriod } from '@vndesign/core';
-import { ArrowDownRight, ArrowUpRight, Minus, Plus, Target } from 'lucide-react';
+import {
+  PROJECT_STAGE_LABELS,
+  formatClock,
+  formatCurrency,
+  formatDate,
+  formatPercent,
+  leadPath,
+  projectLabel,
+  type Dashboard,
+  type DashboardPeriod,
+} from '@vndesign/core';
+import { ArrowDownRight, ArrowUpRight, Minus, Plus, Target, Timer } from 'lucide-react';
 import Link from 'next/link';
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import { CardLayoutButton, useCardLayout, visibleCards, type Board } from '@/components/leads/card-layout';
 import { buttonClasses } from '@/components/ui/button';
-import { useDashboardPeriod, useMe, useSettings, useToday } from '@/lib/queries';
+import { useDashboardPeriod, useMe, useProjects, useRunningTimer, useSettings, useToday } from '@/lib/queries';
+import { useElapsed } from '@/components/projects/time-section';
 import { cn } from '@/lib/utils';
 
 const euros = (v: number) => formatCurrency(v, { decimals: false });
@@ -115,13 +126,13 @@ const PERIODS: { value: DashboardPeriod | 'all'; label: string; compare: string 
 ];
 const PERIOD_KEY = 'vnd.dashboard.period';
 
-const KPIS = ['leads', 'contacto', 'clientes', 'pipeline'] as const;
+const KPIS = ['leads', 'contacto', 'trabalho'] as const;
 type Kpi = (typeof KPIS)[number];
 /** Os números do topo do Dashboard: cada pessoa escolhe a ordem e os que quer ver ("dashboard.kpis"). */
 export const DASHBOARD_KPI_BOARD: Board<Kpi> = {
   preference: 'dashboard.kpis',
   defaults: KPIS,
-  labels: { leads: 'Leads (novos ou ativos)', contacto: 'Contactados / taxa de conversão', clientes: 'Clientes ganhos', pipeline: 'Valor do pipeline' },
+  labels: { leads: 'Leads (novos ou ativos)', contacto: 'Contactados / taxa de conversão', trabalho: 'A trabalhar agora' },
   alwaysShown: [],
   description: 'A ordem dos números do topo do Dashboard e os que queres ver.',
 };
@@ -153,6 +164,56 @@ function Tile({ label, value, href, children }: { label: string; value: ReactNod
       <span className="text-xl font-semibold tabular">{value}</span>
       {children}
     </Link>
+  );
+}
+
+/**
+ * O projeto em que se está a trabalhar: o do temporizador a contar; sem
+ * temporizador, o que entrega mais cedo. Mostra a fase e a próxima tarefa.
+ */
+function WorkingOnTile() {
+  const { data: settings } = useSettings();
+  const projectsOn = settings?.features.projects !== false;
+  const timeOn = projectsOn && settings?.features.time_tracking !== false;
+  const { data: running } = useRunningTimer(timeOn);
+  const { data: projects } = useProjects('active', projectsOn);
+  const elapsed = useElapsed(running?.entry.started_at ?? null);
+
+  const byTimer = running ? projects?.find((p) => p.lead.id === running.lead.id) : undefined;
+  // Sem temporizador: o que entrega mais cedo (os sem prazo ficam para o fim).
+  const next = [...(projects ?? [])].sort((a, b) => (a.info.due_on ?? '9999-12-31').localeCompare(b.info.due_on ?? '9999-12-31'))[0];
+  const project = byTimer ?? next;
+  const lead = project?.lead ?? running?.lead ?? null;
+
+  if (!projectsOn) return null;
+  if (!lead) {
+    return (
+      <Tile label="A trabalhar agora" value={<span className="text-base font-medium text-muted">Nenhum projeto em curso</span>} href="/projetos">
+        <span className="text-xs text-muted">Quando um lead passa a Cliente, o projeto aparece aqui.</span>
+      </Tile>
+    );
+  }
+  const counting = !!running && running.lead.id === lead.id;
+  const total = counting ? (running.logged_seconds ?? 0) + Math.floor(elapsed) : null;
+  const task = project?.next_task?.title ?? null;
+  return (
+    <Tile
+      label={counting ? 'A trabalhar agora · a contar' : 'A trabalhar agora'}
+      value={<span className="block truncate text-base font-semibold">{projectLabel(lead)}</span>}
+      href={`${leadPath(lead)}#projeto`}
+    >
+      {counting ? (
+        <span className="inline-flex items-center gap-1 text-xs text-accent-text tabular">
+          <Timer className="h-3 w-3" aria-hidden /> {formatClock(total ?? 0)}
+        </span>
+      ) : project ? (
+        <span className="text-xs text-muted">
+          {PROJECT_STAGE_LABELS[project.info.stage]}
+          {project.info.due_on ? ` · entrega ${formatDate(project.info.due_on)}` : ''}
+        </span>
+      ) : null}
+      {task ? <span className="block truncate text-xs text-muted">Próximo: {task}</span> : null}
+    </Tile>
   );
 }
 
@@ -193,31 +254,12 @@ export function SummaryStrip({ totals }: { totals: Dashboard['totals'] }) {
               <span className="text-xs text-muted">dos leads contactados</span>
             </Tile>
           ),
-          clientes: (
-            <Tile label="Clientes ganhos" value={t.won} href="/leads?status=cliente">
-              {t.value_won ? <span className="text-xs text-muted">{euros(t.value_won)} ganhos</span> : null}
-            </Tile>
-          ),
-          pipeline: (
-            <Tile label="Valor do pipeline" value={euros(t.value_pipeline)} href="/kanban">
-              <span className="text-xs text-muted">Soma dos leads ativos</span>
-            </Tile>
-          ),
+          trabalho: <WorkingOnTile />,
         }
       : {
           leads: <Tile label="Leads novos" value={c ? c.new_leads : '—'} href="/leads">{c && b ? <Delta now={c.new_leads} before={b.new_leads} compare={compare} /> : null}</Tile>,
           contacto: <Tile label="Contactados" value={c ? c.contacted : '—'} href="/leads?status=contactado">{c && b ? <Delta now={c.contacted} before={b.contacted} compare={compare} /> : null}</Tile>,
-          clientes: (
-            <Tile label="Clientes ganhos" value={c ? c.won : '—'} href="/leads?status=cliente">
-              {c && b ? <Delta now={c.won} before={b.won} compare={compare} /> : null}
-              {c?.value_won ? <span className="text-xs text-muted">{euros(c.value_won)} ganhos</span> : null}
-            </Tile>
-          ),
-          pipeline: (
-            <Tile label="Valor do pipeline" value={euros(t.value_pipeline)} href="/kanban">
-              <span className="text-xs text-muted">Hoje, soma dos leads ativos</span>
-            </Tile>
-          ),
+          trabalho: <WorkingOnTile />,
         };
 
   return (
