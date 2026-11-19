@@ -55,7 +55,8 @@ test('analisar o site de um lead e aplicar os resultados', async ({ page }) => {
 
   const timeline = page.getByLabel('Atividade do lead');
   await expect(timeline.getByText('Site analisado')).toBeVisible();
-  await expect(timeline.getByText('Lead editado')).toBeVisible();
+  // Pode haver mais do que um ("Lead editado" das etiquetas automáticas da análise).
+  await expect(timeline.getByText('Lead editado').first()).toBeVisible();
 
   // Endereços internos/protocolos estranhos são recusados pela API.
   const bad = await page.request.post(`/api/v1/leads/${lead.id}/audits`, { data: { url: 'ftp://exemplo.pt' } });

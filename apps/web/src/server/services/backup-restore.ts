@@ -64,7 +64,8 @@ async function plan(ctx: ApiContext, file: File): Promise<Plan> {
     throw new ApiError(422, 'Não é uma cópia', 'O ficheiro não tem a coluna do nome da empresa. Usa o Excel da cópia de segurança (vem por email).');
   }
   const [preview, existing, trash, tasks] = await Promise.all([
-    previewImport(ctx, { rows: analysis.rows, mapping: analysis.suggested_mapping }, { checkEmails: false }),
+    // A reposição acerta pelo número do lead: não precisa de procurar duplicados (pesado com muitos leads).
+    previewImport(ctx, { rows: analysis.rows, mapping: analysis.suggested_mapping }, { checkEmails: false, checkDuplicates: false }),
     numbersNow(ctx),
     ctx.supabase.from('lead_trash').select('number, company_name').eq('workspace_id', ctx.workspaceId),
     fileTasks(file),

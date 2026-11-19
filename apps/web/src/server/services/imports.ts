@@ -150,9 +150,13 @@ type DncRow = { row_index: number; entry_id: string; company_name: string; reaso
 export async function lookupConflicts(
   ctx: ApiContext,
   probes: { company_name?: string | null; website?: string | null; email?: string | null; social_links?: string[] | null }[],
+  /** duplicates: procurar duplicados (a reposição de cópias não precisa: acerta pelo número). */
+  options: { duplicates?: boolean } = {},
 ) {
   const [dups, dnc] = await Promise.all([
-    ctx.supabase.rpc('find_import_duplicates', { p_workspace_id: ctx.workspaceId, p_rows: probes }),
+    options.duplicates === false
+      ? Promise.resolve({ data: [] as DupRow[], error: null })
+      : ctx.supabase.rpc('find_import_duplicates', { p_workspace_id: ctx.workspaceId, p_rows: probes }),
     ctx.supabase.rpc('check_import_do_not_contact', { p_workspace_id: ctx.workspaceId, p_rows: probes }),
   ]);
   if (dups.error) throw fromPostgrest(dups.error);
@@ -187,8 +191,12 @@ async function emailWarnings(emails: (string | null)[]): Promise<(string | null)
 export async function previewImport(
   ctx: ApiContext,
   input: { rows: string[][]; mapping: ImportTarget[] },
-  /** checkEmails: ver na internet se o domínio de cada email recebe emails (a reposição de cópias não precisa). */
-  options: { checkEmails?: boolean } = {},
+  /**
+   * checkEmails: ver na internet se o domínio de cada email recebe emails (a reposição de cópias não precisa).
+   * checkDuplicates: procurar duplicados na base de dados. A reposição de uma cópia não precisa (acerta
+   * pelo número do lead) e, com muitos leads, essa procura é pesada e podia esgotar o tempo da base de dados.
+   */
+  options: { checkEmails?: boolean; checkDuplicates?: boolean } = {},
 ): Promise<ImportPreview> {
   const [sectors, services] = await Promise.all([listSectors(ctx, true), loadServiceCatalog(ctx)]);
   const mapped = input.rows.map((row) => (isEmptyRow(row) ? null : mapImportRow(row, input.mapping, sectors, services)));
@@ -198,7 +206,7 @@ export async function previewImport(
     l ? { company_name: l.company_name, website: l.website ?? null, email: l.email ?? null, social_links: l.social_links?.length ? l.social_links : null } : {},
   );
   const [{ dups, dnc }, mailWarnings] = await Promise.all([
-    lookupConflicts(ctx, probes),
+    lookupConflicts(ctx, probes, { duplicates: options.checkDuplicates !== false }),
     options.checkEmails === false ? Promise.resolve(leads.map(() => null)) : emailWarnings(leads.map((l) => l?.email ?? null)),
   ]);
 
