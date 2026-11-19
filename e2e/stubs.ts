@@ -288,6 +288,24 @@ export async function startStubs() {
         });
         return;
       }
+      // Versão B de um modelo (teste A/B).
+      if (JSON.stringify(body.system ?? '').includes('versão B para um teste A/B')) {
+        const asked = JSON.stringify(body.messages ?? '');
+        const curto = asked.includes('metade do tamanho');
+        sendJson(res, 200, {
+          id: 'msg_stub_ab', type: 'message', role: 'assistant', model: body.model ?? 'claude-opus-5-5',
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              subject: 'Uma ideia para a {{empresa}}',
+              body: curto ? 'Olá {{contacto}},\n\nVi o site da {{empresa}}. Posso enviar duas ideias?\n\nCumprimentos,' : 'Olá {{contacto}},\n\nVersão B escrita pela IA para a {{empresa}}.\n\nCumprimentos,',
+              changed: curto ? 'texto com metade do tamanho' : 'assunto mais curto e concreto',
+            }),
+          }],
+          stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 900, output_tokens: 200 },
+        });
+        return;
+      }
       // Caso de estudo de um projeto concluído.
       if (JSON.stringify(body.system ?? '').includes('caso de estudo curto')) {
         const caso = {

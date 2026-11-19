@@ -28,6 +28,7 @@ describe('fornecedores de IA', () => {
       objections: null,
       reply: null,
       case_study: null,
+      ab_test: null,
       card_scan: null,
       geo: null,
     });

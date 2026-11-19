@@ -195,6 +195,7 @@ export const HELP_GUIDES: HelpGuide[] = [
       'Escolhe a categoria e o canal (email, WhatsApp, chamada).',
       'Na ficha do lead ou na Prospeção, escolhe o modelo: a mensagem aparece pronta a rever.',
       'Para comparar duas versões, liga "Testar uma versão B": os leads recebem A ou B alternadamente e as Estatísticas mostram qual resulta melhor.',
+      '"Gerar versão B com IA" escreve a versão B mudando só uma coisa (o assunto, o começo, o pedido do fim, o tamanho ou o foco) — se mudares tudo ao mesmo tempo, não ficas a saber o que funcionou. Em "A e B lado a lado" vês as duas com o mesmo lead, e a comparação avisa quando ainda há poucos envios para concluir (menos de 30 por versão).',
     ],
   },
   {

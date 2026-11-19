@@ -3,6 +3,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  AB_ANGLES,
+  AB_ANGLE_LABELS,
+  abDiffWarning,
+  abReadiness,
+  type AbAngle,
+  type AbVariant,
   ContactTemplateCreateSchema,
   TEMPLATE_KIND_LABELS,
   TEMPLATE_KINDS,
@@ -23,6 +29,7 @@ import {
 import {
   Briefcase,
   ChevronRight,
+  Wand2,
   Copy,
   FlaskConical,
   FileText,
@@ -104,10 +111,27 @@ function previewHtml(template: string, context: TemplateContext): string {
 }
 
 /** Pré-visualização com um lead real: como um email, como uma conversa ou como um guião. */
-function Preview({ subject, body, kind }: { subject: string; body: string; kind: TemplateKind }) {
+function Preview({
+  subject,
+  body,
+  kind,
+  leadId: outerLeadId,
+  onLeadId,
+  hidePicker,
+}: {
+  subject: string;
+  body: string;
+  kind: TemplateKind;
+  /** Lado a lado: as duas versões mostram o mesmo lead (senão a comparação engana). */
+  leadId?: string;
+  onLeadId?: (id: string) => void;
+  hidePicker?: boolean;
+}) {
   const { data: leads } = useLeads({ limit: 50, sort: 'updated_at', order: 'desc' });
   const { data: signature } = useSignature();
-  const [leadId, setLeadId] = useState('');
+  const [ownLeadId, setOwnLeadId] = useState('');
+  const leadId = outerLeadId ?? ownLeadId;
+  const setLeadId = (id: string) => (onLeadId ? onLeadId(id) : setOwnLeadId(id));
   const lead = leads?.data.find((l) => l.id === leadId) ?? leads?.data[0] ?? null;
   const context = useTemplateContext(lead);
   const s = renderTemplate(subject, context);
@@ -132,7 +156,7 @@ function Preview({ subject, body, kind }: { subject: string; body: string; kind:
 
   return (
     <section aria-label="Pré-visualização" className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className={cn('flex flex-wrap items-center gap-2', hidePicker && 'sr-only')}>
         <h2 className="text-sm font-semibold">Pré-visualização com</h2>
         <Select
           aria-label="Lead para a pré-visualização"
@@ -216,7 +240,13 @@ function Editor({
   const isEmail = EMAIL_KINDS.has(kind);
   // Teste A/B: ligado quando há texto B (null = desligado).
   const abOn = bodyB !== null && bodyB !== undefined;
-  const [previewB, setPreviewB] = useState(false);
+  const [preview, setPreview] = useState<'A' | 'B' | 'AB'>('A');
+  // Lado a lado: o lead escolhido vale para as duas versões.
+  const [previewLead, setPreviewLead] = useState('');
+  const [angle, setAngle] = useState<AbAngle>('assunto');
+  const [writingB, setWritingB] = useState(false);
+  const [changedNote, setChangedNote] = useState<string | null>(null);
+  const diffWarning = abOn ? abDiffWarning(body ?? '', bodyB ?? '') : null;
   const stats = useTemplateStats();
   const abStats = template && abOn ? ([stats.get(`${template.name} (A)`), stats.get(`${template.name} (B)`)] as const) : null;
 
@@ -230,6 +260,28 @@ function Editor({
     const currentB = getValues('body_b');
     if (currentB && !EMAIL_KINDS.has(kind) && isRichHtml(currentB)) setValue('body_b', toPlainText(currentB), { shouldDirty: true });
   }, [kind, getValues, setValue]);
+
+  /** A IA escreve a versão B mudando só o que está escolhido em "O que muda". */
+  async function writeVariant() {
+    const current = getValues('body') ?? '';
+    if (!current.trim()) return;
+    setWritingB(true);
+    try {
+      const { data } = await api<{ data: AbVariant }>('/templates/ab-variant', {
+        method: 'POST',
+        body: { kind, subject: getValues('subject') ?? '', body: current, angle, rich: isEmail },
+      });
+      setValue('body_b', data.body, { shouldDirty: true });
+      if (isEmail && data.subject && data.subject !== (getValues('subject') ?? '')) setValue('subject_b', data.subject, { shouldDirty: true });
+      setChangedNote(data.changed || null);
+      setPreview('AB');
+      toast.success('Versão B escrita. Lê e muda o que quiseres antes de guardar.');
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setWritingB(false);
+    }
+  }
 
   const save = handleSubmit(async (values) => {
     try {
@@ -387,7 +439,8 @@ function Editor({
                     onClick={() => {
                       setValue('body_b', null, { shouldDirty: true });
                       setValue('subject_b', null, { shouldDirty: true });
-                      setPreviewB(false);
+                      setPreview('A');
+                      setChangedNote(null);
                     }}
                   >
                     Desligar o teste
@@ -409,41 +462,87 @@ function Editor({
                     render={({ field }) => <TemplateBodyEditor rich={isEmail} value={field.value ?? ''} onChange={field.onChange} />}
                   />
                 </div>
+                {/* A IA escreve a versão B mudando só uma coisa (senão o teste não diz nada). */}
+                <div className="flex flex-wrap items-end gap-2">
+                  <Field label="O que muda na versão B" className="min-w-[12rem] flex-1">
+                    <Select value={angle} onChange={(e) => setAngle(e.target.value as AbAngle)}>
+                      {AB_ANGLES.map((a) => (
+                        <option key={a} value={a}>
+                          {AB_ANGLE_LABELS[a]}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Button type="button" variant="outline" loading={writingB} onClick={() => void writeVariant()} disabled={!(body ?? '').trim()}>
+                    <Wand2 className="h-4 w-4" aria-hidden /> Escrever com IA
+                  </Button>
+                </div>
+                {changedNote ? <p className="text-xs text-muted">O que mudou: {changedNote}</p> : null}
+                {diffWarning ? (
+                  <p role="status" className="rounded-lg bg-warning-soft px-3 py-2 text-xs text-warning">
+                    {diffWarning}
+                  </p>
+                ) : null}
                 {abStats ? <AbComparison a={abStats[0]} b={abStats[1]} /> : null}
               </div>
             ) : (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="self-end"
-                onClick={() => setValue('body_b', getValues('body') ?? '', { shouldDirty: true })}
-              >
-                <FlaskConical className="h-3.5 w-3.5" aria-hidden /> Testar uma versão B
-              </Button>
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button type="button" size="sm" variant="ghost" loading={writingB} onClick={() => void writeVariant()} disabled={!(body ?? '').trim()}>
+                  <Wand2 className="h-3.5 w-3.5" aria-hidden /> Gerar versão B com IA
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setValue('body_b', getValues('body') ?? '', { shouldDirty: true })}
+                >
+                  <FlaskConical className="h-3.5 w-3.5" aria-hidden /> Testar uma versão B
+                </Button>
+              </div>
             )}
           </div>
           <div className="min-w-0 @3xl:sticky @3xl:top-4 @3xl:self-start">
             {abOn ? (
               <div role="group" aria-label="Versão na pré-visualização" className="mb-2 inline-flex rounded-lg border border-border p-0.5 text-sm">
-                {(['A', 'B'] as const).map((v) => (
+                {(['A', 'B', 'AB'] as const).map((v) => (
                   <button
                     key={v}
                     type="button"
-                    aria-pressed={(v === 'B') === previewB}
-                    onClick={() => setPreviewB(v === 'B')}
-                    className={cn('rounded-md px-3 py-1', (v === 'B') === previewB ? 'bg-accent-soft text-accent-text' : 'text-muted hover:text-fg')}
+                    aria-pressed={preview === v}
+                    onClick={() => setPreview(v)}
+                    className={cn('rounded-md px-3 py-1', preview === v ? 'bg-accent-soft text-accent-text' : 'text-muted hover:text-fg')}
                   >
-                    Versão {v}
+                    {v === 'AB' ? 'A e B lado a lado' : `Versão ${v}`}
                   </button>
                 ))}
               </div>
             ) : null}
-            <Preview
-              subject={abOn && previewB ? (subjectB?.trim() ? subjectB : (subject ?? '')) : (subject ?? '')}
-              body={abOn && previewB ? (bodyB ?? '') : (body ?? '')}
-              kind={kind}
-            />
+            {abOn && preview === 'AB' ? (
+              // Lado a lado em ecrã grande; no telemóvel uma por baixo da outra.
+              <div className="grid gap-3 lg:grid-cols-2">
+                <div className="min-w-0" data-testid="pre-visualizacao-a">
+                  <p className="mb-1 text-xs font-semibold text-muted">Versão A</p>
+                  <Preview subject={subject ?? ''} body={body ?? ''} kind={kind} leadId={previewLead} onLeadId={setPreviewLead} />
+                </div>
+                <div className="min-w-0" data-testid="pre-visualizacao-b">
+                  <p className="mb-1 text-xs font-semibold text-muted">Versão B</p>
+                  <Preview
+                    subject={subjectB?.trim() ? subjectB : (subject ?? '')}
+                    body={bodyB ?? ''}
+                    kind={kind}
+                    leadId={previewLead}
+                    onLeadId={setPreviewLead}
+                    hidePicker
+                  />
+                </div>
+              </div>
+            ) : (
+              <Preview
+                subject={abOn && preview === 'B' ? (subjectB?.trim() ? subjectB : (subject ?? '')) : (subject ?? '')}
+                body={abOn && preview === 'B' ? (bodyB ?? '') : (body ?? '')}
+                kind={kind}
+              />
+            )}
           </div>
         </div>
         <div className="px-4 pb-4">
@@ -478,6 +577,8 @@ const norm = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCas
 /** Versão A contra versão B (últimos 90 dias): enviados, aberturas e respostas. */
 function AbComparison({ a, b }: { a: EmailTemplateStat | undefined; b: EmailTemplateStat | undefined }) {
   if (!a?.sent && !b?.sent) return <p className="text-xs text-muted">Ainda sem envios das duas versões: os números aparecem aqui depois dos primeiros emails.</p>;
+  // Com poucos envios as percentagens enganam: a frase diz quando já dá para confiar.
+  const readiness = abReadiness(a, b);
   const pct = (n: number, d: number) => (d ? `${Math.round((n / d) * 100)}%` : '—');
   const rows = [
     { label: 'Enviados', a: String(a?.sent ?? 0), b: String(b?.sent ?? 0) },
@@ -505,6 +606,13 @@ function AbComparison({ a, b }: { a: EmailTemplateStat | undefined; b: EmailTemp
           </tr>
         ))}
       </tbody>
+      <tfoot>
+        <tr>
+          <td colSpan={3} className="pt-2">
+            <p className={cn('text-xs', readiness.conclusive ? 'font-medium text-success' : 'text-muted')}>{readiness.message}</p>
+          </td>
+        </tr>
+      </tfoot>
     </table>
   );
 }

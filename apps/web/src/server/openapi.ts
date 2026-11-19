@@ -100,6 +100,8 @@ import {
   DeliverablePinSchema,
   CaseStudySchema,
   CaseStudyRequestSchema,
+  AbVariantRequestSchema,
+  AbVariantSchema,
   DeliverablePinCreateSchema,
   DeliverablePinUpdateSchema,
   PublicPinCreateSchema,
@@ -2734,6 +2736,14 @@ export function getOpenApiDocument() {
           summary: 'O caso de estudo em PDF (?download=1 para descarregar)',
           requestParams: { path: leadId, query: z.object({ download: z.enum(['1']).optional() }) },
           responses: { '200': { description: 'PDF', content: { 'application/pdf': { schema: z.string().meta({ format: 'binary' }) } } }, ...withNotFound },
+        }),
+      },
+      '/templates/ab-variant': {
+        post: op({
+          tags: ['Modelos'],
+          summary: 'A IA escreve a versão B de um modelo (muda só o que se pedir)',
+          requestBody: body(AbVariantRequestSchema),
+          responses: { '200': ok(data(AbVariantSchema)), '409': problem('Sem IA configurada ou limite de gasto atingido'), ...common },
         }),
       },
       '/pins/{id}/task': {

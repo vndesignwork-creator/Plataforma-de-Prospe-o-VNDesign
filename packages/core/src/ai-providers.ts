@@ -120,6 +120,7 @@ export const AiSettingsSchema = z.object({
   objections: AiFeatureSettingSchema.nullable().default(null),
   reply: AiFeatureSettingSchema.nullable().default(null),
   case_study: AiFeatureSettingSchema.nullable().default(null),
+  ab_test: AiFeatureSettingSchema.nullable().default(null),
   card_scan: AiFeatureSettingSchema.nullable().default(null),
   geo: AiFeatureSettingSchema.nullable().default(null),
 });
@@ -135,15 +136,16 @@ export const AiSettingsUpdateSchema = z.object({
   objections: featureUpdate.nullable().optional(),
   reply: featureUpdate.nullable().optional(),
   case_study: featureUpdate.nullable().optional(),
+  ab_test: featureUpdate.nullable().optional(),
   card_scan: featureUpdate.nullable().optional(),
   geo: featureUpdate.nullable().optional(),
 });
 
 /** As funções da IA, pela ordem de Definições → Inteligência artificial → Onde usar. */
-export const AI_FUNCTIONS = ['email', 'summary', 'objections', 'reply', 'case_study', 'card_scan', 'geo', 'lead_generation', 'visibility'] as const;
+export const AI_FUNCTIONS = ['email', 'summary', 'objections', 'reply', 'case_study', 'ab_test', 'card_scan', 'geo', 'lead_generation', 'visibility'] as const;
 export type AiFunction = (typeof AI_FUNCTIONS)[number];
 /** As que, sem escolha própria, usam a do "Email com IA". */
-export const AI_FOLLOWS_EMAIL: readonly AiFunction[] = ['summary', 'objections', 'reply', 'case_study', 'card_scan', 'geo'];
+export const AI_FOLLOWS_EMAIL: readonly AiFunction[] = ['summary', 'objections', 'reply', 'case_study', 'ab_test', 'card_scan', 'geo'];
 
 export const AI_FUNCTION_META: Record<AiFunction, { label: string; description: string; usage: readonly string[] }> = {
   email: { label: 'Email com IA', description: 'Rascunhos de email na ficha do lead.', usage: ['email'] },
@@ -151,6 +153,7 @@ export const AI_FUNCTION_META: Record<AiFunction, { label: string; description: 
   objections: { label: 'Respostas a objeções', description: 'Como responder a "está caro", "já tenho site"…', usage: ['resposta'] },
   reply: { label: 'Responder às respostas', description: 'A resposta ao email que o lead enviou (lista Respostas e ficha do lead).', usage: ['resposta_email'] },
   case_study: { label: 'Caso de estudo', description: 'O caso de estudo de um projeto concluído (portefólio e propostas).', usage: ['caso_estudo'] },
+  ab_test: { label: 'Versão B dos modelos (teste A/B)', description: 'Em Scripts: a IA escreve a versão B mudando só uma coisa.', usage: ['versao_b'] },
   card_scan: { label: 'Cartão de visita e lead ditado', description: 'Ler a fotografia de um cartão (precisa de um modelo que veja imagens) e o novo lead por texto.', usage: ['cartao_visita', 'lead_ditado'] },
   geo: { label: 'Kit GEO (perguntas frequentes)', description: 'As perguntas e respostas para o site do cliente.', usage: ['perguntas_frequentes'] },
   lead_generation: { label: 'Gerador de leads', description: 'Precisa de pesquisa na internet: Claude, OpenAI ou OpenRouter.', usage: ['empresas'] },
