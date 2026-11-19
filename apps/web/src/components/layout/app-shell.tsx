@@ -1,7 +1,7 @@
 'use client';
 
 import * as RadixDialog from '@radix-ui/react-dialog';
-import { BarChart3, BriefcaseBusiness, CircleHelp, Columns3, Handshake, LayoutDashboard, ListChecks, LogOut, Menu, MessageSquareText, Moon, Search, Settings, Sparkles, Sun, Target, Users, X } from 'lucide-react';
+import { BarChart3, BriefcaseBusiness, CircleHelp, Columns3, LayoutDashboard, ListChecks, LogOut, Menu, MessageSquareText, Moon, Search, Settings, Sparkles, Sun, Target, Users, UsersRound, X } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -36,7 +36,7 @@ const NAV = [
   { href: '/kanban', label: 'Kanban', icon: Columns3, match: (p: string) => p.startsWith('/kanban') },
   { href: '/projetos', label: 'Clientes/Projetos', icon: BriefcaseBusiness, match: (p: string) => p.startsWith('/projetos'), feature: 'projects' as const },
   // Equipa de prospeção e colaboradores dos projetos, numa só página (separadores).
-  { href: '/equipa', label: 'Equipa', icon: Handshake, match: (p: string) => p === '/equipa' || p.startsWith('/colaboradores') },
+  { href: '/equipa', label: 'Equipa', icon: UsersRound, match: (p: string) => p === '/equipa' || p.startsWith('/colaboradores') },
   { href: '/estatisticas', label: 'Estatísticas', icon: BarChart3, match: (p: string) => p.startsWith('/estatisticas') },
   { href: '/scripts', label: 'Scripts', icon: MessageSquareText, match: (p: string) => p.startsWith('/scripts') },
   { href: '/definicoes', label: 'Definições', icon: Settings, match: (p: string) => p.startsWith('/definicoes') },
