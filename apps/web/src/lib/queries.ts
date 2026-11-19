@@ -25,6 +25,8 @@ import type {
   MapData,
   Proposal,
   ProposalPick,
+  CaseStudy,
+  CaseStudyRequest,
   DeliverablePin,
   DeliverablePinCreate,
   DeliverablePinUpdate,
@@ -1086,6 +1088,30 @@ export function useClients(enabled = true) {
     queryKey: ['clients'],
     queryFn: () => api<{ data: Client[] }>('/clients').then((r) => r.data),
     enabled,
+  });
+}
+
+/** Caso de estudo do projeto (escrito com IA e guardado). */
+export function useCaseStudy(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['case-study', leadId],
+    queryFn: () => api<{ data: CaseStudy | null }>(`/leads/${leadId}/case-study`).then((r) => r.data),
+    enabled,
+  });
+}
+
+/** Escrever (ou apagar) o caso de estudo. */
+export function useCaseStudyAction(leadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CaseStudyRequest | { remove: true }) => {
+      if ('remove' in input) {
+        await api(`/leads/${leadId}/case-study`, { method: 'DELETE' });
+        return null;
+      }
+      return api<{ data: CaseStudy }>(`/leads/${leadId}/case-study`, { method: 'POST', body: input }).then((r) => r.data);
+    },
+    onSuccess: (study) => qc.setQueryData(['case-study', leadId], study),
   });
 }
 

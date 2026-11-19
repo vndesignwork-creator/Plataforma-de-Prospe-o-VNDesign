@@ -24,6 +24,7 @@ export * from './client-signature';
 export * from './score';
 export * from './projects';
 export * from './project-tools';
+export * from './case-study';
 export * from './contracts';
 export * from './lead-path';
 export { DIRECTORY_HOSTS, SOCIAL_HOSTS, isDirectoryUrl, isSocialOrDirectoryUrl, isSocialUrl, fixDirectoryWebsite, type LeadLinks } from './links';

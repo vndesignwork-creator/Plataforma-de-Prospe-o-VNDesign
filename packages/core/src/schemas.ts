@@ -797,6 +797,7 @@ export const WorkspaceSettingsSchema = z
       summary: null,
       objections: null,
       reply: null,
+      case_study: null,
       card_scan: null,
       geo: null,
     }),

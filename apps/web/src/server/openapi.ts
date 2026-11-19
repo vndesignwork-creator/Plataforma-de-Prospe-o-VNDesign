@@ -98,6 +98,8 @@ import {
   ProjectDeliverableCreateSchema,
   ProjectDeliverableUpdateSchema,
   DeliverablePinSchema,
+  CaseStudySchema,
+  CaseStudyRequestSchema,
   DeliverablePinCreateSchema,
   DeliverablePinUpdateSchema,
   PublicPinCreateSchema,
@@ -2703,6 +2705,25 @@ export function getOpenApiDocument() {
           responses: { '200': ok(data(DeliverablePinSchema)), ...withNotFound },
         }),
         delete: op({ tags: ['Projetos'], summary: 'Apagar o comentário', requestParams: { path: idParam }, responses: { '204': { description: 'Apagado' }, ...withNotFound } }),
+      },
+      '/leads/{id}/case-study': {
+        get: op({ tags: ['Projetos'], summary: 'O caso de estudo guardado (ou null)', requestParams: { path: leadId }, responses: { '200': ok(data(CaseStudySchema.nullable())), ...withNotFound } }),
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Escrever o caso de estudo do projeto com IA (a partir da ficha, da análise e do testemunho)',
+          requestParams: { path: leadId },
+          requestBody: body(CaseStudyRequestSchema),
+          responses: { '200': ok(data(CaseStudySchema)), '409': problem('Projeto por concluir ou sem IA configurada'), ...withNotFound },
+        }),
+        delete: op({ tags: ['Projetos'], summary: 'Apagar o caso de estudo', requestParams: { path: leadId }, responses: { '204': { description: 'Apagado' }, ...withNotFound } }),
+      },
+      '/leads/{id}/case-study/pdf': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'O caso de estudo em PDF (?download=1 para descarregar)',
+          requestParams: { path: leadId, query: z.object({ download: z.enum(['1']).optional() }) },
+          responses: { '200': { description: 'PDF', content: { 'application/pdf': { schema: z.string().meta({ format: 'binary' }) } } }, ...withNotFound },
+        }),
       },
       '/pins/{id}/task': {
         post: op({

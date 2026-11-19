@@ -288,6 +288,22 @@ export async function startStubs() {
         });
         return;
       }
+      // Caso de estudo de um projeto concluído.
+      if (JSON.stringify(body.system ?? '').includes('caso de estudo curto')) {
+        const caso = {
+          title: 'Site novo, mais rápido e pronto para telemóvel',
+          summary: 'Um site antigo que demorava a abrir passou a abrir depressa e a funcionar bem no telemóvel.',
+          challenge: 'O site demorava oito segundos a abrir e não estava preparado para telemóvel.',
+          work: ['Site novo em WordPress', 'Fotografias tratadas', 'Formulário de contacto'],
+          result: 'O site abre em menos de dois segundos e funciona bem no telemóvel.',
+        };
+        sendJson(res, 200, {
+          id: 'msg_stub_caso', type: 'message', role: 'assistant', model: body.model ?? 'claude-opus-5-5',
+          content: [{ type: 'text', text: JSON.stringify(caso) }],
+          stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 2_000, output_tokens: 400 },
+        });
+        return;
+      }
       // Responder com IA à resposta de um lead.
       if (JSON.stringify(body.system ?? '').includes('lead respondeu a um email')) {
         const asked = JSON.stringify(body.messages ?? '');

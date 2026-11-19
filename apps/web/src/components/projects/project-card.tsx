@@ -22,6 +22,7 @@ import { useServiceCatalog } from '@/components/services/services';
 import { BriefingSection } from './briefing-section';
 import { TestimonialSection } from './testimonial-section';
 import { AnniversarySection } from './anniversary-section';
+import { CaseStudySection } from './case-study-section';
 import { ClientRequestsSection } from './client-requests-section';
 import { CollaboratorsSection } from './collaborators-section';
 import { DeliverablesSection } from './deliverables-section';
@@ -171,6 +172,7 @@ export function ProjectCard({ lead }: { lead: Lead }) {
       features?.client_page ? <ShareSection key="share" lead={lead} /> : null,
       features?.testimonials ? <TestimonialSection key="testimonial" lead={lead} /> : null,
       features?.site_anniversary && lead.project_completed_at ? <AnniversarySection key="anniversary" lead={lead} /> : null,
+      lead.project_completed_at ? <CaseStudySection key="case-study" lead={lead} /> : null,
       features?.collaborators ? <CollaboratorsSection key="collab" lead={lead} /> : null,
     ].filter(Boolean),
   };
