@@ -1333,14 +1333,16 @@ export function usePins(deliverableId: string, enabled = true) {
 export function usePinAction(leadId: string, deliverableId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: DeliverablePinCreate | { id: string; patch: DeliverablePinUpdate } | { remove: string }) => {
+    mutationFn: async (input: DeliverablePinCreate | { id: string; patch: DeliverablePinUpdate } | { remove: string } | { task: string }) => {
       if ('remove' in input) return api(`/pins/${input.remove}`, { method: 'DELETE' });
+      if ('task' in input) return api<{ data: DeliverablePin }>(`/pins/${input.task}/task`, { method: 'POST' }).then((r) => r.data);
       if ('id' in input) return api<{ data: DeliverablePin }>(`/pins/${input.id}`, { method: 'PATCH', body: input.patch }).then((r) => r.data);
       return api<{ data: DeliverablePin }>(`/deliverables/${deliverableId}/pins`, { method: 'POST', body: input }).then((r) => r.data);
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['pins', deliverableId] });
       void qc.invalidateQueries({ queryKey: ['deliverables', leadId] });
+      void qc.invalidateQueries({ queryKey: ['tasks', leadId] });
     },
   });
 }

@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { addDays, daysBetween } from './format';
 import { LeadSchema, nullableDate, nullableUrl } from './schemas';
 import { PaymentSummarySchema, icsDate, icsFold, icsText } from './projects';
-import { LeadTaskSchema } from './tasks';
+import { LeadTaskSchema, TASK_TITLE_MAX } from './tasks';
 
 // -----------------------------------------------------------------------------
 // Fases e prazo
@@ -329,6 +329,8 @@ export const DeliverablePinSchema = z
     author: z.enum(['equipa', 'cliente']),
     author_name: z.string().nullable(),
     resolved_at: z.string().nullable(),
+    /** Tarefa do projeto criada a partir deste comentário (null = ainda não há). */
+    task_id: z.uuid().nullable(),
     created_at: z.string(),
   })
   .meta({ id: 'DeliverablePin' });
@@ -355,6 +357,12 @@ export const DeliverablePinUpdateSchema = z
   .object({ comment: pinComment.optional(), resolved: z.boolean().optional() })
   .meta({ id: 'DeliverablePinUpdate' });
 export type DeliverablePinUpdate = z.output<typeof DeliverablePinUpdateSchema>;
+
+/** O título da tarefa de um comentário: "Homepage — versão 2: o botão maior". */
+export function pinTaskTitle(deliverableTitle: string, comment: string): string {
+  const text = comment.replace(/\s+/g, ' ').trim();
+  return `${deliverableTitle}: ${text}`.slice(0, TASK_TITLE_MAX);
+}
 
 /** Os comentários por resolver, pela ordem em que foram escritos. */
 export function openPins<P extends Pick<DeliverablePin, 'resolved_at' | 'created_at'>>(pins: readonly P[]): P[] {

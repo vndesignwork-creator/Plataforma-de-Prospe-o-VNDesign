@@ -7,7 +7,7 @@
  * escreve na página do projeto).
  */
 import { formatDateTime, openPins, pinNumbers, type DeliverablePin, type Lead, type ProjectDeliverable } from '@vndesign/core';
-import { Check, ImageUp, MessageSquarePlus, Trash2, Undo2, X } from 'lucide-react';
+import { Check, ImageUp, ListChecks, MessageSquarePlus, Trash2, Undo2, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -201,7 +201,29 @@ export function DeliverablePinsDialog({ lead, deliverable, onClose }: { lead: Le
                       </span>
                     </span>
                   </button>
-                  <div className="mt-1 flex justify-end gap-1">
+                  <div className="mt-1 flex flex-wrap justify-end gap-1">
+                    {p.task_id ? (
+                      <span className="inline-flex items-center gap-1 px-1.5 text-xs text-muted" title="Já tem tarefa (concluí-la resolve este comentário)">
+                        <ListChecks className="h-3.5 w-3.5" aria-hidden /> Tarefa criada
+                      </span>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7"
+                        onClick={() =>
+                          action.mutate(
+                            { task: p.id },
+                            {
+                              onSuccess: () => toast.success('Tarefa criada no projeto.'),
+                              onError: (e) => toast.error(errorMessage(e)),
+                            },
+                          )
+                        }
+                      >
+                        <ListChecks className="h-3.5 w-3.5" aria-hidden /> Criar tarefa
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="ghost"

@@ -1,12 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import {
   DeliverablePinCreateSchema,
+  pinTaskTitle,
   PIN_COMMENT_MAX,
   PublicPinCreateSchema,
   openPins,
   pinNumbers,
   type DeliverablePin,
 } from '../src/project-tools';
+
+describe('tarefa a partir do comentário', () => {
+  it('junta a entrega e o comentário no título', () => {
+    expect(pinTaskTitle('Homepage — versão 2', '  O botão   maior  ')).toBe('Homepage — versão 2: O botão maior');
+  });
+
+  it('não passa do tamanho máximo do título', () => {
+    expect(pinTaskTitle('Entrega', 'a'.repeat(5000)).length).toBeLessThanOrEqual(2000);
+  });
+});
 
 const pin = (over: Partial<DeliverablePin> & { id: string; created_at: string }): DeliverablePin => ({
   deliverable_id: 'd1',
@@ -16,6 +27,7 @@ const pin = (over: Partial<DeliverablePin> & { id: string; created_at: string })
   author: 'equipa',
   author_name: null,
   resolved_at: null,
+  task_id: null,
   ...over,
 });
 

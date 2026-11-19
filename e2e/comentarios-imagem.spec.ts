@@ -39,7 +39,7 @@ async function anonymous(browser: Browser) {
 
 test('entregas: comentar em cima da imagem (equipa e cliente)', async ({ page, browser }) => {
   test.setTimeout(120_000);
-  await page.request.patch('/api/v1/settings', { data: { features: { projects: true, deliverables: true, client_page: true, client_approvals: true } } });
+  await page.request.patch('/api/v1/settings', { data: { features: { projects: true, deliverables: true, client_page: true, client_approvals: true, pin_tasks: true } } });
   const lead = (await (await page.request.post('/api/v1/leads?force=true', {
     data: { company_name: `Maquete ${run}`, contact_name: 'Ana', status: 'cliente' },
   })).json()).data as { id: string };
@@ -97,6 +97,11 @@ test('entregas: comentar em cima da imagem (equipa e cliente)', async ({ page, b
       await client.context.close();
     }
 
+    // O comentário do cliente deu logo uma tarefa no projeto (Definições → Funcionalidades).
+    const tasks = (await (await page.request.get(`/api/v1/leads/${lead.id}/tasks`)).json()).data as { id: string; title: string; done_at: string | null }[];
+    const fromComment = tasks.find((t) => t.title.includes('A foto aqui está esticada'));
+    expect(fromComment?.title).toBe(`Homepage ${run}: A foto aqui está esticada`);
+
     // Os dois comentários estão na entrega; o do cliente traz o nome.
     const pins = (await (await page.request.get(`/api/v1/deliverables/${deliverable.id}/pins`)).json()).data as {
       id: string;
@@ -104,16 +109,30 @@ test('entregas: comentar em cima da imagem (equipa e cliente)', async ({ page, b
       author: string;
       author_name: string | null;
       resolved_at: string | null;
+      task_id: string | null;
     }[];
     expect(pins).toHaveLength(2);
     const fromClient = pins.find((p) => p.author === 'cliente')!;
     expect(fromClient).toMatchObject({ comment: 'A foto aqui está esticada', author_name: 'Ana' });
 
+    // O meu comentário: "Criar tarefa" liga os dois; concluir a tarefa resolve o comentário.
+    const mine = pins.find((p) => p.author === 'equipa')!;
+    expect(mine.task_id).toBeNull();
+    const withTask = await page.request.post(`/api/v1/pins/${mine.id}/task`);
+    expect(withTask.status(), await withTask.text()).toBe(201);
+    const taskId = (await withTask.json()).data.task_id as string;
+    expect(taskId).toBeTruthy();
+    // Segunda vez não duplica.
+    expect((await page.request.post(`/api/v1/pins/${mine.id}/task`)).status()).toBe(409);
+    expect((await page.request.patch(`/api/v1/tasks/${taskId}`, { data: { done: true } })).status()).toBe(200);
+    const afterDone = (await (await page.request.get(`/api/v1/deliverables/${deliverable.id}/pins`)).json()).data as { id: string; resolved_at: string | null }[];
+    expect(afterDone.find((p) => p.id === mine.id)?.resolved_at).toBeTruthy();
+
     // Marcar como resolvido e contar os que faltam.
     const resolved = await page.request.patch(`/api/v1/pins/${fromClient.id}`, { data: { resolved: true } });
     expect(resolved.status()).toBe(200);
     const list = (await (await page.request.get(`/api/v1/leads/${lead.id}/deliverables`)).json()).data as { id: string; pins: number; open_pins: number }[];
-    expect(list.find((d) => d.id === deliverable.id)).toMatchObject({ pins: 2, open_pins: 1 });
+    expect(list.find((d) => d.id === deliverable.id)).toMatchObject({ pins: 2, open_pins: 0 });
 
     // Tirar a imagem leva os comentários.
     const removed = await page.request.delete(`/api/v1/deliverables/${deliverable.id}/image`);

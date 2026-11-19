@@ -264,6 +264,8 @@ export async function updateTask(ctx: ApiContext, id: string, patch: LeadTaskUpd
     .maybeSingle();
   let task = unwrap(result, TASK_NOT_FOUND) as unknown as LeadTask;
   if (before && task.assigned_to && task.assigned_to !== before.assigned_to) await notifyTaskAssigned(ctx, task);
+  // A tarefa veio de um comentário na imagem de uma entrega: concluí-la resolve o comentário.
+  if (done !== undefined) await syncPinsWithTask(ctx, id, done);
   if (spawnFrom) task = await spawnRepeat(ctx, task, spawnFrom);
   if (undoNext) {
     const { data: removed } = await ctx.supabase
@@ -279,6 +281,25 @@ export async function updateTask(ctx: ApiContext, id: string, patch: LeadTaskUpd
     }
   }
   return task;
+}
+
+/** Concluir (ou reabrir) uma tarefa: usa-se quando se resolve o comentário que lhe deu origem. */
+export async function setTaskDone(ctx: ApiContext, id: string, done: boolean): Promise<void> {
+  await updateTask(ctx, id, { done });
+}
+
+/**
+ * Comentários na imagem de uma entrega ligados a esta tarefa: acompanham o
+ * estado dela (concluída = resolvido). Sem a tabela (base de dados por
+ * atualizar), não faz nada.
+ */
+async function syncPinsWithTask(ctx: ApiContext, taskId: string, done: boolean): Promise<void> {
+  const { error } = await ctx.supabase
+    .from('deliverable_pins')
+    .update({ resolved_at: done ? new Date().toISOString() : null })
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('task_id', taskId);
+  if (error && !['42P01', 'PGRST205', '42703'].includes(error.code ?? '')) throw fromPostgrest(error);
 }
 
 const extrasNotReady = () =>

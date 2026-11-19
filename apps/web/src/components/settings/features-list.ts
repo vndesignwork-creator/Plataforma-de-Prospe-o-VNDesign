@@ -4,6 +4,7 @@
  */
 import type { Features } from '@vndesign/core';
 import {
+  ListChecks,
   Activity,
   BadgeCheck,
   BriefcaseBusiness,
@@ -161,6 +162,13 @@ export const FEATURES: { key: keyof Features; label: string; description: string
     sub: true,
   },
   {
+    key: 'pin_tasks',
+    label: 'Comentário do cliente vira tarefa',
+    description: 'Quando o cliente comenta em cima da imagem de uma entrega, fica logo uma tarefa no projeto (os teus comentários só viram tarefa se carregares em “Criar tarefa”).',
+    icon: ListChecks,
+    sub: true,
+  },
+  {
     key: 'brand_kit',
     label: 'Kit da marca do cliente',
     description: 'Logótipos, cores, tipos de letra, links e acessos (palavras-passe cifradas), iguais em todos os projetos do cliente.',
@@ -226,6 +234,7 @@ export const FEATURE_PARENT: Partial<Record<keyof Features, keyof Features>> = {
   time_value: 'time_tracking',
   pomodoro: 'time_tracking',
   client_approvals: 'client_page',
+  pin_tasks: 'deliverables',
 };
 
 /** Por grupos: o que serve para quê. "Projetos" liga/desliga tudo o que está dentro. */
@@ -248,7 +257,7 @@ export const FEATURE_GROUPS: { title: string; description: string; master?: keyo
       { keys: ['projects'] },
       { title: 'Arranque', keys: ['project_kickoff', 'briefing'] },
       { title: 'Tempo', keys: ['time_tracking', 'time_value', 'pomodoro'] },
-      { title: 'Trabalho e entregas', keys: ['revisions', 'deliverables', 'launch_checklist', 'expenses'] },
+      { title: 'Trabalho e entregas', keys: ['revisions', 'deliverables', 'pin_tasks', 'launch_checklist', 'expenses'] },
       { title: 'Cliente e equipa', keys: ['site_monitoring', 'client_page', 'client_approvals', 'testimonials', 'collaborators', 'brand_kit'] },
     ],
   },

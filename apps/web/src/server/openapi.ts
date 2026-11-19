@@ -2704,6 +2704,14 @@ export function getOpenApiDocument() {
         }),
         delete: op({ tags: ['Projetos'], summary: 'Apagar o comentário', requestParams: { path: idParam }, responses: { '204': { description: 'Apagado' }, ...withNotFound } }),
       },
+      '/pins/{id}/task': {
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Fazer uma tarefa do projeto a partir do comentário (concluir a tarefa resolve-o)',
+          requestParams: { path: idParam },
+          responses: { '201': ok(data(DeliverablePinSchema), 'Criada'), '409': problem('O comentário já tem tarefa'), ...withNotFound },
+        }),
+      },
       '/dashboard/billing': {
         get: op({ tags: ['Projetos'], summary: 'Faturação: recebido este mês, por receber, em atraso', responses: { '200': ok(data(BillingSummarySchema)), ...common } }),
       },

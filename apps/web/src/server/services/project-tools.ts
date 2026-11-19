@@ -10,6 +10,7 @@ import {
   type DeliverablePin,
   type DeliverablePinCreate,
   type DeliverablePinUpdate,
+  pinTaskTitle,
   DEFAULT_PROJECT_INFO,
   PROJECT_STAGE_LABELS,
   WorkspaceSettingsSchema,
@@ -43,6 +44,7 @@ import { selectInBatches } from '../batch';
 import { ApiError, fromPostgrest } from '../http';
 import { createSupabaseAdminClient } from '../supabase-admin';
 import { getLead } from './leads';
+import { createTask, setTaskDone } from './tasks';
 import { alertUser } from './push';
 
 async function logActivity(ctx: ApiContext, leadId: string, type: string, body: string | null, payload: Record<string, unknown> = {}) {
@@ -553,7 +555,7 @@ export async function deleteDeliverable(ctx: ApiContext, id: string): Promise<vo
 // -----------------------------------------------------------------------------
 
 const DELIVERABLE_BUCKET = 'project-files';
-const PIN_SELECT = 'id, deliverable_id, x, y, comment, author, author_name, resolved_at, created_at';
+const PIN_SELECT = 'id, deliverable_id, x, y, comment, author, author_name, resolved_at, task_id, created_at';
 const PIN_NOT_FOUND = 'Comentário não encontrado';
 
 const toPin = (row: Record<string, unknown>): DeliverablePin => ({
@@ -679,6 +681,38 @@ export async function updatePin(ctx: ApiContext, id: string, patch: DeliverableP
     .maybeSingle();
   if (error) throw fromPostgrest(error, PIN_NOT_FOUND);
   if (!data) throw new ApiError(404, PIN_NOT_FOUND);
+  const pin = toPin(data as Record<string, unknown>);
+  // Resolver (ou reabrir) o comentário acompanha a tarefa que lhe deu origem.
+  if (patch.resolved !== undefined && pin.task_id) await setTaskDone(ctx, pin.task_id, patch.resolved).catch(() => undefined);
+  return pin;
+}
+
+/**
+ * Faz uma tarefa do projeto a partir do comentário ("Homepage: o botão maior").
+ * Fica ligada: concluir a tarefa resolve o comentário e resolver o comentário
+ * fecha a tarefa.
+ */
+export async function createPinTask(ctx: ApiContext, id: string): Promise<DeliverablePin> {
+  const { data: current, error: readError } = await ctx.supabase
+    .from('deliverable_pins')
+    .select(`${PIN_SELECT}, lead_id`)
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('id', id)
+    .maybeSingle();
+  if (readError) throw fromPostgrest(readError, PIN_NOT_FOUND);
+  if (!current) throw new ApiError(404, PIN_NOT_FOUND);
+  const row = current as Record<string, unknown> & { lead_id: string; task_id: string | null; comment: string; deliverable_id: string };
+  if (row.task_id) throw new ApiError(409, 'Já tem tarefa', 'Este comentário já deu origem a uma tarefa.');
+  const deliverable = await getDeliverableRow(ctx, row.deliverable_id);
+  const task = await createTask(ctx, row.lead_id, { title: pinTaskTitle(deliverable.title, row.comment), due_on: null, remind_at: null });
+  const { data, error } = await ctx.supabase
+    .from('deliverable_pins')
+    .update({ task_id: task.id })
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('id', id)
+    .select(PIN_SELECT)
+    .single();
+  if (error) throw fromPostgrest(error, PIN_NOT_FOUND);
   return toPin(data as Record<string, unknown>);
 }
 
@@ -876,6 +910,18 @@ export async function createSharedPin(
     .select(PIN_SELECT)
     .single();
   if (error) throw fromPostgrest(error);
+
+  // Comentário do cliente → tarefa do projeto (Definições → Funcionalidades).
+  const { data: workspace } = await admin.from('workspaces').select('settings').eq('id', ws).maybeSingle();
+  const features = WorkspaceSettingsSchema.parse(workspace?.settings ?? {}).features;
+  if (features.pin_tasks) {
+    const { data: task } = await admin
+      .from('lead_tasks')
+      .insert({ workspace_id: ws, lead_id: leadId, title: pinTaskTitle(target.title, input.comment), position: 0 })
+      .select('id')
+      .single();
+    if (task) await admin.from('deliverable_pins').update({ task_id: (task as { id: string }).id }).eq('id', (data as { id: string }).id);
+  }
 
   const { data: lead } = await admin.from('leads').select('created_by, company_name').eq('id', leadId).maybeSingle();
   if (lead?.created_by) {
