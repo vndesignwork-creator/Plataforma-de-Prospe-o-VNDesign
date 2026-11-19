@@ -9,6 +9,7 @@ export * from './export';
 export * from './import-schemas';
 export * from './templates';
 export * from './audit';
+export * from './audit-tags';
 export * from './integration';
 export * from './proposals';
 export * from './ai';

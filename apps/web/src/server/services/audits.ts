@@ -3,7 +3,9 @@
  * (PageSpeed, Mobile? e Problemas) e as imagens do site (telemóvel e computador,
  * tiradas pelo PageSpeed e guardadas no bucket privado "site-screenshots").
  */
-import { ensureUrlProtocol, type AuditApply, type Lead, type LeadUpdate, type ScreenshotDevice, type SiteAudit } from '@vndesign/core';
+import {
+  auditTags,
+  mergeAuditTags, ensureUrlProtocol, type AuditApply, type Lead, type LeadUpdate, type ScreenshotDevice, type SiteAudit } from '@vndesign/core';
 import { PAGESPEED_SSL_BLOCKED, isPageSpeedEnabled, runPageSpeed, type PageSpeedOutcome, type PageSpeedShot } from '../audit/pagespeed';
 import { collectAudit } from '../audit/run-audit';
 import type { ApiContext } from '../context';
@@ -79,6 +81,19 @@ export async function runLeadAudit(ctx: ApiContext, leadId: string, url?: string
     if (stored) audit = stored;
   }
 
+  // Etiquetas automáticas ("site muito lento", "sem telemóvel"…) a partir do que a análise encontrou.
+  let tagged: string[] = [];
+  if ((await getSettings(ctx)).features.audit_tags) {
+    const { data: leadRow } = await ctx.supabase.from('leads').select('tags').eq('workspace_id', ctx.workspaceId).eq('id', leadId).maybeSingle();
+    const current = ((leadRow?.tags as string[] | null) ?? []).filter(Boolean);
+    const next = mergeAuditTags(current, auditTags(audit.issues));
+    if (next.join('\u0000') !== current.join('\u0000')) {
+      const { error: tagError } = await ctx.supabase.from('leads').update({ tags: next }).eq('workspace_id', ctx.workspaceId).eq('id', leadId);
+      if (tagError) console.warn('[análise] etiquetas', tagError.message);
+      else tagged = next.filter((t) => !current.includes(t));
+    }
+  }
+
   const { error } = await ctx.supabase.from('lead_activities').insert({
     workspace_id: ctx.workspaceId,
     lead_id: leadId,
@@ -89,6 +104,7 @@ export async function runLeadAudit(ctx: ApiContext, leadId: string, url?: string
       status: audit.status,
       pagespeed: audit.pagespeed_mobile,
       issues: audit.issues.length,
+      ...(tagged.length ? { tags: tagged } : {}),
     },
     actor_user_id: ctx.user.id,
   });

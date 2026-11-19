@@ -239,6 +239,7 @@ export function describe(a: Activity): string | null {
         .join(' · ');
     case 'audit_run': {
       const parts = [
+        Array.isArray(p.tags) && p.tags.length ? `Etiquetas: ${(p.tags as string[]).join(', ')}` : null,
         typeof p.pagespeed === 'number' ? `PageSpeed ${p.pagespeed}` : null,
         typeof p.issues === 'number' ? (p.issues === 1 ? '1 problema' : `${p.issues} problemas`) : null,
       ];
