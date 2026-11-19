@@ -39,23 +39,29 @@ test('dois cartões "A trabalhar agora", fixar à mão e o link para o projeto',
     // E o link vai para a página Projetos (não para a ficha do lead).
     await expect(primeiro).toHaveAttribute('href', `/projetos#projeto-${longeId}`);
 
+    // Mexer nas tarefas do outro projeto põe-no à frente (criar já conta).
+    const tarefa = await page.request.post(`/api/v1/leads/${pertoId}/tasks`, { data: { title: 'Montar o rascunho' } });
+    expect(tarefa.status(), await tarefa.text()).toBe(201);
+    await page.goto('/dashboard');
+    await expect(page.getByRole('link').filter({ hasText: /^A trabalhar agora/ }).first()).toContainText(perto);
+
     // "A trabalhar nisto" na ficha do outro projeto: passa para o primeiro cartão.
-    await page.goto(`/leads/${pertoId}#projeto`);
+    await page.goto(`/leads/${longeId}#projeto`);
     await page.getByRole('button', { name: 'Mais ações do projeto' }).click();
     await page.getByRole('menuitem', { name: /^A trabalhar nisto/ }).click();
     await expect(page.locator('[data-sonner-toast]').filter({ hasText: 'Fixado no Dashboard' })).toBeVisible();
     const pref = await page.request.get('/api/v1/preferences/dashboard.working_on');
-    expect((await pref.json()).data.value).toBe(pertoId);
+    expect((await pref.json()).data.value).toBe(longeId);
 
     await page.goto('/dashboard');
     const fixado = page.getByRole('link').filter({ hasText: /^A trabalhar agora · fixado por ti/ }).first();
-    await expect(fixado).toContainText(perto);
-    await expect(page.getByRole('link').filter({ hasText: /^Também em curso/ }).first()).toContainText(longe);
+    await expect(fixado).toContainText(longe);
+    await expect(page.getByRole('link').filter({ hasText: /^Também em curso/ }).first()).toContainText(perto);
 
     // O cartão abre o projeto na página Projetos.
     await fixado.click();
     await expect(page.getByRole('heading', { name: 'Projetos', level: 1 })).toBeVisible();
-    await expect(page.locator(`#projeto-${pertoId}`)).toBeVisible();
+    await expect(page.locator(`#projeto-${longeId}`)).toBeVisible();
   } finally {
     await page.request.put('/api/v1/preferences/dashboard.working_on', { data: { value: null } });
     await page.request.delete(`/api/v1/leads/${pertoId}`);

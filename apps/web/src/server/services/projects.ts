@@ -11,15 +11,19 @@ import { LEAD_SELECT, getLead } from './leads';
 import { expenseTotals, projectInfoMap, projectValues } from './project-tools';
 import { createTask, listTasksForLeads } from './tasks';
 
-/** A última vez que mexi neste projeto: registo meu, tarefa feita ou tempo registado por mim. */
+/**
+ * A última vez que se mexeu neste projeto: um registo meu na linha do tempo,
+ * qualquer mudança nas tarefas (criar, mudar o nome ou o prazo, trocar a ordem,
+ * concluir) ou tempo registado por mim.
+ */
 function lastTouch(
-  tasks: { done_at: string | null }[],
+  tasks: { updated_at?: string; done_at: string | null }[],
   entries: { started_at: string; ended_at: string | null }[],
   activity: string | null,
 ): string | null {
   const dates = [
     activity,
-    ...tasks.map((t) => t.done_at),
+    ...tasks.map((t) => t.updated_at ?? t.done_at),
     ...entries.map((e) => e.ended_at ?? e.started_at),
   ].filter((d): d is string => !!d);
   return dates.sort((a, b) => Date.parse(b) - Date.parse(a))[0] ?? null;
