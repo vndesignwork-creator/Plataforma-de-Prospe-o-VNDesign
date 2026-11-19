@@ -81,3 +81,14 @@ test('Problemas em segundo plano: aparecem (os repetidos juntam-se) e "Já resol
     await admin.dispose();
   }
 });
+
+test('estado: testar o envio de email da plataforma', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto('/definicoes/estado');
+  const card = page.getByText('O servidor que leva o resumo diário');
+  await expect(card).toBeVisible();
+  await page.getByRole('button', { name: 'Enviar email de teste' }).click();
+  // No ambiente de testes o SMTP é o Mailpit: tem de enviar.
+  await expect(page.locator('[data-sonner-toast]').filter({ hasText: 'Email de teste enviado' })).toBeVisible();
+  await expect(page.getByText(/^Enviado para /)).toBeVisible();
+});

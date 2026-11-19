@@ -109,6 +109,40 @@ export async function getPlatformStatus(ctx: ApiContext): Promise<PlatformStatus
   };
 }
 
+/**
+ * Testa o envio de email do sistema (o que leva o resumo diário, os convites e
+ * o link da palavra-passe). Devolve o motivo exato quando falha, para se saber
+ * o que corrigir nas definições do servidor.
+ */
+export async function testSystemMail(ctx: ApiContext): Promise<{ sent: boolean; to: string | null; host: string | null; detail: string | null }> {
+  if (ctx.role !== 'owner' && ctx.role !== 'admin') {
+    throw new ApiError(403, 'Sem permissão', 'Só o dono e os administradores testam o envio de email do sistema.');
+  }
+  const host = process.env.SMTP_HOST?.trim() || null;
+  const to = ctx.user.email ?? null;
+  if (!host) return { sent: false, to, host: null, detail: 'Não há servidor de envio configurado (falta SMTP_HOST nas definições do servidor).' };
+  if (!to) return { sent: false, to: null, host, detail: 'A tua conta não tem email.' };
+  try {
+    await sendMail({
+      to,
+      subject: 'Teste de envio · VNDesign Leads',
+      text: 'Este email serve só para confirmar que o envio da plataforma está a funcionar. Se o recebeste, está tudo bem.',
+      html: '<p>Este email serve só para confirmar que o envio da plataforma está a funcionar. Se o recebeste, está tudo bem.</p>',
+    });
+    await resolveProblem(ctx.workspaceId, 'email', 'system_mail');
+    return { sent: true, to, host, detail: null };
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    await reportProblem(ctx.workspaceId, {
+      area: 'email',
+      key: 'system_mail',
+      title: 'O envio de email da plataforma não está a funcionar',
+      detail,
+    });
+    return { sent: false, to, host, detail };
+  }
+}
+
 export async function resolveProblemById(ctx: ApiContext, id: string): Promise<void> {
   const { data, error } = await ctx.supabase
     .from('platform_problems')

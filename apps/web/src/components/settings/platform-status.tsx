@@ -6,7 +6,8 @@
  */
 import { PROBLEM_AREA_LABELS, formatDateTime, type CronState, type PlatformStatus } from '@vndesign/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
+import { useState } from 'react';
+import { AlertTriangle, CheckCircle2, Clock, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -81,6 +82,59 @@ function CronRow({ name, what, schedule, state, at }: { name: string; what: stri
   );
 }
 
+/** Teste do envio de email do sistema (resumo diário, convites, palavra-passe). */
+function SystemMailTest({ configured }: { configured: boolean }) {
+  const [result, setResult] = useState<{ sent: boolean; to: string | null; host: string | null; detail: string | null } | null>(null);
+  const [testing, setTesting] = useState(false);
+
+  async function test() {
+    setTesting(true);
+    try {
+      const data = (await api<{ data: { sent: boolean; to: string | null; host: string | null; detail: string | null } }>('/platform/mail-test', { method: 'POST' })).data;
+      setResult(data);
+      if (data.sent) toast.success('Email de teste enviado. Vê a tua caixa de entrada.');
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader
+        title="Envio de email da plataforma"
+        description="O servidor que leva o resumo diário, os convites da equipa e o link para recuperar a palavra-passe."
+        actions={
+          <Button type="button" variant="outline" onClick={test} loading={testing}>
+            <Mail className="h-4 w-4" aria-hidden /> Enviar email de teste
+          </Button>
+        }
+      />
+      <div className="px-4 pb-4 text-sm">
+        {!configured ? (
+          <p className="rounded-lg bg-danger-soft px-3 py-2 text-danger">
+            Não há servidor de envio configurado. Enquanto assim for, estes emails saem pelo serviço de autenticação (em inglês) ou não saem de todo.
+          </p>
+        ) : result ? (
+          result.sent ? (
+            <p className="rounded-lg bg-success-soft px-3 py-2 text-success">
+              Enviado para {result.to} por {result.host}. Se não chegar em poucos minutos, vê o spam.
+            </p>
+          ) : (
+            <div className="rounded-lg bg-danger-soft px-3 py-2 text-danger">
+              <p className="font-medium">Não foi possível enviar{result.host ? ` por ${result.host}` : ''}.</p>
+              <p className="mt-1 break-words">{result.detail}</p>
+            </div>
+          )
+        ) : (
+          <p className="text-muted">Carrega em “Enviar email de teste” para confirmar que está a funcionar (o email vai para ti).</p>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 export function PlatformStatusView() {
   const qc = useQueryClient();
   const { data, isLoading, error } = usePlatformStatus();
@@ -134,6 +188,8 @@ export function PlatformStatusView() {
           ) : null}
         </div>
       </Card>
+
+      <SystemMailTest configured={data.mail_configured} />
 
       <Card>
         <CardHeader title="Problemas" description="O que falhou em segundo plano nos últimos 30 dias (os repetidos juntam-se)." />
