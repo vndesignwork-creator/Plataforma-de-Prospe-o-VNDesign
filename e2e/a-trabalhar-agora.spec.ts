@@ -22,8 +22,8 @@ test('três cartões "A trabalhar agora", fixar à mão e o link para o projeto'
   const longeId = await criar(longe);
   await page.request.patch(`/api/v1/leads/${pertoId}/project`, { data: { due_on: '2026-12-01' } });
   await page.request.patch(`/api/v1/leads/${longeId}/project`, { data: { due_on: '2027-06-01' } });
-  // Sem nada fixado, o Dashboard vê os dois projetos.
-  await page.request.put('/api/v1/preferences/dashboard.working_on', { data: { value: null } });
+  // Sem nada fixado, o Dashboard vê os dois projetos (vazio = nada fixado).
+  await page.request.put('/api/v1/preferences/dashboard.working_on', { data: { value: '' } });
 
   try {
     await page.goto('/dashboard');
@@ -36,8 +36,8 @@ test('três cartões "A trabalhar agora", fixar à mão e o link para o projeto'
     // tempo (o último criado) e o outro fica no segundo cartão.
     await expect(primeiro).toContainText(longe);
     await expect(segundo).toContainText(perto);
-    // E o link vai para a página Projetos (não para a ficha do lead).
-    await expect(primeiro).toHaveAttribute('href', `/projetos#projeto-${longeId}`);
+    // O cartão leva à ficha, ao cartão do projeto.
+    await expect(primeiro).toHaveAttribute('href', /^\/leads\/\d+-.*#projeto$/);
 
     // Mexer nas tarefas do outro projeto põe-no à frente (criar já conta).
     const tarefa = await page.request.post(`/api/v1/leads/${pertoId}/tasks`, { data: { title: 'Montar o rascunho' } });
@@ -58,12 +58,20 @@ test('três cartões "A trabalhar agora", fixar à mão e o link para o projeto'
     await expect(fixado).toContainText(longe);
     await expect(page.getByRole('link').filter({ hasText: /^Também em curso/ }).first()).toContainText(perto);
 
-    // O cartão abre o projeto na página Projetos.
+    // O cartão abre a ficha, no cartão do projeto.
     await fixado.click();
-    await expect(page.getByRole('heading', { name: 'Projetos', level: 1 })).toBeVisible();
-    await expect(page.locator(`#projeto-${longeId}`)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Projeto', level: 2 })).toBeVisible();
+
+    // Desafixar: volta a mandar quem se mexeu há menos tempo.
+    await page.getByRole('button', { name: 'Mais ações do projeto' }).click();
+    await page.getByRole('menuitem', { name: /^Deixar de estar a trabalhar nisto/ }).click();
+    await expect(page.locator('[data-sonner-toast]').filter({ hasText: 'Deixou de estar fixado' })).toBeVisible();
+    const limpo = await page.request.get('/api/v1/preferences/dashboard.working_on');
+    expect((await limpo.json()).data.value).toBe('');
+    await page.goto('/dashboard');
+    await expect(page.getByRole('link').filter({ hasText: /^A trabalhar agora/ }).first()).toContainText(perto);
   } finally {
-    await page.request.put('/api/v1/preferences/dashboard.working_on', { data: { value: null } });
+    await page.request.put('/api/v1/preferences/dashboard.working_on', { data: { value: '' } });
     await page.request.delete(`/api/v1/leads/${pertoId}`);
     await page.request.delete(`/api/v1/leads/${longeId}`);
   }

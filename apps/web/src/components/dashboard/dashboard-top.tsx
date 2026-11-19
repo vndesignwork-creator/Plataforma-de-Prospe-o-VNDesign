@@ -11,6 +11,7 @@ import {
   formatCurrency,
   formatDate,
   formatPercent,
+  leadPath,
   projectLabel,
   workingOnPicks,
   type Dashboard,
@@ -24,7 +25,6 @@ import { CardLayoutButton, useCardLayout, visibleCards, type Board } from '@/com
 import { buttonClasses } from '@/components/ui/button';
 import { useDashboardPeriod, useMe, usePreference, useProjects, useRunningTimer, useSettings, useToday } from '@/lib/queries';
 import { WORKING_ON_PREFERENCE } from '@/components/projects/working-on-button';
-import { projectAnchor } from '@/components/projects/project-row';
 import { useElapsed } from '@/components/projects/time-section';
 import { cn } from '@/lib/utils';
 
@@ -187,7 +187,7 @@ function WorkingOnTile({ rank }: { rank: 0 | 1 | 2 }) {
   const timeOn = projectsOn && settings?.features.time_tracking !== false;
   const { data: running } = useRunningTimer(timeOn);
   const { data: projects } = useProjects('active', projectsOn);
-  const { data: pinned } = usePreference<string | null>(WORKING_ON_PREFERENCE);
+  const { data: pinned } = usePreference<string>(WORKING_ON_PREFERENCE);
   const elapsed = useElapsed(running?.entry.started_at ?? null);
 
   const picks = workingOnPicks(projects ?? [], {
@@ -218,7 +218,7 @@ function WorkingOnTile({ rank }: { rank: 0 | 1 | 2 }) {
     <Tile
       label={counting ? `${base} · a contar` : pick?.reason === 'fixado' ? `${base} · fixado por ti` : base}
       value={<span className="block truncate text-base font-semibold">{projectLabel(lead)}</span>}
-      href={`/projetos#${projectAnchor(lead.id)}`}
+      href={`${leadPath(lead)}#projeto`}
     >
       {counting ? (
         <span className="inline-flex items-center gap-1 text-xs text-accent-text tabular">

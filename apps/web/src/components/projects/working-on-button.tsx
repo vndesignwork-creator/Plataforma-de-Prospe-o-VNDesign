@@ -13,14 +13,16 @@ import { usePreference, useSetPreference } from '@/lib/queries';
 export const WORKING_ON_PREFERENCE = 'dashboard.working_on';
 
 export function WorkingOnItem({ lead }: { lead: Lead }) {
-  const { data: pinned } = usePreference<string | null>(WORKING_ON_PREFERENCE);
-  const save = useSetPreference<string | null>(WORKING_ON_PREFERENCE);
+  const { data: pinned } = usePreference<string>(WORKING_ON_PREFERENCE);
+  const save = useSetPreference<string>(WORKING_ON_PREFERENCE);
   const isPinned = pinned === lead.id;
 
   function toggle() {
     // O menu fecha-se (e este item sai do ecrã) antes da resposta: com
     // mutateAsync o aviso aparece mesmo assim.
-    void save.mutateAsync(isPinned ? null : lead.id).then(
+    // Vazio = nada fixado (a preferência guarda sempre um texto: a coluna não
+    // aceita "null").
+    void save.mutateAsync(isPinned ? '' : lead.id).then(
       () => toast.success(isPinned ? 'Deixou de estar fixado no Dashboard.' : 'Fixado no Dashboard, em "A trabalhar agora".'),
       () => toast.error('Não foi possível guardar.'),
     );
