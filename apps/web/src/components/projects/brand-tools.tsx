@@ -24,6 +24,7 @@ import { Field } from '@/components/ui/field';
 import { Input, Select } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api-client';
 import { useBrandKitAction } from '@/lib/queries';
+import { ClientSignatureButton } from './client-signature';
 
 /** Ficheiros do kit que o browser consegue desenhar (para as cores e o logótipo do QR). */
 const isImage = (f: BrandKit['files'][number]) => /^image\/(png|jpe?g|webp|svg\+xml|gif)$/i.test(f.type) || /\.(png|jpe?g|webp|svg|gif)$/i.test(f.name);
@@ -71,6 +72,7 @@ export function BrandToolsBar({ lead, kit }: { lead: Lead; kit: BrandKit }) {
           <Palette className="h-3.5 w-3.5" aria-hidden /> Cores do logótipo
         </Button>
       ) : null}
+      {!lead.anonymized_at ? <ClientSignatureButton lead={lead} kit={kit} /> : null}
       {hasContent ? (
         <a href={`${base}/manual`} target="_blank" rel="noopener" className={buttonClasses('outline', 'sm')}>
           <FileText className="h-3.5 w-3.5" aria-hidden /> Manual de marca (PDF)

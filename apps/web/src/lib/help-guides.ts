@@ -153,6 +153,7 @@ export const HELP_GUIDES: HelpGuide[] = [
       'Ao concluir (ou em Cliente e equipa → Testemunho), pede o testemunho: o cliente dá de 1 a 5 estrelas e escreve a opinião. Com autorização e 4 ou 5 estrelas, aparece no PDF das propostas (Definições → Testemunhos) e a página sugere-lhe também o Google.',
       'Em Tempo e dinheiro → Renovações e avenças, regista o domínio, o alojamento e a manutenção mensal: uns dias antes recebes um aviso e uma tarefa, e o email ao cliente já vem escrito. “Renovado” passa à data seguinte e regista o pagamento.',
       'Aniversário do site: um ano depois da entrega (e em cada ano a seguir) fica uma tarefa e um aviso, com o email já escrito para propor uma revisão — a desculpa natural para voltar a falar com clientes antigos. Desliga-se em Definições → Funcionalidades.',
+      'No kit da marca, "Assinatura de email" faz a assinatura do cliente com o logótipo e a cor dele, pronta a colar no Gmail ou no Outlook (ou a guardar num ficheiro .html para lhe enviar).',
       'Em Cliente e equipa → Site do cliente, “Vigiar o site”: de hora a hora vê se está no ar; avisa (com tarefa) se for abaixo, 14 dias antes de o certificado SSL expirar e 30 dias antes do domínio. Se a data do domínio não vier sozinha, escreve-a no ⋯.',
     ],
     tips: ['O temporizador e o Pomodoro contam as horas do projeto; o valor por hora aparece nas Estatísticas.'],
