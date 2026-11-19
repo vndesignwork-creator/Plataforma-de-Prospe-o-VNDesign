@@ -610,12 +610,13 @@ export function LeadDetail({ id }: { id: string }) {
             />
         }
         description={(() => {
-          // De relance: cidade · serviços · valor · responsável.
+          // De relance: cidade · serviços · valor · responsável. Nos clientes o
+          // valor sai daqui: quem manda é o do projeto (pagamentos e proposta).
           const owner = (team?.length ?? 0) > 1 ? (lead.assigned_to ? team?.find((m) => m.user_id === lead.assigned_to)?.name : 'Sem responsável') : null;
           const parts = [
             lead.city,
             lead.services?.length ? lead.services.map((k) => serviceLabel(k, catalog.all)).join(', ') : null,
-            staff && lead.estimated_value ? formatCurrency(lead.estimated_value, { decimals: false }) : null,
+            staff && lead.estimated_value && lead.status !== 'cliente' ? formatCurrency(lead.estimated_value, { decimals: false }) : null,
             owner,
           ].filter(Boolean);
           return parts.length && !lead.anonymized_at ? parts.join(' · ') : undefined;
