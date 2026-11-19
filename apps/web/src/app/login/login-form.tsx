@@ -1,6 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { PASSWORD_RESET_REPLY } from '@vndesign/core';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -56,15 +57,26 @@ export function LoginForm() {
     router.refresh();
   });
 
+  /** O email sai da própria plataforma (em português), não do serviço de autenticação. */
   async function sendReset() {
     if (!(await trigger('email'))) return;
     setSendingReset(true);
-    const { error: resetError } = await getSupabaseBrowserClient().auth.resetPasswordForEmail(getValues('email'), {
-      redirectTo: `${window.location.origin}/auth/callback?next=/definicoes/conta`,
-    });
-    setSendingReset(false);
-    if (resetError) toast.error('Não foi possível enviar o email. Tenta mais tarde.');
-    else toast.success('Se o email existir, vais receber um link para definir nova palavra-passe.');
+    try {
+      const response = await fetch('/api/v1/public/password-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: getValues('email') }),
+      });
+      const body = (await response.json().catch(() => null)) as
+        | { data?: { message?: string }; error?: { detail?: string; title?: string } }
+        | null;
+      if (response.ok) toast.success(body?.data?.message ?? PASSWORD_RESET_REPLY);
+      else toast.error(body?.error?.detail ?? body?.error?.title ?? 'Não foi possível enviar o email. Tenta mais tarde.');
+    } catch {
+      toast.error('Não foi possível enviar o email. Tenta mais tarde.');
+    } finally {
+      setSendingReset(false);
+    }
   }
 
   return (

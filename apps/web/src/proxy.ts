@@ -9,7 +9,9 @@ import { authCookieOptions } from '@/lib/env';
 import { needsMfaCode } from '@/lib/mfa';
 import { publicUrl } from '@/lib/public-url';
 
-const PUBLIC_PATHS = ['/login', '/auth/', '/api/', '/docs/', '/offline', '/a-atualizar', '/p/', '/c/', '/b/', '/o/', '/cartao/', '/convite/', '/equipa/', '/analise/'];
+// "/nova-palavra-passe" abre sem sessão para poder dizer que o link expirou
+// (com a verificação em dois passos continua a pedir o código primeiro).
+const PUBLIC_PATHS = ['/login', '/nova-palavra-passe', '/auth/', '/api/', '/docs/', '/offline', '/a-atualizar', '/p/', '/c/', '/b/', '/o/', '/cartao/', '/convite/', '/equipa/', '/analise/'];
 /** Páginas dos clientes e convites: abrem mesmo com a sessão a meio da verificação. */
 const NO_MFA_PATHS = ['/auth/', '/api/', '/docs/', '/offline', '/a-atualizar', '/p/', '/c/', '/b/', '/o/', '/cartao/', '/convite/', '/verificar', '/analise/'];
 
