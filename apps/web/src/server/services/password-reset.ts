@@ -6,6 +6,7 @@
 import { buildPasswordResetEmail } from '@vndesign/core';
 import { createSupabaseAdminClient } from '../supabase-admin';
 import { isMailConfigured, sendMail } from '../mailer';
+import { reportProblem } from './platform';
 
 // Pedidos recentes por email e por IP (a plataforma corre num processo só).
 const hits = new Map<string, number[]>();
@@ -46,9 +47,41 @@ export async function sendPasswordReset(email: string, origin: string, ip: strin
   const name = (data.user?.user_metadata as { full_name?: string } | undefined)?.full_name ?? null;
   try {
     await sendMail({ to: address, ...buildPasswordResetEmail({ link: data.properties.action_link, name }) });
+    return { ok: true };
   } catch (e) {
-    console.warn('[palavra-passe] não foi possível enviar o email', e instanceof Error ? e.message : e);
-    return { ok: false, status: 502 };
+    // O nosso envio falhou (SMTP mal configurado, porta fechada, credenciais
+    // mudadas…). Fica o registo em "Estado da plataforma" e o email sai pelo
+    // serviço de autenticação: ninguém fica sem poder entrar por causa disto.
+    const detail = e instanceof Error ? e.message : String(e);
+    console.warn('[palavra-passe] não foi possível enviar o email', detail);
+    await reportSendProblem(data.user?.id ?? null, detail);
+    const { error: fallbackError } = await admin.auth.resetPasswordForEmail(address, {
+      redirectTo: `${origin}/auth/callback?next=/nova-palavra-passe`,
+    });
+    if (fallbackError) {
+      console.warn('[palavra-passe] o serviço de autenticação também não enviou', fallbackError.message);
+      return { ok: false, status: 502 };
+    }
+    return { ok: true };
   }
-  return { ok: true };
+}
+
+/** Deixa o aviso em Definições → Estado da plataforma (sem travar o pedido). */
+async function reportSendProblem(userId: string | null, detail: string): Promise<void> {
+  if (!userId) return;
+  try {
+    const admin = createSupabaseAdminClient();
+    const { data } = await admin.from('workspace_members').select('workspace_id').eq('user_id', userId).limit(1);
+    const workspaceId = ((data ?? []) as { workspace_id: string }[])[0]?.workspace_id;
+    if (!workspaceId) return;
+    await reportProblem(workspaceId, {
+      area: 'email',
+      key: 'password_reset',
+      title: 'O email para recuperar a palavra-passe não saiu pela plataforma',
+      detail: `${detail} — o email foi enviado pelo serviço de autenticação (em inglês). Vê as definições de envio (SMTP) do servidor.`,
+      notify: true,
+    });
+  } catch {
+    // O aviso é extra: se falhar, não estraga o pedido.
+  }
 }
