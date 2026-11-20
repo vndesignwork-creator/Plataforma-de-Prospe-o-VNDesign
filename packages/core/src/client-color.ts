@@ -23,6 +23,7 @@ export function clientColor(name: string | null | undefined): string | null {
   const clean = (name ?? '').trim().toLowerCase();
   if (!clean) return null;
   const hue = HUES[hash(clean) % HUES.length]!;
-  // Saturação e luminosidade fixas: lê-se bem no tema claro e no escuro.
-  return `hsl(${hue} 55% 55%)`;
+  // Discreta: pouca saturação, para marcar sem puxar o olho. Fixa, para se
+  // ler no tema claro e no escuro.
+  return `hsl(${hue} 38% 48%)`;
 }

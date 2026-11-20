@@ -82,8 +82,8 @@ export function ProjectRow({
   const name = `#${lead.number} ${lead.project_title ? `${lead.project_title} · ${lead.company_name}` : lead.company_name}`;
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: lead.id, disabled: !sortable });
 
-  // Barra fina à esquerda com a cor do cliente (sempre a mesma): distingue os
-  // projetos de relance sem encher o ecrã de cor.
+  // Risco fino à esquerda com a cor do cliente (sempre a mesma): distingue os
+  // projetos de relance sem puxar o olho.
   const color = clientColor(lead.company_name);
   return (
     <li
@@ -91,7 +91,7 @@ export function ProjectRow({
       style={{
         transform: CSS.Translate.toString(transform),
         transition,
-        ...(color ? { borderLeftColor: color, borderLeftWidth: '4px' } : {}),
+        ...(color ? { borderLeftColor: color, borderLeftWidth: '3px' } : {}),
       }}
       className={cn(
         'flex flex-col gap-3 rounded-xl border border-border-strong bg-surface px-4 py-4 shadow-card',
