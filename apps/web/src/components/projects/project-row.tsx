@@ -5,7 +5,7 @@
  * concluir); depois o resumo (pagamentos, tarefas, revisões, horas);
  * as tarefas e, ao lado, o tempo (Pomodoro e cronómetro); em baixo o resto.
  */
-import { formatCurrency, formatDate, formatDuration, hourlyRate, leadPath, type Features, type Lead, type Project } from '@vndesign/core';
+import { clientColor, formatCurrency, formatDate, formatDuration, hourlyRate, leadPath, type Features, type Lead, type Project } from '@vndesign/core';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { ArrowRight, ChevronDown, Clock, FolderOpen, GripVertical, ListChecks, Receipt, RefreshCcw } from 'lucide-react';
@@ -82,10 +82,17 @@ export function ProjectRow({
   const name = `#${lead.number} ${lead.project_title ? `${lead.project_title} · ${lead.company_name}` : lead.company_name}`;
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: lead.id, disabled: !sortable });
 
+  // Barra fina à esquerda com a cor do cliente (sempre a mesma): distingue os
+  // projetos de relance sem encher o ecrã de cor.
+  const color = clientColor(lead.company_name);
   return (
     <li
       ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform), transition }}
+      style={{
+        transform: CSS.Translate.toString(transform),
+        transition,
+        ...(color ? { borderLeftColor: color, borderLeftWidth: '4px' } : {}),
+      }}
       className={cn(
         'flex flex-col gap-3 rounded-xl border border-border-strong bg-surface px-4 py-4 shadow-card',
         isDragging && 'relative z-10 opacity-90 ring-2 ring-accent',

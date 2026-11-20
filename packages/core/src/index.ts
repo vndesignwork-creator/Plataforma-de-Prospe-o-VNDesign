@@ -28,6 +28,7 @@ export * from './project-tools';
 export * from './working-on';
 export * from './proposal-expiry';
 export * from './password-reset';
+export * from './client-color';
 export * from './case-study';
 export * from './contracts';
 export * from './lead-path';
