@@ -7,7 +7,6 @@ import {
   MousePointerClick,
   Tags,
   Cake,
-  UserPlus,
   CalendarClock,
   ListChecks,
   Activity,
@@ -186,12 +185,6 @@ export const FEATURES: { key: keyof Features; label: string; description: string
     icon: Tags,
   },
   {
-    key: 'referrals',
-    label: 'Pedir indicação',
-    description: 'Depois de entregar, um email pronto a pedir indicação ao cliente — e o registo de quem indicou cada lead novo.',
-    icon: UserPlus,
-  },
-  {
     key: 'site_anniversary',
     label: 'Aniversário do site',
     description: 'Um ano depois da entrega (e em cada ano a seguir): tarefa, aviso e um email pronto para propor uma revisão.',
@@ -282,7 +275,7 @@ export const FEATURE_GROUPS: { title: string; description: string; master?: keyo
   {
     title: 'Vendas e faturação',
     description: 'Do orçamento ao dinheiro recebido.',
-    parts: [{ keys: ['quote_calculator', 'proposal_expiry', 'contracts', 'payments', 'renewals', 'accounting_report', 'referrals'] }],
+    parts: [{ keys: ['quote_calculator', 'proposal_expiry', 'contracts', 'payments', 'renewals', 'accounting_report'] }],
   },
   {
     title: 'Projetos',

@@ -38,7 +38,7 @@ import { Input, Select, Textarea } from '@/components/ui/input';
 import { DateInput } from '@/components/ui/date-input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
 import { useDebouncedValue } from '@/lib/hooks';
-import { checkDuplicates, useClients, useInvalidateLead, useRole, useSectors, useSettings } from '@/lib/queries';
+import { checkDuplicates, useInvalidateLead, useRole, useSectors } from '@/lib/queries';
 import { DuplicatePanel } from './duplicate-panel';
 import { MERGE_DRAFT_KEY } from './merge-view';
 import { ServicePicker } from '@/components/services/services';
@@ -57,7 +57,6 @@ const TEXT_FIELDS = [
 function toFormValues(lead?: Lead, initial?: Partial<Lead>): FormInput {
   const values: Record<string, unknown> = {
     sector_id: lead?.sector_id ?? null,
-    referred_by: lead?.referred_by ?? initial?.referred_by ?? null,
     pagespeed: lead?.pagespeed ?? null,
     estimated_value: lead?.estimated_value ?? null,
     mobile: lead?.mobile ?? 'desconhecido',
@@ -70,53 +69,6 @@ function toFormValues(lead?: Lead, initial?: Partial<Lead>): FormInput {
   };
   for (const f of TEXT_FIELDS) values[f] = (lead?.[f] as string | null | undefined) ?? (initial?.[f] as string | null | undefined) ?? '';
   return values as FormInput;
-}
-
-/** "Indicado por": a lista de clientes chega depois, por isso é controlado (o Field passa-lhe o id e o ARIA). */
-function ReferredByControl({
-  control,
-  clients,
-  excludeId,
-  ...aria
-}: {
-  control: Control<FormInput>;
-  clients: { lead: { id: string; number: number; company_name: string } }[] | undefined;
-  excludeId?: string;
-  id?: string;
-  'aria-invalid'?: boolean;
-  'aria-describedby'?: string;
-  'aria-required'?: boolean;
-}) {
-  return (
-    <Controller
-      control={control}
-      name="referred_by"
-      render={({ field }) => {
-        const value = (field.value as string | null) ?? '';
-        return (
-          <Select
-            {...aria}
-            name={field.name}
-            ref={field.ref}
-            onBlur={field.onBlur}
-            value={value}
-            onChange={(ev) => field.onChange(ev.target.value || null)}
-          >
-            <option value="">— Ninguém —</option>
-            {(clients ?? [])
-              .filter((c) => c.lead.id !== excludeId)
-              .map((c) => (
-                <option key={c.lead.id} value={c.lead.id}>
-                  #{c.lead.number} {c.lead.company_name}
-                </option>
-              ))}
-            {/* Quem indicou já não está na lista (deixou de ser cliente): não se perde. */}
-            {value && !(clients ?? []).some((c) => c.lead.id === value) ? <option value={value}>Quem indicou</option> : null}
-          </Select>
-        );
-      }}
-    />
-  );
 }
 
 /** Data com o calendário próprio, ligada ao formulário (o Field passa-lhe o id e o ARIA). */
@@ -183,10 +135,6 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
   const isEdit = Boolean(lead);
   const invalidate = useInvalidateLead();
   const { data: sectors } = useSectors();
-  const { data: settings } = useSettings();
-  // "Indicado por": só clientes (quem já trabalhou connosco é quem indica).
-  const referralsOn = settings?.features.referrals !== false;
-  const { data: clients } = useClients(referralsOn);
   const prospector = useRole() === 'prospector';
   const [conflicts, setConflicts] = useState<DuplicateMatch[] | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -405,11 +353,6 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
             ))}
           </Select>
         </Field>
-        {referralsOn ? (
-          <Field label="Indicado por" error={e('referred_by')} hint="O cliente que falou de ti">
-            <ReferredByControl control={control} clients={clients} excludeId={lead?.id} />
-          </Field>
-        ) : null}
       </Section>
 
       <Section title="Contacto">

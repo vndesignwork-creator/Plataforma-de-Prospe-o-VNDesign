@@ -180,8 +180,6 @@ const leadFields = {
   lost_reason: z.enum(LOST_REASONS, { error: 'Motivo inválido.' }).nullable(),
   /** "Sem interesse": dia em que volta sozinho à prospeção (ex.: disse "agora não"). */
   retry_on: nullableDate,
-  /** Quem nos indicou este lead (o id de outro lead/cliente; null = ninguém). */
-  referred_by: z.uuid({ error: 'Indicação inválida.' }).nullable(),
 };
 
 export const EDITABLE_LEAD_FIELDS = Object.keys(leadFields) as (keyof typeof leadFields)[];
@@ -261,8 +259,6 @@ export const LeadSchema = z
     project_completed_at: z.string().nullable().optional(),
     /** Projeto novo de um cliente que volta: o registo principal do cliente. */
     client_of: z.uuid().nullable().optional(),
-    /** Quem nos indicou este lead (outro lead/cliente). */
-    referred_by: z.uuid().nullable().optional(),
     project_title: z.string().nullable().optional(),
     no_company: z.boolean().optional().meta({ description: 'Sem empresa: o nome é o da pessoa de contacto' }),
     /** Responsável pelo lead (equipa de prospeção). */
@@ -625,7 +621,6 @@ export const FeaturesSchema = z.object({
   expenses: z.boolean().default(true).meta({ description: 'Projetos: despesas e lucro' }),
   site_screenshots: z.boolean().default(true).meta({ description: 'Imagens do site do lead (telemóvel e computador)' }),
   audit_tags: z.boolean().default(true).meta({ description: 'Etiquetas automáticas depois da análise do site ("site lento", "sem telemóvel"…)' }),
-  referrals: z.boolean().default(true).meta({ description: 'Pedir indicação aos clientes e registar quem indicou cada lead' }),
   site_visits: z.boolean().default(true).meta({ description: 'Leads que voltam ao teu site depois de clicar num email (pelo plugin de WordPress)' }),
   email_tracking: z.boolean().default(true).meta({ description: 'Saber quando o lead abre o email ou carrega num link' }),
   prospecting_session: z.boolean().default(true).meta({ description: 'Sessão de prospeção (lista de chamadas do dia)' }),
@@ -662,7 +657,6 @@ export const DEFAULT_FEATURES: Features = {
   expenses: true,
   site_screenshots: true,
   audit_tags: true,
-  referrals: true,
   site_visits: true,
   email_tracking: true,
   prospecting_session: true,
