@@ -498,7 +498,7 @@ export function MyTasksView() {
                   onLeft={() => void setDue(t, workingDay(addDays(today, 1), settings?.work_weekends ?? false))}
                   rightLabel="Feita"
                   leftLabel="Adiar"
-                  className="flex flex-wrap items-start gap-x-2 gap-y-2 px-4 py-2.5 sm:flex-nowrap sm:gap-3"
+                  className="flex flex-wrap items-start gap-x-2 gap-y-2 px-5 py-3 sm:flex-nowrap sm:gap-3"
                 >
                   <input
                     type="checkbox"
@@ -627,7 +627,7 @@ export function MyTasksView() {
               ) : doneShown.length ? (
                 <ul className="divide-y divide-border border-t border-border" aria-label="Concluídas">
                   {doneShown.map((t) => (
-                    <li key={t.id} className="flex items-start gap-2 px-4 py-2.5 sm:gap-3">
+                    <li key={t.id} className="flex items-start gap-2 px-5 py-3 sm:gap-3">
                       <input
                         type="checkbox"
                         checked={!reopening.includes(t.id)}

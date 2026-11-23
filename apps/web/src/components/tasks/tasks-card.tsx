@@ -354,7 +354,7 @@ export function TaskRow({
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
         // Em cima a pega, o visto e os botões; o texto por baixo, com a largura toda (em todos os ecrãs).
-        'group relative flex flex-wrap items-center gap-x-1.5 gap-y-1 px-2 py-2 transition-opacity duration-300 hover:bg-surface-2 sm:gap-x-2 sm:px-3',
+        'group relative flex flex-wrap items-center gap-x-1.5 gap-y-1 px-3 py-2.5 transition-opacity duration-300 hover:bg-surface-2 sm:gap-x-2 sm:px-4',
         isDragging && 'z-10 bg-surface-2 opacity-80 shadow-card',
         completing && 'opacity-50',
       )}

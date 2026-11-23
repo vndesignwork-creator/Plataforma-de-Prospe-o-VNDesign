@@ -692,7 +692,7 @@ function BoardCardView({
     ...card.done.map((t) => `☑ ${t.title}`),
   ].join("\n");
   return (
-    <div ref={setNodeRef} className="mb-4 break-inside-avoid">
+    <div ref={setNodeRef} className="mb-6 break-inside-avoid">
       <Card
         role="region"
         className={cn(
@@ -704,7 +704,7 @@ function BoardCardView({
         aria-label={card.title}
         data-color={color ?? undefined}
       >
-        <div className="flex items-start gap-2 px-4 pt-3 pb-2 text-sm max-sm:flex-wrap max-sm:gap-y-1.5">
+        <div className="flex items-start gap-2 px-5 pt-4 pb-2 text-sm max-sm:flex-wrap max-sm:gap-y-1.5">
           {count > 1 && !archived ? (
             <button
               type="button"
@@ -1362,7 +1362,7 @@ export function TaskBoard({
 
   if (loading || listsLoading) return <Skeleton className="h-40" />;
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       {showLists ? (
         <NewListComposer assignTo={assignTo} hasTeam={viewer.hasTeam} />
       ) : null}
@@ -1416,7 +1416,7 @@ export function TaskBoard({
             strategy={() => null}
           >
             {pinnedCards.length ? (
-              <div role="group" aria-label="Afixados" className="flex flex-col gap-2">
+              <div role="group" aria-label="Afixados" className="flex flex-col gap-3">
                 <h2 className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted uppercase">
                   <Pin className="h-3 w-3" aria-hidden /> Afixados
                 </h2>
@@ -1425,7 +1425,7 @@ export function TaskBoard({
             ) : null}
             {otherCards.length ? (
               pinnedCards.length ? (
-                <div role="group" aria-label="Outros" className="flex flex-col gap-2">
+                <div role="group" aria-label="Outros" className="flex flex-col gap-3">
                   <h2 className="text-xs font-semibold tracking-wide text-muted uppercase">
                     Outros
                   </h2>

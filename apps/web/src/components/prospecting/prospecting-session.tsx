@@ -562,7 +562,7 @@ function LeadRow({
   return (
     <li
       aria-labelledby={headingId}
-      className={cn('flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 shadow-card sm:p-5', done && 'bg-surface-2/60')}
+      className={cn('flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 shadow-card', done && 'bg-surface-2/60')}
     >
       {/* Telemóvel: o nome com a largura toda (só a pontuação ao lado); estado e motivo por baixo. */}
       <div className="flex items-start justify-between gap-x-4 gap-y-2">

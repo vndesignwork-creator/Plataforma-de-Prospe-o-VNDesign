@@ -1108,7 +1108,7 @@ function LeadsTableView() {
                 ficam dentro desta caixa em vez de esticarem a página. */}
             <div className="relative hidden min-h-0 overflow-auto scroll-thin lg:block">
               {/* Linhas separadas (como cartões): border-separate com espaço entre as linhas. */}
-              <table className="w-full border-separate border-spacing-x-0 border-spacing-y-2 text-sm">
+              <table className="w-full border-separate border-spacing-x-0 border-spacing-y-3 text-sm">
                 <caption className="sr-only">Leads — clica no nome da empresa para abrir a ficha</caption>
                 <thead className="sticky top-0 z-10 bg-bg">
                   {table.getHeaderGroups().map((hg) => (
@@ -1199,7 +1199,7 @@ function LeadsTableView() {
             </div>
 
             {/* Cartões (telemóvel e tablet: a tabela tem demasiadas colunas para caber) */}
-            <ul className="flex flex-col gap-3 lg:hidden">
+            <ul className="flex flex-col gap-4 lg:hidden">
               {(data?.data ?? []).map((lead) => (
                 <li
                   key={lead.id}

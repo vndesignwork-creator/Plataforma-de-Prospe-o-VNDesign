@@ -58,7 +58,7 @@ function ClientRow({ client, showPayments }: { client: Client; showPayments: boo
   const late = payments.overdue > 0;
   return (
     <li className="border-b border-border last:border-0">
-      <div className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-4">
+      <div className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center sm:gap-4">
         <div className="min-w-0 flex-1">
           <Link href={leadPath(lead)} className="font-medium hover:underline">
             <span className="tabular text-muted">#{lead.number}</span> {lead.company_name}
