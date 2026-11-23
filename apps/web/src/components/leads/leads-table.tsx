@@ -1108,7 +1108,7 @@ function LeadsTableView() {
                 ficam dentro desta caixa em vez de esticarem a página. */}
             <div className="relative hidden min-h-0 overflow-auto scroll-thin lg:block">
               {/* Linhas separadas (como cartões): border-separate com espaço entre as linhas. */}
-              <table className="w-full border-separate border-spacing-x-0 border-spacing-y-4 text-sm">
+              <table className="w-full border-separate border-spacing-x-0 border-spacing-y-6 text-sm">
                 <caption className="sr-only">Leads — clica no nome da empresa para abrir a ficha</caption>
                 <thead className="sticky top-0 z-10 bg-bg">
                   {table.getHeaderGroups().map((hg) => (

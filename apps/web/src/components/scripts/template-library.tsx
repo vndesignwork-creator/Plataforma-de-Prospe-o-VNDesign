@@ -674,7 +674,7 @@ export function TemplateLibrary() {
   const q = norm(query.trim());
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
-      <nav aria-label="Modelos" className="flex flex-col gap-2.5">
+      <nav aria-label="Modelos" className="flex flex-col gap-4">
         <Button onClick={() => choose('new')} variant={selected === 'new' ? 'primary' : 'outline'}>
           <Plus className="h-4 w-4" aria-hidden /> Novo modelo
         </Button>
@@ -709,7 +709,7 @@ export function TemplateLibrary() {
                 type="button"
                 onClick={() => setOpened((o) => ({ ...o, [kind]: !open }))}
                 aria-expanded={open}
-                className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm font-medium hover:bg-surface-2"
+                className="flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-sm font-medium hover:bg-surface-2"
               >
                 <span
                   className={cn(
@@ -724,7 +724,7 @@ export function TemplateLibrary() {
                 <ChevronRight className={cn('h-4 w-4 shrink-0 text-muted transition-transform', open && 'rotate-90')} aria-hidden />
               </button>
               {open ? (
-                <ul className="flex flex-col gap-0.5 border-t border-border p-1.5">
+                <ul className="flex flex-col gap-1 border-t border-border p-2">
                   {group.map((t) => {
                     const active = selected !== 'new' && current?.id === t.id;
                     const sector = sectors?.find((s) => s.id === t.sector_id);
