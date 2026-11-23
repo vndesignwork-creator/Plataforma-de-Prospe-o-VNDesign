@@ -13,7 +13,7 @@ export default function Page() {
       <ProfileSettings />
       <AccountSettings />
       {/* Também aqui: a equipa de prospeção só vê a Conta e a Assinatura. */}
-      <Card className="p-4">
+      <Card className="p-5">
         <PushSettings />
       </Card>
       <TwoFactorCard />

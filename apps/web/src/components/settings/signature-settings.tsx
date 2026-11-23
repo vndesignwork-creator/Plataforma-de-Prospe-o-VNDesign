@@ -176,7 +176,7 @@ export function SignatureSettings() {
   return (
     <Card id="assinatura">
       <CardHeader title="Assinatura" description="Aparece no fim dos emails e preenche as variáveis dos modelos (ex.: {{assinatura}})." />
-      <form onSubmit={onSubmit} className="p-4" noValidate>
+      <form onSubmit={onSubmit} className="p-5" noValidate>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
           <div className="flex flex-col gap-6">
             <Group title="Sobre ti">

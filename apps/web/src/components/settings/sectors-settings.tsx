@@ -229,7 +229,7 @@ export function SectorsSettings() {
         }
       />
       {isLoading ? (
-        <div className="p-4">
+        <div className="p-5">
           <Skeleton className="h-40" />
         </div>
       ) : (

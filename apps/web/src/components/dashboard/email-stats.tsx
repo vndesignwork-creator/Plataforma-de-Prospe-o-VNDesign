@@ -40,7 +40,7 @@ export function EmailStatsSection() {
     <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2">
       <Card>
         <CardHeader title="Emails: o que resulta" description="Os emails enviados pela plataforma, por modelo" actions={period} />
-        <div className="p-4">
+        <div className="p-5">
           {isLoading ? (
             <Skeleton className="h-32" />
           ) : !data?.templates.length ? (

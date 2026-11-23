@@ -281,7 +281,7 @@ export function PaymentsCard({ lead }: { lead: Lead }) {
         className={collapsed && !isLoading && !payments?.length ? 'border-b-0' : undefined}
       />
       {isLoading ? (
-        <div className="p-4">
+        <div className="p-5">
           <Skeleton className="h-12" />
         </div>
       ) : payments?.length ? (

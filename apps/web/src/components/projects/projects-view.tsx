@@ -391,7 +391,7 @@ export function ProjectsView({ tabs }: { tabs?: ReactNode } = {}) {
         <ProjectsCalendar today={today} />
       ) : isLoading ? (
         <Card>
-          <div className="p-4">
+          <div className="p-5">
             <Skeleton className="h-24" />
           </div>
         </Card>

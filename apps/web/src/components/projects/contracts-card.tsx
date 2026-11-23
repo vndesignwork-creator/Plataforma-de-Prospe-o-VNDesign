@@ -315,7 +315,7 @@ export function ContractsCard({ lead }: { lead: Lead }) {
         className={collapsed && contracts?.length ? 'border-b-0' : undefined}
       />
       {collapsed && contracts?.length ? null : isLoading ? (
-        <div className="p-4">
+        <div className="p-5">
           <Skeleton className="h-12" />
         </div>
       ) : contracts?.length ? (

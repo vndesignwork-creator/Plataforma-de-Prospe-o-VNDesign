@@ -54,7 +54,7 @@ export function BrandKitCard({ lead }: { lead: Lead }) {
         className={collapsed ? 'border-b-0' : undefined}
       />
       {collapsed ? null : isLoading || !kit ? (
-        <div className="p-4">
+        <div className="p-5">
           <Skeleton className="h-16" />
         </div>
       ) : editing ? (

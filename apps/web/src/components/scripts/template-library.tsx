@@ -545,7 +545,7 @@ function Editor({
             )}
           </div>
         </div>
-        <div className="px-4 pb-4">
+        <div className="px-5 pb-5">
           <FormSaveBar dirty={isDirty} saving={isSubmitting} onDiscard={() => reset(toForm(template))}>
             {template ? 'Guardar modelo' : 'Criar modelo'}
           </FormSaveBar>

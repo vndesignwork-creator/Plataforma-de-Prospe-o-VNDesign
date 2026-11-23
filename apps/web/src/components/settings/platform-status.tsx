@@ -157,7 +157,7 @@ export function PlatformStatusView() {
     <div className="flex flex-col gap-5">
       <Card>
         <CardHeader title="Tarefas automáticas" description="O que a plataforma faz sozinha, chamada pelas tarefas agendadas (cron) do hPanel." />
-        <div className="px-4 pb-4">
+        <div className="px-5 pb-5">
           <ul aria-label="Tarefas automáticas" className="flex flex-col">
             <CronRow
               name="Lembretes e verificações"
@@ -194,7 +194,7 @@ export function PlatformStatusView() {
 
       <Card>
         <CardHeader title="Problemas" description="O que falhou em segundo plano nos últimos 30 dias (os repetidos juntam-se)." />
-        <div className="px-4 pb-4">
+        <div className="px-5 pb-5">
           {open.length === 0 ? (
             <p className="flex items-center gap-2 text-sm text-success">
               <CheckCircle2 className="h-4 w-4" aria-hidden /> Nenhum problema por resolver.

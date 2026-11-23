@@ -194,7 +194,7 @@ export function ApiSettings() {
       </form>
 
       {isLoading ? (
-        <div className="p-4">
+        <div className="p-5">
           <Skeleton className="h-16" />
         </div>
       ) : tokens?.length ? (

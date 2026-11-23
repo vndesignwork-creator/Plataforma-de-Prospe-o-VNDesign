@@ -26,7 +26,7 @@ export function LostReasonsCard() {
           </Link>
         }
       />
-      <div className="p-4">
+      <div className="p-5">
         {isLoading ? (
           <Skeleton className="h-28" />
         ) : (

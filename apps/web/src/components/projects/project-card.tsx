@@ -158,7 +158,7 @@ export function ProjectCard({ lead }: { lead: Lead }) {
       time ? (
         <div key="time" role="group" aria-label="Tempo" className="flex min-w-0 flex-col">
           {features?.pomodoro && !lead.project_completed_at ? (
-            <div className="px-4 py-3">
+            <div className="px-5 py-4">
               <PomodoroBox lead={lead} compact />
             </div>
           ) : null}
@@ -213,7 +213,7 @@ export function ProjectCard({ lead }: { lead: Lead }) {
         }
       />
       {isLoading || !info ? (
-        <div className="p-4">
+        <div className="p-5">
           <Skeleton className="h-16" />
         </div>
       ) : (

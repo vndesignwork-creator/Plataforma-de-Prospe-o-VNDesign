@@ -113,7 +113,7 @@ export function GeoKitCard({ lead }: { lead: Lead }) {
               </button>
             ))}
           </div>
-          <div className="p-4" role="tabpanel">
+          <div className="p-5" role="tabpanel">
             {isLoading || !geo ? (
               <Skeleton className="h-24" />
             ) : tab === 'google' ? (

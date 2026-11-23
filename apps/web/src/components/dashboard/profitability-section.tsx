@@ -74,7 +74,7 @@ export function ProfitabilitySection({ bare }: { bare?: boolean } = {}) {
       <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-2">
         <Card>
           <CardHeader title="Ganho por hora, por serviço" description="Projetos com vários serviços contam uma parte para cada um" />
-          <div className="p-4">
+          <div className="p-5">
             <BarList
               caption="Ganho por hora em cada serviço"
               unit="€/hora"
@@ -95,7 +95,7 @@ export function ProfitabilitySection({ bare }: { bare?: boolean } = {}) {
 
         <Card>
           <CardHeader title="Ganho por hora, por cliente" description="Os 15 com melhor ganho por hora" />
-          <div className="p-4">
+          <div className="p-5">
             {data.by_client.some((c) => c.rate) ? (
               <ul className="flex flex-col gap-1.5 text-sm" aria-label="Ganho por hora por cliente">
                 {data.by_client
@@ -123,7 +123,7 @@ export function ProfitabilitySection({ bare }: { bare?: boolean } = {}) {
 
         <Card>
           <CardHeader title="Horas por mês" description="Registo de horas, últimos 12 meses" />
-          <div className="p-4">
+          <div className="p-5">
             <ColumnChart
               caption="Horas registadas por mês, últimos 12 meses"
               items={data.monthly.map((m) => monthItem(m.month, Math.round((m.minutes / 60) * 10) / 10))}
@@ -134,7 +134,7 @@ export function ProfitabilitySection({ bare }: { bare?: boolean } = {}) {
 
         <Card>
           <CardHeader title="Recebido por mês" description="Pagamentos marcados como pagos, últimos 12 meses" />
-          <div className="p-4">
+          <div className="p-5">
             <ColumnChart
               caption="Valor recebido por mês, últimos 12 meses"
               items={data.monthly.map((m) => monthItem(m.month, Math.round(m.received)))}

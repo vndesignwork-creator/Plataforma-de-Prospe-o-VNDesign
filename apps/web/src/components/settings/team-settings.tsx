@@ -73,7 +73,7 @@ export function TeamMembers() {
           description="Quem te ajuda a procurar, gerar, organizar e contactar leads. Cada pessoa entra com a sua conta."
         />
         {isLoading || !team ? (
-          <div className="p-4">
+          <div className="p-5">
             <Skeleton className="h-24" />
           </div>
         ) : (

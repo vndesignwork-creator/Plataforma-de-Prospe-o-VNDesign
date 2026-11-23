@@ -211,7 +211,7 @@ function ProjectsCard({ className }: { className?: string }) {
         </p>
       ) : null}
       {isLoading ? (
-        <div className="p-4">
+        <div className="p-5">
           <Skeleton className="h-24" />
         </div>
       ) : list.length ? (

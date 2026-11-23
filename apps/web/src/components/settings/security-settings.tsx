@@ -197,7 +197,7 @@ export function SessionsCard() {
         }
       />
       {isLoading ? (
-        <div className="p-4">
+        <div className="p-5">
           <Skeleton className="h-12" />
         </div>
       ) : error ? (

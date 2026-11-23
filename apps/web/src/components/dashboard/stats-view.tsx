@@ -38,7 +38,7 @@ function OriginsCard() {
   return (
     <Card>
       <CardHeader title="De onde vêm" description="Como cada lead chegou, quantos se tornaram clientes e quanto renderam." />
-      <div className="p-4">
+      <div className="p-5">
         {isLoading ? (
           <Skeleton className="h-24" />
         ) : error ? (
@@ -284,7 +284,7 @@ function OwnerStats() {
           title="Funil de todos os leads"
           description="Etapa mais avançada a que cada lead já chegou (desde sempre). Quem saltou fases conta também nas anteriores."
         />
-        <div className="p-4">
+        <div className="p-5">
           <BarList
             caption="Funil de conversão"
             items={data.funnel.map((f, i) => {
@@ -304,7 +304,7 @@ function OwnerStats() {
 
       <Card>
         <CardHeader title="Leads adicionados por semana" description="Pela data “Sugerido em” (ou de criação)" />
-        <div className="p-4">
+        <div className="p-5">
           <ColumnChart
             caption="Leads adicionados por semana, últimas 12 semanas"
             items={data.weekly.map((w) => ({
@@ -324,7 +324,7 @@ function OwnerStats() {
       <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-2">
         <Card>
           <CardHeader title="Por estado" />
-          <div className="p-4">
+          <div className="p-5">
             <BarList
               caption="Leads por estado"
               items={data.by_status.map((s) => ({
@@ -339,7 +339,7 @@ function OwnerStats() {
 
         <Card>
           <CardHeader title="Por setor" />
-          <div className="p-4">
+          <div className="p-5">
             <BarList
               caption="Leads por setor"
               emptyText="Ainda não há leads com setor."
@@ -362,7 +362,7 @@ function OwnerStats() {
 
         <Card>
           <CardHeader title="Por serviço" description="Leads com interesse em cada serviço (e quantos já são clientes)." />
-          <div className="p-4">
+          <div className="p-5">
             <BarList
               caption="Leads por serviço de interesse"
               emptyText="Ainda não há leads com serviços de interesse."
@@ -385,7 +385,7 @@ function OwnerStats() {
 
         <Card>
           <CardHeader title="Por canal" />
-          <div className="p-4">
+          <div className="p-5">
             <BarList
               caption="Leads por canal"
               emptyText="Ainda não há leads com canal."

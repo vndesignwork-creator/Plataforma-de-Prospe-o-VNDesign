@@ -39,7 +39,7 @@ export function PomodoroStatsSection({ bare }: { bare?: boolean } = {}) {
       <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-2">
         <Card>
           <CardHeader title="Pomodoros por dia" description="Últimos 14 dias" />
-          <div className="p-4">
+          <div className="p-5">
             <ColumnChart
               caption="Pomodoros completos por dia, últimos 14 dias"
               unit="pomodoros"
@@ -52,7 +52,7 @@ export function PomodoroStatsSection({ bare }: { bare?: boolean } = {}) {
         </Card>
         <Card>
           <CardHeader title="Por projeto" description="Últimos 14 dias" />
-          <div className="p-4">
+          <div className="p-5">
             <BarList
               caption="Pomodoros por projeto"
               unit="pomodoros"

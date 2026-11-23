@@ -22,7 +22,7 @@ export function CardHeader({
   as?: 'h2' | 'h3';
 }) {
   return (
-    <div className={cn('flex flex-wrap items-start justify-between gap-x-3 gap-y-2 border-b border-border px-4 py-3', className)}>
+    <div className={cn('flex flex-wrap items-start justify-between gap-x-3 gap-y-2 border-b border-border px-5 py-4', className)}>
       {/* Com pouco espaço, as ações passam para baixo do título em vez de o espremer. */}
       <div className="min-w-0 flex-[1_1_14rem]">
         <Heading className="text-base font-semibold">{title}</Heading>

@@ -65,7 +65,7 @@ export function BusinessCardSettings() {
         title="Cartão de contacto"
         description="Um link e um código QR com o teu nome, contactos e portefólio (os da assinatura). Quem o abre guarda o teu contacto ou deixa o dele — e fica lead."
       />
-      <div className="p-4">
+      <div className="p-5">
         {isLoading ? (
           <Skeleton className="h-32" />
         ) : !active ? (

@@ -771,7 +771,7 @@ export function LeadDetail({ id }: { id: string }) {
             <CardHeader
               title="Negócio"
             />
-            <dl className="grid px-4 py-2 md:grid-cols-2 md:gap-x-6">
+            <dl className="grid px-5 py-2.5 md:grid-cols-2 md:gap-x-6">
               <Row label="Serviços" className="md:col-span-2">
                 {lead.services?.length ? (
                   <ServiceChips services={lead.services} className="justify-end" />
@@ -827,7 +827,7 @@ export function LeadDetail({ id }: { id: string }) {
 
           <Card>
             <CardHeader title="Empresa e contacto" />
-            <dl className="grid px-4 py-2 md:grid-cols-2 md:gap-x-6">
+            <dl className="grid px-5 py-2.5 md:grid-cols-2 md:gap-x-6">
               {/* A empresa à vista (no projeto novo de um cliente o título mostra primeiro o nome do projeto). */}
               <Row label="Empresa">{lead.no_company ? <span className="text-muted">Sem empresa (pessoa)</span> : lead.company_name}</Row>
               {lead.website ? (
@@ -899,7 +899,7 @@ export function LeadDetail({ id }: { id: string }) {
               ]}
             />
             {(!lead.phone || !lead.email || lead.email_bounced_at) && !lead.anonymized_at ? (
-              <div className="px-4 pb-4">
+              <div className="px-5 pb-5">
                 <ContactFinder key={lead.updated_at} lead={lead} />
               </div>
             ) : null}
@@ -1186,7 +1186,7 @@ function SiteDiagnosisCard({ lead }: { lead: Lead }) {
       {open ? (
         <>
           {/* Cada linha (<div> com <dt>/<dd>) é filha direta do <dl>, como pede o HTML. */}
-          <dl className="grid px-4 py-2 md:grid-cols-2 md:gap-x-6">
+          <dl className="grid px-5 py-2.5 md:grid-cols-2 md:gap-x-6">
             <Row label="PageSpeed (mobile)">
               <PageSpeedScore value={lead.pagespeed} />
             </Row>

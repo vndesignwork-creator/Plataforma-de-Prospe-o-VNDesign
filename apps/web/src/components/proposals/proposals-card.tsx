@@ -113,7 +113,7 @@ export function ProposalsCard({ lead }: { lead: Lead }) {
         }
       />
       {hidden ? null : isLoading ? (
-        <div className="p-4">
+        <div className="p-5">
           <Skeleton className="h-12" />
         </div>
       ) : data?.length ? (

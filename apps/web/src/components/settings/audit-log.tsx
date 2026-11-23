@@ -45,7 +45,7 @@ export function AuditLog() {
           ) : null
         }
       />
-      <div className="px-4 pb-4">
+      <div className="px-5 pb-5">
         {isLoading ? (
           <Skeleton className="h-24" />
         ) : error ? (
