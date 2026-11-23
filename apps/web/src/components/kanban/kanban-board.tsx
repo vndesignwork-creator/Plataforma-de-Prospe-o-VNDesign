@@ -779,7 +779,7 @@ export function KanbanBoard() {
           id="kanban-mais-filtros"
           role="group"
           aria-label="Mais filtros"
-          className={cn('grid gap-2 rounded-xl border border-border bg-surface p-3 sm:grid-cols-4', !moreOpen && 'sm:hidden')}
+          className={cn('grid gap-3 rounded-xl border border-border bg-surface p-4 sm:grid-cols-4', !moreOpen && 'sm:hidden')}
         >
           <MultiSelectFilter
             label="Setor"

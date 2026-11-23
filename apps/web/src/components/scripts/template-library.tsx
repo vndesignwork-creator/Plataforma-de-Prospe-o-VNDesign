@@ -673,7 +673,7 @@ export function TemplateLibrary() {
 
   const q = norm(query.trim());
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
       <nav aria-label="Modelos" className="flex flex-col gap-2.5">
         <Button onClick={() => choose('new')} variant={selected === 'new' ? 'primary' : 'outline'}>
           <Plus className="h-4 w-4" aria-hidden /> Novo modelo

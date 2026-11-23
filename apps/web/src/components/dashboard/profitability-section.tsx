@@ -71,7 +71,7 @@ export function ProfitabilitySection({ bare }: { bare?: boolean } = {}) {
         <StatTile label="Horas por projeto" value={t.avg_minutes !== null ? hours(t.avg_minutes) : '—'} hint="Média dos concluídos" />
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader title="Ganho por hora, por serviço" description="Projetos com vários serviços contam uma parte para cada um" />
           <div className="p-5">

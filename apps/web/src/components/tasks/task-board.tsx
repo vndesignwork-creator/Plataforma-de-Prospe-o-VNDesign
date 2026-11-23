@@ -224,7 +224,7 @@ function NewListComposer({
   return (
     <form
       onSubmit={create}
-      className="flex w-full flex-col gap-2 rounded-xl border border-border bg-surface p-4 shadow-card sm:max-w-xl"
+      className="flex w-full flex-col gap-2 rounded-xl border border-border bg-surface p-5 shadow-card sm:max-w-xl"
       aria-label="Nova lista"
     >
       <Input

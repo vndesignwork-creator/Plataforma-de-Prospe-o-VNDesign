@@ -122,7 +122,7 @@ export function PreferencesSettings() {
   return (
     <Card id="lembretes">
       <CardHeader title="Follow-up e lembretes" />
-      <form onSubmit={save} className="grid gap-5 p-4 md:grid-cols-2" noValidate>
+      <form onSubmit={save} className="grid gap-5 p-5 md:grid-cols-2" noValidate>
         <Field label="Dias até ao follow-up" hint='Ao passar um lead a "Contactado" à mão (ou com a sequência desligada), a próxima ação fica para daqui a N dias.'>
           <Input type="number" min={1} max={60} value={followUpDays} onChange={(e) => setFollowUpDays(e.target.value)} />
         </Field>

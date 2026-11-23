@@ -94,7 +94,7 @@ function About() {
     { title: 'Entregar', text: 'O projeto do cliente: fases, prazos, pagamentos, horas e entregas.' },
   ];
   return (
-    <section aria-labelledby="ajuda-sobre" className="mb-6 rounded-xl border border-border bg-surface p-4 sm:p-5">
+    <section aria-labelledby="ajuda-sobre" className="mb-6 rounded-xl border border-border bg-surface p-5">
       <h2 id="ajuda-sobre" className="text-lg font-semibold">
         O que é o VNDesign Leads
       </h2>

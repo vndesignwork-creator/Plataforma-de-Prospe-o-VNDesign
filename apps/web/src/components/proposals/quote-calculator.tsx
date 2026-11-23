@@ -150,7 +150,7 @@ export function QuoteCalculatorDialog({ lead, settings, onClose }: { lead: Lead;
         </>
       }
     >
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-6">
         <fieldset className="flex min-w-0 flex-col gap-1">
           <legend className="mb-1 text-sm font-medium">Pacotes</legend>
           {active.length ? (

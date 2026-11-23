@@ -414,8 +414,8 @@ export function ProspectingSession() {
 
       {/* Cada lead no seu cartão, com espaço entre eles (como nos Projetos). */}
       {pending.length ? (
-        <div className="flex flex-col gap-5">
-          <ul aria-label={view === 'missing' ? 'Leads sem contacto' : 'Leads para contactar'} className="flex flex-col gap-5">
+        <div className="flex flex-col gap-6">
+          <ul aria-label={view === 'missing' ? 'Leads sem contacto' : 'Leads para contactar'} className="flex flex-col gap-6">
             {pending.slice(0, limit).map((item) => (
               <LeadRow
                 key={item.lead.id}
@@ -462,7 +462,7 @@ export function ProspectingSession() {
             Feito nesta sessão ({done.length})
           </button>
           {doneOpen ? (
-            <ul aria-label="Leads tratados nesta sessão" className="flex flex-col gap-5">
+            <ul aria-label="Leads tratados nesta sessão" className="flex flex-col gap-6">
                 {done.map(({ item, done: result }) => (
                   <LeadRow
                     key={item.lead.id}

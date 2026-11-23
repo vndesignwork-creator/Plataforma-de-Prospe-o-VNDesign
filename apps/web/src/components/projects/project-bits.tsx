@@ -194,7 +194,7 @@ export function SummaryStat({
 }) {
   return (
     // Dentro de um cartão: fundo em vez de moldura, para não parecer outro cartão.
-    <div className="flex min-w-0 flex-col gap-1.5 rounded-lg bg-surface-2 px-3 py-2">
+    <div className="flex min-w-0 flex-col gap-1.5 rounded-lg bg-surface-2 px-4 py-3">
       <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted">
         <Icon className="h-3.5 w-3.5" aria-hidden /> {title}
       </span>

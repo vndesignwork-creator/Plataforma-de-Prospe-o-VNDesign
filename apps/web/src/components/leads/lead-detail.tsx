@@ -762,7 +762,7 @@ export function LeadDetail({ id }: { id: string }) {
         </p>
       ) : null}
 
-      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
         <div ref={mainColumn} className="flex flex-col gap-6">
           {/* Cliente: o projeto primeiro (é o que interessa todos os dias). */}
           {staff && lead.status === 'cliente' && settings?.features.projects && !lead.anonymized_at ? <ProjectCard lead={lead} /> : null}

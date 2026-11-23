@@ -36,7 +36,7 @@ export function PomodoroStatsSection({ bare }: { bare?: boolean } = {}) {
         <StatTile label="Tempo em pomodoros" value={formatMinutes(data.minutes_week)} hint="Últimos 7 dias" />
         <StatTile label="Projetos" value={data.by_project.length} hint="Últimos 14 dias" />
       </div>
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader title="Pomodoros por dia" description="Últimos 14 dias" />
           <div className="p-5">

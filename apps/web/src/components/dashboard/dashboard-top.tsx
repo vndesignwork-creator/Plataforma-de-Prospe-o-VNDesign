@@ -167,7 +167,7 @@ function Delta({ now, before, compare, money }: { now: number; before: number; c
 
 function Tile({ label, value, href, children }: { label: string; value: ReactNode; href: string; children?: ReactNode }) {
   return (
-    <Link href={href} className="flex min-w-[10rem] flex-1 flex-col gap-0.5 rounded-xl border border-border bg-surface px-3 py-2 transition-colors hover:border-muted">
+    <Link href={href} className="flex min-w-[10rem] flex-1 flex-col gap-0.5 rounded-xl border border-border bg-surface px-4 py-3 transition-colors hover:border-muted">
       <span className="text-xs text-muted">{label}</span>
       <span className="text-xl font-semibold tabular">{value}</span>
       {children}

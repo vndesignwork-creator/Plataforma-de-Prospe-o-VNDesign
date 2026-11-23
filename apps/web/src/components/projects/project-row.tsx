@@ -217,7 +217,7 @@ export function ProjectRow({
               <div className="flex min-w-0 flex-col gap-1.5" role="group" aria-label="Tempo">
                 <span className="text-xs font-medium text-muted">Tempo</span>
                 {pomodoro ? <PomodoroBox lead={lead} compact /> : null}
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-2 px-3 py-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-2 px-4 py-3">
                   <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted">
                     <Clock className="h-3.5 w-3.5" aria-hidden /> Cronómetro
                   </span>

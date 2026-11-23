@@ -88,7 +88,7 @@ export function ShareToLead() {
 
       {draft ? (
         <>
-          <p role="status" className="flex items-start gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-sm">
+          <p role="status" className="flex items-start gap-2 rounded-xl border border-border bg-surface px-5 py-4 text-sm">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
             <span>
               {draft.found.length ? `Encontrado: ${draft.found.join(', ')}.` : 'Não encontrei dados no link: preenche à mão.'}

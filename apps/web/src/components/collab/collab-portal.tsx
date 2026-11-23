@@ -51,7 +51,7 @@ export function CollabHome() {
       <ul className="grid gap-3 sm:grid-cols-2" aria-label="Projetos">
         {(data ?? []).map((p) => (
           <li key={p.lead_id}>
-            <Link href={`/colaborador/${p.lead_id}`} className="flex h-full flex-col gap-2 rounded-xl border border-border bg-surface p-4 hover:border-border-strong">
+            <Link href={`/colaborador/${p.lead_id}`} className="flex h-full flex-col gap-2 rounded-xl border border-border bg-surface p-5 hover:border-border-strong">
               <span className="font-display text-lg font-semibold">{p.company_name}</span>
               <span className="text-xs text-muted">Convite de {p.owner}</span>
               <span className="flex flex-wrap items-center gap-2 text-sm">
@@ -135,7 +135,7 @@ export function CollabProjectView({ leadId }: { leadId: string }) {
         </p>
         <StageSteps stage={data.stage} />
       </Card>
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2">
         <TasksBox project={data} />
         <TimeBox project={data} />
         <DeliverablesBox project={data} />

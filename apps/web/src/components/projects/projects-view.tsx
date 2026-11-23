@@ -68,7 +68,7 @@ const norm = (t: string) => t.normalize('NFD').replace(/\p{M}/gu, '').toLowerCas
 /** Um número da faixa do topo (com uma ação ou nota por baixo). */
 function Kpi({ label, value, children }: { label: string; value: React.ReactNode; children?: React.ReactNode }) {
   return (
-    <div className="flex min-w-[9rem] flex-1 flex-col gap-0.5 rounded-xl border border-border bg-surface px-3 py-2">
+    <div className="flex min-w-[9rem] flex-1 flex-col gap-0.5 rounded-xl border border-border bg-surface px-4 py-3">
       <span className="text-xs text-muted">{label}</span>
       <span className="text-lg font-semibold tabular">{value}</span>
       {children}

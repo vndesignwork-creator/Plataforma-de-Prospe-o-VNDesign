@@ -407,7 +407,7 @@ export function LeadsTable() {
   return useHydrated() ? (
     <LeadsTableView />
   ) : (
-    <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4" aria-busy="true">
+    <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-5" aria-busy="true">
       {Array.from({ length: 8 }, (_, i) => (
         <Skeleton key={i} className="h-9 w-full" />
       ))}
@@ -843,7 +843,7 @@ function LeadsTableView() {
           id="mais-filtros"
           role="group"
           aria-label="Mais filtros"
-          className={cn('grid gap-4 rounded-xl border border-border bg-surface p-3 md:grid-cols-3', !moreOpen && 'md:hidden')}
+          className={cn('grid gap-4 rounded-xl border border-border bg-surface p-4 md:grid-cols-3', !moreOpen && 'md:hidden')}
         >
           <fieldset className="flex min-w-0 flex-col gap-2">
             <legend className="mb-1 text-xs font-semibold tracking-wide text-muted uppercase">Lead</legend>
@@ -1199,7 +1199,7 @@ function LeadsTableView() {
             </div>
 
             {/* Cartões (telemóvel e tablet: a tabela tem demasiadas colunas para caber) */}
-            <ul className="flex flex-col gap-4 lg:hidden">
+            <ul className="flex flex-col gap-6 lg:hidden">
               {(data?.data ?? []).map((lead) => (
                 <li
                   key={lead.id}
