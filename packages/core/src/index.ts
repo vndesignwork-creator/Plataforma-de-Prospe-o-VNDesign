@@ -29,6 +29,7 @@ export * from './working-on';
 export * from './proposal-expiry';
 export * from './password-reset';
 export * from './fixed-costs';
+export * from './referrals';
 export * from './case-study';
 export * from './contracts';
 export * from './lead-path';

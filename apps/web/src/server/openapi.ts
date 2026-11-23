@@ -2541,6 +2541,40 @@ export function getOpenApiDocument() {
           responses: { '200': ok(data(z.object({ count: z.int(), sample: z.array(z.object({ id: z.uuid(), number: z.int(), company_name: z.string() })) }))), ...common },
         }),
       },
+      '/leads/{id}/referrals': {
+        get: op({
+          tags: ['Leads'],
+          summary: 'Indicações: quem este cliente já indicou e quando lhe pediste',
+          requestParams: { path: idParam },
+          responses: {
+            '200': ok(
+              data(
+                z.object({
+                  referred: z.array(z.object({ id: z.uuid(), number: z.int(), company_name: z.string(), status: z.string() })),
+                  asked_at: z.string().nullable(),
+                }),
+              ),
+            ),
+            ...withNotFound,
+          },
+        }),
+        post: op({
+          tags: ['Leads'],
+          summary: '"Já pedi": fica na linha do tempo do cliente',
+          requestParams: { path: idParam },
+          responses: {
+            '200': ok(
+              data(
+                z.object({
+                  referred: z.array(z.object({ id: z.uuid(), number: z.int(), company_name: z.string(), status: z.string() })),
+                  asked_at: z.string().nullable(),
+                }),
+              ),
+            ),
+            ...withNotFound,
+          },
+        }),
+      },
       '/fixed-costs': {
         get: op({
           tags: ['Projetos'],
