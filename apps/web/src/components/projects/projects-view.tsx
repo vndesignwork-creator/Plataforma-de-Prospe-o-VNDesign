@@ -418,7 +418,7 @@ export function ProjectsView({ tabs }: { tabs?: ReactNode } = {}) {
           {/* Pega ⠿ em cada projeto: arrastar muda a ordem (Ordenar por → A minha ordem). */}
           <DndContext sensors={sensors} modifiers={[verticalOnly]} collisionDetection={closestCenter} onDragEnd={onDragEnd} accessibility={{ announcements }}>
             <SortableContext items={rendered.map((p) => p.lead.id)} strategy={verticalListSortingStrategy}>
-              <ul className="flex flex-col gap-5" aria-label={state === 'active' ? 'Projetos em curso' : 'Projetos concluídos'}>
+              <ul className="flex flex-col gap-8" aria-label={state === 'active' ? 'Projetos em curso' : 'Projetos concluídos'}>
                 {rendered.map((p) => (
                   <ProjectRow key={p.lead.id} project={p} today={today} features={features} onWrapUp={setWrapUp} sortable={(shown?.length ?? 0) > 1} />
                 ))}
