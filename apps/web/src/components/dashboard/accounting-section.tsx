@@ -24,7 +24,8 @@ export function AccountingSection() {
     ? [
         { label: 'Recebido', value: data.received.total, hint: `${data.received.rows.length} pagamento${data.received.rows.length === 1 ? '' : 's'}` },
         { label: 'Despesas', value: data.expenses.total, hint: `${data.expenses.rows.length} despesa${data.expenses.rows.length === 1 ? '' : 's'}` },
-        { label: 'Resultado', value: data.result, hint: 'Recebido − despesas' },
+        { label: 'Custos fixos', value: data.fixed.total, hint: data.fixed.rows.length ? `${data.fixed.rows.length} por mês` : 'Nenhum (Definições → Custos fixos)' },
+        { label: 'Resultado', value: data.result, hint: 'Recebido − despesas − custos fixos' },
         { label: 'Por receber', value: data.outstanding.total, hint: data.outstanding.overdue ? `${formatCurrency(data.outstanding.overdue)} em atraso` : 'Até ao fim do mês ou sem data' },
       ]
     : [];
@@ -68,7 +69,7 @@ export function AccountingSection() {
             <FileSpreadsheet className="h-4 w-4" aria-hidden /> Descarregar Excel
           </a>
         </div>
-        <p className="text-xs text-muted">Recebido: pagamentos com data de pagamento no mês. Despesas: as dos projetos. Por receber: o que falta pagar (situação de hoje).</p>
+        <p className="text-xs text-muted">Recebido: pagamentos com data de pagamento no mês. Despesas: as dos projetos. Custos fixos: o que pagas todos os meses. Por receber: o que falta pagar (situação de hoje).</p>
       </div>
     </Card>
   );

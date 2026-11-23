@@ -5,6 +5,7 @@
  */
 import { ACCOUNTING_MONTH, monthLabel, monthRange, todayIso, type AccountingReport } from '@vndesign/core';
 import type { ApiContext } from '../context';
+import { fixedCostsOfMonth } from './fixed-costs';
 import { ApiError, fromPostgrest } from '../http';
 import { getSettings } from './workspace';
 
@@ -47,9 +48,18 @@ export async function accountingReport(ctx: ApiContext, month: string): Promise<
     amount: Number(r.amount),
     overdue: !!r.due_on && r.due_on < cutoff,
   }));
+  // Custos fixos do mês (não são de nenhum projeto).
+  const fixed = (await fixedCostsOfMonth(ctx, month)).map((c) => ({
+    date: null,
+    client: '—',
+    lead_number: null,
+    description: c.description,
+    amount: c.amount,
+  }));
   const sum = (rows: { amount: number }[]) => round(rows.reduce((a, r) => a + r.amount, 0));
   const receivedTotal = sum(received);
   const expensesTotal = sum(expenses);
+  const fixedTotal = sum(fixed);
   return {
     month,
     label: monthLabel(month),
@@ -57,7 +67,8 @@ export async function accountingReport(ctx: ApiContext, month: string): Promise<
     to,
     received: { total: receivedTotal, rows: received },
     expenses: { total: expensesTotal, rows: expenses },
+    fixed: { total: fixedTotal, rows: fixed },
     outstanding: { total: sum(outstanding), overdue: sum(outstanding.filter((r) => r.overdue)), rows: outstanding },
-    result: round(receivedTotal - expensesTotal),
+    result: round(receivedTotal - expensesTotal - fixedTotal),
   };
 }

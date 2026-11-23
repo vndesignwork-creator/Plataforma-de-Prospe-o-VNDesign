@@ -1,5 +1,7 @@
 'use client';
 
+import { fixedCostsTotal, formatCurrency, todayIso, type FixedCost } from '@vndesign/core';
+import { useQuery } from '@tanstack/react-query';
 import { ChevronRight, CircleHelp } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
@@ -20,6 +22,7 @@ import {
   useTaskTemplates,
   useTestimonials,
 } from '@/lib/queries';
+import { api } from '@/lib/api-client';
 import { SETTINGS_GROUPS, useSettingsSections, type SettingsSection } from './settings-nav';
 import { platformBadge, usePlatformStatus } from './platform-status';
 
@@ -131,6 +134,20 @@ function TestimonialsStatus() {
   );
 }
 
+/** Resumo em Definições: quanto se paga de fixo este mês. */
+function FixedCostsStatus() {
+  const { data } = useQuery({
+    queryKey: ['fixed-costs'],
+    queryFn: () => api<{ data: FixedCost[] }>('/fixed-costs').then((r) => r.data),
+  });
+  const month = todayIso().slice(0, 7);
+  return (
+    <StatusBadge
+      status={data === undefined ? null : { text: data.length ? `${formatCurrency(fixedCostsTotal(data, month))}/mês` : 'Nenhum' }}
+    />
+  );
+}
+
 function PlatformStatusBadge() {
   const { data } = usePlatformStatus();
   return <StatusBadge status={platformBadge(data)} />;
@@ -151,6 +168,7 @@ const STATUS: Record<SettingsSection['slug'], () => ReactNode> = {
   servicos: ServicesStatus,
   propostas: PackagesStatus,
   testemunhos: TestimonialsStatus,
+  'custos-fixos': FixedCostsStatus,
   formulario: SiteFormStatus,
   setores: SectorsStatus,
   etiquetas: TagsStatus,

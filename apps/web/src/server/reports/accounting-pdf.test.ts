@@ -11,6 +11,7 @@ describe('relatório mensal em PDF', () => {
         to: '2026-10-31',
         received: { total: 0, rows: [] },
         expenses: { total: 0, rows: [] },
+        fixed: { total: 0, rows: [] },
         outstanding: { total: 0, overdue: 0, rows: [] },
         result: 0,
       },

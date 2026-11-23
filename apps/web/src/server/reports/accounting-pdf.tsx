@@ -116,6 +116,10 @@ function AccountingDocument({ report, brand }: { report: AccountingReport; brand
               <Text style={s.boxValue}>{formatCurrency(report.expenses.total)}</Text>
             </View>
             <View style={s.box}>
+              <Text style={s.boxLabel}>Custos fixos</Text>
+              <Text style={s.boxValue}>{formatCurrency(report.fixed.total)}</Text>
+            </View>
+            <View style={s.box}>
               <Text style={s.boxLabel}>Resultado</Text>
               <Text style={s.boxValue}>{formatCurrency(report.result)}</Text>
             </View>
@@ -127,6 +131,7 @@ function AccountingDocument({ report, brand }: { report: AccountingReport; brand
           </View>
           <Table title="Recebido" rows={report.received.rows.map((r) => ({ ...r, note: r.method ?? undefined }))} total={report.received.total} />
           <Table title="Despesas" rows={report.expenses.rows} total={report.expenses.total} />
+          {report.fixed.rows.length ? <Table title="Custos fixos" rows={report.fixed.rows} total={report.fixed.total} /> : null}
           <Table title="Por receber" dateLabel="Prevista" rows={report.outstanding.rows.map((r) => ({ ...r, late: r.overdue, note: r.overdue ? 'em atraso' : undefined }))} total={report.outstanding.total} />
         </View>
         <View style={s.footer} fixed>

@@ -1,6 +1,7 @@
 /**
  * Relatório mensal para a contabilidade: o que se recebeu (pagamentos com data de
- * pagamento no mês), o que se gastou (despesas dos projetos) e o que está por receber.
+ * pagamento no mês), o que se gastou (despesas dos projetos e custos fixos) e o
+ * que está por receber.
  */
 import { z } from 'zod';
 
@@ -45,12 +46,14 @@ export const AccountingReportSchema = z
     to: z.string(),
     received: z.object({ total: z.number(), rows: z.array(Row.extend({ method: z.string().nullable() })) }),
     expenses: z.object({ total: z.number(), rows: z.array(Row) }),
+    /** Custos fixos do mês (alojamento, software…): não são de nenhum projeto. */
+    fixed: z.object({ total: z.number(), rows: z.array(Row) }),
     outstanding: z.object({
       total: z.number().meta({ description: 'Tudo o que está por pagar, com data até ao fim do mês (ou sem data)' }),
       overdue: z.number().meta({ description: 'Do total, o que já passou da data' }),
       rows: z.array(Row.extend({ overdue: z.boolean() })),
     }),
-    result: z.number().meta({ description: 'Recebido − despesas' }),
+    result: z.number().meta({ description: 'Recebido − despesas dos projetos − custos fixos' }),
   })
   .meta({ id: 'AccountingReport' });
 export type AccountingReport = z.infer<typeof AccountingReportSchema>;

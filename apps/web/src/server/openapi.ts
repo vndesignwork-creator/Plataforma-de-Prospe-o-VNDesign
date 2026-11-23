@@ -89,6 +89,8 @@ import {
   AutomationRuleUpdateSchema,
   RulePreviewSchema,
   AccountingReportSchema,
+  FixedCostInputSchema,
+  FixedCostSchema,
   RenewalCreateSchema,
   RenewalRenewSchema,
   RenewalSchema,
@@ -2537,6 +2539,34 @@ export function getOpenApiDocument() {
           summary: 'Quantos leads cumprem agora as condições (sem fazer nada)',
           requestBody: body(RulePreviewSchema),
           responses: { '200': ok(data(z.object({ count: z.int(), sample: z.array(z.object({ id: z.uuid(), number: z.int(), company_name: z.string() })) }))), ...common },
+        }),
+      },
+      '/fixed-costs': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Custos fixos mensais do negócio (alojamento, software…)',
+          responses: { '200': ok(data(z.array(FixedCostSchema))), '403': problem('Sem permissão'), ...common },
+        }),
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Acrescentar um custo fixo mensal',
+          requestBody: body(FixedCostInputSchema),
+          responses: { '201': ok(data(FixedCostSchema)), '403': problem('Sem permissão'), ...common },
+        }),
+      },
+      '/fixed-costs/{id}': {
+        put: op({
+          tags: ['Projetos'],
+          summary: 'Editar um custo fixo',
+          requestParams: { path: idParam },
+          requestBody: body(FixedCostInputSchema),
+          responses: { '200': ok(data(FixedCostSchema)), '403': problem('Sem permissão'), ...withNotFound },
+        }),
+        delete: op({
+          tags: ['Projetos'],
+          summary: 'Apagar um custo fixo',
+          requestParams: { path: idParam },
+          responses: { '204': { description: 'Apagado' }, '403': problem('Sem permissão'), ...withNotFound },
         }),
       },
       '/reports/accounting': {

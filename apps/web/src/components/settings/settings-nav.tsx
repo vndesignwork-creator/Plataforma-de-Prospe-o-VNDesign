@@ -17,6 +17,7 @@ import {
   Mail,
   PenLine,
   Quote,
+  Receipt,
   Search,
   SlidersHorizontal,
   Sparkles,
@@ -62,6 +63,7 @@ export const SETTINGS_SECTIONS = [
   { slug: 'servicos', label: 'Serviços', group: 'negocio', icon: Layers, description: 'O que vendes: serviços, categorias e componentes.' },
   { slug: 'propostas', label: 'Propostas', group: 'negocio', icon: FileText, description: 'Pacotes, preços e textos do PDF da proposta.' },
   { slug: 'testemunhos', label: 'Testemunhos', group: 'negocio', icon: Quote, description: 'As opiniões dos clientes e as que aparecem nas propostas.' },
+  { slug: 'custos-fixos', label: 'Custos fixos', group: 'negocio', icon: Receipt, description: 'O que pagas todos os meses: entra no lucro e no relatório.' },
   {
     slug: 'formulario',
     label: 'Formulário do site',
