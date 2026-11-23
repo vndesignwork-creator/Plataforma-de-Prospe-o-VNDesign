@@ -154,7 +154,7 @@ export function PlatformStatusView() {
   const resolved = data.problems.filter((p) => p.resolved_at);
   const cronBad = data.reminders !== 'ok' || data.digest !== 'ok';
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <Card>
         <CardHeader title="Tarefas automáticas" description="O que a plataforma faz sozinha, chamada pelas tarefas agendadas (cron) do hPanel." />
         <div className="px-5 pb-5">

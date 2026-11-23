@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: 'Definições · Apagados' };
 /** A reciclagem também nas Definições (a mesma de Leads → Apagados). */
 export default function Page() {
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <Card>
         <CardHeader
           title="Apagados (reciclagem)"

@@ -51,7 +51,7 @@ export function SiteFormSettings() {
   if (isLoading || !settings) return <Skeleton className="h-40" />;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <Card>
         <CardHeader
           title="Formulário do site"

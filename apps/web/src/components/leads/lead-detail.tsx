@@ -763,7 +763,7 @@ export function LeadDetail({ id }: { id: string }) {
       ) : null}
 
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
-        <div ref={mainColumn} className="flex flex-col gap-5">
+        <div ref={mainColumn} className="flex flex-col gap-6">
           {/* Cliente: o projeto primeiro (é o que interessa todos os dias). */}
           {staff && lead.status === 'cliente' && settings?.features.projects && !lead.anonymized_at ? <ProjectCard lead={lead} /> : null}
 
@@ -913,7 +913,7 @@ export function LeadDetail({ id }: { id: string }) {
         </div>
 
         {/* Coluna lateral (computador): o que se consulta durante uma chamada — propostas e atividade. */}
-        <aside aria-label="Tarefas, pagamentos, propostas e atividade" className="flex flex-col gap-5">
+        <aside aria-label="Tarefas, pagamentos, propostas e atividade" className="flex flex-col gap-6">
           {asideCards.map(([key, node]) => (
             <Fragment key={key}>{node}</Fragment>
           ))}

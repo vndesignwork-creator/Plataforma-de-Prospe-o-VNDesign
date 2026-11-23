@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: 'Definições · Conta' };
 
 export default function Page() {
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <ProfileSettings />
       <AccountSettings />
       {/* Também aqui: a equipa de prospeção só vê a Conta e a Assinatura. */}

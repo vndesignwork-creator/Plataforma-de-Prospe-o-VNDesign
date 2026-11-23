@@ -48,7 +48,7 @@ export function ShareToLead() {
 
   const draft = parse.data;
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       {!hasShared || parse.isError ? (
         <Card>
           <CardHeader title="Colar um link" description="Copia o link no Google Maps, no Instagram ou no site e cola-o aqui." />

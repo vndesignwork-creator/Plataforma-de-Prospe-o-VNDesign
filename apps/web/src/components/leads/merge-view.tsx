@@ -142,7 +142,7 @@ export function MergeView({ id, otherId, useDraft }: { id: string; otherId?: str
   const otherTitle = otherId && other.data ? `#${other.data.number} ${other.data.company_name}` : 'Novo registo (não gravado)';
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <Card>
         <CardHeader
           title="O que acontece"

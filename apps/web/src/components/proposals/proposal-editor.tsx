@@ -268,7 +268,7 @@ function Editor({ lead, proposal }: { lead: Lead; proposal: Proposal | null }) {
       {copyingFrom ? <CopyProposalDialog lead={lead} onClose={() => setCopyingFrom(false)} /> : null}
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(16rem,1fr)]">
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-6">
           <Card>
             <CardHeader title="Apresentação" />
             <div className="flex flex-col gap-3 p-4">

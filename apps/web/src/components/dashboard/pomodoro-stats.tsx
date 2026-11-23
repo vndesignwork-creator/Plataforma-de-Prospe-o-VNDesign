@@ -21,7 +21,7 @@ export function PomodoroStatsSection({ bare }: { bare?: boolean } = {}) {
   const avg = Math.round((data.week / 7) * 10) / 10;
 
   return (
-    <section aria-labelledby={bare ? undefined : 'pomodoros'} aria-label={bare ? 'Pomodoro' : undefined} className="flex flex-col gap-5">
+    <section aria-labelledby={bare ? undefined : 'pomodoros'} aria-label={bare ? 'Pomodoro' : undefined} className="flex flex-col gap-6">
       {bare ? null : (
         <div>
           <h2 id="pomodoros" className="font-display text-xl font-semibold">

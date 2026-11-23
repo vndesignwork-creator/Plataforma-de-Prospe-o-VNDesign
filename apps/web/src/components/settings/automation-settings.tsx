@@ -522,7 +522,7 @@ export function AutomationSettings() {
   }
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <Card>
         <CardHeader
           title="Regras automáticas"

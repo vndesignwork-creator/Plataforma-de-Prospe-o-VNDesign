@@ -36,7 +36,7 @@ export function ProfitabilitySection({ bare }: { bare?: boolean } = {}) {
   const hours = (m: number) => formatMinutes(m);
 
   return (
-    <section aria-labelledby={bare ? undefined : 'rentabilidade'} aria-label={bare ? 'Rentabilidade' : undefined} className="flex flex-col gap-5">
+    <section aria-labelledby={bare ? undefined : 'rentabilidade'} aria-label={bare ? 'Rentabilidade' : undefined} className="flex flex-col gap-6">
       {bare ? null : (
         <div>
           <h2 id="rentabilidade" className="font-display text-xl font-semibold">

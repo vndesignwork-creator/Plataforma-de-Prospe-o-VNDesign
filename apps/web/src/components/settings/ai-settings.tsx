@@ -463,7 +463,7 @@ export function AiSettings() {
   if (isLoading || !settings || !providers) return <Skeleton className="h-96" />;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       {/* Consumo e créditos: só o dono e os administradores. */}
       {staff ? <AiUsageCard /> : null}
       <Card>

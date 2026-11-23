@@ -586,7 +586,7 @@ function CategoriesList() {
 /** Definições → Serviços: os serviços (e as suas categorias) que se escolhem nos leads, filtros, propostas e listas de tarefas. */
 export function ServicesSettings() {
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <CategoriesList />
       <ServicesList />
     </div>

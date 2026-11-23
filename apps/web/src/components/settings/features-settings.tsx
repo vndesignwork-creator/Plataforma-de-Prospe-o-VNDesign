@@ -107,10 +107,10 @@ export function FeaturesSettings() {
   const last = settings.weekly_backup.last_sent_at;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <Card>
         <CardHeader title="Funcionalidades" description="Desliga o que não usas: sai do menu e da ficha. Os dados ficam guardados." />
-        <div className="flex flex-col gap-5 p-4" aria-label="Funcionalidades" role="group">
+        <div className="flex flex-col gap-6 p-4" aria-label="Funcionalidades" role="group">
           {FEATURE_GROUPS.map((group) => (
             <section key={group.title} aria-labelledby={`func-${group.title}`} className="overflow-hidden rounded-xl border border-border">
               <header className="flex items-start gap-3 border-b border-border bg-surface-2 px-4 py-3">

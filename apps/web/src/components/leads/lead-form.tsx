@@ -255,7 +255,7 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
   const e = (f: keyof FormInput) => errors[f]?.message as string | undefined;
 
   return (
-    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5 pb-24">
+    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-6 pb-24">
       {formError ? (
         <p role="alert" className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">
           {formError}
@@ -433,7 +433,7 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
           {moreFilled ? <span className="rounded bg-accent-soft px-1.5 text-xs font-medium text-accent-text">{moreFilled} preenchido{moreFilled === 1 ? '' : 's'}</span> : null}
           <span className="font-normal text-muted">morada e origem, datas de contacto, diagnóstico do site, email de prospeção</span>
         </summary>
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-6">
           <Section title="Morada e origem">
             <Field label="Morada" error={e('address')} hint="Morada comercial (para o mapa, mais tarde)">
               <Input autoComplete="off" {...register('address')} />

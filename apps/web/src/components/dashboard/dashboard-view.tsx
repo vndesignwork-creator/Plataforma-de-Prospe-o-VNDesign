@@ -762,11 +762,11 @@ export function DashboardView() {
 /** Equipa de prospeção: os números dele, o "Hoje" e os leads mais quentes (só os seus). */
 function ProspectorDashboard() {
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <DashboardHeader />
       <MyTeamTiles />
       <GoalsCard />
-      <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
         <TodayCard />
         <HotLeadsCard fitToday className="lg:self-start" />
       </div>
@@ -843,11 +843,11 @@ function OwnerDashboard() {
   // Hoje | Leads mais quentes e Pipeline | Projetos. Telemóvel: uma coluna, com o "Hoje" no topo e o Pipeline no fim.
   if (!layout || (!layout.order.length && !layout.hidden.length)) {
     return (
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-6">
         {header}
         {summary}
         <GoalsCard />
-        <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+        <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
           <TodayCard className="lg:col-start-1 lg:row-start-1" />
           {/* Os quentes mostram só as linhas que cabem ao lado do "Hoje" (sem espaço vazio em nenhum dos dois). */}
           <HotLeadsCard fitToday className="lg:col-start-2 lg:row-start-1 lg:self-start" />
@@ -885,13 +885,13 @@ function OwnerDashboard() {
     else last.push(key);
   }
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       {header}
       {blocks.map((block) =>
         wide.has(block[0]!) ? (
           <Fragment key={block[0]}>{cards[block[0]!]}</Fragment>
         ) : (
-          <div key={block.join('-')} className="flex flex-col gap-5 lg:grid lg:grid-flow-dense lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+          <div key={block.join('-')} className="flex flex-col gap-6 lg:grid lg:grid-flow-dense lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
             {block.map((key) => (
               <Fragment key={key}>{cards[key]}</Fragment>
             ))}

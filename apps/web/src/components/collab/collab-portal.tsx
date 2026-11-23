@@ -35,7 +35,7 @@ export function CollabHome() {
   });
   const [today] = useState(() => todayIso());
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="font-display text-2xl font-bold">Os meus projetos</h1>
         <p className="mt-1 text-sm text-muted">Os projetos para que foste convidado: tarefas, ficheiros, briefing e as tuas horas.</p>
@@ -97,7 +97,7 @@ export function CollabProjectView({ leadId }: { leadId: string }) {
     );
   }
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <Link href="/colaborador" className="inline-flex items-center gap-1 text-sm text-muted hover:text-fg">
           <ArrowLeft className="h-4 w-4" aria-hidden /> Os meus projetos

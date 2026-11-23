@@ -440,7 +440,7 @@ export function LeadGenerator({ initialRunId }: { initialRunId?: string | null }
   return (
     <>
       <PageHeader title="Gerar leads" description={<GeneratorSummary runs={runs} prospector={prospector} />} />
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-6">
         {prospector ? <Allowance /> : null}
         <SearchForm draft={draft} setDraft={setDraft} ideas={searchIdeas(runs)} onStarted={(run) => openRun(run.id)} busy={!!running} prospector={prospector} />
         {/* A pesquisa (a correr ou a última) logo a seguir ao formulário. */}
