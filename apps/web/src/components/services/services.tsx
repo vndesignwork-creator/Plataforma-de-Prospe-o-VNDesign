@@ -132,7 +132,16 @@ export function ServiceIcon({ service, className }: { service: string; className
 }
 
 /** Etiquetas com os serviços (ficha). */
-export function ServiceChips({ services, className }: { services?: readonly string[] | null; className?: string }) {
+export function ServiceChips({
+  services,
+  className,
+  compact,
+}: {
+  services?: readonly string[] | null;
+  className?: string;
+  /** Só os ícones (o nome fica para os leitores de ecrã): poupa linhas no telemóvel. */
+  compact?: boolean;
+}) {
   const catalog = useServiceCatalog();
   const list = (services ?? []).filter((s) => catalog.get(s));
   if (!list.length) return null;
@@ -141,14 +150,16 @@ export function ServiceChips({ services, className }: { services?: readonly stri
       {list.map((s) => (
         <li
           key={s}
+          title={compact ? serviceLabel(s, catalog.all) : undefined}
           className={cn(
-            'inline-flex max-w-full items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium',
+            'inline-flex max-w-full items-center gap-1 rounded-md text-xs font-medium',
+            compact ? 'px-1.5 py-1' : 'px-2 py-0.5',
             categoryChipClass(catalog.get(s)!.category),
           )}
         >
           <ServiceIcon service={s} className="h-3.5 w-3.5 shrink-0" />
           {/* Num ecrã estreito, um nome comprido corta com "…" em vez de sair da ficha. */}
-          <span className="truncate" title={serviceLabel(s, catalog.all)}>
+          <span className={cn('truncate', compact && 'sr-only')} title={compact ? undefined : serviceLabel(s, catalog.all)}>
             {serviceLabel(s, catalog.all)}
           </span>
         </li>

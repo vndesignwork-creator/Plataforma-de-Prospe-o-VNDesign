@@ -135,7 +135,13 @@ export function ProjectRow({
           </div>
           {/* Os serviços à esquerda; a fase (e o prazo) encostados à direita. */}
           <div className="flex flex-wrap items-center gap-2">
-            {lead.services?.length ? <ServiceChips services={lead.services} /> : null}
+            {/* Telemóvel: só os ícones dos serviços (o nome fica no toque longo e para os leitores de ecrã). */}
+            {lead.services?.length ? (
+              <>
+                <ServiceChips services={lead.services} compact className="sm:hidden" />
+                <ServiceChips services={lead.services} className="max-sm:hidden" />
+              </>
+            ) : null}
             <span className="ml-auto flex flex-wrap items-center justify-end gap-2">
               {completed ? (
                 <Badge tone="success">Concluído a {formatDate(lead.project_completed_at!.slice(0, 10))}</Badge>
@@ -160,10 +166,10 @@ export function ProjectRow({
             </p>
           ) : null}
         </div>
-        {/* Telemóvel: botões em duas colunas, a toda a largura (o último ocupa a linha se sobrar). Computador: à direita. */}
-        <div className="grid grid-cols-2 gap-2 sm:ml-auto sm:flex sm:flex-wrap sm:items-center sm:justify-end [&>*:last-child:nth-child(odd)]:col-span-2">
-          {!completed ? <WhatsAppMenu lead={lead} className={buttonClasses('outline', 'sm', 'max-sm:w-full')} /> : null}
-          <ProjectToggle lead={lead} onWrapUp={onWrapUp} className="max-sm:w-full" />
+        {/* Botões lado a lado (no telemóvel também: ocupavam duas linhas inteiras). */}
+        <div className="flex flex-wrap items-center gap-2 max-sm:justify-end sm:ml-auto sm:justify-end">
+          {!completed ? <WhatsAppMenu lead={lead} className={buttonClasses('outline', 'sm')} /> : null}
+          <ProjectToggle lead={lead} onWrapUp={onWrapUp} />
         </div>
       </div>
 
