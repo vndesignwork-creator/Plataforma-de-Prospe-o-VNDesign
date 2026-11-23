@@ -414,8 +414,8 @@ export function ProspectingSession() {
 
       {/* Cada lead no seu cartão, com espaço entre eles (como nos Projetos). */}
       {pending.length ? (
-        <div className="flex flex-col gap-3">
-          <ul aria-label={view === 'missing' ? 'Leads sem contacto' : 'Leads para contactar'} className="flex flex-col gap-3">
+        <div className="flex flex-col gap-5">
+          <ul aria-label={view === 'missing' ? 'Leads sem contacto' : 'Leads para contactar'} className="flex flex-col gap-5">
             {pending.slice(0, limit).map((item) => (
               <LeadRow
                 key={item.lead.id}
@@ -462,7 +462,7 @@ export function ProspectingSession() {
             Feito nesta sessão ({done.length})
           </button>
           {doneOpen ? (
-            <ul aria-label="Leads tratados nesta sessão" className="flex flex-col gap-3">
+            <ul aria-label="Leads tratados nesta sessão" className="flex flex-col gap-5">
                 {done.map(({ item, done: result }) => (
                   <LeadRow
                     key={item.lead.id}
@@ -562,7 +562,7 @@ function LeadRow({
   return (
     <li
       aria-labelledby={headingId}
-      className={cn('flex flex-col gap-3 rounded-xl border border-border bg-surface p-3 shadow-card sm:p-4', done && 'bg-surface-2/60')}
+      className={cn('flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 shadow-card sm:p-5', done && 'bg-surface-2/60')}
     >
       {/* Telemóvel: o nome com a largura toda (só a pontuação ao lado); estado e motivo por baixo. */}
       <div className="flex items-start justify-between gap-x-4 gap-y-2">

@@ -49,7 +49,7 @@ export function TeamView({ initialTab }: { initialTab: TeamTab }) {
   ];
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       {/* Telemóvel: Convidar por cima dos separadores (os separadores ficam colados à linha). */}
       <div className="flex flex-col-reverse items-start gap-3 border-b border-border sm:flex-row sm:items-end sm:justify-between">
         <div role="tablist" aria-label="Equipa" onKeyDown={rovingKeyDown} className="-mb-px flex max-w-full gap-1 overflow-x-auto [scrollbar-width:none]">
@@ -80,7 +80,7 @@ export function TeamView({ initialTab }: { initialTab: TeamTab }) {
       </div>
 
       {tab === 'prospecao' ? (
-        <div role="tabpanel" id="painel-prospecao" aria-labelledby="tab-prospecao" className="flex flex-col gap-5">
+        <div role="tabpanel" id="painel-prospecao" aria-labelledby="tab-prospecao" className="flex flex-col gap-6">
           <TeamMembers />
           <ProspectorAccessCard />
           <GenerationLimitCard />

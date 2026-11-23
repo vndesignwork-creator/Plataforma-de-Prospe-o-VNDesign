@@ -215,7 +215,7 @@ function NewListComposer({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex w-full items-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-left text-sm text-muted shadow-card hover:text-fg sm:max-w-xl"
+        className="flex w-full items-center gap-2 rounded-xl border border-border bg-surface px-5 py-4 text-left text-sm text-muted shadow-card hover:text-fg sm:max-w-xl"
       >
         <Plus className="h-4 w-4" aria-hidden /> Criar uma lista…
       </button>
@@ -224,7 +224,7 @@ function NewListComposer({
   return (
     <form
       onSubmit={create}
-      className="flex w-full flex-col gap-2 rounded-xl border border-border bg-surface p-3 shadow-card sm:max-w-xl"
+      className="flex w-full flex-col gap-2 rounded-xl border border-border bg-surface p-4 shadow-card sm:max-w-xl"
       aria-label="Nova lista"
     >
       <Input
@@ -1323,7 +1323,7 @@ export function TaskBoard({
     const group = all.length > limit ? all.slice(0, limit) : all;
     return (
     <>
-    <div className="columns-1 gap-4 md:columns-2 2xl:columns-3">
+    <div className="columns-1 gap-6 md:columns-2 2xl:columns-3">
       {group.map((card, i) => (
         <BoardCardView
           key={card.key}
@@ -1438,7 +1438,7 @@ export function TaskBoard({
           </SortableContext>
           <DragOverlay>
             {dragging ? (
-              <div className="rounded-xl border border-accent bg-surface px-4 py-3 text-sm font-semibold shadow-card">
+              <div className="rounded-xl border border-accent bg-surface px-5 py-4 text-sm font-semibold shadow-card">
                 {ordered.find((c) => c.key === dragging)?.title}
               </div>
             ) : null}
@@ -1470,7 +1470,7 @@ export function TaskBoard({
             archive.isLoading ? (
               <Skeleton className="h-24" />
             ) : archiveCount ? (
-              <div className="columns-1 gap-4 opacity-90 md:columns-2 2xl:columns-3">
+              <div className="columns-1 gap-6 opacity-90 md:columns-2 2xl:columns-3">
                 {archivedCards.map((card) => (
                   <BoardCardView
                     key={card.key}

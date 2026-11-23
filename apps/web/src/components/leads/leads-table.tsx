@@ -1131,7 +1131,7 @@ function LeadsTableView() {
                             scope="col"
                             aria-sort={sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : undefined}
                             className={cn(
-                              'px-3 py-2 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-muted uppercase',
+                              'px-4 py-2.5 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-muted uppercase',
                               meta.className?.includes('text-right') && 'text-right',
                             )}
                           >
@@ -1187,7 +1187,7 @@ function LeadsTableView() {
                       {row.getVisibleCells().map((cell) => (
                         <td
                           key={cell.id}
-                          className={cn('px-3 py-2 align-top', (cell.column.columnDef as Col).meta.className)}
+                          className={cn('px-4 py-3 align-top', (cell.column.columnDef as Col).meta.className)}
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
@@ -1204,7 +1204,7 @@ function LeadsTableView() {
                 <li
                   key={lead.id}
                   className={cn(
-                    'relative flex flex-col gap-1.5 overflow-hidden rounded-xl border border-border bg-surface px-4 py-3 shadow-card hover:bg-surface-2',
+                    'relative flex flex-col gap-1.5 overflow-hidden rounded-xl border border-border bg-surface px-5 py-4 shadow-card hover:bg-surface-2',
                     selected.has(lead.id) && 'bg-accent-soft',
                   )}
                 >

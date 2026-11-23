@@ -127,7 +127,7 @@ function StatsGroup({ id, children }: { id: StatsSection; children: ReactNode })
   const [collapsed, setCollapsed] = useCollapsed(`stats:${id}`);
   const meta = SECTION_META[id];
   return (
-    <section id={`est-${id}`} aria-labelledby={`est-${id}-titulo`} className="flex scroll-mt-32 flex-col gap-4 lg:scroll-mt-16">
+    <section id={`est-${id}`} aria-labelledby={`est-${id}-titulo`} className="flex scroll-mt-32 flex-col gap-5 lg:scroll-mt-16">
       <div className="flex items-start gap-2 border-b border-border pb-2">
         <div className="min-w-0 flex-1">
           <h2 id={`est-${id}-titulo`} className="font-display text-xl font-semibold">
@@ -276,7 +276,7 @@ function OwnerStats() {
 
   const funnelFirst = data.funnel[0]?.count ?? 0;
   const funnelBlock = (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-2">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
       {/* Pelo histórico (quem entrou no período e até onde chegou); o de baixo é o estado de agora. */}
       <CohortFunnelCard className="lg:col-span-2" />
       <Card>
@@ -321,7 +321,7 @@ function OwnerStats() {
   const leadsBlock = (
     <>
       {/* Distribuições: 2 × 2 no computador (cada uma com largura para os nomes). */}
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader title="Por estado" />
           <div className="p-5">
