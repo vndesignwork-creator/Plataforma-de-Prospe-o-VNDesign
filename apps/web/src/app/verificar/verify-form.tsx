@@ -77,7 +77,7 @@ export function VerifyForm() {
       <Button type="submit" loading={busy} className="w-full">
         Confirmar
       </Button>
-      <button type="button" onClick={signOut} className="text-sm text-muted underline-offset-4 hover:text-fg hover:underline">
+      <button type="button" onClick={signOut} className="text-sm text-muted hover:text-fg">
         Entrar com outra conta
       </button>
       <p className="text-xs text-muted">Perdeste o telemóvel? Pede ao administrador para desligar a verificação na tua conta (Supabase → Authentication).</p>

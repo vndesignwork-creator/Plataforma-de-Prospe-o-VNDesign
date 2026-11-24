@@ -122,7 +122,7 @@ function buildColumns(today: string): Col[] {
         <>
           <Link
             href={leadPath(row.original)}
-            className="font-semibold text-fg hover:text-accent-text hover:underline"
+            className="font-semibold text-fg hover:text-accent-text"
           >
             <LeadTitle lead={row.original} />
           </Link>
@@ -165,7 +165,7 @@ function buildColumns(today: string): Col[] {
             target="_blank"
             rel="noreferrer noopener"
             title={row.original.website}
-            className="block max-w-56 truncate text-accent-text hover:underline"
+            className="block max-w-56 truncate text-accent-text hover:text-accent-text-hover"
           >
             {displayHost(row.original.website)}
             <span className="sr-only"> (abre num novo separador)</span>
@@ -227,7 +227,7 @@ function buildColumns(today: string): Col[] {
             target="_blank"
             rel="noreferrer noopener"
             title={row.original.source_url}
-            className="block max-w-56 truncate text-accent-text hover:underline"
+            className="block max-w-56 truncate text-accent-text hover:text-accent-text-hover"
           >
             {displayHost(row.original.source_url)}
             <span className="sr-only"> (abre num novo separador)</span>

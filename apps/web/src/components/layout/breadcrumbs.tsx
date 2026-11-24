@@ -25,7 +25,7 @@ export function Breadcrumbs({ items, meta }: { items: Crumb[]; meta?: ReactNode 
         <ArrowLeft className="h-4 w-4" aria-hidden />
       </BackLink>
       {/* Telemóvel: só a página anterior. */}
-      <BackLink href={parent.href} className="min-w-0 truncate hover:text-fg hover:underline sm:hidden">
+      <BackLink href={parent.href} className="min-w-0 truncate hover:text-fg sm:hidden">
         {parent.label}
       </BackLink>
       <ol className="hidden min-w-0 flex-wrap items-center gap-x-1.5 sm:flex">
@@ -37,7 +37,7 @@ export function Breadcrumbs({ items, meta }: { items: Crumb[]; meta?: ReactNode 
               </li>
             ) : null}
             <li className="min-w-0">
-              <BackLink href={item.href} className="hover:text-fg hover:underline">
+              <BackLink href={item.href} className="hover:text-fg">
                 {item.label}
               </BackLink>
             </li>

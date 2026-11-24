@@ -299,7 +299,7 @@ export function FreeAuditForm({ token, brand, turnstileSiteKey, stretch = false 
       <Button data-reveal-item type="submit" loading={busy} className="w-full">
         {siteWarning ? 'Enviar na mesma' : 'Analisar o meu site'}
       </Button>
-      <a data-reveal-item href={`${api}/exemplo`} target="_blank" rel="noopener" className="inline-flex w-fit items-center gap-1.5 self-center text-sm text-muted underline-offset-2 hover:text-fg hover:underline">
+      <a data-reveal-item href={`${api}/exemplo`} target="_blank" rel="noopener" className="inline-flex w-fit items-center gap-1.5 self-center text-sm text-muted hover:text-fg">
         <FileText className="h-4 w-4" aria-hidden /> Ver um exemplo do relatório (PDF)
       </a>
     </form>

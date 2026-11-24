@@ -258,7 +258,7 @@ function ScheduleRow({
         {s.last_error ? (
           <p className="text-xs text-danger">Na última vez não arrancou: {s.last_error}</p>
         ) : s.last_run_id && s.last_run_at ? (
-          <button type="button" onClick={() => onOpenRun(s.last_run_id!)} className="w-fit text-left text-xs text-accent-text hover:underline">
+          <button type="button" onClick={() => onOpenRun(s.last_run_id!)} className="w-fit text-left text-xs text-accent-text hover:text-accent-text-hover">
             Ver a última pesquisa ({when(s.last_run_at)})
           </button>
         ) : null}

@@ -66,7 +66,7 @@ function ReplyRow({
     >
       <div className="min-w-0 flex-1">
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-          <Link href={leadPath(item.lead)} className="font-medium hover:underline">
+          <Link href={leadPath(item.lead)} className="font-medium hover:text-accent-text">
             <span className="text-muted tabular">#{item.lead.number}</span> {item.lead.company_name}
           </Link>
           <KindBadge item={item} showPending={showPending} />

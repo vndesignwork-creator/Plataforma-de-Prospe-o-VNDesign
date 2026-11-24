@@ -84,7 +84,7 @@ export function ClientRequestForm({ token, id, title, sent }: { token: string; i
                 <li key={`${f.name}-${i}`} className="flex items-center gap-2">
                   <Paperclip className="h-3 w-3 shrink-0" aria-hidden />
                   <span className="truncate">{f.name}</span>
-                  <button type="button" className="ml-auto text-danger hover:underline" onClick={() => setFiles((c) => c.filter((_, j) => j !== i))}>
+                  <button type="button" className="ml-auto text-danger hover:text-fg" onClick={() => setFiles((c) => c.filter((_, j) => j !== i))}>
                     Tirar
                   </button>
                 </li>

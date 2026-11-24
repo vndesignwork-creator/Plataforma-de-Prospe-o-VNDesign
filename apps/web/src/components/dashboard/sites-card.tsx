@@ -34,7 +34,7 @@ export function SitesCard({ className }: { className?: string }) {
             <Activity className={cn('mt-0.5 h-4 w-4 shrink-0', issues[0]!.severity === 'danger' ? 'text-danger' : 'text-warning')} aria-hidden />
             <span className="min-w-0 flex-1">
               {/* Cliente: abre o projeto (onde está o site vigiado); lead: a ficha, onde está o aviso "Oportunidade". */}
-              <Link href={`${leadPath(m.lead)}${m.lead.status === 'cliente' ? '#projeto' : ''}`} className="font-medium hover:underline">
+              <Link href={`${leadPath(m.lead)}${m.lead.status === 'cliente' ? '#projeto' : ''}`} className="font-medium hover:text-accent-text">
                 #{m.lead.number} {m.lead.company_name}
               </Link>
               <span

@@ -104,7 +104,7 @@ export function TagEditor({ lead, className }: { lead: Lead; className?: string 
     <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
       {tags.map((tag) => (
         <span key={tag} className="inline-flex max-w-full items-center gap-1 rounded-full bg-surface-3 py-0.5 pr-1 pl-2 text-xs font-medium">
-          <Link href={`/leads?etiqueta=${encodeURIComponent(tag)}`} className="truncate hover:underline">
+          <Link href={`/leads?etiqueta=${encodeURIComponent(tag)}`} className="truncate hover:text-accent-text">
             {tag}
           </Link>
           <button

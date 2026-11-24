@@ -23,7 +23,7 @@ export function PinnedNoteBox({ note, onEdit, className }: { note: string | null
       <Pin className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden />
       <p className="min-w-0 flex-1 font-medium break-words">{note}</p>
       {onEdit ? (
-        <button type="button" onClick={onEdit} className="shrink-0 text-xs text-muted hover:text-fg hover:underline">
+        <button type="button" onClick={onEdit} className="shrink-0 text-xs text-muted hover:text-fg">
           Editar
         </button>
       ) : null}

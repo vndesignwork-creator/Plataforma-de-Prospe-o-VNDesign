@@ -152,7 +152,7 @@ function MatchBadge({ candidate }: { candidate: LeadCandidate }) {
   if (candidate.added_lead_id) {
     return (
       <Badge tone="success">
-        <Link href={`/leads/${candidate.added_lead_id}`} className="hover:underline">
+        <Link href={`/leads/${candidate.added_lead_id}`} className="hover:text-accent-text">
           Adicionado
         </Link>
       </Badge>
@@ -163,7 +163,7 @@ function MatchBadge({ candidate }: { candidate: LeadCandidate }) {
   if (m.status === 'duplicate' && m.lead_id) {
     return (
       <Badge tone="warning">
-        <Link href={`/leads/${m.lead_id}`} className="hover:underline">
+        <Link href={`/leads/${m.lead_id}`} className="hover:text-accent-text">
           Já existe{m.lead_number ? ` · #${m.lead_number}` : ''}
         </Link>
       </Badge>
@@ -233,7 +233,7 @@ function Results({ run }: { run: LeadGenerationRun }) {
                 <p className="text-sm break-words">{cleanAiText(c.opportunity)}</p>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                   {c.website ? (
-                    <a href={c.website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent-text hover:underline">
+                    <a href={c.website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent-text hover:text-accent-text-hover">
                       <Globe className="h-3.5 w-3.5" aria-hidden /> {displayHost(c.website)}
                     </a>
                   ) : (
@@ -244,7 +244,7 @@ function Results({ run }: { run: LeadGenerationRun }) {
                       href={c.social_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-accent-text hover:underline"
+                      className="inline-flex items-center gap-1 text-accent-text hover:text-accent-text-hover"
                     >
                       <ExternalLink className="h-3.5 w-3.5" aria-hidden /> {displayHost(c.social_url)}
                     </a>
@@ -262,7 +262,7 @@ function Results({ run }: { run: LeadGenerationRun }) {
                 </div>
                 {c.services.length ? <ServiceChips services={c.services} /> : null}
                 {c.source_url ? (
-                  <a href={c.source_url} target="_blank" rel="noopener noreferrer" className="w-fit text-xs text-muted hover:underline">
+                  <a href={c.source_url} target="_blank" rel="noopener noreferrer" className="w-fit text-xs text-muted hover:text-fg">
                     Fonte: {displayHost(c.source_url)}
                   </a>
                 ) : null}

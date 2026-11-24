@@ -113,7 +113,7 @@ function KitView({ kit }: { lead: Lead; kit: BrandKit }) {
           {kit.links.map((l, i) => (
             <li key={i} className="flex items-center gap-2">
               <Link2 className="h-3.5 w-3.5 text-muted" aria-hidden />
-              <a href={l.url} target="_blank" rel="noreferrer noopener" className="truncate text-accent-text hover:underline">
+              <a href={l.url} target="_blank" rel="noreferrer noopener" className="truncate text-accent-text hover:text-accent-text-hover">
                 {l.label || l.url.replace(/^https?:\/\/(www\.)?/, '')}
               </a>
             </li>

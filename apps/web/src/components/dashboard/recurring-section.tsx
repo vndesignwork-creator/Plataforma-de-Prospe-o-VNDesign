@@ -56,7 +56,7 @@ export function RecurringSection() {
               const days = daysUntil(u.next_due_on, today);
               return (
                 <li key={u.id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 px-4 py-2 text-sm">
-                  <Link href={`${leadPath({ number: u.lead_number, company_name: u.company_name })}#projeto`} className="min-w-0 flex-1 hover:underline">
+                  <Link href={`${leadPath({ number: u.lead_number, company_name: u.company_name })}#projeto`} className="min-w-0 flex-1 hover:text-accent-text">
                     <span className="font-medium">{u.company_name}</span> <span className="text-muted">· {u.title}</span>
                   </Link>
                   <span className="text-muted tabular">{renewalPrice(u.amount, u.period)}</span>

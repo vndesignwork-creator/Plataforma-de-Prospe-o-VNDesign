@@ -151,7 +151,7 @@ function GuideCard({ guide, open, onToggle }: { guide: HelpGuide; open: boolean;
             ))}
           </ul>
         ) : null}
-        <Link href={guide.href} className="mt-3 inline-flex items-center gap-1 font-medium text-accent-text hover:underline">
+        <Link href={guide.href} className="mt-3 inline-flex items-center gap-1 font-medium text-accent-text hover:text-accent-text-hover">
           Abrir {guide.title === 'Primeiros passos' ? 'Definições' : guide.title} <ArrowRight className="h-3.5 w-3.5" aria-hidden />
         </Link>
       </div>

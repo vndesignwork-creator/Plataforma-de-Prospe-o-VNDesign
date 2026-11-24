@@ -102,7 +102,7 @@ export function ProfitabilitySection({ bare }: { bare?: boolean } = {}) {
                   .filter((c) => c.rate)
                   .map((c) => (
                     <li key={c.lead.id} className="flex items-center gap-2">
-                      <Link href={`${leadPath(c.lead)}#projeto`} className="min-w-0 flex-1 truncate hover:text-accent-text hover:underline">
+                      <Link href={`${leadPath(c.lead)}#projeto`} className="min-w-0 flex-1 truncate hover:text-accent-text">
                         {c.lead.company_name}
                       </Link>
                       <span className="shrink-0 text-xs text-muted tabular">

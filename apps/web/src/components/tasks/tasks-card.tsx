@@ -965,7 +965,7 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
                   type="button"
                   onClick={() => setShowAll(!showAll)}
                   aria-expanded={showAll}
-                  className="flex w-full items-center gap-1.5 border-t border-border px-4 py-2 text-sm text-accent-text hover:underline"
+                  className="flex w-full items-center gap-1.5 border-t border-border px-4 py-2 text-sm text-accent-text hover:text-accent-text-hover"
                 >
                   <ChevronRight className={cn('h-4 w-4 transition-transform', showAll && '-rotate-90')} aria-hidden />
                   {showAll ? 'Mostrar só as próximas' : `Ver todas (${pending.length})`}

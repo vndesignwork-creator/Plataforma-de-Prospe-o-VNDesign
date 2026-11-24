@@ -124,7 +124,7 @@ export function InviteForm({
         <button
           type="button"
           onClick={() => setMode(mode === 'create' ? 'login' : 'create')}
-          className="text-sm text-muted underline-offset-4 hover:text-fg hover:underline"
+          className="text-sm text-muted hover:text-fg"
         >
           {mode === 'create' ? 'Já tenho conta' : 'Ainda não tenho conta'}
         </button>

@@ -320,7 +320,7 @@ export function ProposalSettings() {
           <span className="font-medium">Gerador de emails com IA:</span>
           {settings.ai_configured ? <Badge tone="success">Ativo</Badge> : <span className="text-muted">inativo.</span>}
           {/* O link numa linha própria, à direita. */}
-          <Link href="/definicoes/ia" className="basis-full text-right text-accent-text hover:underline">
+          <Link href="/definicoes/ia" className="basis-full text-right text-accent-text hover:text-accent-text-hover">
             Escolher fornecedor e chaves
           </Link>
         </p>

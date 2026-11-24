@@ -35,7 +35,7 @@ function LeadPicker({ value, onChange }: { value: Picked | null; onChange: (lead
     return (
       <div className="flex items-center gap-2 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm">
         <LeadLabel lead={value} />
-        <button type="button" onClick={() => onChange(null)} className="ml-auto shrink-0 text-xs text-muted hover:text-fg hover:underline">
+        <button type="button" onClick={() => onChange(null)} className="ml-auto shrink-0 text-xs text-muted hover:text-fg">
           Mudar
         </button>
       </div>
@@ -215,7 +215,7 @@ export function NewTaskDialog({ onClose }: { onClose: () => void }) {
             <p className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-border-strong px-3 py-2 text-sm">
               <span className="text-muted">É para</span>
               <LeadLabel lead={suggested} />
-              <button type="button" onClick={() => setLead(suggested)} className="ml-auto text-sm font-medium text-accent-text hover:underline">
+              <button type="button" onClick={() => setLead(suggested)} className="ml-auto text-sm font-medium text-accent-text hover:text-accent-text-hover">
                 Associar
               </button>
             </p>

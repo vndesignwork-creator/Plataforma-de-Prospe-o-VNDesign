@@ -86,7 +86,7 @@ function PersonCard({ person, onInvite }: { person: CollaboratorPerson; onInvite
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">{person.name ?? person.email}</p>
-          <a href={`mailto:${person.email}`} className="inline-flex max-w-full items-center gap-1 truncate text-sm text-muted hover:text-fg hover:underline">
+          <a href={`mailto:${person.email}`} className="inline-flex max-w-full items-center gap-1 truncate text-sm text-muted hover:text-fg">
             <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden /> <span className="truncate">{person.email}</span>
           </a>
         </div>
@@ -105,7 +105,7 @@ function PersonCard({ person, onInvite }: { person: CollaboratorPerson; onInvite
           <li key={x.collaborator_id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
             <FolderKanban className="h-4 w-4 shrink-0 text-muted" aria-hidden />
             <span className="min-w-0 flex-1">
-              <Link href={`${leadPath(x.lead)}#projeto`} className="font-medium hover:text-accent-text hover:underline">
+              <Link href={`${leadPath(x.lead)}#projeto`} className="font-medium hover:text-accent-text">
                 {projectLabel(x.lead)}
               </Link>
               <span className="block text-xs text-muted">

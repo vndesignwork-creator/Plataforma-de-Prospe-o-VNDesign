@@ -107,7 +107,7 @@ function CustomFieldInput({ lead, field }: { lead: Lead; field: CustomField }) {
 /** Ligação às Definições quando ainda não há campos (só para o dono/administrador). */
 export function CustomFieldsHint() {
   return (
-    <Link href="/definicoes/campos" className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-fg hover:underline">
+    <Link href="/definicoes/campos" className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-fg">
       <ListPlus className="h-3.5 w-3.5" aria-hidden /> Campos personalizados
     </Link>
   );

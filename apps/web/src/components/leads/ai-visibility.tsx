@@ -230,7 +230,7 @@ function CheckResult({ check }: { check: AiVisibilityCheck }) {
                         <span className="w-5 text-right text-xs text-muted tabular">{j + 1}.</span>
                         {c.name}
                         {c.website ? (
-                          <a href={c.website} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-0.5 text-xs text-accent-text hover:underline">
+                          <a href={c.website} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-0.5 text-xs text-accent-text hover:text-accent-text-hover">
                             {displayHost(c.website)}
                             <ExternalLink className="h-3 w-3" aria-hidden />
                           </a>
@@ -252,7 +252,7 @@ function CheckResult({ check }: { check: AiVisibilityCheck }) {
             {check.competitors.map((c) => (
               <li key={`${c.name}-${c.website ?? ''}`} className="rounded-lg border border-border px-2.5 py-1 text-sm">
                 {c.website ? (
-                  <a href={c.website} target="_blank" rel="noreferrer noopener" className="hover:underline">
+                  <a href={c.website} target="_blank" rel="noreferrer noopener" className="hover:text-accent-text">
                     {c.name}
                   </a>
                 ) : (

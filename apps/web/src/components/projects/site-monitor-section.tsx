@@ -203,7 +203,7 @@ function MonitorDetails({ lead, monitor }: { lead: Lead; monitor: Monitor }) {
   return (
     <div className={cn('mt-2 flex flex-col gap-2 text-sm', !monitor.active && 'opacity-70')}>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <a href={monitor.url} target="_blank" rel="noopener noreferrer" className="min-w-0 font-medium break-all text-accent-text hover:underline">
+        <a href={monitor.url} target="_blank" rel="noopener noreferrer" className="min-w-0 font-medium break-all text-accent-text hover:text-accent-text-hover">
           {displayHost(monitor.url)}
         </a>
         <span className="ml-auto flex items-center gap-1">

@@ -23,7 +23,7 @@ function StageCard({ project, today, dragging, handle }: { project: Project; tod
       <div className="flex items-start gap-2">
         {handle ?? <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden />}
         <div className="min-w-0 flex-1">
-          <Link href={leadPath(lead)} className="block font-semibold leading-snug hover:text-accent-text hover:underline" draggable={false}>
+          <Link href={leadPath(lead)} className="block font-semibold leading-snug hover:text-accent-text" draggable={false}>
             <span className="text-muted tabular">#{lead.number}</span> {lead.company_name}
           </Link>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">

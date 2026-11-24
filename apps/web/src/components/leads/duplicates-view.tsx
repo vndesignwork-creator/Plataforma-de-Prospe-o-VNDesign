@@ -192,7 +192,7 @@ function GroupCard({ group, onDone }: { group: DuplicateGroup; onDone: () => voi
                 <input type="radio" name={`principal-${group.key}`} checked={isMain} onChange={() => setPrimary(l.id)} className="mt-1 h-4 w-4" aria-label={`Fica #${l.number} ${l.company_name}`} />
                 <span className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
                   <span className="flex flex-wrap items-center gap-2">
-                    <Link href={leadPath(l)} className="font-semibold hover:text-accent-text hover:underline" onClick={(e) => e.stopPropagation()}>
+                    <Link href={leadPath(l)} className="font-semibold hover:text-accent-text" onClick={(e) => e.stopPropagation()}>
                       <span className="mr-1 text-muted tabular">#{l.number}</span>
                       {l.company_name}
                     </Link>

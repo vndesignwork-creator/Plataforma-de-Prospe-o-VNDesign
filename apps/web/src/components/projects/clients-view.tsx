@@ -60,7 +60,7 @@ function ClientRow({ client, showPayments }: { client: Client; showPayments: boo
     <li className="border-b border-border last:border-0">
       <div className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center sm:gap-4">
         <div className="min-w-0 flex-1">
-          <Link href={leadPath(lead)} className="font-medium hover:underline">
+          <Link href={leadPath(lead)} className="font-medium hover:text-accent-text">
             <span className="tabular text-muted">#{lead.number}</span> {lead.company_name}
           </Link>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted">

@@ -227,7 +227,7 @@ export function ProjectsView({ tabs }: { tabs?: ReactNode } = {}) {
           <>
           <Kpi label="Em curso" value={String(billing.active_projects)}>
             {overdueProjects ? (
-              <button type="button" onClick={() => showFilter('atrasados')} className="self-start text-left text-xs font-medium text-danger hover:underline">
+              <button type="button" onClick={() => showFilter('atrasados')} className="self-start text-left text-xs font-medium text-danger hover:text-fg">
                 {overdueProjects} com a entrega atrasada
               </button>
             ) : null}
@@ -243,7 +243,7 @@ export function ProjectsView({ tabs }: { tabs?: ReactNode } = {}) {
           <>
           <Kpi label="Por receber" value={euros(billing.outstanding)}>
             {billing.outstanding === 0 && withoutPlan ? (
-              <Link href={`${leadPath(withoutPlan.lead)}#projeto`} className="text-xs font-medium text-accent-text hover:underline">
+              <Link href={`${leadPath(withoutPlan.lead)}#projeto`} className="text-xs font-medium text-accent-text hover:text-accent-text-hover">
                 Criar plano de pagamentos
               </Link>
             ) : null}
@@ -254,7 +254,7 @@ export function ProjectsView({ tabs }: { tabs?: ReactNode } = {}) {
           <>
           {billing.overdue ? (
             <Kpi label="Pagamentos em atraso" value={<span className="text-danger">{euros(billing.overdue)}</span>}>
-              <button type="button" onClick={() => showFilter('pagamentos')} className="self-start text-left text-xs font-medium text-danger hover:underline">
+              <button type="button" onClick={() => showFilter('pagamentos')} className="self-start text-left text-xs font-medium text-danger hover:text-fg">
                 Ver {billing.overdue_count} pagamento{billing.overdue_count === 1 ? '' : 's'}
               </button>
             </Kpi>

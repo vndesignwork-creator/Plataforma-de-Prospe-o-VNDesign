@@ -120,7 +120,7 @@ export function LeadPager({ lead, className }: { lead: Lead; className?: string 
       <button type="button" className={button} onClick={() => void go(-1)} disabled={!hasPrev || busy} aria-label="Lead anterior" title="Lead anterior (K)">
         <ChevronLeft className="h-4 w-4" aria-hidden />
       </button>
-      <a href={list.back} className="tabular hover:text-fg hover:underline" title="Voltar à lista">
+      <a href={list.back} className="tabular hover:text-fg" title="Voltar à lista">
         {position} de {list.total}
       </a>
       <button type="button" className={button} onClick={() => void go(1)} disabled={!hasNext || busy} aria-label="Lead seguinte" title="Lead seguinte (J)">

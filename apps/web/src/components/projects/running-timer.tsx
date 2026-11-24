@@ -50,7 +50,7 @@ export function RunningTimer({ compact, className }: { compact?: boolean; classN
       </span>
       <span className={cn('leading-tight', compact ? 'shrink-0 whitespace-nowrap' : 'min-w-0 flex-1')}>
         {!compact ? (
-          <Link href={`${leadPath(running.lead)}#projeto`} className="block truncate text-xs text-muted hover:text-fg hover:underline">
+          <Link href={`${leadPath(running.lead)}#projeto`} className="block truncate text-xs text-muted hover:text-fg">
             {running.lead.company_name}
           </Link>
         ) : null}

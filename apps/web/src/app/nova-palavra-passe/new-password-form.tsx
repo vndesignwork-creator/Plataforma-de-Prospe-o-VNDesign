@@ -75,7 +75,7 @@ export function NewPasswordForm() {
         <p role="alert" className="rounded-lg bg-danger-soft px-3 py-2 text-danger">
           O link expirou ou já foi usado. Os links servem durante uma hora e só uma vez.
         </p>
-        <Link href="/login" className="text-center text-muted underline-offset-4 hover:text-fg hover:underline">
+        <Link href="/login" className="text-center text-muted hover:text-fg">
           Pedir um link novo
         </Link>
       </div>

@@ -135,7 +135,7 @@ export function MapView() {
       {focusId && focusLead ? (
         <div className="flex flex-wrap items-center gap-2 rounded-lg bg-surface-2 px-3 py-2 text-sm">
           <span>
-            <Link href={leadPath(focusLead)} className="font-medium hover:underline">
+            <Link href={leadPath(focusLead)} className="font-medium hover:text-accent-text">
               #{focusLead.number} {focusLead.company_name}
             </Link>
             {placing ? ' — clica no mapa onde fica o negócio.' : ''}
@@ -182,7 +182,7 @@ export function MapView() {
         <ul className="divide-y divide-border border-t border-border empty:hidden">
           {leads.map((l) => (
             <li key={l.id} className="flex items-center justify-between gap-3 px-4 py-2 text-sm">
-              <Link href={leadPath(l)} className="min-w-0 truncate hover:underline">
+              <Link href={leadPath(l)} className="min-w-0 truncate hover:text-accent-text">
                 <span className="text-muted tabular">#{l.number}</span> {l.company_name}
               </Link>
               <span className="shrink-0 text-xs text-muted">

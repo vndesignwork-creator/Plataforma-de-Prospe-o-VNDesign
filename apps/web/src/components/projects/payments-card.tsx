@@ -294,7 +294,7 @@ export function PaymentsCard({ lead }: { lead: Lead }) {
             </div>
           ) : null}
           {collapsed ? (
-            <button type="button" onClick={() => setCollapsed(false)} className="block w-full px-4 py-2.5 text-right text-sm text-accent-text hover:underline">
+            <button type="button" onClick={() => setCollapsed(false)} className="block w-full px-4 py-2.5 text-right text-sm text-accent-text hover:text-accent-text-hover">
               Ver os {payments.length} pagamento{payments.length === 1 ? '' : 's'}
             </button>
           ) : (

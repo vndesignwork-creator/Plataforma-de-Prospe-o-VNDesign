@@ -42,7 +42,7 @@ function TasksBlock({ project }: { project: Project }) {
           type="button"
           onClick={() => setOpen(!open)}
           aria-expanded={open}
-          className="inline-flex items-center gap-1 font-medium text-accent-text hover:underline"
+          className="inline-flex items-center gap-1 font-medium text-accent-text hover:text-accent-text-hover"
         >
           <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', !open && '-rotate-90')} aria-hidden />
           {open ? 'Esconder tarefas' : 'Mostrar tarefas'}
@@ -121,7 +121,7 @@ export function ProjectRow({
               label={lead.project_title ? `${lead.project_title} · ${lead.company_name}` : lead.company_name}
               className={cn('-my-1 shrink-0', !sortable && '-ml-2')}
             />
-            <Link href={leadPath(lead)} className="min-w-0 font-semibold hover:text-accent-text hover:underline">
+            <Link href={leadPath(lead)} className="min-w-0 font-semibold hover:text-accent-text">
               <span className="mr-1.5 text-muted tabular">#{lead.number}</span>
               {/* Projeto novo de um cliente: o nome do projeto em primeiro plano; o cliente discreto ao lado. */}
               {lead.project_title ? (
@@ -202,7 +202,7 @@ export function ProjectRow({
                 }
               >
                 {time.minutes > 0 || time.logged_seconds > 0 ? (
-                  <button type="button" onClick={() => setHoursOpen(true)} className="self-start text-xs font-medium text-accent-text hover:underline">
+                  <button type="button" onClick={() => setHoursOpen(true)} className="self-start text-xs font-medium text-accent-text hover:text-accent-text-hover">
                     Ver registos
                   </button>
                 ) : null}
@@ -244,7 +244,7 @@ export function ProjectRow({
                 <FolderOpen className="h-3.5 w-3.5" aria-hidden /> Entregas {deliverables.approved} de {deliverables.total} aprovadas
               </span>
             ) : null}
-            <Link href={`${leadPath(lead)}#projeto`} className="ml-auto inline-flex items-center gap-1 font-medium text-accent-text hover:underline">
+            <Link href={`${leadPath(lead)}#projeto`} className="ml-auto inline-flex items-center gap-1 font-medium text-accent-text hover:text-accent-text-hover">
               Detalhes do projeto <ArrowRight className="h-3.5 w-3.5" aria-hidden />
             </Link>
           </div>

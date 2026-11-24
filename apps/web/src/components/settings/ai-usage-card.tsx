@@ -78,7 +78,7 @@ function CreditTile({ c }: { c: CreditRow }) {
       <div className="flex flex-wrap items-baseline justify-between gap-x-2">
         <span className="text-sm font-medium">{c.label}</span>
         {c.console_url ? (
-          <a href={c.console_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-accent-text hover:underline">
+          <a href={c.console_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-accent-text hover:text-accent-text-hover">
             Saldo exato na consola <ExternalLink className="h-3 w-3" aria-hidden />
           </a>
         ) : null}

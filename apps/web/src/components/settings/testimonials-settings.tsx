@@ -49,7 +49,7 @@ function Row({
         <Stars rating={t.rating ?? 0} />
         <Link
           href={`/leads/${t.lead_id}#projeto`}
-          className="min-w-0 truncate font-medium hover:underline"
+          className="min-w-0 truncate font-medium hover:text-accent-text"
         >
           {t.company_name}
         </Link>
@@ -192,7 +192,7 @@ export function TestimonialsSettings() {
               >
                 <Link
                   href={`/leads/${t.lead_id}#projeto`}
-                  className="min-w-0 truncate text-sm hover:underline"
+                  className="min-w-0 truncate text-sm hover:text-accent-text"
                 >
                   {t.company_name}
                 </Link>

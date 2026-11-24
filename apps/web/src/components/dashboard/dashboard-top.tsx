@@ -90,7 +90,7 @@ export function DashboardHeader({ organize }: { organize?: ReactNode }) {
             {parts.map((p, i) => (
               <Fragment key={p.text}>
                 {i ? <span aria-hidden>·</span> : null}
-                <Link href={p.href} className={cn('hover:text-fg hover:underline', p.tone === 'danger' && 'text-danger')}>
+                <Link href={p.href} className={cn('hover:text-fg', p.tone === 'danger' && 'text-danger')}>
                   {p.text}
                 </Link>
               </Fragment>

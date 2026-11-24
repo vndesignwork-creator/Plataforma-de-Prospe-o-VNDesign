@@ -101,7 +101,7 @@ export function TagsSettings() {
           {tags.map((t) => (
             <li key={t.tag} className="flex items-center gap-3 px-4 py-2.5">
               <Tag className="h-4 w-4 shrink-0 text-muted" aria-hidden />
-              <Link href={`/leads?etiqueta=${encodeURIComponent(t.tag)}`} className="min-w-0 flex-1 truncate font-medium hover:underline">
+              <Link href={`/leads?etiqueta=${encodeURIComponent(t.tag)}`} className="min-w-0 flex-1 truncate font-medium hover:text-accent-text">
                 {t.tag}
               </Link>
               <span className="text-sm text-muted tabular">{t.count ? `${t.count} lead${t.count === 1 ? '' : 's'}` : 'ainda sem leads'}</span>

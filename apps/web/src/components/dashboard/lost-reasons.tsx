@@ -21,7 +21,7 @@ export function LostReasonsCard() {
         title="Porque perdes leads"
         description="Os leads em “Sem interesse”, pelo motivo escolhido ao mudar o estado"
         actions={
-          <Link href="/leads?status=sem_interesse" className="text-sm text-accent-text hover:underline">
+          <Link href="/leads?status=sem_interesse" className="text-sm text-accent-text hover:text-accent-text-hover">
             Ver os leads
           </Link>
         }

@@ -202,7 +202,7 @@ export function AccessesCard({ lead }: { lead: Lead }) {
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-center gap-2 font-medium">
                   {a.url ? (
-                    <a href={a.url} target="_blank" rel="noreferrer noopener" className="text-accent-text hover:underline">
+                    <a href={a.url} target="_blank" rel="noreferrer noopener" className="text-accent-text hover:text-accent-text-hover">
                       {a.label}
                     </a>
                   ) : (

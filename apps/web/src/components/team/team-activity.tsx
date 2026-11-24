@@ -191,7 +191,7 @@ export function TeamActivityList() {
                               {a.edits > 1 ? `Lead editado (${a.edits} vezes)` : ACTIVITY_TYPE_LABELS[a.type]}
                             </span>
                             <span className="text-muted">·</span>
-                            <Link href={leadPath(a.lead)} className="font-medium text-accent-text hover:underline">
+                            <Link href={leadPath(a.lead)} className="font-medium text-accent-text hover:text-accent-text-hover">
                               {a.lead.company_name}
                             </Link>
                           </p>

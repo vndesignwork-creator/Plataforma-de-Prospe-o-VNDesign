@@ -288,7 +288,7 @@ function CardTitle({
     return (
       <Link
         href={`${leadPath(card.lead)}#tarefas`}
-        className="flex min-w-0 flex-1 items-start gap-1.5 font-semibold hover:underline"
+        className="flex min-w-0 flex-1 items-start gap-1.5 font-semibold hover:text-accent-text"
       >
         <Icon
           className={cn(

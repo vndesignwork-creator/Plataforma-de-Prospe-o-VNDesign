@@ -99,7 +99,7 @@ export function LoginForm() {
         type="button"
         onClick={sendReset}
         disabled={sendingReset}
-        className="text-sm text-muted underline-offset-4 hover:text-fg hover:underline"
+        className="text-sm text-muted hover:text-fg"
       >
         Esqueci-me da palavra-passe
       </button>

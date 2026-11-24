@@ -72,7 +72,7 @@ function TaskOriginLine({ task }: { task: TaskListItem }) {
         <Icon className="h-3 w-3" aria-hidden /> {TASK_ORIGIN_LABELS[origin]}
       </span>
       {task.lead ? (
-        <Link href={`${leadPath(task.lead)}#tarefas`} className="min-w-0 hover:text-fg hover:underline">
+        <Link href={`${leadPath(task.lead)}#tarefas`} className="min-w-0 hover:text-fg">
           #{task.lead.number} {task.lead.project_title ? `${task.lead.project_title} · ${task.lead.company_name}` : task.lead.company_name}
         </Link>
       ) : null}
@@ -346,7 +346,7 @@ export function MyTasksView() {
                     <button
                       type="button"
                       onClick={() => jump(p.group)}
-                      className={cn('hover:text-fg hover:underline', p.tone === 'danger' && 'font-medium text-danger')}
+                      className={cn('hover:text-fg', p.tone === 'danger' && 'font-medium text-danger')}
                     >
                       {p.text}
                     </button>

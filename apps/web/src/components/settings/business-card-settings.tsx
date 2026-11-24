@@ -123,7 +123,7 @@ export function BusinessCardSettings() {
               <div className="flex flex-col items-center gap-2">
                 {/* eslint-disable-next-line @next/next/no-img-element -- QR gerado no servidor (SVG) */}
                 <img src={qrHref} alt="Código QR do cartão de contacto" className="h-44 w-44 rounded-lg border border-border bg-white p-2" />
-                <a href={qrHref} download="cartao-qr.svg" className="inline-flex items-center gap-1 text-xs font-medium text-accent-text hover:underline">
+                <a href={qrHref} download="cartao-qr.svg" className="inline-flex items-center gap-1 text-xs font-medium text-accent-text hover:text-accent-text-hover">
                   <Download className="h-3.5 w-3.5" aria-hidden /> Descarregar o QR
                 </a>
               </div>

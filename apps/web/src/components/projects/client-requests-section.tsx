@@ -61,7 +61,7 @@ function RequestRow({ lead, r }: { lead: Lead; r: ClientRequest }) {
         <ul className="ml-6 flex flex-wrap gap-x-3 gap-y-1 text-xs">
           {r.files.map((f, i) => (
             <li key={`${f.name}-${i}`}>
-              <a href={`/api/v1/client-requests/${r.id}/files/${i}`} className="inline-flex items-center gap-1 text-accent-text hover:underline">
+              <a href={`/api/v1/client-requests/${r.id}/files/${i}`} className="inline-flex items-center gap-1 text-accent-text hover:text-accent-text-hover">
                 <Download className="h-3 w-3" aria-hidden /> {f.name}
               </a>
             </li>

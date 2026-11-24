@@ -110,7 +110,7 @@ function LeadCard({
         <div className="min-w-0 flex-1">
           <Link
             href={leadPath(lead)}
-            className="block font-semibold leading-snug hover:text-accent-text hover:underline"
+            className="block font-semibold leading-snug hover:text-accent-text"
             draggable={false}
           >
             <span className="text-muted tabular">#{lead.number}</span> <LeadTitle lead={lead} />
@@ -938,7 +938,7 @@ function KanbanHelp() {
         <DropdownLabel>Como mover os cartões</DropdownLabel>
         <p className="px-2 pb-2 text-sm text-muted pointer-coarse:hidden">{HELP_MOUSE}</p>
         <p className="hidden px-2 pb-2 text-sm text-muted pointer-coarse:block">{HELP_TOUCH}</p>
-        <Link href="/ajuda#kanban" className="block px-2 pb-2 text-sm font-medium text-accent-text hover:underline">
+        <Link href="/ajuda#kanban" className="block px-2 pb-2 text-sm font-medium text-accent-text hover:text-accent-text-hover">
           Ver o guia completo
         </Link>
       </DropdownContent>

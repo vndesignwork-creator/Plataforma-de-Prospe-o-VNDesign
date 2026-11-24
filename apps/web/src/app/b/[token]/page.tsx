@@ -59,7 +59,7 @@ export default async function BriefingPage({ params }: Props) {
             {briefing.references.map((r, i) => (
               <li key={i}>
                 {r.url ? (
-                  <a href={r.url} target="_blank" rel="noreferrer noopener" className="text-accent-text hover:underline">
+                  <a href={r.url} target="_blank" rel="noreferrer noopener" className="text-accent-text hover:text-accent-text-hover">
                     {r.name}
                   </a>
                 ) : (

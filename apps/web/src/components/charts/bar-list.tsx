@@ -81,7 +81,7 @@ export function BarList({
           type="button"
           onClick={() => setAll(!all)}
           aria-expanded={all}
-          className="mt-3 inline-flex items-center gap-1 text-sm text-accent-text hover:underline"
+          className="mt-3 inline-flex items-center gap-1 text-sm text-accent-text hover:text-accent-text-hover"
         >
           <ChevronDown className={cn('h-4 w-4 transition-transform', all && 'rotate-180')} aria-hidden />
           {all ? 'Mostrar menos' : `Ver todos (${main.length})`}

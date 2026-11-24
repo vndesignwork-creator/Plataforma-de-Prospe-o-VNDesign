@@ -123,7 +123,7 @@ export function ProposalsCard({ lead }: { lead: Lead }) {
             return (
             <li key={p.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
-                <Link href={leadPath(lead, `/propostas/${p.id}`)} className="font-medium hover:underline">
+                <Link href={leadPath(lead, `/propostas/${p.id}`)} className="font-medium hover:text-accent-text">
                   <span className="text-muted tabular">{p.code}</span> {p.title}
                 </Link>
                 <p className="flex flex-wrap items-center gap-2 text-xs text-muted">

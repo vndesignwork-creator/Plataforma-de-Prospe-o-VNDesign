@@ -264,12 +264,12 @@ export function ProspectingGoals({ mode }: { mode: ProspectingMode }) {
       {/* Há metas, mas nenhuma deste modo: diz-se quais há (ficam no Dashboard) e dá para juntar a do modo. */}
       <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
         {!metrics.length ? (
-          <Link href="/dashboard" className="inline-flex items-center gap-1 hover:text-fg hover:underline">
+          <Link href="/dashboard" className="inline-flex items-center gap-1 hover:text-fg">
             <Target className="h-3 w-3" aria-hidden />
             Metas do mês: {others.map((m) => GOAL_LABELS[m].toLowerCase()).join(', ')}
           </Link>
         ) : others.length ? (
-          <Link href="/dashboard" className="hover:text-fg hover:underline">
+          <Link href="/dashboard" className="hover:text-fg">
             +{others.length} no Dashboard
           </Link>
         ) : null}

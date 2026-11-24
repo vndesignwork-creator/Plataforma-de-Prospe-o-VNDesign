@@ -498,7 +498,7 @@ export function LeadForm({ lead, initial }: { lead?: Lead; initial?: Partial<Lea
               Falta: <span className="font-medium text-fg">Empresa</span>
             </span>
           ) : duplicates.length ? (
-            <a href="#lead-duplicados" className="mr-auto min-w-0 truncate text-sm text-warning hover:underline">
+            <a href="#lead-duplicados" className="mr-auto min-w-0 truncate text-sm text-warning hover:text-fg">
               Pode já existir: #{duplicates[0]!.number} {duplicates[0]!.company_name}
               {duplicates.length > 1 ? ` (+${duplicates.length - 1})` : ''}
             </a>

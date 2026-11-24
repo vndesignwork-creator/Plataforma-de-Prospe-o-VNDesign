@@ -60,7 +60,7 @@ function ShowAll({ total, open, onToggle, what }: { total: number; open: boolean
   if (total <= SHOWN) return null;
   return (
     <div className="mt-1 flex justify-end">
-    <button type="button" onClick={onToggle} aria-expanded={open} className="px-2 py-1 text-xs font-medium text-accent-text hover:underline">
+    <button type="button" onClick={onToggle} aria-expanded={open} className="px-2 py-1 text-xs font-medium text-accent-text hover:text-accent-text-hover">
       {open ? 'Mostrar menos' : `Mostrar todos (${total})`}
       <span className="sr-only"> — {what}</span>
     </button>
@@ -190,7 +190,7 @@ function ProjectsCard({ className }: { className?: string }) {
           )
         }
         actions={
-          <Link href="/projetos" className="text-sm text-accent-text hover:underline">
+          <Link href="/projetos" className="text-sm text-accent-text hover:text-accent-text-hover">
             Ver todos
           </Link>
         }
@@ -199,12 +199,12 @@ function ProjectsCard({ className }: { className?: string }) {
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-4 py-2 text-xs font-medium" role="status" aria-label="Projetos a precisar de atenção">
           <AlertCircle className="h-3.5 w-3.5 text-danger" aria-hidden />
           {late.length ? (
-            <Link href="/projetos?filtro=atrasados" className="text-danger hover:underline">
+            <Link href="/projetos?filtro=atrasados" className="text-danger hover:text-fg">
               {late.length} com a entrega atrasada
             </Link>
           ) : null}
           {owing.length && settings?.features.payments ? (
-            <Link href="/projetos?filtro=pagamentos" className="text-danger hover:underline">
+            <Link href="/projetos?filtro=pagamentos" className="text-danger hover:text-fg">
               {owing.length} com pagamentos em atraso
             </Link>
           ) : null}
@@ -252,7 +252,7 @@ function ProjectsCard({ className }: { className?: string }) {
           ))}
           {list.length > 3 ? (
             <li className="px-2 pt-1 text-xs text-muted">
-              <Link href="/projetos" className="hover:text-fg hover:underline">
+              <Link href="/projetos" className="hover:text-fg">
                 + {list.length - 3} projeto{list.length - 3 === 1 ? '' : 's'}
               </Link>
             </li>
@@ -356,11 +356,11 @@ function TodayTasks({ title, today, tasks }: { title: string; today: string; tas
                   <DueChip due={t.due_on} today={today} done={done} />
                   <ReminderChip task={t} />
                   {t.lead ? (
-                    <Link href={`${leadPath(t.lead)}#tarefas`} className="hover:text-fg hover:underline">
+                    <Link href={`${leadPath(t.lead)}#tarefas`} className="hover:text-fg">
                       <span className="tabular">#{t.lead.number}</span> {t.lead.company_name}
                     </Link>
                   ) : (
-                    <Link href="/tarefas" className="hover:text-fg hover:underline">
+                    <Link href="/tarefas" className="hover:text-fg">
                       Sem lead
                     </Link>
                   )}
@@ -486,7 +486,7 @@ function TodayStalled({ today, leads }: { today: string; leads: Lead[] }) {
   return (
     <div role="status" aria-label="Sem próximo passo" className="flex flex-wrap items-center gap-2 rounded-lg border border-warning/50 px-3 py-2 text-sm">
       <span className="mr-auto">
-        <Link href="/leads?due=none" className="font-medium text-warning hover:underline">
+        <Link href="/leads?due=none" className="font-medium text-warning hover:text-fg">
           {leads.length === 1 ? '1 lead em conversa' : `${leads.length} leads em conversa`} sem próximo passo
         </Link>
       </span>
@@ -555,7 +555,7 @@ function TodayCard({ className }: { className?: string }) {
       {data && !empty ? (
         <p className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border px-4 py-2 text-xs text-muted">
           <span>É tudo para os próximos 7 dias.</span>
-          <Link href="/prospecao" className="text-accent-text hover:underline">
+          <Link href="/prospecao" className="text-accent-text hover:text-accent-text-hover">
             Contactar mais leads na Prospeção →
           </Link>
         </p>
@@ -590,7 +590,7 @@ function HotLeadsCard({ className, fitToday }: { className?: string; fitToday?: 
           </>
         }
         actions={
-          <Link href="/leads?sort=score&order=desc" className="text-sm text-accent-text hover:underline">
+          <Link href="/leads?sort=score&order=desc" className="text-sm text-accent-text hover:text-accent-text-hover">
             Ver todos
           </Link>
         }
@@ -698,11 +698,11 @@ function PipelineCard({ byStatus, className }: { byStatus: { status: LeadStatus;
         actions={
           // Dois links (cada um com o seu ícone e um separador): juntos pareciam um só texto.
           <span className="flex items-center gap-2 text-sm">
-            <Link href="/kanban" className="inline-flex items-center gap-1 text-accent-text hover:underline">
+            <Link href="/kanban" className="inline-flex items-center gap-1 text-accent-text hover:text-accent-text-hover">
               <Columns3 className="h-3.5 w-3.5" aria-hidden /> Kanban
             </Link>
             <span className="h-4 w-px bg-border" aria-hidden />
-            <Link href="/estatisticas" className="inline-flex items-center gap-1 text-accent-text hover:underline">
+            <Link href="/estatisticas" className="inline-flex items-center gap-1 text-accent-text hover:text-accent-text-hover">
               <BarChart3 className="h-3.5 w-3.5" aria-hidden /> Estatísticas
             </Link>
           </span>
@@ -739,12 +739,12 @@ function PipelineCard({ byStatus, className }: { byStatus: { status: LeadStatus;
           </span>
         ) : null}
         {aside.map((s) => (
-          <Link key={s} href={`/leads?status=${s}&archived=include`} className="inline-flex items-center gap-1 hover:text-fg hover:underline">
+          <Link key={s} href={`/leads?status=${s}&archived=include`} className="inline-flex items-center gap-1 hover:text-fg">
             <StatusIcon status={s} className="h-3 w-3" />
             {LEAD_STATUS_META[s].label}: <span className="tabular">{count(s)}</span>
           </Link>
         ))}
-        <Link href="/estatisticas#funil" className="ml-auto text-accent-text hover:underline">
+        <Link href="/estatisticas#funil" className="ml-auto text-accent-text hover:text-accent-text-hover">
           Passagem entre fases →
         </Link>
       </p>

@@ -283,7 +283,7 @@ export function PomodoroBox({ lead, compact, className }: { lead: Lead; compact?
           {elsewhere ? (
             <p className="text-center text-xs text-muted">
               A decorrer em{' '}
-              <Link href={`${leadPath(elsewhere.lead)}#projeto`} className="font-medium text-accent-text hover:underline">
+              <Link href={`${leadPath(elsewhere.lead)}#projeto`} className="font-medium text-accent-text hover:text-accent-text-hover">
                 {elsewhere.lead.company_name}
               </Link>
               . Começar aqui passa o pomodoro para este projeto.
@@ -487,7 +487,7 @@ export function PomodoroIndicator({ pomodoro, compact, className }: { pomodoro: 
       )}
       <span className={cn('leading-tight', compact ? 'shrink-0 whitespace-nowrap' : 'min-w-0 flex-1')}>
         {!compact ? (
-          <Link href={`${leadPath(pomodoro.lead)}#projeto`} className="block truncate text-xs text-muted hover:text-fg hover:underline">
+          <Link href={`${leadPath(pomodoro.lead)}#projeto`} className="block truncate text-xs text-muted hover:text-fg">
             {label} · {pomodoro.lead.company_name}
           </Link>
         ) : null}

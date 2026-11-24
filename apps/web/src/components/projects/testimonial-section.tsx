@@ -215,7 +215,7 @@ export function TestimonialSection({ lead }: { lead: Lead }) {
                       : "Escondido das propostas. "}
                 <Link
                   href="/definicoes/testemunhos"
-                  className="text-accent-text hover:underline"
+                  className="text-accent-text hover:text-accent-text-hover"
                 >
                   Gerir testemunhos
                 </Link>

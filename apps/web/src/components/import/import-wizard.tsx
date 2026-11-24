@@ -576,7 +576,7 @@ export function ImportWizard() {
             <ul className="relative mx-4 mb-4 max-h-64 overflow-auto rounded-lg border border-border text-sm">
               {created.map((r) => (
                 <li key={r.index} className="border-b border-border px-3 py-1.5 last:border-0">
-                  <Link href={`/leads/${r.lead_id}`} className="hover:underline">
+                  <Link href={`/leads/${r.lead_id}`} className="hover:text-accent-text">
                     <span className="text-muted tabular">#{r.number}</span> {r.company_name}
                   </Link>
                 </li>

@@ -49,7 +49,7 @@ function DeliverableRow({ lead, d }: { lead: Lead; d: ProjectDeliverable }) {
       )}
       <span className="min-w-0 flex-1">
         {d.url ? (
-          <a href={d.url} target="_blank" rel="noreferrer noopener" className="inline-flex max-w-full items-center gap-1 font-medium hover:text-accent-text hover:underline" title={d.url}>
+          <a href={d.url} target="_blank" rel="noreferrer noopener" className="inline-flex max-w-full items-center gap-1 font-medium hover:text-accent-text" title={d.url}>
             <span className="truncate">{d.title}</span>
             <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
             <span className="sr-only">(abre num novo separador: {displayHost(d.url)})</span>

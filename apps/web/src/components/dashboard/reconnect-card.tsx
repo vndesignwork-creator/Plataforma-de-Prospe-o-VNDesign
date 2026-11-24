@@ -112,7 +112,7 @@ function ReconnectRow({ client }: { client: ReconnectClient }) {
     <li className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
       <Handshake className="h-4 w-4 shrink-0 text-muted" aria-hidden />
       <div className="min-w-0 flex-1">
-        <Link href={leadPath(client.lead)} className="text-sm font-medium hover:underline">
+        <Link href={leadPath(client.lead)} className="text-sm font-medium hover:text-accent-text">
           <span className="text-muted tabular">#{client.lead.number}</span> {client.lead.company_name}
         </Link>
         <p className="text-xs text-muted">

@@ -306,7 +306,7 @@ export function ProspectingSession() {
                       setDoneOpen(true);
                       requestAnimationFrame(() => document.getElementById('feito-nesta-sessao')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
                     }}
-                    className="inline-flex items-center gap-1 font-medium text-success hover:underline"
+                    className="inline-flex items-center gap-1 font-medium text-success hover:text-fg"
                   >
                     <Check className="h-3.5 w-3.5" aria-hidden /> {done.length} feito{done.length === 1 ? '' : 's'}
                   </button>
@@ -445,7 +445,7 @@ export function ProspectingSession() {
       ) : null}
 
       {view !== 'missing' && data && missingCount ? (
-        <button type="button" onClick={() => changeView('missing')} className="self-start text-sm text-accent-text hover:underline">
+        <button type="button" onClick={() => changeView('missing')} className="self-start text-sm text-accent-text hover:text-accent-text-hover">
           {missingCount} lead{missingCount === 1 ? '' : 's'} com follow-up ou por contactar {mode === 'email' ? 'sem email → Falta email' : 'sem telefone nem email → Falta contacto'}
         </button>
       ) : null}
@@ -924,7 +924,7 @@ function LeadDetails({ item }: { item: ProspectingItem }) {
           <div>
             <dt className="text-xs font-medium tracking-wide text-muted uppercase">Site</dt>
             <dd className="mt-0.5">
-              <a href={lead.website} target="_blank" rel="noreferrer" className="text-accent-text hover:underline">
+              <a href={lead.website} target="_blank" rel="noreferrer" className="text-accent-text hover:text-accent-text-hover">
                 {displayHost(lead.website)}
               </a>
             </dd>
@@ -935,7 +935,7 @@ function LeadDetails({ item }: { item: ProspectingItem }) {
         type="button"
         onClick={() => setScripts((v) => !v)}
         aria-expanded={scripts}
-        className="self-start text-sm text-accent-text hover:underline"
+        className="self-start text-sm text-accent-text hover:text-accent-text-hover"
       >
         {scripts ? 'Esconder scripts' : 'Ver scripts'}
       </button>
