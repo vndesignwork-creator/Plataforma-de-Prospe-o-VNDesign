@@ -110,6 +110,7 @@ import { WhatsAppMenu } from '@/components/leads/whatsapp-menu';
 import { PaymentsCard } from '@/components/projects/payments-card';
 import { ContractsCard } from '@/components/projects/contracts-card';
 import { BrandKitCard } from '@/components/projects/brand-kit-card';
+import { AccessesCard } from '@/components/projects/accesses-card';
 import { ClientProjectsCard } from '@/components/projects/client-projects-card';
 import { ProjectCard } from '@/components/projects/project-card';
 import { rovingKeyDown, rovingTabIndex } from '@/lib/roving';
@@ -527,6 +528,7 @@ export function LeadDetail({ id }: { id: string }) {
     payments: staff && settings?.features.payments ? <PaymentsCard lead={lead} /> : null,
     projects: staff && settings?.features.projects ? <ClientProjectsCard lead={lead} /> : null,
     brand_kit: staff && settings?.features.brand_kit && (lead.status === 'cliente' || lead.client_of) && !lead.anonymized_at ? <BrandKitCard lead={lead} /> : null,
+    accesses: staff && settings?.features.brand_kit && (lead.status === 'cliente' || lead.client_of) && !lead.anonymized_at ? <AccessesCard lead={lead} /> : null,
     // Antes de ser cliente: só os ficheiros (os mesmos do kit, que ficam lá quando ganhar).
     files: settings?.features.brand_kit && lead.status !== 'cliente' && !lead.client_of && !lead.anonymized_at ? <LeadFilesCard lead={lead} /> : null,
     proposals: staff ? <ProposalsCard lead={lead} /> : null,

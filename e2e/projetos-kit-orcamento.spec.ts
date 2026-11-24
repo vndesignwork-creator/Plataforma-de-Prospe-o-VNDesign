@@ -91,12 +91,13 @@ test('kit da marca: cores, links, ficheiro e acesso cifrado; o colaborador vê s
   expect(download.status()).toBe(200);
   expect(await download.text()).toContain('<svg');
 
-  // Acessos: um partilhado com os colaboradores, outro não.
+  // Acessos: cartão próprio, um partilhado com os colaboradores, outro não.
+  const acessos = page.locator('#acessos');
   for (const [label, secret, shared] of [
     ['Alojamento', `Hosting-${run}`, true],
     ['Domínio', `Dominio-${run}`, false],
   ] as const) {
-    await card.getByRole('button', { name: 'Acesso', exact: true }).click();
+    await acessos.getByRole('button', { name: 'Acesso', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Novo acesso' });
     await dialog.getByLabel('O quê').fill(label);
     await dialog.getByLabel('Utilizador ou email').fill(`cliente@marca-${run}.pt`);
@@ -105,7 +106,7 @@ test('kit da marca: cores, links, ficheiro e acesso cifrado; o colaborador vê s
     await dialog.getByRole('button', { name: 'Guardar' }).click();
     await expect(dialog).toBeHidden();
   }
-  const accesses = card.getByRole('list', { name: 'Acessos do cliente' });
+  const accesses = acessos.getByRole('list', { name: 'Acessos do cliente' });
   await expect(accesses.getByRole('listitem')).toHaveCount(2);
   // A palavra-passe não vem na lista: só ao pedir.
   await expect(accesses).not.toContainText(`Hosting-${run}`);
@@ -275,4 +276,40 @@ test('apagar o primeiro projeto: o outro passa a principal e fica com a linha do
   expect(kept.pinned_note).toContain(`Nota do cliente ${run}`);
   expect((await page.request.get(`/api/v1/leads/${main.id}`)).status()).toBe(404);
   await page.request.delete(`/api/v1/leads/${child.id}`);
+});
+
+test('acessos: cartão próprio, gerar palavra-passe, esconder sozinha e registo de quem viu', async ({ page }) => {
+  test.setTimeout(150_000);
+  const lead = (await (await page.request.post('/api/v1/leads?force=true', { data: { company_name: `Acessos ${run}`, status: 'cliente' } })).json()).data as { id: string };
+
+  try {
+    await page.goto(`/leads/${lead.id}`);
+    const card = page.locator('#acessos');
+    await expect(card.getByRole('heading', { name: 'Acessos' })).toBeVisible();
+
+    // Gerar uma palavra-passe forte (fica no campo e é copiada).
+    await card.getByRole('button', { name: 'Acesso', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Novo acesso' });
+    await dialog.getByLabel('O quê').fill('WordPress');
+    await dialog.getByRole('button', { name: 'Gerar' }).click();
+    const gerada = await dialog.getByLabel('Palavra-passe').inputValue();
+    expect(gerada.length).toBeGreaterThanOrEqual(20);
+    await dialog.getByRole('button', { name: 'Guardar' }).click();
+    await expect(dialog).toBeHidden();
+
+    // A palavra-passe não vem na lista; só a pedido.
+    const lista = card.getByRole('list', { name: 'Acessos do cliente' });
+    await expect(lista).not.toContainText(gerada);
+    await lista.getByRole('button', { name: 'Mostrar a palavra-passe de WordPress' }).click();
+    await expect(lista).toContainText(gerada);
+    // Esconder outra vez com o mesmo botão.
+    await lista.getByRole('button', { name: 'Esconder a palavra-passe de WordPress' }).click();
+    await expect(lista).not.toContainText(gerada);
+
+    // Quem viu fica registado (Definições → Registo).
+    await page.goto('/definicoes/registo');
+    await expect(page.getByText('Viu a palavra-passe de um acesso de cliente').first()).toBeVisible();
+  } finally {
+    await page.request.delete(`/api/v1/leads/${lead.id}`);
+  }
 });

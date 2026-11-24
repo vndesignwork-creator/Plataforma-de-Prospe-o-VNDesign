@@ -74,7 +74,7 @@ describe('tarefas com responsável', () => {
 
 describe('ordem dos cartões da ficha', () => {
   it('por omissão, a ordem de sempre', () => {
-    expect(arrangeCards(null)).toEqual(['tasks', 'payments', 'projects', 'brand_kit', 'files', 'proposals', 'contracts', 'activity']);
+    expect(arrangeCards(null)).toEqual(['tasks', 'payments', 'projects', 'brand_kit', 'accesses', 'files', 'proposals', 'contracts', 'activity']);
   });
 
   it('a ordem escolhida; cartões desconhecidos saem e os que faltam entram no sítio de sempre', () => {
@@ -83,7 +83,7 @@ describe('ordem dos cartões da ficha', () => {
     expect(order).toContain('payments');
     expect(order).not.toContain('antigo');
     expect(order.indexOf('payments')).toBe(order.indexOf('tasks') + 1);
-    expect(new Set(order).size).toBe(8);
+    expect(new Set(order).size).toBe(9);
   });
 
   it('a Linha do tempo nunca se esconde', () => {

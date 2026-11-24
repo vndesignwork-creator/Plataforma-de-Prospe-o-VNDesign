@@ -5,19 +5,17 @@
  * e acessos (domínio, alojamento, redes). É o mesmo em todos os projetos do
  * cliente; as palavras-passe ficam cifradas e só se mostram a pedido.
  */
-import type { BrandKit, Lead, LeadAccess } from '@vndesign/core';
-import { Copy, Download, Eye, EyeOff, KeyRound, Link2, Palette, Pencil, Plus, Trash2, Type, Upload, Users } from 'lucide-react';
+import type { BrandKit, Lead } from '@vndesign/core';
+import { Download, Link2, Palette, Pencil, Plus, Trash2, Type, Upload } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { Button } from '@/components/ui/button';
-import { Badge, Card, CardHeader, Skeleton } from '@/components/ui/card';
-import { Dialog } from '@/components/ui/dialog';
+import { Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
 import { Input, Textarea } from '@/components/ui/input';
-import { PasswordInput } from '@/components/ui/password-input';
-import { ApiClientError, api, errorMessage } from '@/lib/api-client';
-import { useAccessAction, useAccesses, useBrandKit, useBrandKitAction } from '@/lib/queries';
+import { ApiClientError, errorMessage } from '@/lib/api-client';
+import { useBrandKit, useBrandKitAction } from '@/lib/queries';
 import { BrandToolsBar } from './brand-tools';
 
 async function copy(text: string, what: string) {
@@ -68,8 +66,7 @@ export function BrandKitCard({ lead }: { lead: Lead }) {
       {collapsed ? null : (
         <>
           <FilesSection lead={lead} kit={kit} />
-          <AccessesSection lead={lead} />
-        </>
+            </>
       )}
     </Card>
   );
@@ -314,180 +311,5 @@ export function FilesSection({
         <p className="mt-1 text-sm text-muted">{hint}</p>
       )}
     </section>
-  );
-}
-
-function AccessesSection({ lead }: { lead: Lead }) {
-  const { data: accesses } = useAccesses(lead.id);
-  const action = useAccessAction(lead.id);
-  const [editing, setEditing] = useState<LeadAccess | 'new' | null>(null);
-  const [shown, setShown] = useState<Record<string, string | null>>({});
-  // A lista pode ficar recolhida (com o número de acessos); a escolha fica lembrada neste browser.
-  const [collapsed, setCollapsed] = useCollapsed('acessos');
-
-  async function reveal(a: LeadAccess, then?: 'copy') {
-    try {
-      const secret = shown[a.id] ?? (await api<{ data: { secret: string | null } }>(`/accesses/${a.id}/secret`)).data.secret;
-      if (then === 'copy') {
-        if (secret) await copy(secret, 'Palavra-passe');
-        return;
-      }
-      setShown((s) => (a.id in s ? Object.fromEntries(Object.entries(s).filter(([k]) => k !== a.id)) : { ...s, [a.id]: secret }));
-    } catch (error) {
-      toast.error(errorMessage(error));
-    }
-  }
-
-  return (
-    <section aria-label="Acessos" className="border-t border-border px-4 py-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="inline-flex items-center gap-1.5 text-sm font-semibold">
-          <KeyRound className="h-4 w-4 text-muted" aria-hidden /> Acessos
-        </h3>
-        <span className="flex items-center gap-1">
-          {!lead.anonymized_at ? (
-            <Button size="sm" variant="ghost" onClick={() => setEditing('new')}>
-              <Plus className="h-3.5 w-3.5" aria-hidden /> Acesso
-            </Button>
-          ) : null}
-          {accesses?.length ? (
-            <CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label={`Acessos (${accesses.length})`} />
-          ) : null}
-        </span>
-      </div>
-      {accesses?.length && collapsed ? (
-        <p className="mt-1 text-sm text-muted">
-          {accesses.length} acesso{accesses.length === 1 ? '' : 's'} guardado{accesses.length === 1 ? '' : 's'}.
-        </p>
-      ) : accesses?.length ? (
-        <ul className="mt-2 flex flex-col divide-y divide-border text-sm" aria-label="Acessos do cliente">
-          {accesses.map((a) => (
-            <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
-              <span className="min-w-0 flex-1">
-                <span className="flex flex-wrap items-center gap-2 font-medium">
-                  {a.url ? (
-                    <a href={a.url} target="_blank" rel="noreferrer noopener" className="text-accent-text hover:underline">
-                      {a.label}
-                    </a>
-                  ) : (
-                    a.label
-                  )}
-                  {a.shared ? (
-                    <Badge className="inline-flex items-center gap-1">
-                      <Users className="h-3 w-3" aria-hidden /> Colaboradores
-                    </Badge>
-                  ) : null}
-                </span>
-                <span className="block text-xs text-muted">
-                  {a.username ? (
-                    <button type="button" onClick={() => void copy(a.username!, 'Utilizador')} className="hover:text-fg" title="Copiar">
-                      {a.username}
-                    </button>
-                  ) : null}
-                  {a.has_secret ? (
-                    <span className="font-mono">
-                      {a.username ? ' · ' : ''}
-                      {a.id in shown ? shown[a.id] : '••••••••'}
-                    </span>
-                  ) : null}
-                  {a.notes ? ` · ${a.notes}` : ''}
-                </span>
-              </span>
-              {a.has_secret ? (
-                <>
-                  <button type="button" onClick={() => void reveal(a)} className="rounded p-1 text-muted hover:bg-surface-3 hover:text-fg" aria-label={a.id in shown ? `Esconder a palavra-passe de ${a.label}` : `Mostrar a palavra-passe de ${a.label}`}>
-                    {a.id in shown ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
-                  </button>
-                  <button type="button" onClick={() => void reveal(a, 'copy')} className="rounded p-1 text-muted hover:bg-surface-3 hover:text-fg" aria-label={`Copiar a palavra-passe de ${a.label}`}>
-                    <Copy className="h-4 w-4" aria-hidden />
-                  </button>
-                </>
-              ) : null}
-              <button type="button" onClick={() => setEditing(a)} className="rounded p-1 text-muted hover:bg-surface-3 hover:text-fg" aria-label={`Editar ${a.label}`}>
-                <Pencil className="h-3.5 w-3.5" aria-hidden />
-              </button>
-              <button
-                type="button"
-                onClick={() => action.mutate({ id: a.id, remove: true }, { onSuccess: () => toast.success('Acesso apagado.'), onError: (e) => toast.error(errorMessage(e)) })}
-                className="rounded p-1 text-muted hover:bg-danger-soft hover:text-danger"
-                aria-label={`Apagar ${a.label}`}
-              >
-                <Trash2 className="h-3.5 w-3.5" aria-hidden />
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="mt-1 text-sm text-muted">Domínio, alojamento, WordPress, redes sociais… As palavras-passe ficam cifradas.</p>
-      )}
-      {editing ? <AccessDialog lead={lead} access={editing === 'new' ? null : editing} onClose={() => setEditing(null)} /> : null}
-    </section>
-  );
-}
-
-function AccessDialog({ lead, access, onClose }: { lead: Lead; access: LeadAccess | null; onClose: () => void }) {
-  const action = useAccessAction(lead.id);
-  const [form, setForm] = useState({
-    label: access?.label ?? '',
-    url: access?.url ?? '',
-    username: access?.username ?? '',
-    secret: '',
-    notes: access?.notes ?? '',
-    shared: access?.shared ?? false,
-  });
-  const [errors, setErrors] = useState<Record<string, string[]>>({});
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setErrors({});
-    try {
-      await action.mutateAsync({ id: access?.id, body: { ...form, secret: form.secret || undefined } });
-      toast.success(access ? 'Acesso guardado.' : 'Acesso juntado.');
-      onClose();
-    } catch (error) {
-      if (error instanceof ApiClientError && error.problem.errors) setErrors(error.problem.errors as Record<string, string[]>);
-      else toast.error(errorMessage(error));
-    }
-  }
-
-  return (
-    <Dialog
-      open
-      onOpenChange={(o) => (!o ? onClose() : undefined)}
-      title={access ? `Editar ${access.label}` : 'Novo acesso'}
-      className="max-w-lg"
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" form="access-form" loading={action.isPending} disabled={!form.label.trim()}>
-            Guardar
-          </Button>
-        </>
-      }
-    >
-      <form id="access-form" onSubmit={submit} className="grid gap-3" noValidate>
-        <Field label="O quê" required error={errors.label?.[0]}>
-          <Input placeholder="Ex.: Alojamento Hostinger, Instagram, Domínio .pt" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
-        </Field>
-        <Field label="Endereço para entrar" error={errors.url?.[0]}>
-          <Input type="url" placeholder="https://hpanel.hostinger.com" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />
-        </Field>
-        <Field label="Utilizador ou email">
-          <Input autoComplete="off" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
-        </Field>
-        <Field label="Palavra-passe" hint={access?.has_secret ? 'Vazio mantém a palavra-passe guardada.' : 'Fica cifrada no servidor.'}>
-          <PasswordInput autoComplete="new-password" value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} />
-        </Field>
-        <Field label="Notas">
-          <Input placeholder="Ex.: renova em março; código 2FA no telemóvel do cliente" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-        </Field>
-        <label className="inline-flex items-center gap-2 text-sm">
-          <input type="checkbox" className="h-4 w-4" checked={form.shared} onChange={(e) => setForm({ ...form, shared: e.target.checked })} />
-          Partilhar com os colaboradores dos projetos deste cliente
-        </label>
-      </form>
-    </Dialog>
   );
 }

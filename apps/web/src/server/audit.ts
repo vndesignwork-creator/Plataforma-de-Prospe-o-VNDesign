@@ -108,6 +108,8 @@ export const AUDIT_RULES: Rule[] = [
     body: true,
     summary: (b) => (typeof b?.amount_usd === 'number' ? `Indicou os créditos da IA: ${b.amount_usd} $` : 'Tirou o valor dos créditos da IA'),
   },
+  { method: 'GET', path: /^\/accesses\/[^/]+\/secret$/, action: 'access_reveal', summary: () => 'Viu a palavra-passe de um acesso de cliente' },
+  { method: 'DELETE', path: /^\/accesses\/[^/]+$/, action: 'access_delete', summary: () => 'Apagou um acesso de cliente' },
   { method: 'DELETE', path: /^\/collaborators\/[^/]+$/, action: 'collaborator_remove', summary: () => 'Removeu o acesso de um colaborador' },
   { method: 'DELETE', path: /^\/custom-fields\/[^/]+$/, action: 'custom_field_delete', summary: () => 'Apagou um campo personalizado' },
   { method: 'DELETE', path: /^\/automation-rules\/[^/]+$/, action: 'rule_delete', summary: () => 'Apagou uma regra automática' },

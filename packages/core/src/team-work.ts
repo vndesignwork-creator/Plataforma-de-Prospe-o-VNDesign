@@ -221,13 +221,14 @@ export function taskGroup(due: string | null, today: string, weekEnd: string): T
 // -----------------------------------------------------------------------------
 // Ordem dos cartões da ficha (coluna lateral)
 // -----------------------------------------------------------------------------
-export const LEAD_CARDS = ['tasks', 'payments', 'projects', 'brand_kit', 'files', 'proposals', 'contracts', 'activity'] as const;
+export const LEAD_CARDS = ['tasks', 'payments', 'projects', 'brand_kit', 'accesses', 'files', 'proposals', 'contracts', 'activity'] as const;
 export type LeadCard = (typeof LEAD_CARDS)[number];
 export const LEAD_CARD_LABELS: Record<LeadCard, string> = {
   tasks: 'Tarefas',
   payments: 'Pagamentos',
   projects: 'Projetos do cliente',
   brand_kit: 'Kit da marca',
+  accesses: 'Acessos',
   files: 'Ficheiros',
   proposals: 'Propostas',
   contracts: 'Contratos',

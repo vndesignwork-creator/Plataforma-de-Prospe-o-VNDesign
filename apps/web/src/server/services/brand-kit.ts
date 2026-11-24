@@ -200,6 +200,11 @@ export async function deleteAccess(ctx: ApiContext, id: string): Promise<void> {
 
 /** A palavra-passe em claro (só a pedido, para mostrar ou copiar). */
 export async function revealAccess(ctx: ApiContext, id: string, mustBeShared?: { mainId: string }): Promise<string | null> {
+  // Palavras-passe de clientes: só o dono e os administradores (os prospetores
+  // não lhes mexem). Os colaboradores usam a rota deles, com os partilhados.
+  if (!mustBeShared && ctx.role !== 'owner' && ctx.role !== 'admin') {
+    throw new ApiError(403, 'Sem permissão', 'Só o dono e os administradores veem as palavras-passe dos acessos.');
+  }
   const row = await getAccessRow(ctx, id);
   if (mustBeShared && (!row.shared || row.lead_id !== mustBeShared.mainId)) throw new ApiError(404, 'Acesso não encontrado');
   if (!row.secret_ciphertext) return null;
