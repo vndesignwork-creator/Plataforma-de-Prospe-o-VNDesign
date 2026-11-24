@@ -39,6 +39,8 @@ export const PlatformStatusSchema = z
     digest: z.enum(CRON_STATES),
     /** O envio de emails da plataforma (SMTP) está configurado? Sem ele, o aviso só vai para o sino. */
     mail_configured: z.boolean(),
+    /** Há uma chave de cifra própria (AI_KEYS_SECRET)? Sem ela, as palavras-passe e chaves guardadas dependem da chave do Supabase. */
+    keys_secret: z.boolean(),
     problems: z.array(PlatformProblemSchema),
   })
   .meta({ id: 'PlatformStatus' });

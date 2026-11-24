@@ -418,7 +418,12 @@ SMTP_PASS=<palavra-passe da caixa de email>
 SMTP_FROM=VNDesign Leads <leads@vndesign.pt>
 APP_URL=https://leads.vndesign.pt
 CRON_SECRET=<um texto aleatório longo>
+AI_KEYS_SECRET=<outro texto aleatório longo>   # cifra as palavras-passe dos acessos e as chaves de IA
 ```
+
+> **AI_KEYS_SECRET:** sem ela, a cifra usa a chave do Supabase — se um dia a mudares, as
+> palavras-passe guardadas deixam de abrir. Define-a uma vez e não lhe mexas (Definições →
+> Estado da plataforma avisa quando falta).
 
 Em desenvolvimento, o Supabase local inclui o **Mailpit**: usa `SMTP_HOST=127.0.0.1` e
 `SMTP_PORT=54325` e vê os emails em http://127.0.0.1:54324. Testa em **Definições →

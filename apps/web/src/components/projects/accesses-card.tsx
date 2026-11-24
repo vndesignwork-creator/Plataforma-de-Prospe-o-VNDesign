@@ -69,6 +69,60 @@ function SecretInput({
   );
 }
 
+/** Confirmar a palavra-passe da conta antes de ver as dos clientes. */
+function UnlockDialog({ onClose, onUnlocked }: { onClose: () => void; onUnlocked: () => void }) {
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const { data } = await api<{ data: { minutes: number } }>('/accesses/unlock', { method: 'POST', body: { password } });
+      toast.success(`Confirmado: podes ver as palavras-passe durante ${data.minutes} minutos.`);
+      onUnlocked();
+      onClose();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(o) => (!o ? onClose() : undefined)}
+      title="Confirma a tua palavra-passe"
+      description="As palavras-passe dos clientes só se mostram depois de confirmares que és tu."
+      className="max-w-sm"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" form="unlock-form" loading={busy} disabled={!password}>
+            Confirmar
+          </Button>
+        </>
+      }
+    >
+      <form id="unlock-form" onSubmit={submit} className="flex flex-col gap-3" noValidate>
+        {error ? (
+          <p role="alert" className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">
+            {error}
+          </p>
+        ) : null}
+        <Field label="A tua palavra-passe">
+          <PasswordInput autoComplete="current-password" autoFocus value={password} onChange={(e) => setPassword(e.target.value)} />
+        </Field>
+      </form>
+    </Dialog>
+  );
+}
+
 export function AccessesCard({ lead }: { lead: Lead }) {
   const { data: accesses } = useAccesses(lead.id);
   const action = useAccessAction(lead.id);
@@ -84,6 +138,8 @@ export function AccessesCard({ lead }: { lead: Lead }) {
   }, []);
   // A lista pode ficar recolhida (com o número de acessos); a escolha fica lembrada neste browser.
   const [collapsed, setCollapsed] = useCollapsed('acessos');
+
+  const [unlocking, setUnlocking] = useState<{ access: LeadAccess; then?: 'copy' } | null>(null);
 
   async function reveal(a: LeadAccess, then?: 'copy') {
     try {
@@ -103,6 +159,11 @@ export function AccessesCard({ lead }: { lead: Lead }) {
         return { ...s, [a.id]: secret };
       });
     } catch (error) {
+      // Falta confirmar a palavra-passe da conta: pergunta e repete a seguir.
+      if (error instanceof ApiClientError && (error.problem as { code?: string }).code === 'unlock_required') {
+        setUnlocking({ access: a, then });
+        return;
+      }
       toast.error(errorMessage(error));
     }
   }
@@ -197,6 +258,16 @@ export function AccessesCard({ lead }: { lead: Lead }) {
       )}
       </div>
       {editing ? <AccessDialog lead={lead} access={editing === 'new' ? null : editing} onClose={() => setEditing(null)} /> : null}
+      {unlocking ? (
+        <UnlockDialog
+          onClose={() => setUnlocking(null)}
+          onUnlocked={() => {
+            const pedido = unlocking;
+            setUnlocking(null);
+            void reveal(pedido.access, pedido.then);
+          }}
+        />
+      ) : null}
     </Card>
   );
 }

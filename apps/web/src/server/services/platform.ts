@@ -105,6 +105,7 @@ export async function getPlatformStatus(ctx: ApiContext): Promise<PlatformStatus
     reminders: cronState(reminders, CRON_REMINDERS_LATE_MS, now),
     digest: cronState(digest, CRON_DIGEST_LATE_MS, now),
     mail_configured: isMailConfigured(),
+    keys_secret: Boolean(process.env.AI_KEYS_SECRET?.trim()),
     problems: (problems.data ?? []) as PlatformProblem[],
   };
 }

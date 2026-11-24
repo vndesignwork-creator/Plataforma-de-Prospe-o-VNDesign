@@ -192,6 +192,27 @@ export function PlatformStatusView() {
 
       <SystemMailTest configured={data.mail_configured} />
 
+      {!data.keys_secret ? (
+        <Card>
+          <CardHeader
+            title="Chave de cifra das palavras-passe"
+            description="O que protege os acessos dos clientes e as chaves de IA guardadas na plataforma."
+          />
+          <div className="px-5 pb-5 text-sm">
+            <p className="rounded-lg bg-warning-soft px-3 py-2 text-warning">
+              Não há uma chave própria: a cifra está a usar a chave do Supabase. Se um dia a mudares, as palavras-passe guardadas deixam de abrir.
+            </p>
+            <p className="mt-2 font-medium">O que fazer</p>
+            <ol className="mt-1 list-decimal pl-5 text-muted">
+              <li>Gera um texto aleatório longo (40 caracteres ou mais) e guarda-o num sítio seguro.</li>
+              <li>No hPanel, nas variáveis da aplicação, cria <code className="font-mono">AI_KEYS_SECRET</code> com esse texto.</li>
+              <li>Faz Redeploy. Enquanto a variável não mudar, tudo continua a abrir como está.</li>
+            </ol>
+            <p className="mt-2 text-xs text-muted">Depois de definida, nunca a mudes sem voltares a escrever as palavras-passe e as chaves de IA.</p>
+          </div>
+        </Card>
+      ) : null}
+
       <Card>
         <CardHeader title="Problemas" description="O que falhou em segundo plano nos últimos 30 dias (os repetidos juntam-se)." />
         <div className="px-5 pb-5">

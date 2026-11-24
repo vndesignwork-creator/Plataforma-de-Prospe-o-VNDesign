@@ -18,6 +18,7 @@ import {
 import { openSecret, sealSecret } from '../ai/secret-box';
 import type { ApiContext } from '../context';
 import { ApiError, fromPostgrest } from '../http';
+import { isUnlocked } from './unlock';
 import { renderBrandManualPdf, type BrandManualData } from '../reports/brand-manual-pdf';
 import { createSupabaseAdminClient } from '../supabase-admin';
 import { createZip, uniqueNames, type ZipEntry } from '../zip';
@@ -204,6 +205,10 @@ export async function revealAccess(ctx: ApiContext, id: string, mustBeShared?: {
   // não lhes mexem). Os colaboradores usam a rota deles, com os partilhados.
   if (!mustBeShared && ctx.role !== 'owner' && ctx.role !== 'admin') {
     throw new ApiError(403, 'Sem permissão', 'Só o dono e os administradores veem as palavras-passe dos acessos.');
+  }
+  // E só depois de confirmar a palavra-passe da conta (vale alguns minutos).
+  if (!mustBeShared && !isUnlocked(ctx.user.id)) {
+    throw new ApiError(403, 'Confirma a tua palavra-passe', 'Para ver as palavras-passe dos clientes, confirma primeiro a palavra-passe da tua conta.', { code: 'unlock_required' });
   }
   const row = await getAccessRow(ctx, id);
   if (mustBeShared && (!row.shared || row.lead_id !== mustBeShared.mainId)) throw new ApiError(404, 'Acesso não encontrado');

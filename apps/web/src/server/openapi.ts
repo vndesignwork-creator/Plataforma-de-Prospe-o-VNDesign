@@ -2541,6 +2541,24 @@ export function getOpenApiDocument() {
           responses: { '200': ok(data(z.object({ count: z.int(), sample: z.array(z.object({ id: z.uuid(), number: z.int(), company_name: z.string() })) }))), ...common },
         }),
       },
+      '/accesses/unlock': {
+        get: op({
+          tags: ['Projetos'],
+          summary: 'Até quando as palavras-passe dos acessos estão desbloqueadas (null = é preciso confirmar)',
+          responses: { '200': ok(data(z.object({ until: z.string().nullable(), minutes: z.int() }))), ...common },
+        }),
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Confirmar a palavra-passe da conta para ver as palavras-passe dos acessos',
+          requestBody: body(z.object({ password: z.string() })),
+          responses: {
+            '200': ok(data(z.object({ until: z.string(), minutes: z.int() }))),
+            '422': problem('Palavra-passe errada'),
+            '429': problem('Demasiadas tentativas'),
+            ...common,
+          },
+        }),
+      },
       '/fixed-costs': {
         get: op({
           tags: ['Projetos'],

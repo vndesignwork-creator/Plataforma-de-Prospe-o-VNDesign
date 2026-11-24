@@ -6,6 +6,16 @@ import { expect, test, type APIRequestContext, type Browser } from '@playwright/
  */
 const run = Date.now().toString(36);
 
+/** As palavras-passe dos clientes pedem confirmação da conta (que vale uns minutos). */
+async function confirmarSeForPreciso(page: import('@playwright/test').Page) {
+  const dialogo = page.getByRole('dialog', { name: 'Confirma a tua palavra-passe' });
+  const apareceu = await dialogo.waitFor({ state: 'visible', timeout: 4000 }).then(() => true, () => false);
+  if (!apareceu) return;
+  await dialogo.getByLabel('A tua palavra-passe').fill(process.env.E2E_PASSWORD ?? 'e2e-password-123');
+  await dialogo.getByRole('button', { name: 'Confirmar' }).click();
+  await expect(dialogo).toBeHidden();
+}
+
 async function createLead(request: APIRequestContext, data: Record<string, unknown>) {
   const res = await request.post('/api/v1/leads?force=true', { data });
   expect(res.status(), await res.text()).toBe(201);
@@ -111,6 +121,8 @@ test('kit da marca: cores, links, ficheiro e acesso cifrado; o colaborador vê s
   // A palavra-passe não vem na lista: só ao pedir.
   await expect(accesses).not.toContainText(`Hosting-${run}`);
   await accesses.getByRole('button', { name: 'Mostrar a palavra-passe de Alojamento' }).click();
+  // Primeiro confirma-se a palavra-passe da conta (vale alguns minutos).
+  await confirmarSeForPreciso(page);
   await expect(accesses).toContainText(`Hosting-${run}`);
   const list = (await (await page.request.get(`/api/v1/leads/${lead.id}/accesses`)).json()).data as { label: string; has_secret: boolean }[];
   expect(JSON.stringify(list)).not.toContain(`Hosting-${run}`);
@@ -301,10 +313,15 @@ test('acessos: cartão próprio, gerar palavra-passe, esconder sozinha e registo
     const lista = card.getByRole('list', { name: 'Acessos do cliente' });
     await expect(lista).not.toContainText(gerada);
     await lista.getByRole('button', { name: 'Mostrar a palavra-passe de WordPress' }).click();
+    await confirmarSeForPreciso(page);
     await expect(lista).toContainText(gerada);
     // Esconder outra vez com o mesmo botão.
     await lista.getByRole('button', { name: 'Esconder a palavra-passe de WordPress' }).click();
     await expect(lista).not.toContainText(gerada);
+
+    // Palavra-passe errada não deixa ver.
+    const errado = await page.request.post('/api/v1/accesses/unlock', { data: { password: 'nao-e-esta-123' } });
+    expect([422, 429]).toContain(errado.status());
 
     // Quem viu fica registado (Definições → Registo).
     await page.goto('/definicoes/registo');
