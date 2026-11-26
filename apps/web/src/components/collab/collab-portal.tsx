@@ -440,6 +440,20 @@ function BrandBox({ project }: { project: CollabProject }) {
                     {a.username ?? ''}
                     {a.has_secret ? <span className="font-mono">{a.username ? ' · ' : ''}{a.id in shown ? shown[a.id] : '••••••••'}</span> : null}
                   </span>
+                  {/* O endereço à vista (sem o "https://"), como na ficha. */}
+                  {a.url ? (
+                    <a
+                      href={a.url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      title={a.url}
+                      className="inline-flex max-w-full min-w-0 items-center gap-1 text-xs text-muted hover:text-accent-text"
+                    >
+                      <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
+                      <span className="truncate">{a.url.replace(/^https?:\/\//i, '').replace(/\/+$/, '')}</span>
+                      <span className="sr-only">(abre num novo separador)</span>
+                    </a>
+                  ) : null}
                 </span>
                 {a.has_secret ? (
                   <Button size="sm" variant="ghost" onClick={() => void reveal(a.id)}>

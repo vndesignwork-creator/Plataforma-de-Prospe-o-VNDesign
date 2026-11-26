@@ -7,7 +7,7 @@
  * vê uma fica registado em Definições → Registo.
  */
 import type { Lead, LeadAccess } from '@vndesign/core';
-import { Copy, Eye, EyeOff, KeyRound, Pencil, Plus, Trash2, Users, Wand2 } from 'lucide-react';
+import { Copy, ExternalLink, Eye, EyeOff, KeyRound, Pencil, Plus, Trash2, Users, Wand2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
@@ -123,6 +123,11 @@ function UnlockDialog({ onClose, onUnlocked }: { onClose: () => void; onUnlocked
   );
 }
 
+/** O endereço como se lê (sem o "https://" nem a barra do fim), para caber na linha. */
+function enderecoCurto(url: string) {
+  return url.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+}
+
 export function AccessesCard({ lead }: { lead: Lead }) {
   const { data: accesses } = useAccesses(lead.id);
   const action = useAccessAction(lead.id);
@@ -232,6 +237,20 @@ export function AccessesCard({ lead }: { lead: Lead }) {
                   ) : null}
                   {a.notes ? ` · ${a.notes}` : ''}
                 </span>
+                {/* O endereço à vista: dá para ver qual é o painel sem ter de abrir o link. */}
+                {a.url ? (
+                  <a
+                    href={a.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    title={a.url}
+                    className="inline-flex max-w-full min-w-0 items-center gap-1 text-xs text-muted hover:text-accent-text"
+                  >
+                    <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
+                    <span className="truncate">{enderecoCurto(a.url)}</span>
+                    <span className="sr-only">(abre num novo separador)</span>
+                  </a>
+                ) : null}
               </span>
               {a.has_secret ? (
                 <>
