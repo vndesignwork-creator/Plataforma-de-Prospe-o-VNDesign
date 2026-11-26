@@ -6,8 +6,8 @@
  * servidor, só se mostram a pedido (e escondem-se sozinhas), e cada vez que se
  * vê uma fica registado em Definições → Registo.
  */
-import type { Lead, LeadAccess } from '@vndesign/core';
-import { Copy, ExternalLink, Eye, EyeOff, KeyRound, Pencil, Plus, Trash2, Users, Wand2 } from 'lucide-react';
+import { accessIsStale, accessSecretAge, formatDate, type Lead, type LeadAccess } from '@vndesign/core';
+import { Copy, ExternalLink, Eye, EyeOff, KeyRound, PackageCheck, Pencil, Plus, ShieldAlert, Trash2, Users, Wand2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
@@ -18,7 +18,8 @@ import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { ApiClientError, api, errorMessage } from '@/lib/api-client';
-import { useAccessAction, useAccesses } from '@/lib/queries';
+import { confirmar } from '@/components/ui/confirm';
+import { useAccessAction, useAccessHandover, useAccesses } from '@/lib/queries';
 
 async function copy(text: string, what: string) {
   try {
@@ -143,6 +144,7 @@ export function AccessesCard({ lead }: { lead: Lead }) {
   }, []);
   // A lista pode ficar recolhida (com o número de acessos); a escolha fica lembrada neste browser.
   const [collapsed, setCollapsed] = useCollapsed('acessos');
+  const [handover, setHandover] = useState(false);
 
   const [unlocking, setUnlocking] = useState<{ access: LeadAccess; then?: 'copy' } | null>(null);
 
@@ -193,6 +195,12 @@ export function AccessesCard({ lead }: { lead: Lead }) {
                 <Plus className="h-3.5 w-3.5" aria-hidden /> Acesso
               </Button>
             ) : null}
+            {/* Fim do trabalho: entregar ao cliente e deixar de guardar as palavras-passe. */}
+            {accesses?.length && !lead.anonymized_at ? (
+              <Button size="sm" variant="ghost" onClick={() => setHandover(true)}>
+                <PackageCheck className="h-3.5 w-3.5" aria-hidden /> Entregar…
+              </Button>
+            ) : null}
             {accesses?.length ? (
               <CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label={`Acessos (${accesses.length})`} />
             ) : null}
@@ -222,6 +230,17 @@ export function AccessesCard({ lead }: { lead: Lead }) {
                       <Users className="h-3 w-3" aria-hidden /> Colaboradores
                     </Badge>
                   ) : null}
+                  {/* Palavra-passe guardada há mais de um ano: vale a pena trocá-la. */}
+                  {accessIsStale(a) ? (
+                    <Badge tone="warning" className="inline-flex items-center gap-1" title={`Guardada desde ${formatDate(a.secret_changed_at!.slice(0, 10))}`}>
+                      <ShieldAlert className="h-3 w-3" aria-hidden /> Trocar ({Math.floor((accessSecretAge(a) ?? 0) / 30)} meses)
+                    </Badge>
+                  ) : null}
+                  {a.handed_over_at ? (
+                    <Badge tone="success" className="inline-flex items-center gap-1" title={`Entregue em ${formatDate(a.handed_over_at.slice(0, 10))}`}>
+                      <PackageCheck className="h-3 w-3" aria-hidden /> Entregue
+                    </Badge>
+                  ) : null}
                 </span>
                 <span className="block text-xs text-muted">
                   {a.username ? (
@@ -237,6 +256,13 @@ export function AccessesCard({ lead }: { lead: Lead }) {
                   ) : null}
                   {a.notes ? ` · ${a.notes}` : ''}
                 </span>
+                {/* Onde está guardada, quando não está aqui. */}
+                {a.vault_ref ? (
+                  <span className="flex items-center gap-1 text-xs text-muted">
+                    <KeyRound className="h-3 w-3 shrink-0" aria-hidden />
+                    <span className="truncate">{a.vault_ref}</span>
+                  </span>
+                ) : null}
                 {/* O endereço à vista: dá para ver qual é o painel sem ter de abrir o link. */}
                 {a.url ? (
                   <a
@@ -281,6 +307,7 @@ export function AccessesCard({ lead }: { lead: Lead }) {
       )}
       </div>
       {editing ? <AccessDialog lead={lead} access={editing === 'new' ? null : editing} onClose={() => setEditing(null)} /> : null}
+      {handover ? <HandoverDialog lead={lead} accesses={accesses ?? []} onClose={() => setHandover(false)} /> : null}
       {unlocking ? (
         <UnlockDialog
           onClose={() => setUnlocking(null)}
@@ -295,6 +322,89 @@ export function AccessesCard({ lead }: { lead: Lead }) {
   );
 }
 
+/**
+ * Entregar os acessos ao cliente (fim do trabalho): escolhe-se o que se entrega,
+ * fica registado na linha do tempo e, por omissão, as palavras-passe guardadas
+ * aqui são apagadas — o endereço e o utilizador ficam.
+ */
+function HandoverDialog({ lead, accesses, onClose }: { lead: Lead; accesses: LeadAccess[]; onClose: () => void }) {
+  const handover = useAccessHandover(lead.id);
+  const porEntregar = accesses.filter((a) => !a.handed_over_at);
+  const [ids, setIds] = useState<string[]>((porEntregar.length ? porEntregar : accesses).map((a) => a.id));
+  const [apagar, setApagar] = useState(true);
+  const comPalavraPasse = accesses.filter((a) => ids.includes(a.id) && a.has_secret).length;
+
+  async function submit() {
+    if (
+      apagar &&
+      comPalavraPasse &&
+      !(await confirmar({
+        title: `Apagar ${comPalavraPasse} palavra${comPalavraPasse === 1 ? '' : 's'}-passe guardada${comPalavraPasse === 1 ? '' : 's'}?`,
+        description: 'Os acessos ficam na ficha (endereço e utilizador), mas as palavras-passe deixam de estar guardadas aqui. Não dá para anular.',
+        confirm: 'Entregar e apagar',
+        danger: true,
+      }))
+    )
+      return;
+    try {
+      await handover.mutateAsync({ ids, delete_secrets: apagar });
+      toast.success(apagar ? 'Acessos entregues e palavras-passe apagadas.' : 'Acessos marcados como entregues.');
+      onClose();
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(o) => (!o ? onClose() : undefined)}
+      title="Entregar os acessos ao cliente"
+      description="Quando o trabalho acaba, passa os acessos para o nome do cliente e deixa de os guardar aqui."
+      className="max-w-lg"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={() => void submit()} loading={handover.isPending} disabled={!ids.length}>
+            Marcar como entregues
+          </Button>
+        </>
+      }
+    >
+      <ul className="flex flex-col divide-y divide-border text-sm" aria-label="Acessos a entregar">
+        {accesses.map((a) => (
+          <li key={a.id} className="flex items-center gap-2 py-2">
+            <input
+              type="checkbox"
+              className="h-4 w-4 shrink-0"
+              checked={ids.includes(a.id)}
+              onChange={(e) => setIds((list) => (e.target.checked ? [...list, a.id] : list.filter((id) => id !== a.id)))}
+              aria-label={`Entregar ${a.label}`}
+            />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-medium">{a.label}</span>
+              <span className="block truncate text-xs text-muted">
+                {[a.username, a.has_secret ? 'com palavra-passe guardada' : null, a.handed_over_at ? 'já entregue' : null].filter(Boolean).join(' · ')}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <label className="mt-4 flex items-start gap-2 rounded-lg bg-surface-2 p-3 text-sm">
+        <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0" checked={apagar} onChange={(e) => setApagar(e.target.checked)} />
+        <span>
+          Apagar as palavras-passe guardadas aqui
+          <span className="block text-xs text-muted">
+            Recomendado: depois de entregues, o cliente é que manda nelas. O acesso fica na ficha com o endereço e o utilizador.
+          </span>
+        </span>
+      </label>
+    </Dialog>
+  );
+}
+
 function AccessDialog({ lead, access, onClose }: { lead: Lead; access: LeadAccess | null; onClose: () => void }) {
   const action = useAccessAction(lead.id);
   const [form, setForm] = useState({
@@ -304,6 +414,7 @@ function AccessDialog({ lead, access, onClose }: { lead: Lead; access: LeadAcces
     secret: '',
     notes: access?.notes ?? '',
     shared: access?.shared ?? false,
+    vault_ref: access?.vault_ref ?? '',
   });
   const [errors, setErrors] = useState<Record<string, string[]>>({});
 
@@ -352,6 +463,17 @@ function AccessDialog({ lead, access, onClose }: { lead: Lead; access: LeadAcces
             value={form.secret}
             placeholder={access?.has_secret ? 'Guardada (escreve para mudar)' : ''}
             onValue={(secret) => setForm({ ...form, secret })}
+          />
+        </Field>
+        <Field
+          label="Onde está guardada (em vez de aqui)"
+          hint="Se preferires não guardar a palavra-passe aqui, diz só onde ela está."
+          error={errors.vault_ref?.[0]}
+        >
+          <Input
+            placeholder="Ex.: Bitwarden · Clientes/Glowearo"
+            value={form.vault_ref}
+            onChange={(e) => setForm({ ...form, vault_ref: e.target.value })}
           />
         </Field>
         <Field label="Notas">

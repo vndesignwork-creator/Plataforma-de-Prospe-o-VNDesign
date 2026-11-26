@@ -1746,6 +1746,20 @@ export function useAccessAction(leadId: string) {
   });
 }
 
+/** Entregar os acessos ao cliente: marca-os como entregues e apaga as palavras-passe guardadas. */
+export function useAccessHandover(leadId: string) {
+  const qc = useQueryClient();
+  const invalidate = useInvalidateLead();
+  return useMutation({
+    mutationFn: (body: { ids: string[]; delete_secrets: boolean }) => api(`/leads/${leadId}/accesses/handover`, { method: 'POST', body }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['accesses', leadId] });
+      // A entrega fica na linha do tempo do cliente.
+      invalidate(leadId);
+    },
+  });
+}
+
 export function useBriefing(leadId: string, enabled = true) {
   return useQuery({
     queryKey: ['briefing', leadId],

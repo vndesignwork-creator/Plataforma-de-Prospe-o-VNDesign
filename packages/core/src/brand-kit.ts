@@ -69,10 +69,34 @@ export const LeadAccessSchema = z
     has_secret: z.boolean().meta({ description: 'Tem palavra-passe guardada (pede-se à parte)' }),
     notes: z.string().nullable(),
     shared: z.boolean().meta({ description: 'Os colaboradores do projeto veem este acesso' }),
+    /** Onde está guardada fora da plataforma (ex.: "Bitwarden · Clientes/Glowearo"). */
+    vault_ref: z.string().nullable(),
+    secret_changed_at: z.string().nullable().meta({ description: 'Quando a palavra-passe foi escrita ou trocada' }),
+    handed_over_at: z.string().nullable().meta({ description: 'Quando os acessos foram entregues ao cliente' }),
     updated_at: z.string(),
   })
   .meta({ id: 'LeadAccess' });
 export type LeadAccess = z.infer<typeof LeadAccessSchema>;
+
+/** A partir de um ano, a palavra-passe de um acesso já devia ter sido trocada. */
+export const ACCESS_STALE_DAYS = 365;
+
+/**
+ * Há quantos dias a palavra-passe deste acesso não muda (null = não há palavra-passe
+ * guardada, ou nunca se soube quando mudou).
+ */
+export function accessSecretAge(access: Pick<LeadAccess, 'has_secret' | 'secret_changed_at'>, now = new Date()): number | null {
+  if (!access.has_secret || !access.secret_changed_at) return null;
+  const changed = new Date(access.secret_changed_at).getTime();
+  if (Number.isNaN(changed)) return null;
+  return Math.floor((now.getTime() - changed) / 86_400_000);
+}
+
+/** Palavra-passe guardada há muito tempo (um ano): vale a pena trocá-la. */
+export function accessIsStale(access: Pick<LeadAccess, 'has_secret' | 'secret_changed_at'>, now = new Date()): boolean {
+  const age = accessSecretAge(access, now);
+  return age !== null && age >= ACCESS_STALE_DAYS;
+}
 
 const optionalText = (max: number) =>
   z
@@ -91,6 +115,21 @@ export const LeadAccessUpsertSchema = z
     secret: z.string().max(500).nullish(),
     notes: optionalText(1000),
     shared: z.boolean().optional().default(false),
+    /** Em vez de guardar a palavra-passe aqui: onde ela está (gestor de palavras-passe). */
+    vault_ref: optionalText(200),
   })
   .meta({ id: 'LeadAccessUpsert' });
 export type LeadAccessUpsert = z.output<typeof LeadAccessUpsertSchema>;
+
+/**
+ * Entregar os acessos ao cliente (fim do trabalho): marca-os como entregues e,
+ * por omissão, apaga as palavras-passe guardadas aqui.
+ */
+export const LeadAccessHandoverSchema = z
+  .object({
+    ids: z.array(z.uuid()).min(1, { error: 'Escolhe pelo menos um acesso.' }).max(100),
+    /** Apagar as palavras-passe guardadas (o acesso em si fica, com o endereço e o utilizador). */
+    delete_secrets: z.boolean().optional().default(true),
+  })
+  .meta({ id: 'LeadAccessHandover' });
+export type LeadAccessHandover = z.output<typeof LeadAccessHandoverSchema>;

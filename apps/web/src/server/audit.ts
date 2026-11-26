@@ -109,6 +109,14 @@ export const AUDIT_RULES: Rule[] = [
     summary: (b) => (typeof b?.amount_usd === 'number' ? `Indicou os créditos da IA: ${b.amount_usd} $` : 'Tirou o valor dos créditos da IA'),
   },
   { method: 'GET', path: /^\/accesses\/[^/]+\/secret$/, action: 'access_reveal', summary: () => 'Viu a palavra-passe de um acesso de cliente' },
+  {
+    method: 'POST',
+    path: /^\/leads\/[^/]+\/accesses\/handover$/,
+    action: 'access_handover',
+    body: true,
+    summary: (b) =>
+      `Entregou os acessos ao cliente${Array.isArray(b?.ids) ? ` (${(b.ids as unknown[]).length})` : ''}${b?.delete_secrets === false ? '' : ' e apagou as palavras-passe guardadas'}`,
+  },
   { method: 'DELETE', path: /^\/accesses\/[^/]+$/, action: 'access_delete', summary: () => 'Apagou um acesso de cliente' },
   { method: 'DELETE', path: /^\/collaborators\/[^/]+$/, action: 'collaborator_remove', summary: () => 'Removeu o acesso de um colaborador' },
   { method: 'DELETE', path: /^\/custom-fields\/[^/]+$/, action: 'custom_field_delete', summary: () => 'Apagou um campo personalizado' },

@@ -121,6 +121,7 @@ export const ACTIVITY_TYPES = [
   'email_clicked',
   'comment',
   'email_bounced',
+  'accesses_handed_over',
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
@@ -177,6 +178,7 @@ export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
   email_clicked: 'O lead carregou num link',
   comment: 'Comentário da equipa',
   email_bounced: 'Email devolvido',
+  accesses_handed_over: 'Acessos entregues ao cliente',
 };
 
 export const TEMPLATE_KINDS = [

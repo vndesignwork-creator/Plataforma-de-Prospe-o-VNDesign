@@ -52,10 +52,13 @@ export function CardHeader({
 export function Badge({
   children,
   className,
+  title,
   tone = 'neutral',
 }: {
   children: ReactNode;
   className?: string;
+  /** Explicação no balão do rato (ex.: a data por trás de "Trocar"). */
+  title?: string;
   tone?: 'neutral' | 'accent' | 'warning' | 'danger' | 'success';
 }) {
   const tones = {
@@ -67,7 +70,7 @@ export function Badge({
     success: 'bg-surface-3 text-success',
   };
   return (
-    <span className={cn('inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap', tones[tone], className)}>
+    <span title={title} className={cn('inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap', tones[tone], className)}>
       {children}
     </span>
   );

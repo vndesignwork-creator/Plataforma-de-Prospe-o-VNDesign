@@ -13,6 +13,7 @@ import {
   type BrandKit,
   type BrandKitUpdate,
   type LeadAccess,
+  type LeadAccessHandover,
   type LeadAccessUpsert,
 } from '@vndesign/core';
 import { openSecret, sealSecret } from '../ai/secret-box';
@@ -137,7 +138,8 @@ export async function brandFileUrl(ctx: ApiContext, leadId: string, index: numbe
 // Acessos (domínio, alojamento, redes…)
 // -----------------------------------------------------------------------------
 
-const ACCESS_SELECT = 'id, lead_id, label, url, username, secret_ciphertext, notes, shared, updated_at';
+const ACCESS_SELECT =
+  'id, lead_id, label, url, username, secret_ciphertext, notes, shared, vault_ref, secret_changed_at, handed_over_at, updated_at';
 type AccessRow = Omit<LeadAccess, 'has_secret'> & { lead_id: string; secret_ciphertext: string | null };
 const toAccess = (row: AccessRow): LeadAccess => ({
   id: row.id,
@@ -147,6 +149,9 @@ const toAccess = (row: AccessRow): LeadAccess => ({
   has_secret: !!row.secret_ciphertext,
   notes: row.notes,
   shared: row.shared,
+  vault_ref: row.vault_ref,
+  secret_changed_at: row.secret_changed_at,
+  handed_over_at: row.handed_over_at,
   updated_at: row.updated_at,
 });
 
@@ -167,7 +172,14 @@ export async function createAccess(ctx: ApiContext, leadId: string, input: LeadA
   const { secret, ...rest } = input;
   const { data, error } = await ctx.supabase
     .from('lead_accesses')
-    .insert({ ...rest, workspace_id: ctx.workspaceId, lead_id: mainId, secret_ciphertext: secret ? sealSecret(secret) : null })
+    .insert({
+      ...rest,
+      workspace_id: ctx.workspaceId,
+      lead_id: mainId,
+      secret_ciphertext: secret ? sealSecret(secret) : null,
+      // Para avisar quando a palavra-passe já tem um ano.
+      secret_changed_at: secret ? new Date().toISOString() : null,
+    })
     .select(ACCESS_SELECT)
     .single();
   if (error) throw fromPostgrest(error);
@@ -186,8 +198,13 @@ export async function updateAccess(ctx: ApiContext, id: string, input: LeadAcces
   const { secret, ...rest } = input;
   const patch: Record<string, unknown> = { ...rest };
   // Vazio (ou ausente) mantém a palavra-passe; null apaga-a.
-  if (secret === null) patch.secret_ciphertext = null;
-  else if (secret) patch.secret_ciphertext = sealSecret(secret);
+  if (secret === null) {
+    patch.secret_ciphertext = null;
+    patch.secret_changed_at = null;
+  } else if (secret) {
+    patch.secret_ciphertext = sealSecret(secret);
+    patch.secret_changed_at = new Date().toISOString();
+  }
   const { data, error } = await ctx.supabase.from('lead_accesses').update(patch).eq('workspace_id', ctx.workspaceId).eq('id', id).select(ACCESS_SELECT).single();
   if (error) throw fromPostgrest(error);
   return toAccess(data as AccessRow);
@@ -197,6 +214,42 @@ export async function deleteAccess(ctx: ApiContext, id: string): Promise<void> {
   const { data, error } = await ctx.supabase.from('lead_accesses').delete().eq('workspace_id', ctx.workspaceId).eq('id', id).select('id');
   if (error) throw fromPostgrest(error);
   if (!data?.length) throw new ApiError(404, 'Acesso não encontrado');
+}
+
+/**
+ * Entregar os acessos ao cliente (fim do trabalho): marca-os como entregues e,
+ * por omissão, apaga as palavras-passe guardadas aqui (o acesso fica, com o
+ * endereço e o utilizador). Fica registado na linha do tempo.
+ */
+export async function handOverAccesses(ctx: ApiContext, leadId: string, input: LeadAccessHandover): Promise<LeadAccess[]> {
+  if (ctx.role !== 'owner' && ctx.role !== 'admin') {
+    throw new ApiError(403, 'Sem permissão', 'Só o dono e os administradores entregam os acessos ao cliente.');
+  }
+  const mainId = await mainClientId(ctx, leadId);
+  const patch: Record<string, unknown> = { handed_over_at: new Date().toISOString() };
+  if (input.delete_secrets) {
+    patch.secret_ciphertext = null;
+    patch.secret_changed_at = null;
+  }
+  const { data, error } = await ctx.supabase
+    .from('lead_accesses')
+    .update(patch)
+    .eq('workspace_id', ctx.workspaceId)
+    .eq('lead_id', mainId)
+    .in('id', input.ids)
+    .select(ACCESS_SELECT);
+  if (error) throw fromPostgrest(error);
+  const rows = (data ?? []) as AccessRow[];
+  if (!rows.length) throw new ApiError(404, 'Acesso não encontrado');
+  const { error: logError } = await ctx.supabase.from('lead_activities').insert({
+    workspace_id: ctx.workspaceId,
+    lead_id: mainId,
+    type: 'accesses_handed_over',
+    payload: { labels: rows.map((r) => r.label), deleted_secrets: input.delete_secrets },
+    actor_user_id: ctx.user.id,
+  });
+  if (logError) throw fromPostgrest(logError);
+  return rows.map(toAccess);
 }
 
 /** A palavra-passe em claro (só a pedido, para mostrar ou copiar). */

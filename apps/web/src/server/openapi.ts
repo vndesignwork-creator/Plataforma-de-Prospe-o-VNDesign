@@ -171,6 +171,7 @@ import {
   PomodoroSchema,
   PomodoroStartSchema,
   PomodoroStatsSchema,
+  LeadAccessHandoverSchema,
   LeadAccessUpsertSchema,
   LeadAccessSchema,
   BrandKitUpdateSchema,
@@ -2191,6 +2192,15 @@ export function getOpenApiDocument() {
           requestParams: { path: leadId },
           requestBody: body(LeadAccessUpsertSchema),
           responses: { '201': ok(data(LeadAccessSchema), 'Criado'), ...withNotFound },
+        }),
+      },
+      '/leads/{id}/accesses/handover': {
+        post: op({
+          tags: ['Projetos'],
+          summary: 'Entregar os acessos ao cliente (marca como entregues e apaga as palavras-passe guardadas)',
+          requestParams: { path: leadId },
+          requestBody: body(LeadAccessHandoverSchema),
+          responses: { '200': ok(data(z.array(LeadAccessSchema))), ...withNotFound },
         }),
       },
       '/accesses/{id}': {
