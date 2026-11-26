@@ -1,13 +1,14 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
+import { confirmar } from '@/components/ui/confirm';
 import { cn } from '@/lib/utils';
-
-const LEAVE_MESSAGE = 'Tens alterações por guardar. Sair sem guardar?';
 
 /** Com alterações por guardar: pergunta antes de fechar o separador ou de seguir um link da plataforma. */
 export function useLeaveGuard(dirty: boolean) {
+  const router = useRouter();
   useEffect(() => {
     if (!dirty) return;
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -21,10 +22,19 @@ export function useLeaveGuard(dirty: boolean) {
       if (!link || link.target === '_blank' || link.hasAttribute('download')) return;
       const url = new URL(link.href, window.location.href);
       if (url.origin !== window.location.origin || (url.pathname === window.location.pathname && url.search === window.location.search)) return;
-      if (!window.confirm(LEAVE_MESSAGE)) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
+      // A pergunta é uma janela da plataforma, logo só chega depois: paramos o
+      // clique e, se a pessoa quiser mesmo sair, seguimos o link nós.
+      e.preventDefault();
+      e.stopPropagation();
+      const href = `${url.pathname}${url.search}${url.hash}`;
+      void confirmar({
+        title: 'Sair sem guardar?',
+        description: 'Tens alterações por guardar nesta página.',
+        confirm: 'Sair sem guardar',
+        danger: true,
+      }).then((ok) => {
+        if (ok) router.push(href);
+      });
     };
     window.addEventListener('beforeunload', onBeforeUnload);
     document.addEventListener('click', onClick, true);
@@ -32,7 +42,7 @@ export function useLeaveGuard(dirty: boolean) {
       window.removeEventListener('beforeunload', onBeforeUnload);
       document.removeEventListener('click', onClick, true);
     };
-  }, [dirty]);
+  }, [dirty, router]);
 }
 
 /**

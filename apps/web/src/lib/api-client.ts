@@ -79,7 +79,13 @@ export async function api<T>(
     // Limite de gasto da IA do mês atingido: pergunta se continua (e repete o pedido).
     const problem = payload as { code?: string; detail?: string } | null;
     if (res.status === 409 && problem?.code === AI_BUDGET_ERROR && !options.aiBudgetOk && typeof window !== 'undefined') {
-      if (window.confirm(problem.detail ?? 'Chegaste ao limite de gasto da IA deste mês. Continuar mesmo assim?')) return api<T>(path, { ...options, aiBudgetOk: true });
+      const { confirmar } = await import('@/components/ui/confirm');
+      const go = await confirmar({
+        title: 'Chegaste ao limite de gasto da IA deste mês.',
+        description: problem.detail ?? 'Continuar mesmo assim?',
+        confirm: 'Continuar',
+      });
+      if (go) return api<T>(path, { ...options, aiBudgetOk: true });
       throw new ApiClientError(409, { type: 'about:blank', title: 'Cancelado', status: 409, detail: 'Cancelado: chegaste ao limite de gasto da IA deste mês.', code: AI_BUDGET_ERROR });
     }
     if (res.status === 401 && typeof window !== 'undefined') {

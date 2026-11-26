@@ -51,7 +51,7 @@ export function HelpNote({ children, onClose }: { children: ReactNode; onClose: 
       <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-accent-text" aria-hidden />
       <p className="flex-1 text-muted">
         {children}{' '}
-        <Link href="/ajuda#prospecao" className="font-medium text-accent-text hover:text-accent-text-hover">
+        <Link href="/ajuda#prospecao" className="font-medium text-accent-text hover:text-accent-text-strong">
           Ver o guia completo
         </Link>
       </p>

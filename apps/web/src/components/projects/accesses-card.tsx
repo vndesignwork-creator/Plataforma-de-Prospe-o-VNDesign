@@ -168,9 +168,13 @@ export function AccessesCard({ lead }: { lead: Lead }) {
     }
   }
 
+  // Ainda sem acessos: o cartão fica numa linha só (título + "Acesso").
+  const vazio = !accesses?.length;
+
   return (
     <Card id="acessos" className="scroll-mt-20">
       <CardHeader
+        compact={vazio}
         title={
           <span className="inline-flex items-center gap-1.5">
             <KeyRound className="h-4 w-4 text-muted" aria-hidden /> Acessos
@@ -190,7 +194,7 @@ export function AccessesCard({ lead }: { lead: Lead }) {
           </>
         }
       />
-      <div className="px-5 py-4">
+      <div className={vazio ? 'hidden' : 'px-5 py-4'}>
       {accesses?.length && collapsed ? (
         <p className="text-sm text-muted">
           {accesses.length} acesso{accesses.length === 1 ? '' : 's'} guardado{accesses.length === 1 ? '' : 's'}.
@@ -202,7 +206,7 @@ export function AccessesCard({ lead }: { lead: Lead }) {
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-center gap-2 font-medium">
                   {a.url ? (
-                    <a href={a.url} target="_blank" rel="noreferrer noopener" className="text-accent-text hover:text-accent-text-hover">
+                    <a href={a.url} target="_blank" rel="noreferrer noopener" className="text-accent-text hover:text-accent-text-strong">
                       {a.label}
                     </a>
                   ) : (

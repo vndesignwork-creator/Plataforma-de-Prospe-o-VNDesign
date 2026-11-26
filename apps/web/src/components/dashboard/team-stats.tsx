@@ -34,7 +34,7 @@ export function TeamStatsSection({ bare }: { bare?: boolean } = {}) {
   const { data, isLoading } = useTeamStats();
   if (isLoading || !data) return <Skeleton className="h-40" />;
   return (
-    <section aria-labelledby={bare ? undefined : 'equipa-stats'} aria-label={bare ? 'Equipa' : undefined} className="flex flex-col gap-3">
+    <section aria-labelledby={bare ? undefined : 'equipa-stats'} className="flex flex-col gap-3">
       {bare ? null : (
         <div>
           <h2 id="equipa-stats" className="font-display text-xl font-semibold">

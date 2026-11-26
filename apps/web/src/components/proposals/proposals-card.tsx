@@ -79,10 +79,13 @@ export function ProposalsCard({ lead }: { lead: Lead }) {
   const expiryOn = settings?.features.proposal_expiry !== false;
   if (lead.anonymized_at && !data?.length) return null;
   const hidden = collapsed && !!data?.length;
+  // Ainda sem propostas: o cartão fica numa linha só.
+  const vazio = !isLoading && !data?.length;
 
   return (
     <Card>
       <CardHeader
+        compact={vazio}
         title="Propostas"
         description={hidden ? `${data!.length} proposta${data!.length === 1 ? '' : 's'}` : 'Proposta em PDF com os teus pacotes, pronta a enviar.'}
         className={hidden ? 'border-b-0' : undefined}
@@ -157,9 +160,7 @@ export function ProposalsCard({ lead }: { lead: Lead }) {
             );
           })}
         </ul>
-      ) : (
-        <p className="p-4 text-sm text-muted">Ainda não há propostas para este lead.</p>
-      )}
+      ) : null}
       {calculating && settings ? <QuoteCalculatorDialog lead={lead} settings={settings} onClose={() => setCalculating(false)} /> : null}
       {copyingFrom ? <CopyProposalDialog lead={lead} onClose={() => setCopyingFrom(false)} /> : null}
     </Card>

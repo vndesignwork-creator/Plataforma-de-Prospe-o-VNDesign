@@ -137,7 +137,7 @@ export function ContactIssuesView() {
           <ul aria-label="Leads com contactos a corrigir" className="flex flex-col">
             {rows.map(({ lead, issues }) => (
               <li key={lead.id} data-lead={lead.number} className="flex flex-col gap-1 border-t border-border px-4 py-3 first:border-t-0">
-                <Link href={leadPath(lead)} className="font-medium text-accent-text hover:text-accent-text-hover">
+                <Link href={leadPath(lead)} className="font-medium text-accent-text hover:text-accent-text-strong">
                   #{lead.number} {lead.company_name}
                 </Link>
                 <ul className="flex flex-col gap-0.5 text-sm">

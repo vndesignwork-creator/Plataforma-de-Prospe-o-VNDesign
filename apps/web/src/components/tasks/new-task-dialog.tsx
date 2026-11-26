@@ -215,7 +215,7 @@ export function NewTaskDialog({ onClose }: { onClose: () => void }) {
             <p className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-border-strong px-3 py-2 text-sm">
               <span className="text-muted">É para</span>
               <LeadLabel lead={suggested} />
-              <button type="button" onClick={() => setLead(suggested)} className="ml-auto text-sm font-medium text-accent-text hover:text-accent-text-hover">
+              <button type="button" onClick={() => setLead(suggested)} className="ml-auto text-sm font-medium text-accent-text hover:text-accent-text-strong">
                 Associar
               </button>
             </p>

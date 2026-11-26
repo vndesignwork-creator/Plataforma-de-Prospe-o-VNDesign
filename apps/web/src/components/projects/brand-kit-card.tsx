@@ -34,24 +34,28 @@ export function BrandKitCard({ lead }: { lead: Lead }) {
   const [editing, setEditing] = useState(false);
   // Pode ficar recolhido (só o título); a escolha fica lembrada neste browser.
   const [collapsed, setCollapsed] = useCollapsed('kit-marca');
+  // Kit ainda sem nada (nem ficheiros): o cartão fica numa linha só, com o "Editar".
+  const vazio =
+    !editing && !!kit && !kit.colors.length && !kit.fonts.length && !kit.links.length && !kit.notes && !kit.files?.length;
   return (
     <Card id="kit-marca" className="scroll-mt-20">
       <CardHeader
+        compact={vazio}
         title="Kit da marca"
         description="Logótipos, cores, tipos de letra e acessos do cliente (iguais em todos os projetos dele)."
         actions={
           <span className="flex items-center gap-1">
-            {!editing && !collapsed && !lead.anonymized_at ? (
+            {!editing && (!collapsed || vazio) && !lead.anonymized_at ? (
               <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
                 <Pencil className="h-3.5 w-3.5" aria-hidden /> Editar
               </Button>
             ) : null}
-            <CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label="Kit da marca" />
+            {vazio ? null : <CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label="Kit da marca" />}
           </span>
         }
         className={collapsed ? 'border-b-0' : undefined}
       />
-      {collapsed ? null : isLoading || !kit ? (
+      {collapsed || vazio ? null : isLoading || !kit ? (
         <div className="p-5">
           <Skeleton className="h-16" />
         </div>
@@ -63,7 +67,7 @@ export function BrandKitCard({ lead }: { lead: Lead }) {
           <BrandToolsBar lead={lead} kit={kit} />
         </>
       )}
-      {collapsed ? null : (
+      {collapsed || vazio ? null : (
         <>
           <FilesSection lead={lead} kit={kit} />
             </>
@@ -113,7 +117,7 @@ function KitView({ kit }: { lead: Lead; kit: BrandKit }) {
           {kit.links.map((l, i) => (
             <li key={i} className="flex items-center gap-2">
               <Link2 className="h-3.5 w-3.5 text-muted" aria-hidden />
-              <a href={l.url} target="_blank" rel="noreferrer noopener" className="truncate text-accent-text hover:text-accent-text-hover">
+              <a href={l.url} target="_blank" rel="noreferrer noopener" className="truncate text-accent-text hover:text-accent-text-strong">
                 {l.label || l.url.replace(/^https?:\/\/(www\.)?/, '')}
               </a>
             </li>

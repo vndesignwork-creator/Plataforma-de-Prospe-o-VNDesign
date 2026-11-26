@@ -119,7 +119,7 @@ export function OfflineOutbox() {
         ) : null}
       </span>
       {online && count ? (
-        <button type="button" onClick={() => void flush()} disabled={sending} className="inline-flex items-center gap-1 font-medium text-accent-text hover:text-accent-text-hover disabled:opacity-60">
+        <button type="button" onClick={() => void flush()} disabled={sending} className="inline-flex items-center gap-1 font-medium text-accent-text hover:text-accent-text-strong disabled:opacity-60">
           <RefreshCw className={sending ? 'h-3.5 w-3.5 animate-spin' : 'h-3.5 w-3.5'} aria-hidden /> Enviar agora
         </button>
       ) : null}

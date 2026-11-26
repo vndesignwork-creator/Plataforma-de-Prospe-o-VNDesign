@@ -199,36 +199,40 @@ export function AppShell({ email, children }: { email: string | null; children: 
       </aside>
 
       {/* Barra superior (telemóvel/tablet) */}
-      <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-1 border-b border-border bg-surface/95 px-3 backdrop-blur min-[400px]:px-4 lg:hidden">
+      <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b border-border bg-surface/95 px-3 backdrop-blur min-[400px]:px-4 lg:hidden">
         <Link href="/dashboard" className="shrink-0 whitespace-nowrap" aria-label="VNDesign Leads — Dashboard">
           <Logo narrow />
         </Link>
-        {role === 'prospector' ? null : <RunningTimer compact className="ml-auto shrink-0" />}
-        <NotificationsBell sheet className={cn(role === 'prospector' && 'ml-auto')} />
-        <button type="button" onClick={openSearch} className="rounded-lg p-2 text-fg hover:bg-surface-2" aria-label="Pesquisar">
-          <Search className="h-5 w-5" aria-hidden />
-        </button>
-        <RadixDialog.Root open={open} onOpenChange={setOpen}>
-          <RadixDialog.Trigger className="rounded-lg p-2 text-fg hover:bg-surface-2" aria-label="Abrir menu">
-            <Menu className="h-5 w-5" aria-hidden />
-          </RadixDialog.Trigger>
-          <RadixDialog.Portal>
-            <RadixDialog.Overlay className="fixed inset-0 z-50 bg-black/60" />
-            <RadixDialog.Content className="fixed inset-y-0 right-0 z-50 flex w-72 max-w-[85vw] flex-col gap-6 border-l border-border bg-surface p-4">
-              <div className="flex items-center justify-between">
-                <RadixDialog.Title className="font-display text-lg font-semibold">Menu</RadixDialog.Title>
-                <RadixDialog.Description className="sr-only">Navegação principal</RadixDialog.Description>
-                <RadixDialog.Close className="rounded-lg p-2 hover:bg-surface-2" aria-label="Fechar menu">
-                  <X className="h-5 w-5" aria-hidden />
-                </RadixDialog.Close>
-              </div>
-              <nav aria-label="Principal" className="flex-1">
-                <NavLinks onNavigate={() => setOpen(false)} />
-              </nav>
-              <SidebarFooter email={email} />
-            </RadixDialog.Content>
-          </RadixDialog.Portal>
-        </RadixDialog.Root>
+        {/* O cronómetro e os ícones num grupo só, sempre encostado à direita: sem
+            cronómetro a contar, os ícones não se espalham pela barra. */}
+        <div className="ml-auto flex min-w-0 items-center gap-0.5">
+          {role === 'prospector' ? null : <RunningTimer compact className="min-w-0 shrink" />}
+          <NotificationsBell sheet />
+          <button type="button" onClick={openSearch} className="rounded-lg p-2 text-fg hover:bg-surface-2" aria-label="Pesquisar">
+            <Search className="h-5 w-5" aria-hidden />
+          </button>
+          <RadixDialog.Root open={open} onOpenChange={setOpen}>
+            <RadixDialog.Trigger className="rounded-lg p-2 text-fg hover:bg-surface-2" aria-label="Abrir menu">
+              <Menu className="h-5 w-5" aria-hidden />
+            </RadixDialog.Trigger>
+            <RadixDialog.Portal>
+              <RadixDialog.Overlay className="fixed inset-0 z-50 bg-black/60" />
+              <RadixDialog.Content className="fixed inset-y-0 right-0 z-50 flex w-72 max-w-[85vw] flex-col gap-6 border-l border-border bg-surface p-4">
+                <div className="flex items-center justify-between">
+                  <RadixDialog.Title className="font-display text-lg font-semibold">Menu</RadixDialog.Title>
+                  <RadixDialog.Description className="sr-only">Navegação principal</RadixDialog.Description>
+                  <RadixDialog.Close className="rounded-lg p-2 hover:bg-surface-2" aria-label="Fechar menu">
+                    <X className="h-5 w-5" aria-hidden />
+                  </RadixDialog.Close>
+                </div>
+                <nav aria-label="Principal" className="flex-1">
+                  <NavLinks onNavigate={() => setOpen(false)} />
+                </nav>
+                <SidebarFooter email={email} />
+              </RadixDialog.Content>
+            </RadixDialog.Portal>
+          </RadixDialog.Root>
+        </div>
       </header>
 
       <main id="conteudo" className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">

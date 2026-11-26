@@ -26,7 +26,7 @@ import {
   type LeadSortField,
   leadPath,
 } from '@vndesign/core';
-import { Archive, ArchiveRestore, PhoneOff, ArrowDown, ArrowDownUp, ArrowUp, ArrowUpDown, Columns3, CopyX, Download, Search, SlidersHorizontal, Trash2, Upload, UserCheck, X } from 'lucide-react';
+import { Archive, ArchiveRestore, PhoneOff, ArrowDown, ArrowDownUp, ArrowUp, ArrowUpDown, Columns3, CopyX, Rows2, Rows3, Download, Search, SlidersHorizontal, Trash2, Upload, UserCheck, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
@@ -133,6 +133,12 @@ function buildColumns(today: string): Col[] {
       ),
     },
     {
+      // O estado é a coluna que mais se lê: fica logo a seguir à empresa (antes ficava fora do ecrã).
+      id: 'status',
+      meta: { label: 'Estado', sort: 'status' },
+      cell: ({ row }) => <StatusBadge status={row.original.status} />,
+    },
+    {
       id: 'score',
       meta: { label: 'Prioridade', sort: 'score' },
       cell: ({ row }) => <LeadScoreBadge lead={row.original} />,
@@ -165,7 +171,7 @@ function buildColumns(today: string): Col[] {
             target="_blank"
             rel="noreferrer noopener"
             title={row.original.website}
-            className="block max-w-56 truncate text-accent-text hover:text-accent-text-hover"
+            className="block max-w-56 truncate text-accent-text hover:text-accent-text-strong"
           >
             {displayHost(row.original.website)}
             <span className="sr-only"> (abre num novo separador)</span>
@@ -185,7 +191,6 @@ function buildColumns(today: string): Col[] {
     { id: 'email', meta: { label: 'Email' }, cell: ({ row }) => text(row.original.email, 40) },
     { id: 'phone', meta: { label: 'Telefone' }, cell: ({ row }) => text(row.original.phone, 20) },
     { id: 'contact_name', meta: { label: 'Contacto' }, cell: ({ row }) => text(row.original.contact_name, 30) },
-    { id: 'status', meta: { label: 'Estado', sort: 'status' }, cell: ({ row }) => <StatusBadge status={row.original.status} /> },
     { id: 'channel', meta: { label: 'Canal', sort: 'channel' }, cell: ({ row }) => <ChannelLabel channel={row.original.channel} /> },
     {
       id: 'origin',
@@ -227,7 +232,7 @@ function buildColumns(today: string): Col[] {
             target="_blank"
             rel="noreferrer noopener"
             title={row.original.source_url}
-            className="block max-w-56 truncate text-accent-text hover:text-accent-text-hover"
+            className="block max-w-56 truncate text-accent-text hover:text-accent-text-strong"
           >
             {displayHost(row.original.source_url)}
             <span className="sr-only"> (abre num novo separador)</span>
@@ -477,9 +482,12 @@ function LeadsTableView() {
   const { data: sectors } = useSectors();
   const tagOptions = useTagFilterOptions();
   const { data: customFields } = useCustomFields();
-  const { data: tablePref } = usePreference<{ hidden: string[] }>('leads.table');
-  const saveTablePref = useSetPreference<{ hidden: string[] }>('leads.table');
+  const { data: tablePref } = usePreference<{ hidden: string[]; density?: 'compacta' }>('leads.table');
+  const saveTablePref = useSetPreference<{ hidden: string[]; density?: 'compacta' }>('leads.table');
   const hidden = tablePref?.hidden ?? DEFAULT_HIDDEN;
+  // Linhas compactas: cabem ~3x mais leads no ecrã (a escolha fica guardada na conta).
+  const compacta = tablePref?.density === 'compacta';
+  const density = tablePref?.density;
 
   // Equipa: o prospetor não vê valores, nem importa/exporta/apaga; o dono atribui leads.
   const prospector = useRole() === 'prospector';
@@ -807,9 +815,19 @@ function LeadsTableView() {
           <SlidersHorizontal className="h-4 w-4" aria-hidden />
           Mais filtros{advancedActive ? ` (${advancedActive})` : ''}
         </Button>
+        {/* Altura das linhas: no ecrã cheio vêm-se ~6 leads de cada vez; compactas vêm-se ~18. */}
+        <Button
+          variant="ghost"
+          onClick={() => saveTablePref.mutate({ hidden, density: compacta ? undefined : 'compacta' })}
+          className="ml-auto"
+        >
+          {/* Como o "Modo claro" do menu: o botão diz para onde vai. */}
+          {compacta ? <Rows2 className="h-4 w-4" aria-hidden /> : <Rows3 className="h-4 w-4" aria-hidden />}
+          {compacta ? 'Linhas confortáveis' : 'Linhas compactas'}
+        </Button>
         <DropdownRoot>
           {/* Só faz sentido com a tabela (no telemóvel a lista é em cartões). */}
-          <DropdownTrigger className={buttonClasses('ghost', 'md', 'ml-auto max-lg:hidden')} aria-label="Escolher colunas visíveis">
+          <DropdownTrigger className={buttonClasses('ghost', 'md', 'max-lg:hidden')} aria-label="Escolher colunas visíveis">
             <Columns3 className="h-4 w-4" aria-hidden />
             Colunas
           </DropdownTrigger>
@@ -824,6 +842,7 @@ function LeadsTableView() {
                   onCheckedChange={(checked) =>
                     saveTablePref.mutate({
                       hidden: checked ? hidden.filter((h) => h !== c.id) : [...hidden, c.id],
+                      density,
                     })
                   }
                 >
@@ -831,8 +850,8 @@ function LeadsTableView() {
                 </DropdownCheckboxItem>
               ))}
             <DropdownSeparator />
-            <DropdownItem onSelect={() => saveTablePref.mutate({ hidden: DEFAULT_HIDDEN })}>Repor colunas</DropdownItem>
-            <DropdownItem onSelect={() => saveTablePref.mutate({ hidden: [] })}>Mostrar todas</DropdownItem>
+            <DropdownItem onSelect={() => saveTablePref.mutate({ hidden: DEFAULT_HIDDEN, density })}>Repor colunas</DropdownItem>
+            <DropdownItem onSelect={() => saveTablePref.mutate({ hidden: [], density })}>Mostrar todas</DropdownItem>
           </DropdownContent>
         </DropdownRoot>
       </div>
@@ -1108,7 +1127,7 @@ function LeadsTableView() {
                 ficam dentro desta caixa em vez de esticarem a página. */}
             <div className="relative hidden min-h-0 overflow-auto scroll-thin lg:block">
               {/* Linhas separadas (como cartões): border-separate com espaço entre as linhas. */}
-              <table className="w-full border-separate border-spacing-x-0 border-spacing-y-6 text-sm">
+              <table className={cn('w-full border-separate border-spacing-x-0 text-sm', compacta ? 'border-spacing-y-1.5' : 'border-spacing-y-6')}>
                 <caption className="sr-only">Leads — clica no nome da empresa para abrir a ficha</caption>
                 <thead className="sticky top-0 z-10 bg-bg">
                   {table.getHeaderGroups().map((hg) => (
@@ -1187,7 +1206,7 @@ function LeadsTableView() {
                       {row.getVisibleCells().map((cell) => (
                         <td
                           key={cell.id}
-                          className={cn('px-4 py-3 align-top', (cell.column.columnDef as Col).meta.className)}
+                          className={cn('px-4 align-top', compacta ? 'py-1.5' : 'py-3', (cell.column.columnDef as Col).meta.className)}
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
@@ -1199,12 +1218,13 @@ function LeadsTableView() {
             </div>
 
             {/* Cartões (telemóvel e tablet: a tabela tem demasiadas colunas para caber) */}
-            <ul className="flex flex-col gap-6 lg:hidden">
+            <ul className={cn('flex flex-col lg:hidden', compacta ? 'gap-2' : 'gap-6')}>
               {(data?.data ?? []).map((lead) => (
                 <li
                   key={lead.id}
                   className={cn(
-                    'relative flex flex-col gap-1.5 overflow-hidden rounded-xl border border-border bg-surface px-5 py-4 shadow-card hover:bg-surface-2',
+                    'relative flex flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-card hover:bg-surface-2',
+                    compacta ? 'gap-1 px-4 py-2.5' : 'gap-1.5 px-5 py-4',
                     selected.has(lead.id) && 'bg-accent-soft',
                   )}
                 >

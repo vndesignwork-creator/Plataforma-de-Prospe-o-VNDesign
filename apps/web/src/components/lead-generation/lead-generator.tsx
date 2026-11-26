@@ -233,7 +233,7 @@ function Results({ run }: { run: LeadGenerationRun }) {
                 <p className="text-sm break-words">{cleanAiText(c.opportunity)}</p>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                   {c.website ? (
-                    <a href={c.website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent-text hover:text-accent-text-hover">
+                    <a href={c.website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent-text hover:text-accent-text-strong">
                       <Globe className="h-3.5 w-3.5" aria-hidden /> {displayHost(c.website)}
                     </a>
                   ) : (
@@ -244,7 +244,7 @@ function Results({ run }: { run: LeadGenerationRun }) {
                       href={c.social_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-accent-text hover:text-accent-text-hover"
+                      className="inline-flex items-center gap-1 text-accent-text hover:text-accent-text-strong"
                     >
                       <ExternalLink className="h-3.5 w-3.5" aria-hidden /> {displayHost(c.social_url)}
                     </a>

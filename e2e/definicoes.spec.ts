@@ -31,12 +31,13 @@ test('assinatura: alterações por guardar, descartar e aviso ao sair', async ({
   await cargo.fill(`${before} (teste)`);
   await expect(page.getByRole('status').filter({ hasText: 'Alterações por guardar' })).toBeVisible();
 
-  // Seguir um link pergunta antes; ao cancelar, fica na página.
-  page.once('dialog', (d) => {
-    expect(d.message()).toContain('alterações por guardar');
-    void d.dismiss();
-  });
+  // Seguir um link pergunta antes (numa janela da plataforma); ao cancelar, fica na página.
   await page.getByRole('navigation', { name: 'Secções das definições' }).getByRole('link', { name: 'Conta', exact: true }).click();
+  const aviso = page.getByRole('dialog', { name: 'Sair sem guardar?' });
+  await expect(aviso).toBeVisible();
+  await expect(aviso).toContainText('alterações por guardar');
+  await aviso.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(aviso).toBeHidden();
   await expect(page).toHaveURL(/\/definicoes\/assinatura$/);
 
   await page.getByRole('button', { name: 'Descartar' }).click();

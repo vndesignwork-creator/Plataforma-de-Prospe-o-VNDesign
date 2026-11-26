@@ -60,7 +60,7 @@ function ShowAll({ total, open, onToggle, what }: { total: number; open: boolean
   if (total <= SHOWN) return null;
   return (
     <div className="mt-1 flex justify-end">
-    <button type="button" onClick={onToggle} aria-expanded={open} className="px-2 py-1 text-xs font-medium text-accent-text hover:text-accent-text-hover">
+    <button type="button" onClick={onToggle} aria-expanded={open} className="px-2 py-1 text-xs font-medium text-accent-text hover:text-accent-text-strong">
       {open ? 'Mostrar menos' : `Mostrar todos (${total})`}
       <span className="sr-only"> — {what}</span>
     </button>
@@ -190,7 +190,7 @@ function ProjectsCard({ className }: { className?: string }) {
           )
         }
         actions={
-          <Link href="/projetos" className="text-sm text-accent-text hover:text-accent-text-hover">
+          <Link href="/projetos" className="text-sm text-accent-text hover:text-accent-text-strong">
             Ver todos
           </Link>
         }
@@ -555,7 +555,7 @@ function TodayCard({ className }: { className?: string }) {
       {data && !empty ? (
         <p className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border px-4 py-2 text-xs text-muted">
           <span>É tudo para os próximos 7 dias.</span>
-          <Link href="/prospecao" className="text-accent-text hover:text-accent-text-hover">
+          <Link href="/prospecao" className="text-accent-text hover:text-accent-text-strong">
             Contactar mais leads na Prospeção →
           </Link>
         </p>
@@ -590,7 +590,7 @@ function HotLeadsCard({ className, fitToday }: { className?: string; fitToday?: 
           </>
         }
         actions={
-          <Link href="/leads?sort=score&order=desc" className="text-sm text-accent-text hover:text-accent-text-hover">
+          <Link href="/leads?sort=score&order=desc" className="text-sm text-accent-text hover:text-accent-text-strong">
             Ver todos
           </Link>
         }
@@ -698,11 +698,11 @@ function PipelineCard({ byStatus, className }: { byStatus: { status: LeadStatus;
         actions={
           // Dois links (cada um com o seu ícone e um separador): juntos pareciam um só texto.
           <span className="flex items-center gap-2 text-sm">
-            <Link href="/kanban" className="inline-flex items-center gap-1 text-accent-text hover:text-accent-text-hover">
+            <Link href="/kanban" className="inline-flex items-center gap-1 text-accent-text hover:text-accent-text-strong">
               <Columns3 className="h-3.5 w-3.5" aria-hidden /> Kanban
             </Link>
             <span className="h-4 w-px bg-border" aria-hidden />
-            <Link href="/estatisticas" className="inline-flex items-center gap-1 text-accent-text hover:text-accent-text-hover">
+            <Link href="/estatisticas" className="inline-flex items-center gap-1 text-accent-text hover:text-accent-text-strong">
               <BarChart3 className="h-3.5 w-3.5" aria-hidden /> Estatísticas
             </Link>
           </span>
@@ -744,7 +744,7 @@ function PipelineCard({ byStatus, className }: { byStatus: { status: LeadStatus;
             {LEAD_STATUS_META[s].label}: <span className="tabular">{count(s)}</span>
           </Link>
         ))}
-        <Link href="/estatisticas#funil" className="ml-auto text-accent-text hover:text-accent-text-hover">
+        <Link href="/estatisticas#funil" className="ml-auto text-accent-text hover:text-accent-text-strong">
           Passagem entre fases →
         </Link>
       </p>

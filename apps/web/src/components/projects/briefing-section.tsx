@@ -133,7 +133,7 @@ export function BriefingSection({ lead }: { lead: Lead }) {
                       ) : null}
                       <div className="p-2 text-sm">
                         {r.url ? (
-                          <a href={r.url} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 font-medium text-accent-text hover:text-accent-text-hover">
+                          <a href={r.url} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 font-medium text-accent-text hover:text-accent-text-strong">
                             <ExternalLink className="h-3.5 w-3.5" aria-hidden /> {r.name}
                           </a>
                         ) : (
@@ -152,7 +152,7 @@ export function BriefingSection({ lead }: { lead: Lead }) {
                 <ul className="flex flex-col gap-1" aria-label="Ficheiros do briefing">
                   {briefing.files.map((f, i) => (
                     <li key={f.path}>
-                      <a href={`/api/v1/leads/${lead.id}/briefing/files/${i}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-accent-text hover:text-accent-text-hover">
+                      <a href={`/api/v1/leads/${lead.id}/briefing/files/${i}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-accent-text hover:text-accent-text-strong">
                         <Download className="h-3.5 w-3.5" aria-hidden /> {f.name} <span className="text-xs text-muted">({kb(f.size)})</span>
                       </a>
                     </li>

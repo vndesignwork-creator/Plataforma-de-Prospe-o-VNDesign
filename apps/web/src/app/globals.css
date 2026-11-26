@@ -24,7 +24,7 @@
   --accent-hover: #ff6d43;
   --accent-fg: #0d0d0d; /* texto sobre botão laranja: 6,1:1 */
   --accent-text: #f2734f;
-  --accent-text-hover: #ff8a65; /* estado :hover dos links — 8,4:1 sobre #0d0d0d */
+  --accent-text-strong: #ff8a65; /* laranja mais forte: :hover dos links e texto pequeno sobre fundo laranja — 8,4:1 sobre #0d0d0d */
   --accent-soft: rgb(239 92 50 / 0.14);
   --danger: #ff6b6b;
   --danger-soft: rgb(255 107 107 / 0.12);
@@ -56,7 +56,7 @@
   --accent-hover: #d94b22;
   --accent-fg: #0d0d0d;
   --accent-text: #b2390f; /* laranja escuro para texto: 5,6:1 */
-  --accent-text-hover: #8f2d0c; /* estado :hover dos links — 8,2:1 sobre branco */
+  --accent-text-strong: #8f2d0c; /* laranja mais forte: :hover dos links e texto pequeno sobre fundo laranja — 8,2:1 sobre branco */
   --accent-soft: rgb(239 92 50 / 0.12);
   --danger: #c22a2a;
   --danger-soft: rgb(194 42 42 / 0.08);
@@ -86,7 +86,7 @@
   --color-accent-hover: var(--accent-hover);
   --color-accent-fg: var(--accent-fg);
   --color-accent-text: var(--accent-text);
-  --color-accent-text-hover: var(--accent-text-hover);
+  --color-accent-text-strong: var(--accent-text-strong);
   --color-accent-soft: var(--accent-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);

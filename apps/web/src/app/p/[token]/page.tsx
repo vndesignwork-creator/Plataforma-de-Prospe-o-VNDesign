@@ -62,7 +62,7 @@ function Contacts({ from }: { from: SharedProject['from'] }) {
         <ul className="flex flex-wrap gap-x-5 gap-y-1">
           {links.map(({ href, label, icon: Icon }) => (
             <li key={href}>
-              <a href={href} className="inline-flex items-center gap-1.5 text-accent-text hover:text-accent-text-hover">
+              <a href={href} className="inline-flex items-center gap-1.5 text-accent-text hover:text-accent-text-strong">
                 <Icon className="h-4 w-4" aria-hidden /> {label}
               </a>
             </li>
@@ -181,7 +181,7 @@ export default async function SharedProjectPage({ params }: Props) {
               {deliverables.map((d) => (
                 <li key={d.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   {d.url ? (
-                    <a href={d.url} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 font-medium text-accent-text hover:text-accent-text-hover">
+                    <a href={d.url} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 font-medium text-accent-text hover:text-accent-text-strong">
                       {d.title} <ExternalLink className="h-3.5 w-3.5" aria-hidden />
                       <span className="sr-only">(abre num novo separador)</span>
                     </a>
@@ -231,7 +231,7 @@ export default async function SharedProjectPage({ params }: Props) {
                 {project.contract.status === 'aceite' ? 'aceite' : 'por aceitar'}
               </span>
             </p>
-            <a href={`/c/${project.contract.token}`} className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-accent-text hover:text-accent-text-hover">
+            <a href={`/c/${project.contract.token}`} className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-accent-text hover:text-accent-text-strong">
               {project.contract.status === 'aceite' ? 'Ver o contrato' : 'Ler e aceitar o contrato'} <ExternalLink className="h-3.5 w-3.5" aria-hidden />
             </a>
           </Box>

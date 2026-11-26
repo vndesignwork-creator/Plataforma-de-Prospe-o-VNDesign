@@ -36,6 +36,7 @@ import { api, errorMessage } from '@/lib/api-client';
 import { useDebouncedValue } from '@/lib/hooks';
 import { useAutomationRules, useDeleteAutomationRule, useRole, useRunAutomationRule, useSaveAutomationRule, useSectors, useTeamNames } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+import { confirmar } from '@/components/ui/confirm';
 
 const CONDITION_TYPES = Object.keys(CONDITION_LABELS) as RuleConditionType[];
 const ACTION_TYPES = Object.keys(ACTION_LABELS) as RuleActionType[];
@@ -489,7 +490,14 @@ function RuleRow({ rule, onEdit, canEdit }: { rule: AutomationRule; onEdit: () =
             className="h-8 w-8"
             aria-label={`Apagar ${rule.name}`}
             onClick={() => {
-              if (window.confirm(`Apagar a regra "${rule.name}"? O que já fez nos leads fica.`)) remove.mutate(rule.id, { onError: (e) => toast.error(errorMessage(e)) });
+              void confirmar({
+                title: `Apagar a regra "${rule.name}"?`,
+                description: 'O que a regra já fez nos leads fica como está.',
+                confirm: 'Apagar',
+                danger: true,
+              }).then((ok) => {
+                if (ok) remove.mutate(rule.id, { onError: (e) => toast.error(errorMessage(e)) });
+              });
             }}
           >
             <Trash2 className="h-4 w-4" aria-hidden />

@@ -41,17 +41,17 @@ export function LeadLocation({ lead }: { lead: Lead }) {
         {lead.geocode_status ? GEOCODE_STATUS_LABELS[lead.geocode_status] : hasAddress ? 'Ainda não localizado' : 'Sem morada'}
       </span>
       {!hasAddress && !located && !lead.anonymized_at ? (
-        <Link href={leadPath(lead, '/editar')} className="text-accent-text hover:text-accent-text-hover">
+        <Link href={leadPath(lead, '/editar')} className="text-accent-text hover:text-accent-text-strong">
           Acrescentar morada
         </Link>
       ) : null}
       {located ? (
-        <Link href={`/mapa?lead=${lead.id}`} className="inline-flex items-center gap-1 text-accent-text hover:text-accent-text-hover">
+        <Link href={`/mapa?lead=${lead.id}`} className="inline-flex items-center gap-1 text-accent-text hover:text-accent-text-strong">
           <MapPin className="h-3.5 w-3.5" aria-hidden /> Ver no mapa
         </Link>
       ) : null}
       {!lead.anonymized_at && (lead.geocode_status === 'not_found' || lead.geocode_status === 'approx') ? (
-        <Link href={`/mapa?lead=${lead.id}&marcar=1`} className="text-accent-text hover:text-accent-text-hover">
+        <Link href={`/mapa?lead=${lead.id}&marcar=1`} className="text-accent-text hover:text-accent-text-strong">
           Marcar no mapa
         </Link>
       ) : null}

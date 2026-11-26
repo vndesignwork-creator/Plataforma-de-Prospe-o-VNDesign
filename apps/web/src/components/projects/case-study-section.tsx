@@ -24,6 +24,7 @@ import { Input, Select } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api-client';
 import { useCaseStudy, useCaseStudyAction } from '@/lib/queries';
 import { SectionHeader } from './section-header';
+import { confirmar } from '@/components/ui/confirm';
 
 export function CaseStudySection({ lead }: { lead: Lead }) {
   const { data: study, isLoading } = useCaseStudy(lead.id, !!lead.project_completed_at);
@@ -94,8 +95,8 @@ export function CaseStudySection({ lead }: { lead: Lead }) {
             <>
               <Button
                 variant="ghost"
-                onClick={() => {
-                  if (!confirm('Apagar o caso de estudo?')) return;
+                onClick={async () => {
+                  if (!(await confirmar({ title: 'Apagar o caso de estudo?', confirm: 'Apagar', danger: true }))) return;
                   action.mutate(
                     { remove: true },
                     { onSuccess: () => setOpen(false), onError: (e) => toast.error(errorMessage(e)) },

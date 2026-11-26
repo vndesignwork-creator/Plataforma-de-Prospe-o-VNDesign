@@ -231,7 +231,7 @@ function PluginSites() {
       <ul className="flex flex-col gap-1 text-sm" aria-label="Sites com o plugin">
         {data.sites.map((s) => (
           <li key={s.site} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <a href={s.site} target="_blank" rel="noreferrer noopener" className="font-medium break-all text-accent-text hover:text-accent-text-hover">
+            <a href={s.site} target="_blank" rel="noreferrer noopener" className="font-medium break-all text-accent-text hover:text-accent-text-strong">
               {displayHost(s.site)}
             </a>
             <span className={s.outdated ? 'text-warning' : 'text-success'}>

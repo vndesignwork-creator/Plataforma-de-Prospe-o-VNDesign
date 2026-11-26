@@ -65,7 +65,7 @@ export function AppVersion() {
         <button
           type="button"
           onClick={() => window.location.reload()}
-          className="inline-flex items-center gap-1 rounded font-medium text-accent-text hover:text-accent-text-hover"
+          className="inline-flex items-center gap-1 rounded font-medium text-accent-text hover:text-accent-text-strong"
         >
           <RefreshCw className="h-3.5 w-3.5" aria-hidden /> Há uma versão nova:
           atualizar

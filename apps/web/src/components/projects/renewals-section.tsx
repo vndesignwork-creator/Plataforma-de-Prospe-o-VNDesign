@@ -36,6 +36,7 @@ import { ApiClientError, errorMessage } from '@/lib/api-client';
 import { useDeleteRenewal, useRenewals, useRenewRenewal, useSaveRenewal, useSettings } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 import { SectionHeader } from './section-header';
+import { confirmar } from '@/components/ui/confirm';
 
 const KIND_ICON: Record<RenewalKind, typeof Globe> = { domain: Globe, hosting: Server, maintenance: Wrench, other: Repeat };
 const REMIND_OPTIONS = [7, 14, 30, 60] as const;
@@ -209,7 +210,14 @@ function RenewalRow({ lead, r }: { lead: Lead; r: Renewal }) {
             <DropdownItem
               danger
               onSelect={() => {
-                if (window.confirm(`Apagar "${r.title}"? Os pagamentos já registados ficam.`)) remove.mutate(r.id, { onError: (e) => toast.error(errorMessage(e)) });
+                void confirmar({
+                  title: `Apagar "${r.title}"?`,
+                  description: 'Os pagamentos já registados ficam.',
+                  confirm: 'Apagar',
+                  danger: true,
+                }).then((ok) => {
+                  if (ok) remove.mutate(r.id, { onError: (e) => toast.error(errorMessage(e)) });
+                });
               }}
             >
               <Trash2 className="h-4 w-4" aria-hidden /> Apagar

@@ -26,8 +26,8 @@ test('plano de pagamentos: data do sinal à escolha e datas que se mudam na list
     // Na ficha: a data prevista muda-se ali mesmo.
     await page.goto(`/leads/${lead.id}`);
     const card = page.locator('#pagamentos');
-    await expect(card.getByRole('button', { name: /^Mudar a data prevista de Sinal/ })).toContainText(`Previsto a ${pt(iso(7))}`);
-    await card.getByRole('button', { name: /^Mudar a data prevista de Entrega/ }).click();
+    await expect(card.getByRole('button', { name: /mudar a data prevista de Sinal/ })).toContainText(`Previsto a ${pt(iso(7))}`);
+    await card.getByRole('button', { name: /mudar a data prevista de Entrega/ }).click();
     await card.getByLabel(/^Data prevista de Entrega/).fill(pt(iso(30)));
     await card.getByLabel(/^Data prevista de Entrega/).press('Enter');
     await expect(page.locator('[data-sonner-toast]').filter({ hasText: `Previsto a ${pt(iso(30))}` })).toBeVisible();

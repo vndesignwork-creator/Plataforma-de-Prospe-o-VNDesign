@@ -35,8 +35,10 @@ export function ProfitabilitySection({ bare }: { bare?: boolean } = {}) {
   const t = data.totals;
   const hours = (m: number) => formatMinutes(m);
 
+  // Dentro das Estatísticas (bare) o título já está na secção de fora: sem nome,
+  // não fica uma zona repetida para quem usa leitor de ecrã.
   return (
-    <section aria-labelledby={bare ? undefined : 'rentabilidade'} aria-label={bare ? 'Rentabilidade' : undefined} className="flex flex-col gap-6">
+    <section aria-labelledby={bare ? undefined : 'rentabilidade'} className="flex flex-col gap-6">
       {bare ? null : (
         <div>
           <h2 id="rentabilidade" className="font-display text-xl font-semibold">

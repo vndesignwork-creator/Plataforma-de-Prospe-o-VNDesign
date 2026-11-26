@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api-client';
 import { useDeliverableImage, usePinAction, usePins } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+import { confirmar } from '@/components/ui/confirm';
 
 /** Uma marca na imagem (o número e a cor dizem se já está resolvida). */
 function PinDot({ pin, n, active, onClick }: { pin: DeliverablePin; n: number; active: boolean; onClick: () => void }) {
@@ -142,8 +143,16 @@ export function DeliverablePinsDialog({ lead, deliverable, onClose }: { lead: Le
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => {
-                  if (!confirm('Tirar a imagem? Os comentários que estão em cima dela também saem.')) return;
+                onClick={async () => {
+                  if (
+                    !(await confirmar({
+                      title: 'Tirar a imagem?',
+                      description: 'Os comentários que estão em cima dela também saem.',
+                      confirm: 'Tirar a imagem',
+                      danger: true,
+                    }))
+                  )
+                    return;
                   image.mutate({ remove: true }, { onError: (e) => toast.error(errorMessage(e)) });
                 }}
               >

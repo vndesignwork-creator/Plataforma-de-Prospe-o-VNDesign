@@ -243,7 +243,7 @@ export function ProjectsView({ tabs }: { tabs?: ReactNode } = {}) {
           <>
           <Kpi label="Por receber" value={euros(billing.outstanding)}>
             {billing.outstanding === 0 && withoutPlan ? (
-              <Link href={`${leadPath(withoutPlan.lead)}#projeto`} className="text-xs font-medium text-accent-text hover:text-accent-text-hover">
+              <Link href={`${leadPath(withoutPlan.lead)}#projeto`} className="text-xs font-medium text-accent-text hover:text-accent-text-strong">
                 Criar plano de pagamentos
               </Link>
             ) : null}

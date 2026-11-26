@@ -14,6 +14,7 @@ import { Card, CardHeader, Skeleton } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api-client';
+import { confirmar } from '@/components/ui/confirm';
 
 const KEY = ['business-card'];
 
@@ -109,7 +110,14 @@ export function BusinessCardSettings() {
                   size="sm"
                   variant="ghost"
                   onClick={() => {
-                    if (window.confirm('Trocar o link? O link e o QR antigos deixam de funcionar.')) void patch({ rotate: true }, 'Link novo criado.');
+                    void confirmar({
+                      title: 'Trocar o link?',
+                      description: 'O link e o QR antigos deixam de funcionar.',
+                      confirm: 'Trocar o link',
+                      danger: true,
+                    }).then((ok) => {
+                      if (ok) void patch({ rotate: true }, 'Link novo criado.');
+                    });
                   }}
                 >
                   <RefreshCw className="h-3.5 w-3.5" aria-hidden /> Trocar o link
@@ -123,7 +131,7 @@ export function BusinessCardSettings() {
               <div className="flex flex-col items-center gap-2">
                 {/* eslint-disable-next-line @next/next/no-img-element -- QR gerado no servidor (SVG) */}
                 <img src={qrHref} alt="Código QR do cartão de contacto" className="h-44 w-44 rounded-lg border border-border bg-white p-2" />
-                <a href={qrHref} download="cartao-qr.svg" className="inline-flex items-center gap-1 text-xs font-medium text-accent-text hover:text-accent-text-hover">
+                <a href={qrHref} download="cartao-qr.svg" className="inline-flex items-center gap-1 text-xs font-medium text-accent-text hover:text-accent-text-strong">
                   <Download className="h-3.5 w-3.5" aria-hidden /> Descarregar o QR
                 </a>
               </div>

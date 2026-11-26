@@ -95,6 +95,7 @@ function PaymentRow({ lead, payment, today }: { lead: Lead; payment: LeadPayment
   const [editing, setEditing] = useState(false);
   const paid = optimistic ?? !!payment.paid_on;
   const overdue = !payment.paid_on && !!payment.due_on && payment.due_on < today;
+  const dueLabel = payment.due_on ? `${overdue ? 'Em atraso desde' : 'Previsto a'} ${formatDate(payment.due_on)}` : 'Por receber · marcar data';
 
   /** Mudar a data prevista (vazio = sem data). */
   async function setDue(value: string) {
@@ -154,13 +155,14 @@ function PaymentRow({ lead, payment, today }: { lead: Lead; payment: LeadPayment
             aria-label={`Data prevista de ${payment.description}`}
           />
         ) : (
+          // O nome lido tem de começar pelo texto à vista (quem usa comandos de voz diz o que lê).
           <button
             type="button"
             onClick={() => setEditing(true)}
             className={cn('-mx-1 block rounded px-1 text-left text-xs hover:bg-surface-2', overdue ? 'font-medium text-danger' : 'text-muted')}
-            aria-label={`Mudar a data prevista de ${payment.description}`}
+            aria-label={`${dueLabel} — mudar a data prevista de ${payment.description}`}
           >
-            {payment.due_on ? `${overdue ? 'Em atraso desde' : 'Previsto a'} ${formatDate(payment.due_on)}` : 'Por receber · marcar data'}
+            {dueLabel}
           </button>
         )}
       </span>
@@ -251,10 +253,13 @@ export function PaymentsCard({ lead }: { lead: Lead }) {
   const relevant = ['proposta_enviada', 'cliente'].includes(lead.status) || !!payments?.length;
   if (lead.anonymized_at || (!isLoading && !relevant)) return null;
   const sum = summarizePayments(payments ?? [], today);
+  // Ainda sem pagamentos: o cartão fica numa linha só (título + "Criar plano").
+  const vazio = !isLoading && !payments?.length;
 
   return (
     <Card id="pagamentos" className="scroll-mt-20">
       <CardHeader
+        compact={vazio}
         title="Pagamentos"
         description={
           payments?.length
@@ -274,7 +279,6 @@ export function PaymentsCard({ lead }: { lead: Lead }) {
               <Button size="sm" variant="outline" onClick={() => setPlanning(true)}>
                 <Wallet className="h-3.5 w-3.5" aria-hidden /> Criar plano
               </Button>
-              <CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label="Pagamentos" />
             </span>
           )
         }
@@ -294,7 +298,7 @@ export function PaymentsCard({ lead }: { lead: Lead }) {
             </div>
           ) : null}
           {collapsed ? (
-            <button type="button" onClick={() => setCollapsed(false)} className="block w-full px-4 py-2.5 text-right text-sm text-accent-text hover:text-accent-text-hover">
+            <button type="button" onClick={() => setCollapsed(false)} className="block w-full px-4 py-2.5 text-right text-sm text-accent-text hover:text-accent-text-strong">
               Ver os {payments.length} pagamento{payments.length === 1 ? '' : 's'}
             </button>
           ) : (
@@ -305,9 +309,7 @@ export function PaymentsCard({ lead }: { lead: Lead }) {
           </ul>
           )}
         </>
-      ) : collapsed ? null : (
-        <p className="px-4 py-3 text-sm text-muted">Ainda sem pagamentos. Cria o plano e marca cada pagamento quando o receberes.</p>
-      )}
+      ) : null}
       {planning ? (
         <Dialog
           open

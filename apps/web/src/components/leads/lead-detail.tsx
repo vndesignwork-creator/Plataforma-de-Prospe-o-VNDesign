@@ -144,7 +144,7 @@ function ExternalUrl({ url }: { url: string | null }) {
       target="_blank"
       rel="noreferrer noopener"
       title={url}
-      className="inline-flex max-w-full min-w-0 items-center gap-1 align-bottom text-accent-text hover:text-accent-text-hover"
+      className="inline-flex max-w-full min-w-0 items-center gap-1 align-bottom text-accent-text hover:text-accent-text-strong"
     >
       {/* Links compridos ficam cortados com "…" dentro da coluna (o endereço completo aparece ao passar o rato). */}
       <span className="min-w-0 truncate">{displayHost(url)}</span>
@@ -778,7 +778,7 @@ export function LeadDetail({ id }: { id: string }) {
                 {lead.services?.length ? (
                   <ServiceChips services={lead.services} className="justify-end" />
                 ) : !lead.anonymized_at ? (
-                  <Link href={leadPath(lead, '/editar')} className="block text-right text-accent-text hover:text-accent-text-hover">
+                  <Link href={leadPath(lead, '/editar')} className="block text-right text-accent-text hover:text-accent-text-strong">
                     Escolher serviços de interesse
                   </Link>
                 ) : (
@@ -842,7 +842,7 @@ export function LeadDetail({ id }: { id: string }) {
                 <Row label="Redes sociais">
                   <span className="flex flex-wrap gap-x-3 gap-y-1">
                     {lead.social_links.map((url) => (
-                      <a key={url} href={url} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 text-accent-text hover:text-accent-text-hover">
+                      <a key={url} href={url} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 text-accent-text hover:text-accent-text-strong">
                         {socialLabel(url)}
                         <ExternalLink className="h-3.5 w-3.5" aria-hidden />
                         <span className="sr-only">(abre num novo separador)</span>
@@ -864,7 +864,7 @@ export function LeadDetail({ id }: { id: string }) {
               {lead.email ? (
                 <Row label="Email">
                   <span className="flex flex-col gap-0.5">
-                    <a href={`mailto:${lead.email}`} className={cn('text-accent-text hover:text-accent-text-hover', lead.email_bounced_at && 'line-through opacity-70')}>
+                    <a href={`mailto:${lead.email}`} className={cn('text-accent-text hover:text-accent-text-strong', lead.email_bounced_at && 'line-through opacity-70')}>
                       {lead.email}
                     </a>
                     {/* O último email foi devolvido: o endereço não existe (limpa-se ao mudar o email). */}
@@ -878,7 +878,7 @@ export function LeadDetail({ id }: { id: string }) {
               ) : null}
               {lead.phone ? (
                 <Row label="Telefone">
-                  <a href={telUrl(lead.phone)} className="inline-flex items-center gap-1 text-accent-text hover:text-accent-text-hover">
+                  <a href={telUrl(lead.phone)} className="inline-flex items-center gap-1 text-accent-text hover:text-accent-text-strong">
                     <Phone className="h-3.5 w-3.5" aria-hidden />
                     {lead.phone}
                   </a>

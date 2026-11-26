@@ -283,7 +283,7 @@ export function PomodoroBox({ lead, compact, className }: { lead: Lead; compact?
           {elsewhere ? (
             <p className="text-center text-xs text-muted">
               A decorrer em{' '}
-              <Link href={`${leadPath(elsewhere.lead)}#projeto`} className="font-medium text-accent-text hover:text-accent-text-hover">
+              <Link href={`${leadPath(elsewhere.lead)}#projeto`} className="font-medium text-accent-text hover:text-accent-text-strong">
                 {elsewhere.lead.company_name}
               </Link>
               . Começar aqui passa o pomodoro para este projeto.

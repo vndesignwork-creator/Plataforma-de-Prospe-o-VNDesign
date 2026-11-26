@@ -307,7 +307,7 @@ function DeliverablesBox({ project }: { project: CollabProject }) {
           <li key={d.id} className="flex flex-wrap items-center gap-x-2">
             <FolderOpen className="h-4 w-4 text-muted" aria-hidden />
             {d.url ? (
-              <a href={d.url} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 font-medium text-accent-text hover:text-accent-text-hover">
+              <a href={d.url} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 font-medium text-accent-text hover:text-accent-text-strong">
                 {d.title} <ExternalLink className="h-3.5 w-3.5" aria-hidden />
               </a>
             ) : (
@@ -353,7 +353,7 @@ function BriefingBox({ project }: { project: CollabProject }) {
             <ul className="flex flex-col gap-1">
               {b.files.map((f) => (
                 <li key={f.url}>
-                  <a href={f.url} className="text-accent-text hover:text-accent-text-hover">
+                  <a href={f.url} className="text-accent-text hover:text-accent-text-strong">
                     {f.name}
                   </a>{' '}
                   <span className="text-xs text-muted">({Math.max(1, Math.round(f.size / 1024))} KB)</span>
@@ -405,7 +405,7 @@ function BrandBox({ project }: { project: CollabProject }) {
           <ul className="flex flex-col gap-0.5">
             {kit.links.map((l, i) => (
               <li key={i}>
-                <a href={l.url} target="_blank" rel="noreferrer noopener" className="text-accent-text hover:text-accent-text-hover">
+                <a href={l.url} target="_blank" rel="noreferrer noopener" className="text-accent-text hover:text-accent-text-strong">
                   {l.label || l.url}
                 </a>
               </li>
@@ -416,7 +416,7 @@ function BrandBox({ project }: { project: CollabProject }) {
           <ul className="flex flex-col gap-1" aria-label="Ficheiros da marca">
             {kit.files.map((f) => (
               <li key={f.url}>
-                <a href={f.url} className="text-accent-text hover:text-accent-text-hover">
+                <a href={f.url} className="text-accent-text hover:text-accent-text-strong">
                   {f.name}
                 </a>
               </li>
@@ -430,7 +430,7 @@ function BrandBox({ project }: { project: CollabProject }) {
               <li key={a.id} className="flex items-center gap-2 py-1.5">
                 <span className="min-w-0 flex-1">
                   {a.url ? (
-                    <a href={a.url} target="_blank" rel="noreferrer noopener" className="font-medium text-accent-text hover:text-accent-text-hover">
+                    <a href={a.url} target="_blank" rel="noreferrer noopener" className="font-medium text-accent-text hover:text-accent-text-strong">
                       {a.label}
                     </a>
                   ) : (

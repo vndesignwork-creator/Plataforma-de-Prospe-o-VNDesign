@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { Toaster } from 'sonner';
+import { ConfirmHost } from '@/components/ui/confirm';
 import { ServiceWorkerRegister } from './service-worker';
 import { useTheme } from './theme';
 
@@ -29,6 +30,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={client}>
       {children}
       <ThemedToaster />
+      <ConfirmHost />
       <ServiceWorkerRegister />
     </QueryClientProvider>
   );

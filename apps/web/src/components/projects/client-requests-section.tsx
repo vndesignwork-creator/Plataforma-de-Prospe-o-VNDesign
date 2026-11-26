@@ -15,6 +15,7 @@ import { errorMessage } from '@/lib/api-client';
 import { useClientRequests, useDeleteClientRequest, useSaveClientRequest } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 import { SectionHeader } from './section-header';
+import { confirmar } from '@/components/ui/confirm';
 
 const STATUS_STYLE: Record<ClientRequestStatus, string> = { pending: 'text-warning', sent: 'text-accent-text', done: 'text-success' };
 
@@ -47,8 +48,17 @@ function RequestRow({ lead, r }: { lead: Lead; r: ClientRequest }) {
           size="icon"
           variant="ghost"
           className="h-7 w-7"
-          onClick={() => {
-            if (r.files.length && !window.confirm(`Apagar "${r.title}" e os ${r.files.length} ficheiro(s) que o cliente enviou?`)) return;
+          onClick={async () => {
+            if (
+              r.files.length &&
+              !(await confirmar({
+                title: `Apagar "${r.title}"?`,
+                description: `Os ${r.files.length} ficheiro${r.files.length === 1 ? '' : 's'} que o cliente enviou também são apagados.`,
+                confirm: 'Apagar',
+                danger: true,
+              }))
+            )
+              return;
             remove.mutate(r.id, { onError: (e) => toast.error(errorMessage(e)) });
           }}
           aria-label={`Apagar ${r.title}`}
@@ -61,7 +71,7 @@ function RequestRow({ lead, r }: { lead: Lead; r: ClientRequest }) {
         <ul className="ml-6 flex flex-wrap gap-x-3 gap-y-1 text-xs">
           {r.files.map((f, i) => (
             <li key={`${f.name}-${i}`}>
-              <a href={`/api/v1/client-requests/${r.id}/files/${i}`} className="inline-flex items-center gap-1 text-accent-text hover:text-accent-text-hover">
+              <a href={`/api/v1/client-requests/${r.id}/files/${i}`} className="inline-flex items-center gap-1 text-accent-text hover:text-accent-text-strong">
                 <Download className="h-3 w-3" aria-hidden /> {f.name}
               </a>
             </li>

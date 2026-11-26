@@ -42,7 +42,7 @@ function TasksBlock({ project }: { project: Project }) {
           type="button"
           onClick={() => setOpen(!open)}
           aria-expanded={open}
-          className="inline-flex items-center gap-1 font-medium text-accent-text hover:text-accent-text-hover"
+          className="inline-flex items-center gap-1 font-medium text-accent-text hover:text-accent-text-strong"
         >
           <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', !open && '-rotate-90')} aria-hidden />
           {open ? 'Esconder tarefas' : 'Mostrar tarefas'}
@@ -202,7 +202,7 @@ export function ProjectRow({
                 }
               >
                 {time.minutes > 0 || time.logged_seconds > 0 ? (
-                  <button type="button" onClick={() => setHoursOpen(true)} className="self-start text-xs font-medium text-accent-text hover:text-accent-text-hover">
+                  <button type="button" onClick={() => setHoursOpen(true)} className="self-start text-xs font-medium text-accent-text hover:text-accent-text-strong">
                     Ver registos
                   </button>
                 ) : null}
@@ -244,7 +244,7 @@ export function ProjectRow({
                 <FolderOpen className="h-3.5 w-3.5" aria-hidden /> Entregas {deliverables.approved} de {deliverables.total} aprovadas
               </span>
             ) : null}
-            <Link href={`${leadPath(lead)}#projeto`} className="ml-auto inline-flex items-center gap-1 font-medium text-accent-text hover:text-accent-text-hover">
+            <Link href={`${leadPath(lead)}#projeto`} className="ml-auto inline-flex items-center gap-1 font-medium text-accent-text hover:text-accent-text-strong">
               Detalhes do projeto <ArrowRight className="h-3.5 w-3.5" aria-hidden />
             </Link>
           </div>

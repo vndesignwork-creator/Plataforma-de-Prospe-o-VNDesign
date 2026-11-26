@@ -34,6 +34,7 @@ import { useSiteMonitor, useSiteMonitorActions } from '@/lib/queries';
 import { cn, displayHost } from '@/lib/utils';
 import { SiteQuickActions } from '@/components/leads/site-quick-actions';
 import { SectionHeader } from './section-header';
+import { confirmar } from '@/components/ui/confirm';
 
 type Monitor = SiteMonitor & { domain_renewal_on: string | null };
 
@@ -203,7 +204,7 @@ function MonitorDetails({ lead, monitor }: { lead: Lead; monitor: Monitor }) {
   return (
     <div className={cn('mt-2 flex flex-col gap-2 text-sm', !monitor.active && 'opacity-70')}>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <a href={monitor.url} target="_blank" rel="noopener noreferrer" className="min-w-0 font-medium break-all text-accent-text hover:text-accent-text-hover">
+        <a href={monitor.url} target="_blank" rel="noopener noreferrer" className="min-w-0 font-medium break-all text-accent-text hover:text-accent-text-strong">
           {displayHost(monitor.url)}
         </a>
         <span className="ml-auto flex items-center gap-1">
@@ -229,7 +230,9 @@ function MonitorDetails({ lead, monitor }: { lead: Lead; monitor: Monitor }) {
               <DropdownItem
                 danger
                 onSelect={() => {
-                  if (window.confirm('Deixar de vigiar este site?')) actions.remove.mutate(monitor.id, { onError: (e) => toast.error(errorMessage(e)) });
+                  void confirmar({ title: 'Deixar de vigiar este site?', confirm: 'Deixar de vigiar', danger: true }).then((ok) => {
+                    if (ok) actions.remove.mutate(monitor.id, { onError: (e) => toast.error(errorMessage(e)) });
+                  });
                 }}
               >
                 <Trash2 className="h-4 w-4" aria-hidden /> Deixar de vigiar

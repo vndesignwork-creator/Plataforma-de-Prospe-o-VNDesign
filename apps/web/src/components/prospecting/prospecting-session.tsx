@@ -445,7 +445,7 @@ export function ProspectingSession() {
       ) : null}
 
       {view !== 'missing' && data && missingCount ? (
-        <button type="button" onClick={() => changeView('missing')} className="self-start text-sm text-accent-text hover:text-accent-text-hover">
+        <button type="button" onClick={() => changeView('missing')} className="self-start text-sm text-accent-text hover:text-accent-text-strong">
           {missingCount} lead{missingCount === 1 ? '' : 's'} com follow-up ou por contactar {mode === 'email' ? 'sem email → Falta email' : 'sem telefone nem email → Falta contacto'}
         </button>
       ) : null}
@@ -924,7 +924,7 @@ function LeadDetails({ item }: { item: ProspectingItem }) {
           <div>
             <dt className="text-xs font-medium tracking-wide text-muted uppercase">Site</dt>
             <dd className="mt-0.5">
-              <a href={lead.website} target="_blank" rel="noreferrer" className="text-accent-text hover:text-accent-text-hover">
+              <a href={lead.website} target="_blank" rel="noreferrer" className="text-accent-text hover:text-accent-text-strong">
                 {displayHost(lead.website)}
               </a>
             </dd>
@@ -935,7 +935,7 @@ function LeadDetails({ item }: { item: ProspectingItem }) {
         type="button"
         onClick={() => setScripts((v) => !v)}
         aria-expanded={scripts}
-        className="self-start text-sm text-accent-text hover:text-accent-text-hover"
+        className="self-start text-sm text-accent-text hover:text-accent-text-strong"
       >
         {scripts ? 'Esconder scripts' : 'Ver scripts'}
       </button>

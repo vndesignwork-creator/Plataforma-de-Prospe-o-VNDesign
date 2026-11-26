@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { appendDictation, newDictationPart } from '@/lib/dictation';
 import { cn } from '@/lib/utils';
 import { AudioWaveform } from './audio-waveform';
+import { confirmar } from './confirm';
 
 export { appendDictation } from '@/lib/dictation';
 
@@ -241,11 +242,20 @@ export function DictateButton({
     releaseMic();
   }
 
-  function discard() {
+  async function discard() {
     const t = live.current;
     // Só no texto simples se sabe se escreveram por cima do ditado.
     const edited = !target && !!t && t.snapshot() !== produced.current;
-    if (edited && !window.confirm('Descartar o ditado repõe o texto como estava antes de começares (também o que escreveste entretanto). Continuar?')) return;
+    if (
+      edited &&
+      !(await confirmar({
+        title: 'Descartar o ditado?',
+        description: 'O texto volta a como estava antes de começares — também o que escreveste entretanto.',
+        confirm: 'Descartar',
+        danger: true,
+      }))
+    )
+      return;
     setP('idle');
     stopClock();
     rec.current?.abort();
@@ -317,7 +327,7 @@ export function DictateButton({
       </button>
       <button
         type="button"
-        onClick={discard}
+        onClick={() => void discard()}
         aria-label="Descartar o ditado"
         title="Descartar (repõe o texto de antes)"
         className={cn(ctl, 'border-transparent text-danger hover:bg-danger-soft', size === 'sm' ? 'h-8 w-8' : 'h-8 px-2.5')}

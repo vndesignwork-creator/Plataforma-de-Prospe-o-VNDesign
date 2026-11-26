@@ -93,6 +93,7 @@ import {
   type TaskPatch,
 } from "./tasks-card";
 import { LeadTitle } from '@/components/leads/lead-title';
+import { confirmar } from "@/components/ui/confirm";
 
 /** Onde vive a tarefa: um lead/projeto, uma lista ou as soltas sem lista. */
 type Container =
@@ -635,9 +636,12 @@ function BoardCardView({
     const n = card.pending.length + card.done.length;
     if (
       n &&
-      !window.confirm(
-        `Apagar a lista “${card.title}” e as ${n} tarefa${n === 1 ? "" : "s"} dela?`,
-      )
+      !(await confirmar({
+        title: `Apagar a lista “${card.title}”?`,
+        description: `As ${n} tarefa${n === 1 ? "" : "s"} dela também são apagadas.`,
+        confirm: "Apagar",
+        danger: true,
+      }))
     )
       return;
     try {

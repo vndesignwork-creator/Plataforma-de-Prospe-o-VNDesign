@@ -120,12 +120,14 @@ test('dashboard: a página acaba nos cartões (sem espaço vazio por baixo, mesm
   const past = new Date(Date.now() - 3 * 86_400_000).toISOString().slice(0, 10);
   for (let i = 0; i < 25; i++) {
     await page.request.post('/api/v1/leads?force=true', {
-      data: { company_name: `Atrasado ${run} ${i}`, status: 'contactado', next_action_on: past, next_action_text: 'Ligar' },
+      // "Respondeu" (e não "contactado"): a base de dados reagenda sozinha o follow-up de um
+      // lead contactado com data passada, e assim nunca haveria atrasados para o teste.
+      data: { company_name: `Atrasado ${run} ${i}`, status: 'respondeu', next_action_on: past, next_action_text: 'Ligar' },
     });
   }
   await page.goto('/dashboard');
   // A base de testes pode ter atrasados de corridas antigas (vêm primeiro): basta haver a lista cheia.
-  await expect(page.getByText(/^Atrasado /).first()).toBeAttached();
+  await expect(page.getByRole('link', { name: /Atrasado / }).first()).toBeAttached();
   const { doc, main, inner } = await page.evaluate(() => ({
     doc: document.documentElement.scrollHeight,
     inner: window.innerHeight,

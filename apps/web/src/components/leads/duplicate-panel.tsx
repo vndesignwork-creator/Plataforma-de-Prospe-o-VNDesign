@@ -71,7 +71,7 @@ export function DuplicatePanel({
                     href={leadPath(d)}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-sm text-accent-text hover:text-accent-text-hover"
+                    className="inline-flex items-center gap-1 text-sm text-accent-text hover:text-accent-text-strong"
                   >
                     <ExternalLink className="h-3.5 w-3.5" aria-hidden />
                     Abrir<span className="sr-only"> #{d.number} num novo separador</span>

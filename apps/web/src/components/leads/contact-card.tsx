@@ -335,7 +335,7 @@ export function ContactCard({ lead }: { lead: Lead }) {
         description={<span className={collapsed ? 'line-clamp-1' : undefined}>{description}</span>}
         actions={
           <>
-            <Link href="/scripts" className="text-sm text-accent-text hover:text-accent-text-hover">
+            <Link href="/scripts" className="text-sm text-accent-text hover:text-accent-text-strong">
               Gerir modelos
             </Link>
             <CollapseButton collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} label="Contactar" />

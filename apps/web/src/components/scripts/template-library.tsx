@@ -62,6 +62,7 @@ import { SectorIconView } from '@/components/icons/lead-icons';
 import { SingleSelectFilter } from '@/components/leads/multi-select';
 import { useServiceCatalog } from '@/components/services/services';
 import { TemplateBodyEditor } from './template-body-editor';
+import { confirmar } from '@/components/ui/confirm';
 
 type FormOutput = z.output<typeof ContactTemplateCreateSchema>;
 
@@ -78,7 +79,7 @@ const KIND_ICONS: Record<TemplateKind, LucideIcon> = {
   proposal_structure: FileText,
   whatsapp: MessageCircle,
 };
-const LEAVE = 'Tens alterações por guardar neste modelo. Sair sem guardar?';
+const LEAVE = { title: 'Sair sem guardar?', description: 'Tens alterações por guardar neste modelo.', confirm: 'Sair sem guardar', danger: true } as const;
 
 function toForm(t: ContactTemplate | null): ContactTemplateCreateInput {
   if (!t) return EMPTY;
@@ -309,7 +310,7 @@ function Editor({
 
   async function duplicate() {
     if (!template) return;
-    if (isDirty && !window.confirm(LEAVE)) return;
+    if (isDirty && !(await confirmar(LEAVE))) return;
     try {
       const { data } = await api<{ data: ContactTemplate }>('/templates', {
         method: 'POST',
@@ -654,8 +655,8 @@ export function TemplateLibrary() {
   );
 
   // Mudar de modelo com alterações por guardar pergunta antes (o editor recomeça do zero).
-  function choose(id: string | 'new') {
-    if (dirty.current && !window.confirm(LEAVE)) return;
+  async function choose(id: string | 'new') {
+    if (dirty.current && !(await confirmar(LEAVE))) return;
     dirty.current = false;
     setSelected(id);
     // No telemóvel/tablet o editor fica por baixo da lista: ao escolher, desce até ele.
@@ -675,7 +676,7 @@ export function TemplateLibrary() {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
       <nav aria-label="Modelos" className="flex flex-col gap-4">
-        <Button onClick={() => choose('new')} variant={selected === 'new' ? 'primary' : 'outline'}>
+        <Button onClick={() => void choose('new')} variant={selected === 'new' ? 'primary' : 'outline'}>
           <Plus className="h-4 w-4" aria-hidden /> Novo modelo
         </Button>
         <div className="relative">
@@ -738,7 +739,7 @@ export function TemplateLibrary() {
                       <li key={t.id}>
                         <button
                           type="button"
-                          onClick={() => choose(t.id)}
+                          onClick={() => void choose(t.id)}
                           aria-current={active ? 'true' : undefined}
                           className={cn(
                             'flex w-full flex-col gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-sm',

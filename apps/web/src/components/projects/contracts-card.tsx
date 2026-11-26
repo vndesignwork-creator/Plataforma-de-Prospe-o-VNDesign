@@ -293,9 +293,12 @@ export function ContractsCard({ lead }: { lead: Lead }) {
   const [collapsed, setCollapsed] = useCollapsed('contratos');
   const relevant = ['proposta_enviada', 'cliente'].includes(lead.status) || !!contracts?.length;
   if (lead.anonymized_at || (!isLoading && !relevant)) return null;
+  // Ainda sem contratos: o cartão fica numa linha só.
+  const vazio = !isLoading && !contracts?.length;
   return (
     <Card id="contratos" className="scroll-mt-20">
       <CardHeader
+        compact={vazio}
         title="Contratos"
         description={
           collapsed && contracts?.length
@@ -314,7 +317,7 @@ export function ContractsCard({ lead }: { lead: Lead }) {
         }
         className={collapsed && contracts?.length ? 'border-b-0' : undefined}
       />
-      {collapsed && contracts?.length ? null : isLoading ? (
+      {vazio ? null : collapsed && contracts?.length ? null : isLoading ? (
         <div className="p-5">
           <Skeleton className="h-12" />
         </div>
@@ -324,9 +327,7 @@ export function ContractsCard({ lead }: { lead: Lead }) {
             <ContractRow key={c.id} lead={lead} contract={c} />
           ))}
         </ul>
-      ) : (
-        <p className="p-4 text-sm text-muted">Ainda sem contratos. Gera um a partir da proposta aceite.</p>
-      )}
+      ) : null}
       {creating ? <NewContractDialog lead={lead} onClose={() => setCreating(false)} /> : null}
     </Card>
   );

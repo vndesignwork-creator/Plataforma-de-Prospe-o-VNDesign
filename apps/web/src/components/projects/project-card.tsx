@@ -45,7 +45,7 @@ const euros = (v: number) => formatCurrency(v, { decimals: false });
 /** Link de uma caixinha do resumo para a parte da ficha com o detalhe. */
 function Jump({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <a href={href} className="self-start text-xs font-medium text-accent-text hover:text-accent-text-hover">
+    <a href={href} className="self-start text-xs font-medium text-accent-text hover:text-accent-text-strong">
       {children}
     </a>
   );
