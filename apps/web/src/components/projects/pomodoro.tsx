@@ -142,7 +142,18 @@ function Dial({
 }
 
 /** compact: mais pequeno (na página Projetos, ao lado das tarefas). */
-export function PomodoroBox({ lead, compact, className }: { lead: Lead; compact?: boolean; className?: string }) {
+export function PomodoroBox({
+  lead,
+  compact,
+  mini,
+  className,
+}: {
+  lead: Lead;
+  compact?: boolean;
+  /** Lista de projetos: enquanto não há pomodoro neste projeto, fica só uma linha (como o cronómetro). */
+  mini?: boolean;
+  className?: string;
+}) {
   const settings = usePomodoroSettings();
   const { data: pomodoro } = usePomodoro(!!settings);
   const { data: tasks } = useLeadTasks(lead.id);
@@ -176,6 +187,24 @@ export function PomodoroBox({ lead, compact, className }: { lead: Lead; compact?
       <Coffee className="h-3.5 w-3.5" aria-hidden /> Pausa de {settings.short_break_minutes} min
     </Button>
   );
+
+  // Numa lista com vários projetos, o bloco inteiro repetia-se em todos (e só um pode contar):
+  // enquanto não há pomodoro neste, fica uma linha só, igual à do cronómetro.
+  if (mini && !here) {
+    return (
+      <div role="group" aria-label="Pomodoro" className={cn('flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-2 px-4 py-3', className)}>
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted">
+          <Timer className="h-3.5 w-3.5" aria-hidden /> Pomodoro
+          <span className="font-normal tabular" aria-hidden>
+            · {formatCountdown(left)}
+          </span>
+        </span>
+        <Button size="sm" variant="outline" onClick={() => start('work')} loading={pending}>
+          <Play className="h-3.5 w-3.5" aria-hidden /> Começar {settings.work_minutes} min
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <section

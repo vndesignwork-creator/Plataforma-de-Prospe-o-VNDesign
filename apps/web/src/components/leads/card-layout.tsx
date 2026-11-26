@@ -87,7 +87,7 @@ export function CardLayoutButton<K extends string>({
   );
 }
 
-function CardLayoutDialog<K extends string>({
+export function CardLayoutDialog<K extends string>({
   board,
   available,
   title,

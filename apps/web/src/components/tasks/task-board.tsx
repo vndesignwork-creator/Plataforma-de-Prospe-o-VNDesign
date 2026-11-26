@@ -212,14 +212,11 @@ function NewListComposer({
   }
 
   if (!open) {
+    // Botão pequeno na barra de cima (antes ocupava uma linha inteira, do tamanho de um cartão).
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex w-full items-center gap-2 rounded-xl border border-border bg-surface px-5 py-4 text-left text-sm text-muted shadow-card hover:text-fg sm:max-w-xl"
-      >
-        <Plus className="h-4 w-4" aria-hidden /> Criar uma lista…
-      </button>
+      <Button type="button" size="sm" variant="outline" onClick={() => setOpen(true)}>
+        <Plus className="h-3.5 w-3.5" aria-hidden /> Criar uma lista…
+      </Button>
     );
   }
   return (
@@ -1367,11 +1364,9 @@ export function TaskBoard({
   if (loading || listsLoading) return <Skeleton className="h-40" />;
   return (
     <div className="flex flex-col gap-6">
-      {showLists ? (
-        <NewListComposer assignTo={assignTo} hasTeam={viewer.hasTeam} />
-      ) : null}
-      {ordered.length > 1 || overdueCount ? (
+      {showLists || ordered.length > 1 || overdueCount ? (
         <div className="flex flex-wrap items-center gap-2 text-sm">
+          {showLists ? <NewListComposer assignTo={assignTo} hasTeam={viewer.hasTeam} /> : null}
           {overdueCount ? (
             <button
               type="button"

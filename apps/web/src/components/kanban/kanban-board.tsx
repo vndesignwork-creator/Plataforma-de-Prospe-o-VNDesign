@@ -57,6 +57,7 @@ import { ChannelIcon, SectorIconView } from '@/components/icons/lead-icons';
 import { ServiceIcons, useServiceFilterOptions } from '@/components/services/services';
 import { TaskProgress } from '@/components/tasks/task-progress';
 import { LeadTitle } from '@/components/leads/lead-title';
+import { Dica } from '@/components/ui/dica';
 
 type Columns = Record<LeadStatus, Lead[]>;
 
@@ -946,41 +947,12 @@ function KanbanHelp() {
   );
 }
 
-const HELP_SEEN = 'vnd.kanban.help';
-
 /** Na primeira visita, as instruções aparecem uma vez (com "Percebi" para fechar). */
 function FirstVisitHelp() {
-  const [show, setShow] = useState(false);
-  useEffect(() => {
-    try {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- só no browser (localStorage)
-      setShow(!window.localStorage.getItem(HELP_SEEN));
-    } catch {
-      setShow(false);
-    }
-  }, []);
-  if (!show) return null;
   return (
-    <div role="note" className="flex items-start gap-3 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm">
-      <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-accent-text" aria-hidden />
-      <p className="flex-1 text-muted">
-        <span className="pointer-coarse:hidden">{HELP_MOUSE}</span>
-        <span className="hidden pointer-coarse:inline">{HELP_TOUCH}</span>
-      </p>
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={() => {
-          try {
-            window.localStorage.setItem(HELP_SEEN, '1');
-          } catch {
-            // Sem localStorage: fecha só desta vez.
-          }
-          setShow(false);
-        }}
-      >
-        Percebi
-      </Button>
-    </div>
+    <Dica id="kanban">
+      <span className="pointer-coarse:hidden">{HELP_MOUSE}</span>
+      <span className="hidden pointer-coarse:inline">{HELP_TOUCH}</span>
+    </Dica>
   );
 }

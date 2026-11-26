@@ -213,11 +213,16 @@ function WorkingOnTile({ rank }: { rank: 0 | 1 | 2 }) {
   const counting = !!running && running.lead.id === lead.id;
   const total = counting ? (running.logged_seconds ?? 0) + Math.floor(elapsed) : null;
   const task = project?.next_task?.title ?? null;
-  const base = rank === 0 ? 'A trabalhar agora' : 'Também em curso';
+  // O rótulo do primeiro diz o que é; os outros dizem de quem é (antes repetiam "Também em curso").
+  const base = rank === 0 ? 'A trabalhar agora' : lead.project_title ? lead.company_name : 'Também em curso';
   return (
     <Tile
       label={counting ? `${base} · a contar` : pick?.reason === 'fixado' ? `${base} · fixado por ti` : base}
-      value={<span className="block truncate text-base font-semibold">{projectLabel(lead)}</span>}
+      value={
+        <span className="block truncate text-base font-semibold">
+          {rank === 0 || !lead.project_title ? projectLabel(lead) : lead.project_title}
+        </span>
+      }
       href={`${leadPath(lead)}#projeto`}
     >
       {counting ? (
@@ -304,10 +309,20 @@ export function SummaryStrip({ totals }: { totals: Dashboard['totals'] }) {
         <CardLayoutButton board={DASHBOARD_KPI_BOARD} available={KPIS} label="Organizar números" className="ml-auto" />
       </div>
       {keys.length ? (
-        <div className="flex flex-wrap items-stretch gap-3">
-          {keys.map((k) => (
-            <Fragment key={k}>{tiles[k]}</Fragment>
-          ))}
+        <div className="flex flex-col gap-3">
+          {/* Os números numa fila e os projetos noutra: antes vinham todos misturados na mesma. */}
+          {([
+            keys.filter((k) => !k.startsWith('trabalho')),
+            keys.filter((k) => k.startsWith('trabalho')),
+          ] as Kpi[][])
+            .filter((fila) => fila.length)
+            .map((fila) => (
+              <div key={fila.join('-')} className="flex flex-wrap items-stretch gap-3">
+                {fila.map((k) => (
+                  <Fragment key={k}>{tiles[k]}</Fragment>
+                ))}
+              </div>
+            ))}
         </div>
       ) : null}
     </section>

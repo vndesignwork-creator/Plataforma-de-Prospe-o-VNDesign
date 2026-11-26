@@ -171,7 +171,31 @@ function PaymentRow({ lead, payment, today }: { lead: Lead; payment: LeadPayment
         size="icon"
         variant="ghost"
         className="-my-1 h-8 w-8"
-        onClick={() => remove.mutate(payment.id, { onError: (e) => toast.error(errorMessage(e)) })}
+        onClick={() =>
+          remove.mutate(payment.id, {
+            onError: (e) => toast.error(errorMessage(e)),
+            // "Anular" volta a criar o pagamento como estava (um pagamento apagado não ia para a reciclagem).
+            onSuccess: () =>
+              toast.success('Pagamento apagado.', {
+                action: {
+                  label: 'Anular',
+                  onClick: () =>
+                    save.mutate(
+                      {
+                        body: {
+                          description: payment.description,
+                          amount: payment.amount,
+                          due_on: payment.due_on,
+                          paid_on: payment.paid_on,
+                          method: payment.method ?? null,
+                        },
+                      },
+                      { onSuccess: () => toast.success('Pagamento reposto.'), onError: (e) => toast.error(errorMessage(e)) },
+                    ),
+                },
+              }),
+          })
+        }
         aria-label={`Apagar o pagamento ${payment.description}`}
       >
         <Trash2 className="h-3.5 w-3.5" aria-hidden />

@@ -113,7 +113,9 @@ test('organizar os cartões da ficha: esconder e mudar a ordem (e repor)', async
   const aside = page.getByRole('complementary', { name: 'Tarefas, pagamentos, propostas e atividade' });
   await expect(aside.getByRole('heading', { name: 'Propostas', exact: true })).toBeVisible();
 
-  await aside.getByRole('button', { name: 'Organizar cartões' }).click();
+  // "Organizar cartões" vive no menu ⋮ do topo da ficha.
+  await page.getByRole('button', { name: 'Mais ações' }).click();
+  await page.getByRole('menuitem', { name: 'Organizar cartões…' }).click();
   const dialog = page.getByRole('dialog', { name: 'Organizar cartões' });
   await dialog.getByLabel('Mostrar Propostas').uncheck();
   await expect(dialog.getByLabel('Mostrar Linha do tempo')).toBeDisabled();
@@ -131,7 +133,8 @@ test('organizar os cartões da ficha: esconder e mudar a ordem (e repor)', async
   // Vale para os outros leads; Repor original volta ao que era.
   await page.reload();
   await expect(aside.getByRole('heading').first()).toHaveText('Linha do tempo');
-  await aside.getByRole('button', { name: 'Organizar cartões' }).click();
+  await page.getByRole('button', { name: 'Mais ações' }).click();
+  await page.getByRole('menuitem', { name: 'Organizar cartões…' }).click();
   await page.getByRole('dialog', { name: 'Organizar cartões' }).getByRole('button', { name: 'Repor original' }).click();
   await expect(page.getByText('Ordem original reposta.')).toBeVisible();
   await expect(aside.getByRole('heading', { name: 'Propostas', exact: true })).toBeVisible();

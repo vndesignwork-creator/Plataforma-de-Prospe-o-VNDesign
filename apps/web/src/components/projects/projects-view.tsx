@@ -274,7 +274,7 @@ export function ProjectsView({ tabs }: { tabs?: ReactNode } = {}) {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Projetos" description={<ProjectsSummary projects={view === 'list' && state === 'completed' ? undefined : projects} today={today} />} />
+      <PageHeader title="Clientes e projetos" description={<ProjectsSummary projects={view === 'list' && state === 'completed' ? undefined : projects} today={today} />} />
       {tabs}
 
       {/* Números do mês numa faixa baixa; os que levam a projetos filtram a lista. Organizam-se como no Dashboard. */}
@@ -420,7 +420,14 @@ export function ProjectsView({ tabs }: { tabs?: ReactNode } = {}) {
             <SortableContext items={rendered.map((p) => p.lead.id)} strategy={verticalListSortingStrategy}>
               <ul className="flex flex-col gap-6" aria-label={state === 'active' ? 'Projetos em curso' : 'Projetos concluídos'}>
                 {rendered.map((p) => (
-                  <ProjectRow key={p.lead.id} project={p} today={today} features={features} onWrapUp={setWrapUp} sortable={(shown?.length ?? 0) > 1} />
+                  <ProjectRow
+                    key={p.lead.id}
+                    project={p}
+                    today={today}
+                    features={features}
+                    onWrapUp={setWrapUp}
+                    sortable={(shown?.length ?? 0) > 1}
+                  />
                 ))}
               </ul>
             </SortableContext>

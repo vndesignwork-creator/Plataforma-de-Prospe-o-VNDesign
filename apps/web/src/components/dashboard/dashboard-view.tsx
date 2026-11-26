@@ -49,6 +49,7 @@ import { cn, telUrl } from '@/lib/utils';
 import { DueBadge, StageLabel } from '@/components/projects/project-bits';
 import { StatusIcon } from '@/components/icons/lead-icons';
 import { LeadTitle } from '@/components/leads/lead-title';
+import { FirstSteps } from './first-steps';
 
 const euros = (v: number) => formatCurrency(v, { decimals: false });
 
@@ -817,27 +818,31 @@ function OwnerDashboard() {
 
   const t = data.totals;
   if (t.total === 0) {
+    // Sem leads, o que interessa é montar a plataforma: os primeiros passos em vez do resumo vazio.
     return (
-      <>
+      <div className="flex flex-col gap-6">
         {header}
-      <Card>
-        <EmptyState title="Ainda não há leads">
-          <p>Importa a tua folha ou cria o primeiro lead para veres aqui o resumo.</p>
-          <p className="mt-3 flex justify-center gap-3">
-            <Link href="/importar" className="text-accent-text underline">
-              Importar folha
-            </Link>
-            <Link href="/leads/novo" className="text-accent-text underline">
-              Novo lead
-            </Link>
-          </p>
-        </EmptyState>
-      </Card>
-      </>
+        <FirstSteps leads={0} contacted={0} />
+        <Card>
+          <EmptyState title="Ainda não há leads">
+            <p>Importa a tua folha ou cria o primeiro lead para veres aqui o resumo.</p>
+            <p className="mt-3 flex justify-center gap-3">
+              <Link href="/importar" className="text-accent-text hover:text-accent-text-strong">
+                Importar folha
+              </Link>
+              <Link href="/leads/novo" className="text-accent-text hover:text-accent-text-strong">
+                Novo lead
+              </Link>
+            </p>
+          </EmptyState>
+        </Card>
+      </div>
     );
   }
 
   const summary = <SummaryStrip totals={t} />;
+  // Enquanto a plataforma está a arrancar: o que falta montar (desaparece sozinho).
+  const firstSteps = <FirstSteps leads={t.total} contacted={data.by_status.find((s) => s.status === 'contactado')?.count ?? 0} />;
 
   // Sem nada mudado: as duas filas alinhadas de sempre (cartões da mesma fila com a mesma altura):
   // Hoje | Leads mais quentes e Pipeline | Projetos. Telemóvel: uma coluna, com o "Hoje" no topo e o Pipeline no fim.
@@ -845,6 +850,7 @@ function OwnerDashboard() {
     return (
       <div className="flex flex-col gap-6">
         {header}
+        {firstSteps}
         {summary}
         <GoalsCard />
         {/* Tablet: o Pipeline e os Projetos lado a lado (no computador é a grelha de sempre). */}
@@ -888,6 +894,7 @@ function OwnerDashboard() {
   return (
     <div className="flex flex-col gap-6">
       {header}
+      {firstSteps}
       {blocks.map((block) =>
         wide.has(block[0]!) ? (
           <Fragment key={block[0]}>{cards[block[0]!]}</Fragment>

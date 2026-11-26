@@ -26,8 +26,9 @@
   --accent-text: #f2734f;
   --accent-text-strong: #ff8a65; /* laranja mais forte: :hover dos links e texto pequeno sobre fundo laranja — 8,4:1 sobre #0d0d0d */
   --accent-soft: rgb(239 92 50 / 0.14);
-  --danger: #ff6b6b;
-  --danger-soft: rgb(255 107 107 / 0.12);
+  /* Vermelho mais fechado (rosado) para não se confundir com o laranja da marca — 6,5:1 sobre #0d0d0d */
+  --danger: #ff5c72;
+  --danger-soft: rgb(255 92 114 / 0.12);
   --success: #4cc38a;
   --success-soft: rgb(76 195 138 / 0.14);
   --warning: #f0b94a;
@@ -58,8 +59,9 @@
   --accent-text: #b2390f; /* laranja escuro para texto: 5,6:1 */
   --accent-text-strong: #8f2d0c; /* laranja mais forte: :hover dos links e texto pequeno sobre fundo laranja — 8,2:1 sobre branco */
   --accent-soft: rgb(239 92 50 / 0.12);
-  --danger: #c22a2a;
-  --danger-soft: rgb(194 42 42 / 0.08);
+  /* Vermelho mais fechado (rosado) para não se confundir com o laranja da marca — 6:1 sobre branco */
+  --danger: #c0203c;
+  --danger-soft: rgb(192 32 60 / 0.08);
   --success: #17663f; /* 5,4:1 sobre #e7e3db (etiquetas) */
   --success-soft: rgb(23 102 63 / 0.1);
   --warning: #8a5a00;

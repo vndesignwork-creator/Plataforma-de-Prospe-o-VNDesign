@@ -35,7 +35,7 @@ const NAV = [
   { href: '/leads', label: 'Leads', icon: Users, match: (p: string) => p === '/leads' || p.startsWith('/leads/') || p.startsWith('/mapa') || p.startsWith('/importar') || p.startsWith('/kanban') },
   { href: '/prospecao', label: 'Prospeção', icon: Target, match: (p: string) => p.startsWith('/prospecao'), feature: 'prospecting_session' as const },
   { href: '/gerar-leads', label: 'Gerar leads', short: 'Gerar', icon: Sparkles, match: (p: string) => p.startsWith('/gerar-leads') },
-  { href: '/projetos', label: 'Clientes/Projetos', short: 'Projetos', icon: BriefcaseBusiness, match: (p: string) => p.startsWith('/projetos'), feature: 'projects' as const },
+  { href: '/projetos', label: 'Clientes e projetos', short: 'Projetos', icon: BriefcaseBusiness, match: (p: string) => p.startsWith('/projetos'), feature: 'projects' as const },
   // Equipa de prospeção e colaboradores dos projetos, numa só página (separadores).
   { href: '/equipa', label: 'Equipa', icon: UsersRound, match: (p: string) => p === '/equipa' || p.startsWith('/colaboradores') },
   { href: '/estatisticas', label: 'Estatísticas', icon: BarChart3, match: (p: string) => p.startsWith('/estatisticas') },

@@ -39,6 +39,7 @@ import {
   ListChecks,
   Mail,
   MessageCircle,
+  LayoutList,
   MoreHorizontal,
   Pin,
   Phone,
@@ -97,7 +98,7 @@ import { LostReasonDialog, LostReasonField } from './lost-reason';
 import { StageAge } from './stage-age';
 import { LeadFilesCard } from './lead-files';
 import { LeadPager } from './lead-pager';
-import { CardLayoutButton, LEAD_BOARD, useCardLayout } from './card-layout';
+import { CardLayoutDialog, LEAD_BOARD, useCardLayout } from './card-layout';
 import { LeadSummaryButton } from './lead-summary';
 import { PinnedNoteBox, PinnedNoteDialog } from './pinned-note';
 import { OpportunityBanner } from './opportunity-banner';
@@ -464,6 +465,7 @@ export function LeadDetail({ id }: { id: string }) {
   const invalidate = useInvalidateLead();
   const [dialog, setDialog] = useState<null | 'delete' | 'anonymize' | 'merge'>(null);
   const [pinOpen, setPinOpen] = useState(false);
+  const [organizing, setOrganizing] = useState(false);
   // Pesquisa rápida: os leads abertos há pouco aparecem sem escrever nada.
   useEffect(() => {
     if (lead && !lead.anonymized_at) rememberLead(lead);
@@ -686,6 +688,10 @@ export function LeadDetail({ id }: { id: string }) {
                       <Pin className="h-4 w-4" aria-hidden /> {lead.pinned_note ? 'Editar a nota afixada…' : 'Afixar uma nota…'}
                     </DropdownItem>
                   ) : null}
+                  {/* Em cima, como nas outras páginas (antes estava só no fundo da ficha). */}
+                  <DropdownItem onSelect={() => setOrganizing(true)}>
+                    <LayoutList className="h-4 w-4" aria-hidden /> Organizar cartões…
+                  </DropdownItem>
                   <DropdownItem className="lg:hidden" onSelect={() => void setArchived(!lead.archived_at)}>
                     {lead.archived_at ? <ArchiveRestore className="h-4 w-4" aria-hidden /> : <Archive className="h-4 w-4" aria-hidden />}
                     {lead.archived_at ? 'Repor' : 'Arquivar'}
@@ -923,9 +929,12 @@ export function LeadDetail({ id }: { id: string }) {
           {asideCards.map(([key, node]) => (
             <Fragment key={key}>{node}</Fragment>
           ))}
-          <CardLayoutButton board={LEAD_BOARD} available={availableCards} />
         </aside>
       </div>
+
+      {organizing ? (
+        <CardLayoutDialog board={LEAD_BOARD} available={availableCards} title="Organizar cartões" onClose={() => setOrganizing(false)} />
+      ) : null}
 
       <DeleteDialog
         lead={lead}

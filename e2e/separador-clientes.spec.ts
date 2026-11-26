@@ -42,7 +42,7 @@ test('clientes fora da lista de Leads e no separador Clientes', async ({ page })
 
     // E o separador Projetos continua a mostrar os projetos.
     await page.getByRole('tab', { name: /Projetos/ }).click();
-    await expect(page.getByRole('heading', { name: 'Projetos', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Clientes e projetos', level: 1 })).toBeVisible();
   } finally {
     await page.request.delete(`/api/v1/leads/${prospectId}`);
     await page.request.delete(`/api/v1/leads/${clientId}`);

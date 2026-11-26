@@ -749,7 +749,26 @@ export function TasksCard({ lead, embedded }: { lead: Lead; embedded?: boolean }
     setLocal((list) => list.filter((t) => t.id !== task.id));
     try {
       await api(`/tasks/${task.id}`, { method: 'DELETE' });
-      toast.success('Tarefa apagada.');
+      // "Anular" volta a criar a tarefa como estava (texto, prazo, responsável e repetição;
+      // o lembrete não, que podia já ter passado — como ao duplicar).
+      toast.success('Tarefa apagada.', {
+        action: {
+          label: 'Anular',
+          onClick: () =>
+            void api(`/leads/${lead.id}/tasks`, {
+              method: 'POST',
+              body: {
+                title: task.title,
+                due_on: task.due_on,
+                assigned_to: task.assigned_to ?? null,
+                ...(task.repeat ? { repeat: task.repeat } : {}),
+              },
+            })
+              .then(() => toast.success('Tarefa reposta.'))
+              .catch((error: unknown) => toast.error(errorMessage(error)))
+              .finally(() => invalidate(lead.id)),
+        },
+      });
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {

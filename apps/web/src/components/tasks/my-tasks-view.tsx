@@ -23,7 +23,7 @@ import {
   type TaskOrigin,
 } from '@vndesign/core';
 import { useQuery } from '@tanstack/react-query';
-import { BriefcaseBusiness, CalendarDays, ChevronRight, CircleDot, Copy, CopyPlus, LayoutGrid, ListChecks, MoreVertical, Plus, Search, UserRound, Users, X, type LucideIcon } from 'lucide-react';
+import { BriefcaseBusiness, CalendarDays, ChevronRight, CircleDot, Copy, CopyPlus, LayoutGrid, MoreVertical, Plus, Search, UserRound, Users, X, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
@@ -31,6 +31,7 @@ import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, EmptyState, Skeleton } from '@/components/ui/card';
+import { Dica } from '@/components/ui/dica';
 import { CollapseButton, setCollapsedKeys, useCollapsed } from '@/components/ui/collapse';
 import { Input } from '@/components/ui/input';
 import { DropdownContent, DropdownItem, DropdownLabel, DropdownRoot, DropdownSeparator, DropdownTrigger } from '@/components/ui/dropdown';
@@ -356,12 +357,6 @@ export function MyTasksView() {
             ) : (
               'As tarefas dos leads, dos projetos e as tuas listas.'
             )}
-            <span className="mt-0.5 flex items-center gap-1 text-xs">
-              <ListChecks className="h-3.5 w-3.5" aria-hidden />
-              {view === 'cartoes'
-                ? 'Cada lista é um cartão, e cada lead ou projeto com tarefas tem o seu. As concluídas ficam no fim de cada cartão.'
-                : 'As por fazer dos leads e projetos (não arquivados) e as sem lead; as concluídas estão no fim.'}
-            </span>
           </>
         }
         actions={
@@ -373,6 +368,16 @@ export function MyTasksView() {
       {creating ? <NewTaskDialog onClose={() => setCreating(false)} /> : null}
 
       <div className="flex flex-col gap-4">
+        {/* A explicação lê-se uma vez e fecha-se (antes ficava para sempre no cabeçalho). */}
+        {view === 'cartoes' ? (
+          <Dica id="tarefas.cartoes">
+            Cada lista é um cartão, e cada lead ou projeto com tarefas tem o seu. As concluídas ficam no fim de cada cartão.
+          </Dica>
+        ) : (
+          <Dica id="tarefas.prazo">
+            As por fazer dos leads e projetos (não arquivados) e as sem lead; as concluídas estão no fim.
+          </Dica>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-48 flex-1 sm:max-w-sm">
             <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />

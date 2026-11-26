@@ -12,7 +12,7 @@ export const GO_SHORTCUTS: Record<string, { href: string; label: string }> = {
   t: { href: '/tarefas', label: 'Tarefas' },
   l: { href: '/leads', label: 'Leads' },
   k: { href: '/kanban', label: 'Kanban' },
-  p: { href: '/projetos', label: 'Clientes/Projetos' },
+  p: { href: '/projetos', label: 'Clientes e projetos' },
   r: { href: '/prospecao', label: 'Prospeção' },
   m: { href: '/mapa', label: 'Mapa' },
   e: { href: '/estatisticas', label: 'Estatísticas' },

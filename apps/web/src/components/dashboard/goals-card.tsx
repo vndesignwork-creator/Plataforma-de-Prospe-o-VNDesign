@@ -203,8 +203,13 @@ export function GoalsCard({ className }: { className?: string }) {
   return (
     <Card className={className}>
       <CardHeader
+        compact={!metrics.length}
         title={`Metas de ${monthName(data.month)}`}
-        description={metrics.length ? `${Math.round(data.elapsed * 100)}% do mês passado (dias úteis)` : undefined}
+        description={
+          metrics.length
+            ? `${Math.round(data.elapsed * 100)}% do mês passado (dias úteis)`
+            : 'Define o que queres atingir este mês: recebido, propostas, clientes novos, emails, chamadas e WhatsApp. A barra de cada uma mostra se vais no ritmo.'
+        }
         actions={
           canEdit ? (
             <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
@@ -220,9 +225,7 @@ export function GoalsCard({ className }: { className?: string }) {
             <GoalBar key={m} metric={m} data={data} mine={personal(m)} />
           ))}
         </div>
-      ) : (
-        <p className="px-4 py-4 text-sm text-muted">Define o que queres atingir este mês: recebido, propostas, clientes novos, emails, chamadas e WhatsApp. A barra de cada uma mostra se vais no ritmo.</p>
-      )}
+      ) : null}
       {editing ? <GoalsDialog goals={data.goals} onClose={() => setEditing(false)} /> : null}
     </Card>
   );
