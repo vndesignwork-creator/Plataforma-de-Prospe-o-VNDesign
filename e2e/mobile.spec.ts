@@ -4,7 +4,9 @@ test('no telemóvel a lista mostra cartões e o menu abre', async ({ page }) => 
   await page.goto('/leads');
   await expect(page.getByRole('heading', { level: 1, name: 'Leads', exact: true })).toBeVisible();
   await expect(page.locator('table')).toBeHidden();
-  await page.getByRole('button', { name: 'Abrir menu' }).click();
+  // No telemóvel as páginas estão na barra de baixo; o resto abre no "Mais".
+  await expect(page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Leads' })).toBeVisible();
+  await page.getByRole('button', { name: 'Mais' }).click();
   await expect(page.getByRole('dialog').getByRole('link', { name: 'Definições' })).toBeVisible();
   // Sem scroll horizontal na página.
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

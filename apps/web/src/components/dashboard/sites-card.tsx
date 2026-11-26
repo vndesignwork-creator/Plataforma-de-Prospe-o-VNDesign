@@ -32,7 +32,9 @@ export function SitesCard({ className }: { className?: string }) {
         {rows.slice(0, 6).map(({ m, issues }) => (
           <li key={m.id} className="flex flex-wrap items-start gap-x-3 gap-y-1 px-4 py-2.5 text-sm">
             <Activity className={cn('mt-0.5 h-4 w-4 shrink-0', issues[0]!.severity === 'danger' ? 'text-danger' : 'text-warning')} aria-hidden />
-            <span className="min-w-0 flex-1">
+            {/* No telemóvel o texto fica com a linha toda (menos o ícone) e os botões passam para baixo:
+                espremido ao lado deles, o aviso saia uma palavra por linha. */}
+            <span className="min-w-0 flex-1 max-sm:basis-[calc(100%-1.75rem)]">
               {/* Cliente: abre o projeto (onde está o site vigiado); lead: a ficha, onde está o aviso "Oportunidade". */}
               <Link href={`${leadPath(m.lead)}${m.lead.status === 'cliente' ? '#projeto' : ''}`} className="font-medium hover:text-accent-text">
                 #{m.lead.number} {m.lead.company_name}

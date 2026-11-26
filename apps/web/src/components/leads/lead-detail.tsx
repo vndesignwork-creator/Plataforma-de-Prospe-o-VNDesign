@@ -914,8 +914,12 @@ export function LeadDetail({ id }: { id: string }) {
           </p>
         </div>
 
-        {/* Coluna lateral (computador): o que se consulta durante uma chamada — propostas e atividade. */}
-        <aside aria-label="Tarefas, pagamentos, propostas e atividade" className="flex flex-col gap-6">
+        {/*
+          Coluna lateral (computador): o que se consulta durante uma chamada — propostas e atividade.
+          No tablet não cabem duas colunas a sério (os cartões ficavam espremidos), por isso estes
+          passam para baixo em duas colunas lado a lado, em vez de uma fila comprida.
+        */}
+        <aside aria-label="Tarefas, pagamentos, propostas e atividade" className="grid grid-cols-1 items-start gap-6 max-lg:md:grid-cols-2 lg:flex lg:flex-col">
           {asideCards.map(([key, node]) => (
             <Fragment key={key}>{node}</Fragment>
           ))}

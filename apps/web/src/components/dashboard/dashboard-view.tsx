@@ -847,11 +847,12 @@ function OwnerDashboard() {
         {header}
         {summary}
         <GoalsCard />
-        <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
-          <TodayCard className="lg:col-start-1 lg:row-start-1" />
+        {/* Tablet: o Pipeline e os Projetos lado a lado (no computador é a grelha de sempre). */}
+        <div className="flex flex-col gap-6 max-lg:md:grid max-lg:md:grid-cols-2 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+          <TodayCard className="max-lg:md:col-span-2 lg:col-start-1 lg:row-start-1" />
           {/* Os quentes mostram só as linhas que cabem ao lado do "Hoje" (sem espaço vazio em nenhum dos dois). */}
-          <HotLeadsCard fitToday className="lg:col-start-2 lg:row-start-1 lg:self-start" />
-          <RepliesCard className="lg:col-span-2 lg:row-start-2" />
+          <HotLeadsCard fitToday className="max-lg:md:col-span-2 lg:col-start-2 lg:row-start-1 lg:self-start" />
+          <RepliesCard className="max-lg:md:col-span-2 lg:col-span-2 lg:row-start-2" />
           <PipelineCard
             byStatus={data.by_status}
             className={cn('max-lg:order-last lg:col-start-1 lg:row-start-3', !projectsOn && 'lg:col-span-2')}

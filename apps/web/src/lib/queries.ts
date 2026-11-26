@@ -397,6 +397,17 @@ export function useUpdateLead(id: string) {
         return { ...cached, ...patch } as Lead;
       }
     },
+    // Resposta imediata: a ficha mostra já o estado novo (volta atrás se o servidor recusar).
+    onMutate: async (patch) => {
+      await qc.cancelQueries({ queryKey: qk.lead(id) });
+      const before = qc.getQueryData<Lead>(qk.lead(id));
+      // Só para o ecrã não esperar: o servidor manda o lead certo a seguir.
+      if (before) qc.setQueryData<Lead>(qk.lead(id), { ...before, ...(patch as Partial<Lead>) });
+      return { before };
+    },
+    onError: (_error, _patch, context) => {
+      if (context?.before) qc.setQueryData(qk.lead(id), context.before);
+    },
     onSuccess: (lead) => {
       qc.setQueryData(qk.lead(id), lead);
       // A lista da Prospeção não se recarrega a meio da sessão (a ordem fica), mas os dados
@@ -558,7 +569,13 @@ export function useSetPreference<T>(key: string) {
     // Cancela a leitura em curso: se chegasse depois, apagava o valor acabado de mudar.
     onMutate: async (value) => {
       await qc.cancelQueries({ queryKey: qk.pref(key) });
+      const before = qc.getQueryData<T | null>(qk.pref(key));
       qc.setQueryData(qk.pref(key), value);
+      return { before };
+    },
+    // Se o servidor recusar, volta ao que estava (senão o ecrã ficava a mostrar uma escolha que não foi guardada).
+    onError: (_error, _value, context) => {
+      if (context) qc.setQueryData(qk.pref(key), context.before ?? null);
     },
   });
 }
@@ -625,11 +642,34 @@ export function useSettings() {
 }
 
 export function useFollowUp(id: string) {
+  const qc = useQueryClient();
   const invalidate = useInvalidateLead();
   return useMutation({
     mutationFn: (body: { action: 'done' | 'snooze'; days?: number | null; note?: string }) =>
       api<{ data: Lead }>(`/leads/${id}/follow-up`, { method: 'POST', body }).then((r) => r.data),
-    onSuccess: () => invalidate(id),
+    /**
+     * Resposta imediata: a linha sai já do "Hoje" (feito ou adiado, deixa de ser para agora).
+     * Se o servidor recusar, as listas voltam como estavam.
+     */
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: ['today'] });
+      const before = qc.getQueriesData<Today>({ queryKey: ['today'] });
+      qc.setQueriesData<Today>({ queryKey: ['today'] }, (data) =>
+        data
+          ? {
+              ...data,
+              overdue: data.overdue.filter((l) => l.id !== id),
+              due_today: data.due_today.filter((l) => l.id !== id),
+              stalled: data.stalled?.filter((l) => l.id !== id),
+            }
+          : data,
+      );
+      return { before };
+    },
+    onError: (_error, _body, context) => {
+      for (const [key, data] of context?.before ?? []) qc.setQueryData(key, data);
+    },
+    onSettled: () => invalidate(id),
   });
 }
 
