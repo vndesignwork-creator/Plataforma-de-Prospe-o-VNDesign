@@ -319,6 +319,23 @@ test('acessos: cartão próprio, gerar palavra-passe, esconder sozinha e registo
     await lista.getByRole('button', { name: 'Esconder a palavra-passe de WordPress' }).click();
     await expect(lista).not.toContainText(gerada);
 
+    // Duplicar: vem tudo do original menos a palavra-passe.
+    await lista.getByRole('button', { name: 'Mais ações: WordPress' }).click();
+    await page.getByRole('menuitem', { name: 'Duplicar…' }).click();
+    const copia = page.getByRole('dialog', { name: 'Duplicar WordPress' });
+    await expect(copia.getByLabel('O quê')).toHaveValue('WordPress (cópia)');
+    await expect(copia.getByLabel('Palavra-passe')).toHaveValue('');
+    await copia.getByLabel('O quê').fill('WordPress staging');
+    await copia.getByRole('button', { name: 'Guardar' }).click();
+    await expect(copia).toBeHidden();
+    await expect(lista.getByText('WordPress staging')).toBeVisible();
+
+    // E apagar a cópia pelo menu (pergunta antes).
+    await lista.getByRole('button', { name: 'Mais ações: WordPress staging' }).click();
+    await page.getByRole('menuitem', { name: 'Apagar…' }).click();
+    await page.getByRole('dialog', { name: 'Apagar "WordPress staging"?' }).getByRole('button', { name: 'Apagar' }).click();
+    await expect(lista.getByText('WordPress staging')).toHaveCount(0);
+
     // Palavra-passe errada não deixa ver.
     const errado = await page.request.post('/api/v1/accesses/unlock', { data: { password: 'nao-e-esta-123' } });
     expect([422, 429]).toContain(errado.status());

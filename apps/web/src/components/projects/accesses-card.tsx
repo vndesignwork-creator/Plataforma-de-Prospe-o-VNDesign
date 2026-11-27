@@ -7,13 +7,14 @@
  * vê uma fica registado em Definições → Registo.
  */
 import { accessIsStale, accessSecretAge, formatDate, type Lead, type LeadAccess } from '@vndesign/core';
-import { Copy, ExternalLink, Eye, EyeOff, KeyRound, PackageCheck, Pencil, Plus, ShieldAlert, Trash2, Users, Wand2 } from 'lucide-react';
+import { Copy, CopyPlus, ExternalLink, Eye, EyeOff, KeyRound, MoreVertical, PackageCheck, Pencil, Plus, ShieldAlert, Trash2, Users, Wand2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { CollapseButton, useCollapsed } from '@/components/ui/collapse';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
+import { DropdownContent, DropdownItem, DropdownRoot, DropdownTrigger } from '@/components/ui/dropdown';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
@@ -132,7 +133,8 @@ function enderecoCurto(url: string) {
 export function AccessesCard({ lead }: { lead: Lead }) {
   const { data: accesses } = useAccesses(lead.id);
   const action = useAccessAction(lead.id);
-  const [editing, setEditing] = useState<LeadAccess | 'new' | null>(null);
+  // 'new' = acesso novo; { copyOf } = novo a partir de outro (duplicar); o resto = editar.
+  const [editing, setEditing] = useState<LeadAccess | 'new' | { copyOf: LeadAccess } | null>(null);
   const [shown, setShown] = useState<Record<string, string | null>>({});
   // Esconde sozinha ao fim de meio minuto (não fica à vista no ecrã).
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -291,14 +293,32 @@ export function AccessesCard({ lead }: { lead: Lead }) {
               <button type="button" onClick={() => setEditing(a)} className="rounded p-1 text-muted hover:bg-surface-3 hover:text-fg" aria-label={`Editar ${a.label}`}>
                 <Pencil className="h-3.5 w-3.5" aria-hidden />
               </button>
-              <button
-                type="button"
-                onClick={() => action.mutate({ id: a.id, remove: true }, { onSuccess: () => toast.success('Acesso apagado.'), onError: (e) => toast.error(errorMessage(e)) })}
-                className="rounded p-1 text-muted hover:bg-danger-soft hover:text-danger"
-                aria-label={`Apagar ${a.label}`}
-              >
-                <Trash2 className="h-3.5 w-3.5" aria-hidden />
-              </button>
+              <DropdownRoot>
+                <DropdownTrigger className="rounded p-1 text-muted hover:bg-surface-3 hover:text-fg" aria-label={`Mais ações: ${a.label}`}>
+                  <MoreVertical className="h-4 w-4" aria-hidden />
+                </DropdownTrigger>
+                <DropdownContent align="end">
+                  {/* Duplicar: o mesmo painel com outro utilizador, ou o mesmo acesso noutra conta. */}
+                  <DropdownItem onSelect={() => setEditing({ copyOf: a })}>
+                    <CopyPlus className="h-4 w-4" aria-hidden /> Duplicar…
+                  </DropdownItem>
+                  <DropdownItem
+                    danger
+                    onSelect={() => {
+                      void confirmar({
+                        title: `Apagar "${a.label}"?`,
+                        description: a.has_secret ? 'A palavra-passe guardada também é apagada.' : undefined,
+                        confirm: 'Apagar',
+                        danger: true,
+                      }).then((ok) => {
+                        if (ok) action.mutate({ id: a.id, remove: true }, { onSuccess: () => toast.success('Acesso apagado.'), onError: (e) => toast.error(errorMessage(e)) });
+                      });
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden /> Apagar…
+                  </DropdownItem>
+                </DropdownContent>
+              </DropdownRoot>
             </li>
           ))}
         </ul>
@@ -306,7 +326,14 @@ export function AccessesCard({ lead }: { lead: Lead }) {
         <p className="text-sm text-muted">Ainda não há acessos guardados.</p>
       )}
       </div>
-      {editing ? <AccessDialog lead={lead} access={editing === 'new' ? null : editing} onClose={() => setEditing(null)} /> : null}
+      {editing ? (
+        <AccessDialog
+          lead={lead}
+          access={editing === 'new' || 'copyOf' in editing ? null : editing}
+          copyOf={editing !== 'new' && 'copyOf' in editing ? editing.copyOf : null}
+          onClose={() => setEditing(null)}
+        />
+      ) : null}
       {handover ? <HandoverDialog lead={lead} accesses={accesses ?? []} onClose={() => setHandover(false)} /> : null}
       {unlocking ? (
         <UnlockDialog
@@ -405,16 +432,28 @@ function HandoverDialog({ lead, accesses, onClose }: { lead: Lead; accesses: Lea
   );
 }
 
-function AccessDialog({ lead, access, onClose }: { lead: Lead; access: LeadAccess | null; onClose: () => void }) {
+function AccessDialog({
+  lead,
+  access,
+  copyOf = null,
+  onClose,
+}: {
+  lead: Lead;
+  access: LeadAccess | null;
+  /** Duplicar: vem tudo preenchido a partir deste, menos a palavra-passe. */
+  copyOf?: LeadAccess | null;
+  onClose: () => void;
+}) {
   const action = useAccessAction(lead.id);
+  const base = access ?? copyOf;
   const [form, setForm] = useState({
-    label: access?.label ?? '',
-    url: access?.url ?? '',
-    username: access?.username ?? '',
+    label: access?.label ?? (copyOf ? `${copyOf.label} (cópia)` : ''),
+    url: base?.url ?? '',
+    username: base?.username ?? '',
     secret: '',
-    notes: access?.notes ?? '',
-    shared: access?.shared ?? false,
-    vault_ref: access?.vault_ref ?? '',
+    notes: base?.notes ?? '',
+    shared: base?.shared ?? false,
+    vault_ref: base?.vault_ref ?? '',
   });
   const [errors, setErrors] = useState<Record<string, string[]>>({});
 
@@ -423,7 +462,7 @@ function AccessDialog({ lead, access, onClose }: { lead: Lead; access: LeadAcces
     setErrors({});
     try {
       await action.mutateAsync({ id: access?.id, body: { ...form, secret: form.secret || undefined } });
-      toast.success(access ? 'Acesso guardado.' : 'Acesso juntado.');
+      toast.success(access ? 'Acesso guardado.' : copyOf ? 'Acesso duplicado.' : 'Acesso juntado.');
       onClose();
     } catch (error) {
       if (error instanceof ApiClientError && error.problem.errors) setErrors(error.problem.errors as Record<string, string[]>);
@@ -435,7 +474,8 @@ function AccessDialog({ lead, access, onClose }: { lead: Lead; access: LeadAcces
     <Dialog
       open
       onOpenChange={(o) => (!o ? onClose() : undefined)}
-      title={access ? `Editar ${access.label}` : 'Novo acesso'}
+      title={access ? `Editar ${access.label}` : copyOf ? `Duplicar ${copyOf.label}` : 'Novo acesso'}
+      description={copyOf ? 'Vem tudo do original menos a palavra-passe — escreve a nova (ou deixa vazia).' : undefined}
       className="max-w-lg"
       footer={
         <>
