@@ -51,7 +51,7 @@ export function VerifyForm() {
   }
 
   async function signOut() {
-    await getSupabaseBrowserClient().auth.signOut();
+    await getSupabaseBrowserClient().auth.signOut({ scope: 'local' });
     router.replace('/login');
   }
 

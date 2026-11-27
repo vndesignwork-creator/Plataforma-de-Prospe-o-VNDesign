@@ -46,7 +46,11 @@ export async function unlockWithPassword(ctx: ApiContext, password: string): Pro
     throw new ApiError(422, 'Palavra-passe errada', 'Escreve a palavra-passe com que entras na plataforma.');
   }
   // A sessão criada para confirmar não serve para mais nada.
-  await client.auth.signOut().catch(() => undefined);
+  // ATENÇÃO: tem de ser 'local'. Sem âmbito, o Supabase usa 'global' e apaga
+  // TODAS as sessões desta conta — inclusive a do browser de quem está a
+  // confirmar (e a do telemóvel), que ficava a trabalhar até o token expirar e
+  // depois era atirada para o /login "sozinha".
+  await client.auth.signOut({ scope: 'local' }).catch(() => undefined);
   failures.delete(ctx.user.id);
   if (unlocked.size > 1_000) unlocked.clear();
   const until = now + UNLOCK_MINUTES * 60_000;

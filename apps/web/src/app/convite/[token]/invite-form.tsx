@@ -81,7 +81,7 @@ export function InviteForm({
         router.refresh();
         return;
       }
-      if (sessionEmail) await getSupabaseBrowserClient().auth.signOut();
+      if (sessionEmail) await getSupabaseBrowserClient().auth.signOut({ scope: 'local' });
       await signIn();
       await claim();
     } catch (err) {
